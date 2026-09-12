@@ -36,6 +36,20 @@ class AlignmentContract(unittest.TestCase):
         config.pass_config.enable_sp=False
         self.assertEqual(ns['_adjust_joint_alignment'](config,6,8),(6,8))
 
+class OwnershipContract(unittest.TestCase):
+    def test_exiting_owned_row_and_pid_reuse(self):
+        launcher=source.with_name('launch.py')
+        f=next(x for x in ast.parse(launcher.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='previously_owned')
+        ns={};exec(compile(ast.Module(body=[f],type_ignores=[]),str(launcher),'exec'),ns)
+        check=ns['previously_owned'];known={101:(11,'start-a',100)}
+        self.assertTrue(check(101,11,known,'start-a',110))
+        self.assertTrue(check(101,11,known,None,110))
+        self.assertTrue(check(101,0,known,None,110))
+        self.assertFalse(check(101,11,known,'start-b',110))
+        self.assertFalse(check(101,12,known,None,110))
+        self.assertFalse(check(102,11,known,'start-a',110))
+        self.assertFalse(check(101,0,known,None,116))
+
 class SharedPoolContract(unittest.TestCase):
     def test_aliases_snapshot_once_without_dtype_interpretation(self):
         import torch

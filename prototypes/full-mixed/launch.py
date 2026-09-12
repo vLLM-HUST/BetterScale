@@ -8,7 +8,19 @@ p=argparse.ArgumentParser();p.add_argument('--devices',default='0');p.add_argume
 devices={int(x) for x in a.devices.split(',')};assert devices and devices<=set(range(8))
 a.output.mkdir(parents=True,exist_ok=False)
 lock=open(Path.home()/'tp8.lock','a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-known_host_owners=set()
+known_host_owners={}
+def process_start(pid):
+ try:return Path(f'/proc/{pid}/stat').read_text().rsplit(') ',1)[1].split()[19]
+ except (FileNotFoundError,ProcessLookupError):return None
+
+def previously_owned(host_pid, local_pid, known, current_start, now):
+ previous=known.get(host_pid)
+ if previous is None:return False
+ old_pid,old_start,last_seen=previous
+ if local_pid not in (0,old_pid):return False
+ # A driver row may outlive /proc, or its process may be reparented during
+ # teardown. An actually reused visible PID must have a different start time.
+ return (now-last_seen<=15) if current_start is None else current_start==old_start
 def inspect(owned=None):
  text=subprocess.check_output(['npu-smi','info'],text=True,timeout=20);readings=parse_devices(text)
  owners=set()
@@ -17,8 +29,10 @@ def inspect(owned=None):
   if cells and re.fullmatch(r'\d+\s+\d+',cells[0]) and int(cells[0].split()[0]) in devices:
    assert len(cells)>=5 and cells[4].isdigit()
    host_pid,local_pid=int(cells[1]),int(cells[4])
-   if owned is not None and local_pid in owned:known_host_owners.add(host_pid)
-   if local_pid==0 and host_pid in known_host_owners:continue
+   start=process_start(local_pid or known_host_owners.get(host_pid,(0,None,0))[0])
+   if owned is not None and local_pid in owned and start is not None:
+    known_host_owners[host_pid]=(local_pid,start,time.monotonic())
+   if owned is not None and previously_owned(host_pid,local_pid,known_host_owners,start,time.monotonic()):continue
    owners.add(local_pid or host_pid)
  return text,readings,owners
 text,readings,owners=inspect();(a.output/'admission.txt').write_text(text)

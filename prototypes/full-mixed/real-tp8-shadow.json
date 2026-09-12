@@ -1,0 +1,80 @@
+{
+  "capsule": "hw3:tp8-real-k5-4128-012-shadow",
+  "model": "DeepSeek-V4-Flash-0731-w8a8",
+  "tp": 8,
+  "K": 5,
+  "buckets": [
+    24,
+    4128
+  ],
+  "hccl": "strict",
+  "kv_gib": 3,
+  "ranks": [
+    {
+      "rank": 0,
+      "checked_steps": 42,
+      "actual_mixed": 2,
+      "max_valid_tokens": 4112,
+      "max_difference": 0,
+      "kv_byte_exact": true
+    },
+    {
+      "rank": 1,
+      "checked_steps": 42,
+      "actual_mixed": 2,
+      "max_valid_tokens": 4112,
+      "max_difference": 0,
+      "kv_byte_exact": true
+    },
+    {
+      "rank": 2,
+      "checked_steps": 42,
+      "actual_mixed": 2,
+      "max_valid_tokens": 4112,
+      "max_difference": 0,
+      "kv_byte_exact": true
+    },
+    {
+      "rank": 3,
+      "checked_steps": 42,
+      "actual_mixed": 2,
+      "max_valid_tokens": 4112,
+      "max_difference": 0,
+      "kv_byte_exact": true
+    },
+    {
+      "rank": 4,
+      "checked_steps": 42,
+      "actual_mixed": 2,
+      "max_valid_tokens": 4112,
+      "max_difference": 0,
+      "kv_byte_exact": true
+    },
+    {
+      "rank": 5,
+      "checked_steps": 42,
+      "actual_mixed": 2,
+      "max_valid_tokens": 4112,
+      "max_difference": 0,
+      "kv_byte_exact": true
+    },
+    {
+      "rank": 6,
+      "checked_steps": 42,
+      "actual_mixed": 2,
+      "max_valid_tokens": 4112,
+      "max_difference": 0,
+      "kv_byte_exact": true
+    },
+    {
+      "rank": 7,
+      "checked_steps": 42,
+      "actual_mixed": 2,
+      "max_valid_tokens": 4112,
+      "max_difference": 0,
+      "kv_byte_exact": true
+    }
+  ],
+  "scope": "Same-state target FULL vs eager; draft stays eager. Not performance evidence.",
+  "teardown": "All results written; supervisor falsely classified exiting owned workers as foreign after /proc disappeared. Subsequent release verified. Supervisor ownership grace corrected separately."
+}

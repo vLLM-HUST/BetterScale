@@ -1,0 +1,107 @@
+{
+  "scope": "hw3 TP8 full DSV4 W8A8 checkpoint, K5 eager draft, target FULL24/4128 vs original FULL_DECODE_ONLY24, normal HCCL",
+  "measurement": "One warm round and one measured round; seven cohorts; eight outputs per request",
+  "cohorts": [
+    {
+      "lengths": [
+        64,
+        64,
+        64,
+        64
+      ],
+      "full_seconds": 2.8161938990233466,
+      "donor_seconds": 1.5928527020150796,
+      "donor_over_full": 0.5656047698162685,
+      "tokens_match": false
+    },
+    {
+      "lengths": [
+        129,
+        17
+      ],
+      "full_seconds": 0.5482717039994895,
+      "donor_seconds": 0.7327337190508842,
+      "donor_over_full": 1.3364427047863232,
+      "tokens_match": false
+    },
+    {
+      "lengths": [
+        7,
+        128,
+        33
+      ],
+      "full_seconds": 0.4800445690052584,
+      "donor_seconds": 0.7313582369824871,
+      "donor_over_full": 1.5235215315486172,
+      "tokens_match": true
+    },
+    {
+      "lengths": [
+        256,
+        23,
+        5,
+        9
+      ],
+      "full_seconds": 0.5473188399337232,
+      "donor_seconds": 0.8012065390357748,
+      "donor_over_full": 1.463875314675438,
+      "tokens_match": false
+    },
+    {
+      "lengths": [
+        513,
+        257,
+        17
+      ],
+      "full_seconds": 0.5583219290710986,
+      "donor_seconds": 0.7407911769114435,
+      "donor_over_full": 1.326817268567484,
+      "tokens_match": false
+    },
+    {
+      "lengths": [
+        1025
+      ],
+      "full_seconds": 0.4406308199977502,
+      "donor_seconds": 0.6718271799618378,
+      "donor_over_full": 1.5246940283597685,
+      "tokens_match": true
+    },
+    {
+      "lengths": [
+        4145,
+        19
+      ],
+      "full_seconds": 0.632203564979136,
+      "donor_seconds": 1.0621364678954706,
+      "donor_over_full": 1.680054537387057,
+      "tokens_match": true
+    }
+  ],
+  "limitations": [
+    "Pilot only, not agent-workload/SLO throughput acceptance",
+    "One measured repetition per cohort",
+    "Greedy token streams vary both across arms and within repeated unchanged donor runs; acceptance work can differ",
+    "Not an isolated graph/prefill latency measurement"
+  ],
+  "measured_round_seconds": {
+    "full": 6.0229853260098025,
+    "donor": 6.332906021852978
+  },
+  "self_repeat_changed_cohorts": {
+    "full": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "donor": [
+      1,
+      2,
+      3,
+      4,
+      6
+    ]
+  }
+}
