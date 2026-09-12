@@ -9,7 +9,28 @@ AscendDSACPMetadataBuilder.get_cudagraph_support = classmethod(
     lambda cls, vllm_config, kv_cache_spec: AttentionCGSupport.ALWAYS)
 
 class FullMixedProbeWorker:
+    def set_cpu_qli(self, enabled=False, verify=False):
+        from qli_cpu import configure
+        return configure(self, enabled, verify)
+
+    def enable_exact_draft_graph(self, enabled=True):
+        from draft_graph import install
+        return install(self, enabled)
+
+    def set_ordered_replay(self, enabled=False):
+        from ordered_replay import configure
+        return configure(self, enabled)
+
+    def start_decode_observation(self, profile=False, label="decode"):
+        from diagnostics import start_decode_observation
+        return start_decode_observation(self, profile, label)
+
+    def stop_decode_observation(self):
+        from diagnostics import stop_decode_observation
+        return stop_decode_observation(self)
+
     def graph_receipt(self):
+        if hasattr(self,"_exact_draft_graph"):self._exact_draft_graph.receipt()
         import torch
         from vllm_ascend.compilation.acl_graph import ACLGraphWrapper
         model=self.model_runner.model
@@ -308,3 +329,13 @@ if os.environ.get('FULL_MIXED_PATCH', '1') == '0':
     AscendDSACPMetadataBuilder.build = _original_build
     dsa_cp.get_cos_and_sin_dsa = _original_rope
     NPUModelRunner._pad_query_start_loc_for_fia = _original_pad
+
+# Keep the shadow oracle above this experiment: it checks the actual selected
+# replay call rather than silently reverting to the original synchronized path.
+_native_graph_call = _original_graph_call
+
+def _ordered_graph_call(self, *args, **kwargs):
+    from ordered_replay import call
+    return call(_native_graph_call, self, *args, **kwargs)
+
+_original_graph_call = _ordered_graph_call

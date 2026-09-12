@@ -1,0 +1,172 @@
+{
+  "hw3-ordered-014": {
+    "ranks": [
+      {
+        "rank": 0,
+        "checked_steps": 66,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 1,
+        "checked_steps": 66,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 2,
+        "checked_steps": 66,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 3,
+        "checked_steps": 66,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 4,
+        "checked_steps": 66,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 5,
+        "checked_steps": 66,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 6,
+        "checked_steps": 66,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 7,
+        "checked_steps": 66,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      }
+    ],
+    "fixture": "four-layer dummy, TP8, K5, FULL24/288, HCCL strict",
+    "boundary": "Shadow synchronizes before snapshots; NOT proof of overlapped wave safety or speedup."
+  },
+  "hw3-qli-016": {
+    "ranks": [
+      {
+        "rank": 0,
+        "checked_steps": 65,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 1,
+        "checked_steps": 65,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 2,
+        "checked_steps": 65,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 3,
+        "checked_steps": 65,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 4,
+        "checked_steps": 65,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 5,
+        "checked_steps": 65,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 6,
+        "checked_steps": 65,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      },
+      {
+        "rank": 7,
+        "checked_steps": 65,
+        "max_difference": 0,
+        "kv_byte_exact": true
+      }
+    ],
+    "fixture": "four-layer dummy, TP8, K5, FULL24/288, HCCL strict",
+    "boundary": "Shadow synchronizes before snapshots; NOT proof of overlapped wave safety or speedup."
+  },
+  "hw3-draft-018": {
+    "fixture": "TP8 K5 dummy strict HCCL, single exact-shape draft capture",
+    "ranks": [
+      {
+        "captured": true,
+        "replays": 32,
+        "fallbacks": 8,
+        "checks": 8,
+        "rank": 0
+      },
+      {
+        "captured": true,
+        "replays": 32,
+        "fallbacks": 8,
+        "checks": 8,
+        "rank": 1
+      },
+      {
+        "captured": true,
+        "replays": 32,
+        "fallbacks": 8,
+        "checks": 8,
+        "rank": 2
+      },
+      {
+        "captured": true,
+        "replays": 32,
+        "fallbacks": 8,
+        "checks": 8,
+        "rank": 3
+      },
+      {
+        "captured": true,
+        "replays": 32,
+        "fallbacks": 8,
+        "checks": 8,
+        "rank": 4
+      },
+      {
+        "captured": true,
+        "replays": 32,
+        "fallbacks": 8,
+        "checks": 8,
+        "rank": 5
+      },
+      {
+        "captured": true,
+        "replays": 32,
+        "fallbacks": 8,
+        "checks": 8,
+        "rank": 6
+      },
+      {
+        "captured": true,
+        "replays": 32,
+        "fallbacks": 8,
+        "checks": 8,
+        "rank": 7
+      }
+    ],
+    "boundary": "Eight exact draft-token and whole-KV byte checks/rank; not a performance result."
+  }
+}
