@@ -68,3 +68,18 @@ when they lost parent/PID visibility. It was repaired to retain proven host PID
 identity and include live owned session members. Native kernel failures in runs
 005/009 remain failures, not evidence of genuine foreign interference. No foreign
 process was killed. Generated CANN exception dumps are ignored, not published.
+
+## K5 fixture and bucket trap
+
+Run015 (K5, TP2) completed 17 requests and checked29 small replays/rank with
+zero valid output, KV and pre-HC MTP-buffer differences. **Not mixed-prefill
+acceptance:** only the24-token bucket survived upstream sizing. With maximum256,
+rounding256 up to a multiple of K+1=6 produces258 and silently drops it. Use a
+large budget divisible by both TP and K+1 (e.g.288 for TP2/TP8 K5), and require
+receipts to show the large bucket captured **and replayed**.
+
+`fixture.py` shrinks the draft config separately; dictionary target overrides
+are not propagated by upstream. Target callable overrides conflict with Ascend
+quantization, so this repair composes the draft-only config transform. It is not
+part of the proposed serving patch. Run013's missing aux-state tuple and run014's
+quantization validation error were fixture failures, not kernel correctness data.

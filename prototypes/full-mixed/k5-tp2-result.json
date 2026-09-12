@@ -1,0 +1,45 @@
+{
+  "scope": "TP2 dummy four-layer SWA/SWA/C4/C128 target + DSpark K5; FULL 24/288, shared-expert overlap enabled",
+  "capsule": "/workspace/strengthen-dsv4/runs/full-mixed-016-k5-288/engine",
+  "requests": 17,
+  "outputs": 136,
+  "ranks": [
+    {
+      "rank": 0,
+      "replays": 44,
+      "mixed": 5,
+      "prefill_only": 10,
+      "decode_only": 29,
+      "buckets": {
+        "BatchDescriptor(num_tokens=288, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 14,
+        "BatchDescriptor(num_tokens=24, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 30
+      },
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      }
+    },
+    {
+      "rank": 1,
+      "replays": 44,
+      "mixed": 5,
+      "prefill_only": 10,
+      "decode_only": 29,
+      "buckets": {
+        "BatchDescriptor(num_tokens=288, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 14,
+        "BatchDescriptor(num_tokens=24, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 30
+      },
+      "max_diff": {
+        "output": 0,
+        "kv": 0.0,
+        "mtp": 0.0
+      }
+    }
+  ],
+  "limitations": [
+    "Not TP8 or full production model acceptance",
+    "Timings and memory include strict shadow copies/comparisons",
+    "Draft remains eager; FULL applies to target model"
+  ]
+}

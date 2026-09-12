@@ -14,7 +14,7 @@ class FullMixedProbeWorker:
         model=self.model_runner.model
         wrappers=[]
         if isinstance(model,ACLGraphWrapper):
-            wrappers.append(dict(mode=str(model.runtime_mode),entries=[dict(descriptor=str(k),captured=v.aclgraph is not None) for k,v in model.concrete_aclgraph_entries.items()]))
+            wrappers.append(dict(mode=str(model.runtime_mode),entries=[dict(descriptor=str(k),tokens=k.num_tokens,requests=k.num_reqs,captured=v.aclgraph is not None,replays=model.__dict__.get('_probe_replays',{}).get(str(k),0)) for k,v in model.concrete_aclgraph_entries.items()]))
         return dict(rank=self.rank,wrappers=wrappers,allocated=torch.npu.memory_allocated(),reserved=torch.npu.memory_reserved(),peak=torch.npu.max_memory_allocated())
 
 # Dummy loading bypasses the specialized checkpoint loader that reshapes wo_a.
@@ -92,6 +92,9 @@ def _checked_graph_call(self, *args, **kwargs):
     runner = self.__dict__.get('_probe_runner')
     ctx = get_forward_context()
     entry = self.concrete_aclgraph_entries.get(ctx.batch_descriptor)
+    if ctx.cudagraph_runtime_mode == CUDAGraphMode.FULL and entry is not None and entry.aclgraph is not None:
+        counts=self.__dict__.setdefault('_probe_replays',{})
+        key=str(ctx.batch_descriptor); counts[key]=counts.get(key,0)+1
     if ctx.cudagraph_runtime_mode == CUDAGraphMode.FULL and (entry is None or entry.aclgraph is None):
         result = _original_graph_call(self, *args, **kwargs)
         self.__dict__.setdefault('_probe_capture_meta', {})[ctx.batch_descriptor] = _metadata_addresses(ctx.attn_metadata)
@@ -108,12 +111,19 @@ def _checked_graph_call(self, *args, **kwargs):
         return _original_graph_call(self, *args, **kwargs)
     tensors, _ = tree_flatten(runner.kv_caches)
     caches = [x for x in tensors if isinstance(x, torch.Tensor)]
+    # DSpark also consumes the persistent pre-HC residual, not just returned
+    # hidden states. Keep its valid prefix in the same shadow contract.
+    side = [m._mtp_hidden_buffer for m in runner.get_model().modules()
+            if hasattr(m, '_mtp_hidden_buffer')]
+    side_before = [x.clone() for x in side]
     before = [x.clone() for x in caches]
     replay = _original_graph_call(self, *args, **kwargs)
     torch.npu.synchronize()  # attribute a graph failure before starting eager
     clone = lambda x: x.clone() if isinstance(x, torch.Tensor) else x
     actual = tree_map(clone, replay)
     after = [x.clone() for x in caches]
+    side_after = [x.clone() for x in side]
+    for target, source in zip(side, side_before): target.copy_(source)
     for target, source in zip(caches, before): target.copy_(source)
     old_mode = ctx.cudagraph_runtime_mode
     try:
@@ -126,11 +136,14 @@ def _checked_graph_call(self, *args, **kwargs):
         capacity = ctx.batch_descriptor.num_tokens
         from vllm.distributed import get_tp_group
         tp = get_tp_group()
-        for label, left, right in [('output', actual, expected), ('kv', after, caches)]:
+        for label, left, right in [('output', actual, expected), ('kv', after, caches), ('mtp', side_after, side)]:
             ls, _ = tree_flatten(left); rs, _ = tree_flatten(right)
             assert len(ls) == len(rs)
             for i, (x, y) in enumerate(zip(ls, rs)):
                 if not isinstance(x, torch.Tensor): continue
+                if label == 'mtp':
+                    x,y = x[:valid_global],y[:valid_global]
+                    assert torch.isfinite(x).all() and torch.isfinite(y).all()
                 if label == 'output':
                     if x.shape[0] == capacity:
                         valid_rows = valid_global
@@ -143,11 +156,12 @@ def _checked_graph_call(self, *args, **kwargs):
                 checks.append(dict(label=label,index=i,shape=list(x.shape),max_abs=float(x.float().abs().max()) if x.numel() and label=='output' else None,max_diff=float(torch.nan_to_num((x.float()-y.float()).abs()).max()) if x.numel() else 0,unequal=int((x!=y).sum())))
                 Path(os.environ['FULL_MIXED_OUTPUT'],f'checking-rank{runner._probe_rank}.json').write_text(json.dumps(dict(valid_global=valid_global,capacity=capacity,checks=checks),indent=2))
                 torch.testing.assert_close(x, y, rtol=.01, atol=1e-6, equal_nan=label=='kv')
-        runner._probe_shadows.append(dict(descriptor=str(ctx.batch_descriptor),checks=checks,status='PASS'))
+        runner._probe_shadows.append(dict(descriptor=str(ctx.batch_descriptor),valid_tokens=valid_global,num_prefills=metadata.num_prefills,num_decodes=metadata.num_decodes,checks=checks,status='PASS'))
         Path(os.environ['FULL_MIXED_OUTPUT'],f'shadow-rank{runner._probe_rank}.json').write_text(json.dumps(runner._probe_shadows,indent=2))
     finally:
         ctx.cudagraph_runtime_mode = old_mode
         for target, source in zip(caches, after): target.copy_(source)
+        for target, source in zip(side, side_after): target.copy_(source)
     return replay
 
 ACLGraphWrapper.__call__ = _checked_graph_call
