@@ -1,0 +1,132 @@
+{
+  "scope": "hw3 TP8 four-layer dummy K5, HCCL_DETERMINISTIC=strict; FULL24/4128",
+  "requests": 19,
+  "ranks": [
+    {
+      "rank": 0,
+      "replays": 63,
+      "mixed": 9,
+      "max_valid_tokens": 4112,
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      },
+      "buckets": {
+        "BatchDescriptor(num_tokens=4128, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 15,
+        "BatchDescriptor(num_tokens=24, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 48
+      }
+    },
+    {
+      "rank": 1,
+      "replays": 63,
+      "mixed": 9,
+      "max_valid_tokens": 4112,
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      },
+      "buckets": {
+        "BatchDescriptor(num_tokens=4128, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 15,
+        "BatchDescriptor(num_tokens=24, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 48
+      }
+    },
+    {
+      "rank": 2,
+      "replays": 63,
+      "mixed": 9,
+      "max_valid_tokens": 4112,
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      },
+      "buckets": {
+        "BatchDescriptor(num_tokens=4128, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 15,
+        "BatchDescriptor(num_tokens=24, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 48
+      }
+    },
+    {
+      "rank": 3,
+      "replays": 63,
+      "mixed": 9,
+      "max_valid_tokens": 4112,
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      },
+      "buckets": {
+        "BatchDescriptor(num_tokens=4128, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 15,
+        "BatchDescriptor(num_tokens=24, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 48
+      }
+    },
+    {
+      "rank": 4,
+      "replays": 63,
+      "mixed": 9,
+      "max_valid_tokens": 4112,
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      },
+      "buckets": {
+        "BatchDescriptor(num_tokens=4128, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 15,
+        "BatchDescriptor(num_tokens=24, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 48
+      }
+    },
+    {
+      "rank": 5,
+      "replays": 63,
+      "mixed": 9,
+      "max_valid_tokens": 4112,
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      },
+      "buckets": {
+        "BatchDescriptor(num_tokens=4128, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 15,
+        "BatchDescriptor(num_tokens=24, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 48
+      }
+    },
+    {
+      "rank": 6,
+      "replays": 63,
+      "mixed": 9,
+      "max_valid_tokens": 4112,
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      },
+      "buckets": {
+        "BatchDescriptor(num_tokens=4128, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 15,
+        "BatchDescriptor(num_tokens=24, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 48
+      }
+    },
+    {
+      "rank": 7,
+      "replays": 63,
+      "mixed": 9,
+      "max_valid_tokens": 4112,
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      },
+      "buckets": {
+        "BatchDescriptor(num_tokens=4128, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 15,
+        "BatchDescriptor(num_tokens=24, num_reqs=4, uniform=False, has_lora=False, num_active_loras=0)": 48
+      }
+    }
+  ],
+  "cache_contract": "Every unique physical KV backing storage compared byte-for-byte; output/MTP valid rows checked separately",
+  "limitations": [
+    "Dummy four-layer model, not production model",
+    "Strict HCCL is a correctness control, not the performance setting",
+    "Reported memory includes shadow snapshots"
+  ]
+}

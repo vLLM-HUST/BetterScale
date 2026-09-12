@@ -119,3 +119,39 @@ is not accepted.** Run004 compares eager against eager from the same restored
 state to separate an oracle/state-reproducibility issue from graph-specific
 failure. Do not relax tolerance or relabel NaNs as rounding. First-failure files
 are retained without overwrite by subsequent queued work.
+
+### TP8 diagnosis resolved; bounded FULL result
+
+With `HCCL_DETERMINISTIC=strict`, run006 eager/eager passed66 steps/rank;
+run007 actual FULL/eager passed65/rank, including6 mixed waves, all differences0.
+This is TP8 dummy K5 at24/288, not yet a real-weight performance claim.
+
+The NaN reports above came from a flawed whole-pool typed comparison: allocator
+`shared_by` maps BF16 SWA and FP32 compressor-state views to the same backing.
+A page belonging to FP32 state must not be interpreted as BF16 KV. The current
+oracle snapshots unique untyped storages once and checks exact bytes under the
+deterministic control. This is stronger state coverage, not a relaxed tolerance.
+Do not enable deterministic HCCL in production merely to make tests look good.
+
+Run008 was stopped by its own supervisor after15 zero-difference checks because
+byte comparisons unnecessarily converted full chunks to FP32 and accumulated
+several reductions. Run009 uses direct equality for byte chunks. Stop/relaunch
+changed only the oracle's cost, not the candidate graph or pass predicate.
+
+### TP8 4K and full-weight execution
+
+Run009 passed TP8 K5 FULL24/4128:63 checks/rank,9 mixed waves, up to4112 valid
+input tokens. All unique KV pools matched byte-for-byte; valid output/MTP rows
+also had max difference0. See `k5-4k-tp8-result.json`.
+
+Run010 then used the complete real checkpoint on hw3, without shadow or strict
+HCCL:38 requests completed across two rounds, and rank0 recorded18 large-bucket
+and60 small-bucket replays. The extension did not apply dummy layout/config
+repairs (`--real`). FULL_DECODE_ONLY control is run011. Do not confuse dummy
+same-state proof with output-quality evaluation on real agent workloads.
+
+`--real` removes all model-size overrides and lets donor size KV automatically
+at85% memory utilization. Supply PROBE_MODEL explicitly on the other host.
+The opt-in worker extension remains experimental; installed donor and release
+submodules are unchanged. FULL here captures target forward, not the scheduler,
+sampling, or the eager DSpark drafter.

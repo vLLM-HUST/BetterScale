@@ -36,6 +36,19 @@ class AlignmentContract(unittest.TestCase):
         config.pass_config.enable_sp=False
         self.assertEqual(ns['_adjust_joint_alignment'](config,6,8),(6,8))
 
+class SharedPoolContract(unittest.TestCase):
+    def test_aliases_snapshot_once_without_dtype_interpretation(self):
+        import torch
+        f=next(x for x in ast.parse(source.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='_unique_byte_pools')
+        ns={'torch':torch}
+        exec(compile(ast.Module(body=[f],type_ignores=[]),str(source),'exec'),ns)
+        raw=torch.arange(128,dtype=torch.uint8)
+        pools=ns['_unique_byte_pools']([raw.view(torch.bfloat16),raw.view(torch.float32)[4:]])
+        self.assertEqual(len(pools),1)
+        self.assertTrue(torch.equal(pools[0],raw))
+        saved=pools[0].clone();raw.zero_();pools[0].copy_(saved)
+        self.assertTrue(torch.equal(raw,torch.arange(128,dtype=torch.uint8)))
+
 class ShadowContract(unittest.TestCase):
     def test_bounded_comparison_rejects_changed_element(self):
         import torch

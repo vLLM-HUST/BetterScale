@@ -89,6 +89,19 @@ def _metadata_addresses(value, path='metadata'):
         result.update(_metadata_addresses(value._data,path+'.rope'))
     return result
 
+def _unique_byte_pools(views):
+    # The donor gives heterogeneous cache groups typed views over shared pools.
+    # Snapshot each physical storage once; never interpret someone else's FP32
+    # state pages through a BF16 cache view. Byte equality is the strict oracle.
+    pools={}
+    for view in views:
+        storage=view.untyped_storage()
+        key=(str(view.device),storage.data_ptr(),storage.nbytes())
+        if key not in pools:
+            raw=torch.as_strided(view,(storage.nbytes()//view.element_size(),),(1,),storage_offset=0)
+            pools[key]=raw.view(torch.uint8)
+    return list(pools.values())
+
 def _compare_bounded(x, y, *, equal_nan=False, measure_abs=False):
     # Shadow must not materialize multiple whole-cache FP32 copies. This is an
     # oracle-memory bound, not a change to graph or cache behavior.
@@ -99,6 +112,10 @@ def _compare_bounded(x, y, *, equal_nan=False, measure_abs=False):
     max_diff, max_abs, unequal = 0.0, 0.0, 0
     for start in range(0, x.shape[0], rows):
         a, b = x[start:start+rows], y[start:start+rows]
+        if x.dtype == torch.uint8:
+            if not torch.equal(a,b):
+                torch.testing.assert_close(a,b,rtol=0,atol=0)
+            continue
         torch.testing.assert_close(a, b, rtol=.01, atol=1e-6, equal_nan=equal_nan)
         max_diff = max(max_diff, float(torch.nan_to_num((a.float()-b.float()).abs()).max()))
         unequal += int((a != b).sum())
@@ -126,13 +143,25 @@ def _checked_graph_call(self, *args, **kwargs):
             or entry is None or entry.aclgraph is None
             or len(runner._probe_shadows) >= 96):
         return _original_graph_call(self, *args, **kwargs)
+    torch.npu.synchronize()  # snapshot state only after all producer streams finish
     meta = next(iter(ctx.attn_metadata.values()))
     start_qsl = meta.req_metadata.query_start_loc.cpu().tolist()
+    state_layout=[]
+    for name,module in runner.compilation_config.static_forward_context.items():
+        leaves,_=tree_flatten(getattr(module,'kv_cache',[]))
+        for t in leaves:
+            if isinstance(t,torch.Tensor):
+                state_layout.append(dict(name=name,ptr=t.data_ptr(),shape=list(t.shape),stride=list(t.stride()),format=torch.npu.get_npu_format(t) if hasattr(torch.npu,'get_npu_format') else None))
+    Path(os.environ['FULL_MIXED_OUTPUT'],f'state-layout-rank{runner._probe_rank}.json').write_text(json.dumps(state_layout))
     start_meta = dict(descriptor=str(ctx.batch_descriptor),query_offsets=start_qsl,
-                     prefills=meta.num_prefills,decodes=meta.num_decodes)
+                     prefills=meta.num_prefills,decodes=meta.num_decodes,slot_mapping=meta.req_metadata.slot_mapping.cpu().tolist() if meta.req_metadata.slot_mapping is not None else None)
     Path(os.environ['FULL_MIXED_OUTPUT'],f'shadow-start-rank{runner._probe_rank}.json').write_text(json.dumps(start_meta))
     tensors, _ = tree_flatten(runner.kv_caches)
-    caches = [x for x in tensors if isinstance(x, torch.Tensor)]
+    views = [x for x in tensors if isinstance(x, torch.Tensor)]
+    caches = _unique_byte_pools(views)
+    start_meta['cache_names']=[[v['name'] for v in state_layout if v['ptr']==x.data_ptr()] for x in views]
+    start_meta['pool_bytes']=[x.numel() for x in caches]
+    start_meta['swa_slots']={name:dict(block_size=m.req_metadata.block_size,slots=m.req_metadata.slot_mapping.cpu().tolist()) for name,m in ctx.attn_metadata.items() if 'swa_cache' in name and m.req_metadata.slot_mapping is not None}
     # DSpark also consumes the persistent pre-HC residual, not just returned
     # hidden states. Keep its valid prefix in the same shadow contract.
     side = [m._mtp_hidden_buffer for m in runner.get_model().modules()
@@ -184,7 +213,7 @@ def _checked_graph_call(self, *args, **kwargs):
                     assert torch.isfinite(x).all() and torch.isfinite(y).all(), 'nonfinite valid dummy output'
                 try:
                     measurement = _compare_bounded(x,y,equal_nan=label=='kv',measure_abs=label=='output')
-                except AssertionError:
+                except AssertionError as error:
                     samples=[]
                     for row in range(min(x.shape[0],128)):
                         left,right=x[row].reshape(-1),y[row].reshape(-1)
@@ -192,13 +221,20 @@ def _checked_graph_call(self, *args, **kwargs):
                         if bad.numel():
                             samples.append(dict(row=row,offsets=bad.cpu().tolist(),replay=left[bad].float().cpu().tolist(),eager=right[bad].float().cpu().tolist()))
                         if len(samples)>=4:break
-                    failure=dict(start=start_meta,end_query_offsets=meta.req_metadata.query_start_loc.cpu().tolist(),label=label,index=i,shape=list(x.shape),dtype=str(x.dtype),samples=samples)
+                    nonfinite=[]
+                    for row in range(min(x.shape[0],128)):
+                        left,right=x[row].reshape(-1),y[row].reshape(-1)
+                        bad=(torch.isfinite(left)!=torch.isfinite(right)).nonzero().flatten()[:8]
+                        if bad.numel():
+                            nonfinite.append(dict(row=row,offsets=bad.cpu().tolist(),replay=left[bad].float().cpu().tolist(),eager=right[bad].float().cpu().tolist()))
+                            break
+                    failure=dict(error=str(error),nonfinite=nonfinite,start=start_meta,end_query_offsets=meta.req_metadata.query_start_loc.cpu().tolist(),label=label,index=i,shape=list(x.shape),dtype=str(x.dtype),samples=samples)
                     failure_path=Path(os.environ['FULL_MIXED_OUTPUT'],f'shadow-failure-rank{runner._probe_rank}.json')
                     if not failure_path.exists():failure_path.write_text(json.dumps(failure,indent=2))
                     raise
-                checks.append(dict(label=label,index=i,shape=list(x.shape),**measurement))
+                checks.append(dict(label=label,index=i,shape=list(x.shape),dtype=str(x.dtype),**measurement))
                 Path(os.environ['FULL_MIXED_OUTPUT'],f'checking-rank{runner._probe_rank}.json').write_text(json.dumps(dict(valid_global=valid_global,capacity=capacity,checks=checks),indent=2))
-        runner._probe_shadows.append(dict(descriptor=str(ctx.batch_descriptor),valid_tokens=valid_global,num_prefills=metadata.num_prefills,num_decodes=metadata.num_decodes,checks=checks,status='PASS'))
+        runner._probe_shadows.append(dict(oracle=os.environ.get('FULL_MIXED_ORACLE','graph'),descriptor=str(ctx.batch_descriptor),valid_tokens=valid_global,num_prefills=metadata.num_prefills,num_decodes=metadata.num_decodes,checks=checks,status='PASS'))
         Path(os.environ['FULL_MIXED_OUTPUT'],f'shadow-rank{runner._probe_rank}.json').write_text(json.dumps(runner._probe_shadows,indent=2))
     finally:
         ctx.cudagraph_runtime_mode = old_mode

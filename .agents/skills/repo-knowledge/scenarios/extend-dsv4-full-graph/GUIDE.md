@@ -46,3 +46,30 @@ DSpark dummy fixtures need the draft's auxiliary target-layer IDs to follow the
 shrunk target. Upstream dictionary hf_overrides deliberately do not propagate to
 draft config; applying a callable to the target instead conflicts with Ascend's
 quantization config requirement. Keep fixture repair separate from engine patches.
+
+## TP8 oracle: heterogeneous pool aliases and determinism
+
+On hw3, run006's eager/eager control and run007's graph/eager control both
+passed with HCCL_DETERMINISTIC=strict (66 and65 checked steps/rank respectively,
+all differences0; run007 includes6 mixed waves). Non-deterministic eager/eager
+itself exceeded the tight tolerance. Do not attribute that failure to graph.
+
+The allocator maps multiple `kv_cache_tensor.shared_by` layers onto ONE raw
+allocation. Runtime observation found SWA BF16 views and compressor FP32 views
+with the same data pointer. Each group's block table selects its owned pages.
+Comparing the entire pool through every BF16 view interprets other groups' FP32
+state bytes as BF16—including apparent NaNs and huge values. This is not evidence
+that the corresponding active attention KV contains NaNs.
+
+For exact deterministic state verification, snapshot each unique untyped storage
+once and compare raw bytes. This both preserves the entire backing and avoids
+many redundant whole-pool clones. The CPU alias/restore test covers different
+dtypes and nonzero view offsets. For tolerance-based verification instead, one
+would need group-owned pages and their true dtype; do not invent a tolerance for
+aliased whole-pool views. Keep deterministic correctness controls separate from
+normal high-performance serving measurements.
+
+Native MRV1's max(K+1,TP) alignment rejects K5/TP8 although LCM24 works. The
+probe's alignment repair changes capture bucket sizing only, not speculation
+length. Both large and decode buckets must remain divisible by the joint
+alignment and survive max-capture filtering.

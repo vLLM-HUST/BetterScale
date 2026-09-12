@@ -1,7 +1,7 @@
 """Small dummy DSV4 model with real attention dimensions, all compression families."""
 import argparse,json,time,os
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('--output',type=Path,required=True);p.add_argument('--mode',choices=['FULL','FULL_DECODE_ONLY','NONE'],default='FULL');p.add_argument('--tp',type=int,default=2);p.add_argument('--spec',action='store_true');p.add_argument('--budget',type=int,default=256);p.add_argument('--rounds',type=int,default=1);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('--output',type=Path,required=True);p.add_argument('--mode',choices=['FULL','FULL_DECODE_ONLY','NONE'],default='FULL');p.add_argument('--tp',type=int,default=2);p.add_argument('--spec',action='store_true');p.add_argument('--budget',type=int,default=256);p.add_argument('--rounds',type=int,default=1);p.add_argument('--real',action='store_true');a=p.parse_args()
 a.output.mkdir(parents=True,exist_ok=True)
 from vllm import LLM,SamplingParams
 config=dict(model=os.environ.get('PROBE_MODEL','/data/shared_models/DeepSeek-V4-Flash-0731-w8a8'),load_format='dummy',
@@ -13,12 +13,22 @@ config=dict(model=os.environ.get('PROBE_MODEL','/data/shared_models/DeepSeek-V4-
  compilation_config=dict(cudagraph_mode=a.mode,cudagraph_capture_sizes=[24 if a.spec else 8,a.budget],max_cudagraph_capture_size=a.budget),
  additional_config=dict(ascend_compilation_config=dict(enable_npugraph_ex=True,enable_static_kernel=False),
  enable_cpu_binding=False,enable_dsa_cp=True,multistream_overlap_shared_expert=True))
-if a.spec:
+if a.spec and not a.real:
  from fixture import install_dummy_draft_config
  install_dummy_draft_config()
  config['hf_overrides'].update(num_nextn_predict_layers=1,dspark_target_layer_ids=[1,2,3])
+if a.spec:
  config['speculative_config']=dict(method='dspark',num_speculative_tokens=5,enforce_eager=True)
+if a.real:
+ config['load_format']='auto'
+ config.pop('hf_overrides')
+ config.pop('num_gpu_blocks_override')
+ config['gpu_memory_utilization']=.85
 (a.output/'config.json').write_text(json.dumps(config,indent=2,default=lambda x:x.__module__+"."+x.__name__))
+(a.output/'protocol.json').write_text(json.dumps(dict(
+ patch=os.environ.get('FULL_MIXED_PATCH','1'),oracle=os.environ.get('FULL_MIXED_ORACLE','graph'),
+ shadow=os.environ.get('FULL_MIXED_SHADOW','0'),hccl_deterministic=os.environ.get('HCCL_DETERMINISTIC'),
+ devices=os.environ.get('ASCEND_RT_VISIBLE_DEVICES'),real_weights=a.real,rounds=a.rounds),indent=2))
 os.environ['FULL_MIXED_OUTPUT']=str(a.output)
 llm=LLM(**config)
 if os.environ.get('FULL_MIXED_SHADOW')=='1':llm.collective_rpc('enable_shadow')

@@ -52,8 +52,9 @@ hypotheses, not implemented or promised speedups.
 
 ## Opt-in FULL mixed exploration
 
-[The bounded prototype](prototypes/full-mixed/README.md) has passed TP2 dummy
-DSV4 + DSpark K5 target FULL replay, including mixed waves and~4K-token buckets,
-with exact same-state output/KV/MTP comparisons. It is **not production enabled**
+[The bounded prototype](prototypes/full-mixed/README.md) has passed TP2 and TP8 dummy
+DSV4 + DSpark K5 target FULL replay, including mixed waves and~4K-token buckets.
+TP8 deterministic controls include byte-exact shared KV pools and exact valid
+output/MTP comparisons; the full real-weight model also completed the probe. It is **not production enabled**
 and does not yet establish full-model serving speedup. Release submodules and
 installed runtimes remain unchanged.
