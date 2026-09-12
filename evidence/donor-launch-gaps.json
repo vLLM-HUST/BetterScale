@@ -1,0 +1,1522 @@
+[
+  {
+    "rank": 0,
+    "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-0_4359_20260912154430823_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_0.db",
+    "task_count": 20727,
+    "span_ms": 3670.24216,
+    "coverage_ms": 3601.29144,
+    "gaps_over_50us": 189,
+    "gaps_ms": 51.3092,
+    "next_compute_gaps": {
+      "host_started_after_gap_start": {
+        "count": 181,
+        "gap_ms": 50.54735999999997
+      },
+      "launch_overlaps_gap_start": {
+        "count": 4,
+        "gap_ms": 0.22678
+      },
+      "submitted_before_gap": {
+        "count": 4,
+        "gap_ms": 0.53506
+      }
+    },
+    "largest_gaps": [
+      {
+        "start_ms": 3062.75622,
+        "gap_us": 695.08,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 625.685,
+        "launch_end_before_device_us": 61.425,
+        "kind": "host_started_after_gap_start",
+        "connection": 244621,
+        "absolute_gap_start_ns": 1789227874154280995
+      },
+      {
+        "start_ms": 12.6958,
+        "gap_us": 588.58,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 566.635,
+        "launch_end_before_device_us": 2.305,
+        "kind": "host_started_after_gap_start",
+        "connection": 113127,
+        "absolute_gap_start_ns": 1789227871104220575
+      },
+      {
+        "start_ms": 1822.52014,
+        "gap_us": 581.8,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 529.165,
+        "launch_end_before_device_us": 44.345,
+        "kind": "host_started_after_gap_start",
+        "connection": 190891,
+        "absolute_gap_start_ns": 1789227872914044915
+      },
+      {
+        "start_ms": 600.20614,
+        "gap_us": 574.34,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 547.045,
+        "launch_end_before_device_us": 20.055,
+        "kind": "host_started_after_gap_start",
+        "connection": 138549,
+        "absolute_gap_start_ns": 1789227871691730915
+      },
+      {
+        "start_ms": 1821.28516,
+        "gap_us": 573.76,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 476.205,
+        "launch_end_before_device_us": 44.945,
+        "kind": "host_started_after_gap_start",
+        "connection": 190818,
+        "absolute_gap_start_ns": 1789227872912809935
+      },
+      {
+        "start_ms": 3068.00426,
+        "gap_us": 572.58,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 505.125,
+        "launch_end_before_device_us": 58.915,
+        "kind": "host_started_after_gap_start",
+        "connection": 244913,
+        "absolute_gap_start_ns": 1789227874159529035
+      },
+      {
+        "start_ms": 1199.27704,
+        "gap_us": 557.86,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 488.335,
+        "launch_end_before_device_us": 28.475,
+        "kind": "host_started_after_gap_start",
+        "connection": 164917,
+        "absolute_gap_start_ns": 1789227872290801815
+      },
+      {
+        "start_ms": 2430.79184,
+        "gap_us": 556.6,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 459.455,
+        "launch_end_before_device_us": 53.205,
+        "kind": "host_started_after_gap_start",
+        "connection": 217443,
+        "absolute_gap_start_ns": 1789227873522316615
+      },
+      {
+        "start_ms": 1206.80282,
+        "gap_us": 553.42,
+        "next": "aclnnEqScalar_EqualAiCore_Equal",
+        "stream": 46,
+        "launch_start_after_gap_us": 511.385,
+        "launch_end_before_device_us": 16.805,
+        "kind": "host_started_after_gap_start",
+        "connection": 165371,
+        "absolute_gap_start_ns": 1789227872298327595
+      },
+      {
+        "start_ms": 607.20548,
+        "gap_us": 549.2,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 522.425,
+        "launch_end_before_device_us": 19.955,
+        "kind": "host_started_after_gap_start",
+        "connection": 138922,
+        "absolute_gap_start_ns": 1789227871698730255
+      },
+      {
+        "start_ms": 3061.50182,
+        "gap_us": 542.6,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 440.325,
+        "launch_end_before_device_us": 61.195,
+        "kind": "host_started_after_gap_start",
+        "connection": 244548,
+        "absolute_gap_start_ns": 1789227874153026595
+      },
+      {
+        "start_ms": 3070.0342,
+        "gap_us": 538.1,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 467.455,
+        "launch_end_before_device_us": 63.405,
+        "kind": "host_started_after_gap_start",
+        "connection": 244994,
+        "absolute_gap_start_ns": 1789227874161558975
+      },
+      {
+        "start_ms": 3.4976,
+        "gap_us": 536.5,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 503.255,
+        "launch_end_before_device_us": 13.205,
+        "kind": "host_started_after_gap_start",
+        "connection": 112613,
+        "absolute_gap_start_ns": 1789227871095022375
+      },
+      {
+        "start_ms": 598.97608,
+        "gap_us": 535.48,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 472.065,
+        "launch_end_before_device_us": 21.165,
+        "kind": "host_started_after_gap_start",
+        "connection": 138476,
+        "absolute_gap_start_ns": 1789227871690500855
+      },
+      {
+        "start_ms": 1829.44804,
+        "gap_us": 531.28,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 480.105,
+        "launch_end_before_device_us": 44.135,
+        "kind": "host_started_after_gap_start",
+        "connection": 191264,
+        "absolute_gap_start_ns": 1789227872920972815
+      }
+    ]
+  },
+  {
+    "rank": 1,
+    "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-1_4361_20260912154430868_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_1.db",
+    "task_count": 20727,
+    "span_ms": 3674.64334,
+    "coverage_ms": 2923.47468,
+    "gaps_over_50us": 3004,
+    "gaps_ms": 708.17868,
+    "next_compute_gaps": {
+      "host_started_after_gap_start": {
+        "count": 2909,
+        "gap_ms": 656.5650400000017
+      },
+      "launch_overlaps_gap_start": {
+        "count": 64,
+        "gap_ms": 3.789679999999999
+      },
+      "submitted_before_gap": {
+        "count": 31,
+        "gap_ms": 47.82396
+      }
+    },
+    "largest_gaps": [
+      {
+        "start_ms": 1820.52384,
+        "gap_us": 31985.76,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": 5641.975,
+        "launch_end_before_device_us": 26332.665,
+        "kind": "host_started_after_gap_start",
+        "connection": 190234,
+        "absolute_gap_start_ns": 1789227872907645585
+      },
+      {
+        "start_ms": 1200.07758,
+        "gap_us": 29027.36,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": 4033.235,
+        "launch_end_before_device_us": 24983.365,
+        "kind": "host_started_after_gap_start",
+        "connection": 164276,
+        "absolute_gap_start_ns": 1789227872287199325
+      },
+      {
+        "start_ms": 2431.67942,
+        "gap_us": 28357.54,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": 3530.095,
+        "launch_end_before_device_us": 24817.465,
+        "kind": "host_started_after_gap_start",
+        "connection": 216788,
+        "absolute_gap_start_ns": 1789227873518801165
+      },
+      {
+        "start_ms": 597.20946,
+        "gap_us": 20857.84,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -5003.005,
+        "launch_end_before_device_us": 25851.105,
+        "kind": "submitted_before_gap",
+        "connection": 137944,
+        "absolute_gap_start_ns": 1789227871684331205
+      },
+      {
+        "start_ms": 1853.53104,
+        "gap_us": 8578.36,
+        "next": "aclnnIndex_IndexAiCore_Index",
+        "stream": 46,
+        "launch_start_after_gap_us": -24439.005,
+        "launch_end_before_device_us": 33001.775,
+        "kind": "submitted_before_gap",
+        "connection": 190371,
+        "absolute_gap_start_ns": 1789227872940652785
+      },
+      {
+        "start_ms": 618.57724,
+        "gap_us": 7928.16,
+        "next": "aclnnIndex_IndexAiCore_Index",
+        "stream": 46,
+        "launch_start_after_gap_us": -23523.205,
+        "launch_end_before_device_us": 31443.975,
+        "kind": "submitted_before_gap",
+        "connection": 138081,
+        "absolute_gap_start_ns": 1789227871705698985
+      },
+      {
+        "start_ms": 3060.65536,
+        "gap_us": 7258.28,
+        "next": "aclnnIndex_IndexAiCore_Index",
+        "stream": 46,
+        "launch_start_after_gap_us": -6770.625,
+        "launch_end_before_device_us": 14021.805,
+        "kind": "submitted_before_gap",
+        "connection": 244039,
+        "absolute_gap_start_ns": 1789227874147777105
+      },
+      {
+        "start_ms": 846.4009,
+        "gap_us": 4437.76,
+        "next": "aclnnDynamicQuantV2_DynamicQuant_DynamicQuant",
+        "stream": 46,
+        "launch_start_after_gap_us": 4400.355,
+        "launch_end_before_device_us": 21.615,
+        "kind": "host_started_after_gap_start",
+        "connection": 148529,
+        "absolute_gap_start_ns": 1789227871933522645
+      },
+      {
+        "start_ms": 1391.89868,
+        "gap_us": 2042.0,
+        "next": "triton_rms_kernel",
+        "stream": 46,
+        "launch_start_after_gap_us": 1971.825,
+        "launch_end_before_device_us": 34.095,
+        "kind": "host_started_after_gap_start",
+        "connection": 171390,
+        "absolute_gap_start_ns": 1789227872479020425
+      },
+      {
+        "start_ms": 1246.5438,
+        "gap_us": 1121.48,
+        "next": "aclnnQuantMatmulWeightNz_QuantBatchMatmulV3_QuantBatchMatmulV3",
+        "stream": 46,
+        "launch_start_after_gap_us": 1070.125,
+        "launch_end_before_device_us": -5.485,
+        "kind": "host_started_after_gap_start",
+        "connection": 165395,
+        "absolute_gap_start_ns": 1789227872333665545
+      },
+      {
+        "start_ms": 1261.13654,
+        "gap_us": 1106.22,
+        "next": "aclnnQuantMatmulWeightNz_QuantBatchMatmulV3_QuantBatchMatmulV3",
+        "stream": 37,
+        "launch_start_after_gap_us": 1050.875,
+        "launch_end_before_device_us": 12.695,
+        "kind": "host_started_after_gap_start",
+        "connection": 165883,
+        "absolute_gap_start_ns": 1789227872348258285
+      },
+      {
+        "start_ms": 1867.36318,
+        "gap_us": 991.8,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 875.425,
+        "launch_end_before_device_us": 41.795,
+        "kind": "host_started_after_gap_start",
+        "connection": 191715,
+        "absolute_gap_start_ns": 1789227872954484925
+      },
+      {
+        "start_ms": 1760.67094,
+        "gap_us": 989.0,
+        "next": "prepare_inputs_padded_kernel",
+        "stream": 46,
+        "launch_start_after_gap_us": 939.355,
+        "launch_end_before_device_us": 41.865,
+        "kind": "host_started_after_gap_start",
+        "connection": 187010,
+        "absolute_gap_start_ns": 1789227872847792685
+      },
+      {
+        "start_ms": 1247.89852,
+        "gap_us": 898.06,
+        "next": "aclnnQuantMatmulWeightNz_QuantBatchMatmulV3_QuantBatchMatmulV3",
+        "stream": 46,
+        "launch_start_after_gap_us": 844.215,
+        "launch_end_before_device_us": 14.225,
+        "kind": "host_started_after_gap_start",
+        "connection": 165413,
+        "absolute_gap_start_ns": 1789227872335020265
+      },
+      {
+        "start_ms": 1759.4097,
+        "gap_us": 894.0,
+        "next": "aclnnIndexFill_IndexFill_IndexFill",
+        "stream": 46,
+        "launch_start_after_gap_us": 831.335,
+        "launch_end_before_device_us": 25.795,
+        "kind": "host_started_after_gap_start",
+        "connection": 186950,
+        "absolute_gap_start_ns": 1789227872846531445
+      }
+    ]
+  },
+  {
+    "rank": 2,
+    "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-2_4363_20260912154430832_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_2.db",
+    "task_count": 20727,
+    "span_ms": 3680.07788,
+    "coverage_ms": 3605.25856,
+    "gaps_over_50us": 186,
+    "gaps_ms": 57.06604,
+    "next_compute_gaps": {
+      "host_started_after_gap_start": {
+        "count": 175,
+        "gap_ms": 56.185399999999994
+      },
+      "launch_overlaps_gap_start": {
+        "count": 3,
+        "gap_ms": 0.1748
+      },
+      "submitted_before_gap": {
+        "count": 8,
+        "gap_ms": 0.7058399999999999
+      }
+    },
+    "largest_gaps": [
+      {
+        "start_ms": 11.88328,
+        "gap_us": 4347.0,
+        "next": "aclnnInplaceMaskedFillScalar_MaskedFillAiCore_MaskedFill",
+        "stream": 46,
+        "launch_start_after_gap_us": 4324.705,
+        "launch_end_before_device_us": -9.085,
+        "kind": "host_started_after_gap_start",
+        "connection": 113073,
+        "absolute_gap_start_ns": 1789227871093569015
+      },
+      {
+        "start_ms": 2440.72472,
+        "gap_us": 720.22,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 625.195,
+        "launch_end_before_device_us": 49.685,
+        "kind": "host_started_after_gap_start",
+        "connection": 217433,
+        "absolute_gap_start_ns": 1789227873522410455
+      },
+      {
+        "start_ms": 1831.29026,
+        "gap_us": 705.7,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 627.725,
+        "launch_end_before_device_us": 38.215,
+        "kind": "host_started_after_gap_start",
+        "connection": 190812,
+        "absolute_gap_start_ns": 1789227872912975995
+      },
+      {
+        "start_ms": 1832.80426,
+        "gap_us": 651.64,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 602.845,
+        "launch_end_before_device_us": 41.255,
+        "kind": "host_started_after_gap_start",
+        "connection": 190885,
+        "absolute_gap_start_ns": 1789227872914489995
+      },
+      {
+        "start_ms": 1838.09706,
+        "gap_us": 648.64,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 599.245,
+        "launch_end_before_device_us": 36.155,
+        "kind": "host_started_after_gap_start",
+        "connection": 191177,
+        "absolute_gap_start_ns": 1789227872919782795
+      },
+      {
+        "start_ms": 609.81156,
+        "gap_us": 635.78,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 609.465,
+        "launch_end_before_device_us": 19.205,
+        "kind": "host_started_after_gap_start",
+        "connection": 138547,
+        "absolute_gap_start_ns": 1789227871691497295
+      },
+      {
+        "start_ms": 3072.41702,
+        "gap_us": 615.22,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 549.515,
+        "launch_end_before_device_us": 58.545,
+        "kind": "host_started_after_gap_start",
+        "connection": 244604,
+        "absolute_gap_start_ns": 1789227874154102755
+      },
+      {
+        "start_ms": 17.34624,
+        "gap_us": 588.82,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 572.775,
+        "launch_end_before_device_us": -2.885,
+        "kind": "host_started_after_gap_start",
+        "connection": 113126,
+        "absolute_gap_start_ns": 1789227871099031975
+      },
+      {
+        "start_ms": 3.48786,
+        "gap_us": 568.84,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 540.165,
+        "launch_end_before_device_us": 5.725,
+        "kind": "host_started_after_gap_start",
+        "connection": 112612,
+        "absolute_gap_start_ns": 1789227871085173595
+      },
+      {
+        "start_ms": 1209.13562,
+        "gap_us": 564.9,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 496.825,
+        "launch_end_before_device_us": 27.645,
+        "kind": "host_started_after_gap_start",
+        "connection": 164913,
+        "absolute_gap_start_ns": 1789227872290821355
+      },
+      {
+        "start_ms": 1840.16354,
+        "gap_us": 561.18,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 515.025,
+        "launch_end_before_device_us": 39.135,
+        "kind": "host_started_after_gap_start",
+        "connection": 191258,
+        "absolute_gap_start_ns": 1789227872921849275
+      },
+      {
+        "start_ms": 2448.53216,
+        "gap_us": 559.34,
+        "next": "aclnnEqScalar_EqualAiCore_Equal",
+        "stream": 46,
+        "launch_start_after_gap_us": 498.755,
+        "launch_end_before_device_us": 36.875,
+        "kind": "host_started_after_gap_start",
+        "connection": 217886,
+        "absolute_gap_start_ns": 1789227873530217895
+      },
+      {
+        "start_ms": 1216.5681,
+        "gap_us": 547.44,
+        "next": "aclnnEqScalar_EqualAiCore_Equal",
+        "stream": 46,
+        "launch_start_after_gap_us": 510.615,
+        "launch_end_before_device_us": 12.095,
+        "kind": "host_started_after_gap_start",
+        "connection": 165367,
+        "absolute_gap_start_ns": 1789227872298253835
+      },
+      {
+        "start_ms": 3075.71504,
+        "gap_us": 534.72,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 467.945,
+        "launch_end_before_device_us": 59.595,
+        "kind": "host_started_after_gap_start",
+        "connection": 244788,
+        "absolute_gap_start_ns": 1789227874157400775
+      },
+      {
+        "start_ms": 614.75198,
+        "gap_us": 533.84,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 511.935,
+        "launch_end_before_device_us": 14.895,
+        "kind": "host_started_after_gap_start",
+        "connection": 138839,
+        "absolute_gap_start_ns": 1789227871696437715
+      }
+    ]
+  },
+  {
+    "rank": 3,
+    "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-3_4365_20260912154430905_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_3.db",
+    "task_count": 20727,
+    "span_ms": 3659.92362,
+    "coverage_ms": 2997.64726,
+    "gaps_over_50us": 2479,
+    "gaps_ms": 632.5754,
+    "next_compute_gaps": {
+      "host_started_after_gap_start": {
+        "count": 2395,
+        "gap_ms": 571.9820799999998
+      },
+      "launch_overlaps_gap_start": {
+        "count": 26,
+        "gap_ms": 5.12062
+      },
+      "submitted_before_gap": {
+        "count": 58,
+        "gap_ms": 55.47270000000001
+      }
+    },
+    "largest_gaps": [
+      {
+        "start_ms": 1185.14642,
+        "gap_us": 26156.56,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": 592.985,
+        "launch_end_before_device_us": 25550.305,
+        "kind": "host_started_after_gap_start",
+        "connection": 164354,
+        "absolute_gap_start_ns": 1789227872287004185
+      },
+      {
+        "start_ms": 2416.73496,
+        "gap_us": 25893.94,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -17954.465,
+        "launch_end_before_device_us": 43838.335,
+        "kind": "submitted_before_gap",
+        "connection": 216868,
+        "absolute_gap_start_ns": 1789227873518592725
+      },
+      {
+        "start_ms": 582.6904,
+        "gap_us": 25293.0,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": 5759.745,
+        "launch_end_before_device_us": 19521.665,
+        "kind": "host_started_after_gap_start",
+        "connection": 138006,
+        "absolute_gap_start_ns": 1789227871684548165
+      },
+      {
+        "start_ms": 1556.84494,
+        "gap_us": 11893.92,
+        "next": "AivKernel",
+        "stream": 38,
+        "launch_start_after_gap_us": 11739.455,
+        "launch_end_before_device_us": -24.825,
+        "kind": "host_started_after_gap_start",
+        "connection": 179134,
+        "absolute_gap_start_ns": 1789227872658702705
+      },
+      {
+        "start_ms": 1810.08258,
+        "gap_us": 9052.1,
+        "next": "aclnnIndex_IndexAiCore_Index",
+        "stream": 46,
+        "launch_start_after_gap_us": 260.185,
+        "launch_end_before_device_us": 8777.845,
+        "kind": "host_started_after_gap_start",
+        "connection": 190460,
+        "absolute_gap_start_ns": 1789227872911940345
+      },
+      {
+        "start_ms": 3054.50956,
+        "gap_us": 8994.24,
+        "next": "aclnnIndex_IndexAiCore_Index",
+        "stream": 46,
+        "launch_start_after_gap_us": 262.075,
+        "launch_end_before_device_us": 8723.825,
+        "kind": "host_started_after_gap_start",
+        "connection": 244127,
+        "absolute_gap_start_ns": 1789227874156367325
+      },
+      {
+        "start_ms": 3045.66674,
+        "gap_us": 7353.98,
+        "next": "aclnnAdd_SliceAiCore_Slice",
+        "stream": 46,
+        "launch_start_after_gap_us": -183.435,
+        "launch_end_before_device_us": 7528.775,
+        "kind": "submitted_before_gap",
+        "connection": 243931,
+        "absolute_gap_start_ns": 1789227874147524505
+      },
+      {
+        "start_ms": 1546.16572,
+        "gap_us": 5553.16,
+        "next": "HcPost",
+        "stream": 46,
+        "launch_start_after_gap_us": 5458.995,
+        "launch_end_before_device_us": 43.295,
+        "kind": "host_started_after_gap_start",
+        "connection": 178650,
+        "absolute_gap_start_ns": 1789227872648023485
+      },
+      {
+        "start_ms": 3038.96506,
+        "gap_us": 3348.14,
+        "next": "aclnnEmbedding_GatherV2AiCore_GatherV2",
+        "stream": 46,
+        "launch_start_after_gap_us": -5.325,
+        "launch_end_before_device_us": 3345.165,
+        "kind": "launch_overlaps_gap_start",
+        "connection": 243373,
+        "absolute_gap_start_ns": 1789227874140822825
+      },
+      {
+        "start_ms": 3015.43944,
+        "gap_us": 2597.5,
+        "next": "triton_rms_kernel",
+        "stream": 46,
+        "launch_start_after_gap_us": 205.005,
+        "launch_end_before_device_us": 2382.465,
+        "kind": "host_started_after_gap_start",
+        "connection": 242370,
+        "absolute_gap_start_ns": 1789227874117297205
+      },
+      {
+        "start_ms": 1805.56538,
+        "gap_us": 1979.7,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": 1935.385,
+        "launch_end_before_device_us": 34.015,
+        "kind": "host_started_after_gap_start",
+        "connection": 190323,
+        "absolute_gap_start_ns": 1789227872907423145
+      },
+      {
+        "start_ms": 547.33638,
+        "gap_us": 1767.16,
+        "next": "aclnnGroupedMatmulWeightNz_GroupedMatmul_GroupedMatmul",
+        "stream": 46,
+        "launch_start_after_gap_us": 1734.865,
+        "launch_end_before_device_us": 16.765,
+        "kind": "host_started_after_gap_start",
+        "connection": 136232,
+        "absolute_gap_start_ns": 1789227871649194145
+      },
+      {
+        "start_ms": 2964.90814,
+        "gap_us": 1633.94,
+        "next": "AivKernel",
+        "stream": 38,
+        "launch_start_after_gap_us": -560.725,
+        "launch_end_before_device_us": 2077.445,
+        "kind": "submitted_before_gap",
+        "connection": 240022,
+        "absolute_gap_start_ns": 1789227874066765905
+      },
+      {
+        "start_ms": 18.01674,
+        "gap_us": 1399.46,
+        "next": "aclnnQuantMatmulWeightNz_QuantBatchMatmulV3_QuantBatchMatmulV3",
+        "stream": 46,
+        "launch_start_after_gap_us": 1350.065,
+        "launch_end_before_device_us": -27.935,
+        "kind": "host_started_after_gap_start",
+        "connection": 113196,
+        "absolute_gap_start_ns": 1789227871119874505
+      },
+      {
+        "start_ms": 34.05244,
+        "gap_us": 1115.36,
+        "next": "aclnnQuantMatmulWeightNz_QuantBatchMatmulV3_QuantBatchMatmulV3",
+        "stream": 37,
+        "launch_start_after_gap_us": 1080.995,
+        "launch_end_before_device_us": -7.655,
+        "kind": "host_started_after_gap_start",
+        "connection": 113684,
+        "absolute_gap_start_ns": 1789227871135910205
+      }
+    ]
+  },
+  {
+    "rank": 4,
+    "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-4_4367_20260912154430880_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_4.db",
+    "task_count": 20727,
+    "span_ms": 3673.17454,
+    "coverage_ms": 3598.68718,
+    "gaps_over_50us": 195,
+    "gaps_ms": 56.61442,
+    "next_compute_gaps": {
+      "host_started_after_gap_start": {
+        "count": 182,
+        "gap_ms": 55.82083999999998
+      },
+      "launch_overlaps_gap_start": {
+        "count": 4,
+        "gap_ms": 0.22419999999999998
+      },
+      "submitted_before_gap": {
+        "count": 9,
+        "gap_ms": 0.56938
+      }
+    },
+    "largest_gaps": [
+      {
+        "start_ms": 3073.2616,
+        "gap_us": 888.24,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 815.4,
+        "launch_end_before_device_us": 65.17,
+        "kind": "host_started_after_gap_start",
+        "connection": 244928,
+        "absolute_gap_start_ns": 1789227874161867510
+      },
+      {
+        "start_ms": 1825.70692,
+        "gap_us": 756.36,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 707.07,
+        "launch_end_before_device_us": 40.46,
+        "kind": "host_started_after_gap_start",
+        "connection": 190860,
+        "absolute_gap_start_ns": 1789227872914312830
+      },
+      {
+        "start_ms": 13.31088,
+        "gap_us": 670.6,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 649.45,
+        "launch_end_before_device_us": -1.03,
+        "kind": "host_started_after_gap_start",
+        "connection": 113127,
+        "absolute_gap_start_ns": 1789227871101916790
+      },
+      {
+        "start_ms": 3065.58236,
+        "gap_us": 654.44,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 583.63,
+        "launch_end_before_device_us": 62.55,
+        "kind": "host_started_after_gap_start",
+        "connection": 244555,
+        "absolute_gap_start_ns": 1789227874154188270
+      },
+      {
+        "start_ms": 1202.14856,
+        "gap_us": 633.76,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 564.8,
+        "launch_end_before_device_us": 34.59,
+        "kind": "host_started_after_gap_start",
+        "connection": 164888,
+        "absolute_gap_start_ns": 1789227872290754470
+      },
+      {
+        "start_ms": 1212.03006,
+        "gap_us": 630.0,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 581.77,
+        "launch_end_before_device_us": 19.39,
+        "kind": "host_started_after_gap_start",
+        "connection": 165410,
+        "absolute_gap_start_ns": 1789227872300635970
+      },
+      {
+        "start_ms": 1824.31836,
+        "gap_us": 617.24,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 537.67,
+        "launch_end_before_device_us": 42.51,
+        "kind": "host_started_after_gap_start",
+        "connection": 190787,
+        "absolute_gap_start_ns": 1789227872912924270
+      },
+      {
+        "start_ms": 3.3481,
+        "gap_us": 603.14,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 556.61,
+        "launch_end_before_device_us": 22.12,
+        "kind": "host_started_after_gap_start",
+        "connection": 112613,
+        "absolute_gap_start_ns": 1789227871091954010
+      },
+      {
+        "start_ms": 3071.1005,
+        "gap_us": 588.32,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 518.92,
+        "launch_end_before_device_us": 59.88,
+        "kind": "host_started_after_gap_start",
+        "connection": 244847,
+        "absolute_gap_start_ns": 1789227874159706410
+      },
+      {
+        "start_ms": 603.05298,
+        "gap_us": 584.6,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 555.34,
+        "launch_end_before_device_us": 20.91,
+        "kind": "host_started_after_gap_start",
+        "connection": 138548,
+        "absolute_gap_start_ns": 1789227871691658890
+      },
+      {
+        "start_ms": 2433.77226,
+        "gap_us": 574.44,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 483.3,
+        "launch_end_before_device_us": 50.18,
+        "kind": "host_started_after_gap_start",
+        "connection": 217412,
+        "absolute_gap_start_ns": 1789227873522378170
+      },
+      {
+        "start_ms": 1829.4522,
+        "gap_us": 567.36,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 522.65,
+        "launch_end_before_device_us": 37.04,
+        "kind": "host_started_after_gap_start",
+        "connection": 191044,
+        "absolute_gap_start_ns": 1789227872918058110
+      },
+      {
+        "start_ms": 610.37556,
+        "gap_us": 563.78,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 535.12,
+        "launch_end_before_device_us": 20.44,
+        "kind": "host_started_after_gap_start",
+        "connection": 138921,
+        "absolute_gap_start_ns": 1789227871698981470
+      },
+      {
+        "start_ms": 608.28414,
+        "gap_us": 560.14,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 531.93,
+        "launch_end_before_device_us": 19.42,
+        "kind": "host_started_after_gap_start",
+        "connection": 138840,
+        "absolute_gap_start_ns": 1789227871696890050
+      },
+      {
+        "start_ms": 1833.31882,
+        "gap_us": 553.02,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 507.36,
+        "launch_end_before_device_us": 37.95,
+        "kind": "host_started_after_gap_start",
+        "connection": 191233,
+        "absolute_gap_start_ns": 1789227872921924730
+      }
+    ]
+  },
+  {
+    "rank": 5,
+    "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-5_4369_20260912154430872_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_5.db",
+    "task_count": 20727,
+    "span_ms": 3669.21572,
+    "coverage_ms": 3538.59796,
+    "gaps_over_50us": 211,
+    "gaps_ms": 112.96954,
+    "next_compute_gaps": {
+      "host_started_after_gap_start": {
+        "count": 182,
+        "gap_ms": 56.596220000000045
+      },
+      "launch_overlaps_gap_start": {
+        "count": 5,
+        "gap_ms": 0.26778
+      },
+      "submitted_before_gap": {
+        "count": 24,
+        "gap_ms": 56.10553999999998
+      }
+    },
+    "largest_gaps": [
+      {
+        "start_ms": 591.77182,
+        "gap_us": 19230.8,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -8038.17,
+        "launch_end_before_device_us": 27258.76,
+        "kind": "submitted_before_gap",
+        "connection": 138111,
+        "absolute_gap_start_ns": 1789227871684327140
+      },
+      {
+        "start_ms": 1194.4514,
+        "gap_us": 19056.42,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -5540.8,
+        "launch_end_before_device_us": 24586.47,
+        "kind": "submitted_before_gap",
+        "connection": 164451,
+        "absolute_gap_start_ns": 1789227872287006720
+      },
+      {
+        "start_ms": 1814.86846,
+        "gap_us": 12253.4,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -11445.31,
+        "launch_end_before_device_us": 23687.88,
+        "kind": "submitted_before_gap",
+        "connection": 190409,
+        "absolute_gap_start_ns": 1789227872907423780
+      },
+      {
+        "start_ms": 2426.0281,
+        "gap_us": 2560.34,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -18648.1,
+        "launch_end_before_device_us": 21198.09,
+        "kind": "submitted_before_gap",
+        "connection": 216965,
+        "absolute_gap_start_ns": 1789227873518583420
+      },
+      {
+        "start_ms": 0.33662,
+        "gap_us": 1313.48,
+        "next": "aclnnIndex_IndexAiCore_Index",
+        "stream": 46,
+        "launch_start_after_gap_us": -26029.09,
+        "launch_end_before_device_us": 27299.73,
+        "kind": "submitted_before_gap",
+        "connection": 112349,
+        "absolute_gap_start_ns": 1789227871092891940
+      },
+      {
+        "start_ms": 3069.77954,
+        "gap_us": 912.5,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 839.82,
+        "launch_end_before_device_us": 62.6,
+        "kind": "host_started_after_gap_start",
+        "connection": 244906,
+        "absolute_gap_start_ns": 1789227874162334860
+      },
+      {
+        "start_ms": 14.75206,
+        "gap_us": 677.54,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 659.26,
+        "launch_end_before_device_us": -2.64,
+        "kind": "host_started_after_gap_start",
+        "connection": 113126,
+        "absolute_gap_start_ns": 1789227871107307380
+      },
+      {
+        "start_ms": 3060.44658,
+        "gap_us": 670.52,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 579.33,
+        "launch_end_before_device_us": 56.88,
+        "kind": "host_started_after_gap_start",
+        "connection": 244460,
+        "absolute_gap_start_ns": 1789227874153001900
+      },
+      {
+        "start_ms": 12.92884,
+        "gap_us": 647.2,
+        "next": "aclnnEqScalar_EqualAiCore_Equal",
+        "stream": 46,
+        "launch_start_after_gap_us": 620.97,
+        "launch_end_before_device_us": -4.85,
+        "kind": "host_started_after_gap_start",
+        "connection": 113065,
+        "absolute_gap_start_ns": 1789227871105484160
+      },
+      {
+        "start_ms": 3067.60422,
+        "gap_us": 608.4,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 541.85,
+        "launch_end_before_device_us": 58.47,
+        "kind": "host_started_after_gap_start",
+        "connection": 244825,
+        "absolute_gap_start_ns": 1789227874160159540
+      },
+      {
+        "start_ms": 3061.95942,
+        "gap_us": 600.64,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 534.23,
+        "launch_end_before_device_us": 58.21,
+        "kind": "host_started_after_gap_start",
+        "connection": 244533,
+        "absolute_gap_start_ns": 1789227874154514740
+      },
+      {
+        "start_ms": 1217.2989,
+        "gap_us": 590.9,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 546.63,
+        "launch_end_before_device_us": 26.39,
+        "kind": "host_started_after_gap_start",
+        "connection": 164873,
+        "absolute_gap_start_ns": 1789227872309854220
+      },
+      {
+        "start_ms": 1834.14438,
+        "gap_us": 589.46,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 544.69,
+        "launch_end_before_device_us": 36.08,
+        "kind": "host_started_after_gap_start",
+        "connection": 190845,
+        "absolute_gap_start_ns": 1789227872926699700
+      },
+      {
+        "start_ms": 617.58222,
+        "gap_us": 588.16,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 533.98,
+        "launch_end_before_device_us": 23.18,
+        "kind": "host_started_after_gap_start",
+        "connection": 138474,
+        "absolute_gap_start_ns": 1789227871710137540
+      },
+      {
+        "start_ms": 3065.69352,
+        "gap_us": 587.32,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 516.45,
+        "launch_end_before_device_us": 62.97,
+        "kind": "host_started_after_gap_start",
+        "connection": 244717,
+        "absolute_gap_start_ns": 1789227874158248840
+      }
+    ]
+  },
+  {
+    "rank": 6,
+    "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-6_4372_20260912154430886_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_6.db",
+    "task_count": 20727,
+    "span_ms": 3698.57232,
+    "coverage_ms": 3075.4998,
+    "gaps_over_50us": 2204,
+    "gaps_ms": 592.75168,
+    "next_compute_gaps": {
+      "host_started_after_gap_start": {
+        "count": 1837,
+        "gap_ms": 427.24797999999953
+      },
+      "launch_overlaps_gap_start": {
+        "count": 179,
+        "gap_ms": 12.34836
+      },
+      "submitted_before_gap": {
+        "count": 188,
+        "gap_ms": 153.15533999999997
+      }
+    },
+    "largest_gaps": [
+      {
+        "start_ms": 3084.20704,
+        "gap_us": 40510.24,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -2701.64,
+        "launch_end_before_device_us": 43200.45,
+        "kind": "submitted_before_gap",
+        "connection": 243992,
+        "absolute_gap_start_ns": 1789227874147598700
+      },
+      {
+        "start_ms": 2464.1088,
+        "gap_us": 28405.56,
+        "next": "aclnnIndex_IndexAiCore_Index",
+        "stream": 46,
+        "launch_start_after_gap_us": -26117.52,
+        "launch_end_before_device_us": 54494.7,
+        "kind": "submitted_before_gap",
+        "connection": 217027,
+        "absolute_gap_start_ns": 1789227873527500460
+      },
+      {
+        "start_ms": 2.8324,
+        "gap_us": 28113.66,
+        "next": "aclnnIndex_IndexAiCore_Index",
+        "stream": 46,
+        "launch_start_after_gap_us": 414.22,
+        "launch_end_before_device_us": 27653.42,
+        "kind": "host_started_after_gap_start",
+        "connection": 112257,
+        "absolute_gap_start_ns": 1789227871066224060
+      },
+      {
+        "start_ms": 1223.61328,
+        "gap_us": 20344.38,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -7407.63,
+        "launch_end_before_device_us": 27741.69,
+        "kind": "submitted_before_gap",
+        "connection": 164361,
+        "absolute_gap_start_ns": 1789227872287004940
+      },
+      {
+        "start_ms": 620.93736,
+        "gap_us": 18584.98,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -8519.55,
+        "launch_end_before_device_us": 27092.89,
+        "kind": "submitted_before_gap",
+        "connection": 138016,
+        "absolute_gap_start_ns": 1789227871684329020
+      },
+      {
+        "start_ms": 1844.03366,
+        "gap_us": 15325.38,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -13111.64,
+        "launch_end_before_device_us": 28406.05,
+        "kind": "submitted_before_gap",
+        "connection": 190319,
+        "absolute_gap_start_ns": 1789227872907425320
+      },
+      {
+        "start_ms": 3125.23464,
+        "gap_us": 9636.14,
+        "next": "aclnnIndex_IndexAiCore_Index",
+        "stream": 46,
+        "launch_start_after_gap_us": -40897.08,
+        "launch_end_before_device_us": 50525.86,
+        "kind": "submitted_before_gap",
+        "connection": 244129,
+        "absolute_gap_start_ns": 1789227874188626300
+      },
+      {
+        "start_ms": 2455.2157,
+        "gap_us": 8493.24,
+        "next": "aclnnInplaceFillScalar_FillAiCore_Fill",
+        "stream": 46,
+        "launch_start_after_gap_us": -20212.19,
+        "launch_end_before_device_us": 28694.17,
+        "kind": "submitted_before_gap",
+        "connection": 216876,
+        "absolute_gap_start_ns": 1789227873518607360
+      },
+      {
+        "start_ms": 2888.78298,
+        "gap_us": 4618.42,
+        "next": "aclnnDynamicQuantV2_DynamicQuant_DynamicQuant",
+        "stream": 37,
+        "launch_start_after_gap_us": 4542.66,
+        "launch_end_before_device_us": 57.49,
+        "kind": "host_started_after_gap_start",
+        "connection": 235366,
+        "absolute_gap_start_ns": 1789227873952174640
+      },
+      {
+        "start_ms": 2509.9118,
+        "gap_us": 1271.28,
+        "next": "aclnnQuantMatmulWeightNz_QuantBatchMatmulV3_QuantBatchMatmulV3",
+        "stream": 46,
+        "launch_start_after_gap_us": 1195.19,
+        "launch_end_before_device_us": 17.12,
+        "kind": "host_started_after_gap_start",
+        "connection": 217999,
+        "absolute_gap_start_ns": 1789227873573303460
+      },
+      {
+        "start_ms": 2525.07376,
+        "gap_us": 1165.18,
+        "next": "aclnnQuantMatmulWeightNz_QuantBatchMatmulV3_QuantBatchMatmulV3",
+        "stream": 37,
+        "launch_start_after_gap_us": 1085.88,
+        "launch_end_before_device_us": 33.54,
+        "kind": "host_started_after_gap_start",
+        "connection": 218487,
+        "absolute_gap_start_ns": 1789227873588465420
+      },
+      {
+        "start_ms": 1.60932,
+        "gap_us": 1073.22,
+        "next": "aclnnClamp_ClipByValueV2AiCore_ClipByValueV2",
+        "stream": 46,
+        "launch_start_after_gap_us": 675.56,
+        "launch_end_before_device_us": 386.12,
+        "kind": "host_started_after_gap_start",
+        "connection": 112189,
+        "absolute_gap_start_ns": 1789227871065000980
+      },
+      {
+        "start_ms": 2511.4214,
+        "gap_us": 949.16,
+        "next": "aclnnQuantMatmulWeightNz_QuantBatchMatmulV3_QuantBatchMatmulV3",
+        "stream": 46,
+        "launch_start_after_gap_us": 875.68,
+        "launch_end_before_device_us": 31.59,
+        "kind": "host_started_after_gap_start",
+        "connection": 218017,
+        "absolute_gap_start_ns": 1789227873574813060
+      },
+      {
+        "start_ms": 3017.38384,
+        "gap_us": 919.8,
+        "next": "prepare_inputs_padded_kernel",
+        "stream": 46,
+        "launch_start_after_gap_us": 847.65,
+        "launch_end_before_device_us": 63.76,
+        "kind": "host_started_after_gap_start",
+        "connection": 240770,
+        "absolute_gap_start_ns": 1789227874080775500
+      },
+      {
+        "start_ms": 3283.43384,
+        "gap_us": 845.0,
+        "next": "aclnnDynamicQuantV2_DynamicQuant_DynamicQuant",
+        "stream": 37,
+        "launch_start_after_gap_us": 758.92,
+        "launch_end_before_device_us": 66.27,
+        "kind": "host_started_after_gap_start",
+        "connection": 250619,
+        "absolute_gap_start_ns": 1789227874346825500
+      }
+    ]
+  },
+  {
+    "rank": 7,
+    "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-7_4375_20260912154430898_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_7.db",
+    "task_count": 20727,
+    "span_ms": 3666.93668,
+    "coverage_ms": 3579.72148,
+    "gaps_over_50us": 240,
+    "gaps_ms": 67.23846,
+    "next_compute_gaps": {
+      "host_started_after_gap_start": {
+        "count": 235,
+        "gap_ms": 66.50424000000001
+      },
+      "launch_overlaps_gap_start": {
+        "count": 1,
+        "gap_ms": 0.05704
+      },
+      "submitted_before_gap": {
+        "count": 4,
+        "gap_ms": 0.67718
+      }
+    },
+    "largest_gaps": [
+      {
+        "start_ms": 3.29608,
+        "gap_us": 815.4,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 768.52,
+        "launch_end_before_device_us": 17.66,
+        "kind": "host_started_after_gap_start",
+        "connection": 112613,
+        "absolute_gap_start_ns": 1789227871098129110
+      },
+      {
+        "start_ms": 3058.6651,
+        "gap_us": 731.16,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 622.23,
+        "launch_end_before_device_us": 58.31,
+        "kind": "host_started_after_gap_start",
+        "connection": 244473,
+        "absolute_gap_start_ns": 1789227874153498130
+      },
+      {
+        "start_ms": 1818.0399,
+        "gap_us": 707.44,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 626.1,
+        "launch_end_before_device_us": 40.96,
+        "kind": "host_started_after_gap_start",
+        "connection": 190782,
+        "absolute_gap_start_ns": 1789227872912872930
+      },
+      {
+        "start_ms": 1819.61442,
+        "gap_us": 681.92,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 630.68,
+        "launch_end_before_device_us": 42.86,
+        "kind": "host_started_after_gap_start",
+        "connection": 190855,
+        "absolute_gap_start_ns": 1789227872914447450
+      },
+      {
+        "start_ms": 2427.60152,
+        "gap_us": 635.98,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 551.28,
+        "launch_end_before_device_us": 47.19,
+        "kind": "host_started_after_gap_start",
+        "connection": 217407,
+        "absolute_gap_start_ns": 1789227873522434550
+      },
+      {
+        "start_ms": 13.9984,
+        "gap_us": 633.68,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 608.31,
+        "launch_end_before_device_us": 2.6,
+        "kind": "host_started_after_gap_start",
+        "connection": 113127,
+        "absolute_gap_start_ns": 1789227871108831430
+      },
+      {
+        "start_ms": 3060.24174,
+        "gap_us": 632.94,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 556.28,
+        "launch_end_before_device_us": 67.98,
+        "kind": "host_started_after_gap_start",
+        "connection": 244546,
+        "absolute_gap_start_ns": 1789227874155074770
+      },
+      {
+        "start_ms": 3068.11358,
+        "gap_us": 631.2,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 558.15,
+        "launch_end_before_device_us": 60.62,
+        "kind": "host_started_after_gap_start",
+        "connection": 244919,
+        "absolute_gap_start_ns": 1789227874162946610
+      },
+      {
+        "start_ms": 1827.44904,
+        "gap_us": 610.08,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 560.82,
+        "launch_end_before_device_us": 41.93,
+        "kind": "host_started_after_gap_start",
+        "connection": 191228,
+        "absolute_gap_start_ns": 1789227872922282070
+      },
+      {
+        "start_ms": 1825.24916,
+        "gap_us": 607.9,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 555.0,
+        "launch_end_before_device_us": 38.76,
+        "kind": "host_started_after_gap_start",
+        "connection": 191147,
+        "absolute_gap_start_ns": 1789227872920082190
+      },
+      {
+        "start_ms": 598.95824,
+        "gap_us": 601.24,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 556.38,
+        "launch_end_before_device_us": 28.61,
+        "kind": "host_started_after_gap_start",
+        "connection": 138551,
+        "absolute_gap_start_ns": 1789227871693791270
+      },
+      {
+        "start_ms": 3065.86458,
+        "gap_us": 596.74,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 529.36,
+        "launch_end_before_device_us": 58.68,
+        "kind": "host_started_after_gap_start",
+        "connection": 244838,
+        "absolute_gap_start_ns": 1789227874160697610
+      },
+      {
+        "start_ms": 1195.91742,
+        "gap_us": 593.78,
+        "next": "aclnnVllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata_VllmQuantLightningIndexerMetadata",
+        "stream": 46,
+        "launch_start_after_gap_us": 530.97,
+        "launch_end_before_device_us": 28.37,
+        "kind": "host_started_after_gap_start",
+        "connection": 164883,
+        "absolute_gap_start_ns": 1789227872290750450
+      },
+      {
+        "start_ms": 604.54456,
+        "gap_us": 591.54,
+        "next": "aclnnFloorDivides_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 563.31,
+        "launch_end_before_device_us": 20.92,
+        "kind": "host_started_after_gap_start",
+        "connection": 138843,
+        "absolute_gap_start_ns": 1789227871699377590
+      },
+      {
+        "start_ms": 2437.72948,
+        "gap_us": 586.64,
+        "next": "aclnnGeScalar_CastAiCore_Cast",
+        "stream": 46,
+        "launch_start_after_gap_us": 529.46,
+        "launch_end_before_device_us": 37.3,
+        "kind": "host_started_after_gap_start",
+        "connection": 217929,
+        "absolute_gap_start_ns": 1789227873532562510
+      }
+    ]
+  }
+]
