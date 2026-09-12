@@ -5,3 +5,6 @@
 __pycache__/
 *.pyc
 .env
+
+/extra-info/
+/kernel_meta/

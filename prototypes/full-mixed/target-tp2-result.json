@@ -1,0 +1,20 @@
+{
+  "scope": "TP2 four-layer eight-expert dummy target only",
+  "capsule": "/workspace/strengthen-dsv4/runs/full-mixed-012-valid-rows",
+  "requests": 13,
+  "output_tokens": 104,
+  "ranks": [
+    {
+      "rank": 0,
+      "replays": 39,
+      "output_max_diff": 0.0,
+      "kv_max_diff": 0.0
+    },
+    {
+      "rank": 1,
+      "replays": 39,
+      "output_max_diff": 0,
+      "kv_max_diff": 0.0
+    }
+  ]
+}
