@@ -1,13 +1,13 @@
 """Lease/admit a bounded subset; monitor only selected cards, preserve others."""
 import argparse,fcntl,json,os,re,shutil,subprocess,sys,time
 from pathlib import Path
-sys.path.insert(0,'/workspace/my-ascend-workspace/runs/query-gang/20260911-lhtb-long-real-gang-v1/harness')
+sys.path.insert(0,os.environ.get('PROBE_HELPERS','/workspace/my-ascend-workspace/runs/query-gang/20260911-lhtb-long-real-gang-v1/harness'))
 from probe_host_npus import parse_devices
 from supervise import descendants,stop_group,group_members
 p=argparse.ArgumentParser();p.add_argument('--devices',default='0');p.add_argument('--output',type=Path,required=True);p.add_argument('command',nargs=argparse.REMAINDER);a=p.parse_args()
 devices={int(x) for x in a.devices.split(',')};assert devices and devices<=set(range(8))
 a.output.mkdir(parents=True,exist_ok=False)
-lock=open('/root/tp8.lock','a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+lock=open(Path.home()/'tp8.lock','a');fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
 known_host_owners=set()
 def inspect(owned=None):
  text=subprocess.check_output(['npu-smi','info'],text=True,timeout=20);readings=parse_devices(text)

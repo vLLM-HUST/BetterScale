@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-root=/workspace/strengthen-dsv4
-runtime=/workspace/my-ascend-workspace/runs/liveinfer-online/20260908-donor-local-runtime/env
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
+runtime=${PROBE_RUNTIME:-/workspace/my-ascend-workspace/runs/liveinfer-online/20260908-donor-local-runtime/env}
 set +u; source /usr/local/Ascend/cann-9.0.1/set_env.sh; set -u
 export ASCEND_RT_VISIBLE_DEVICES=${PROBE_DEVICES:-0} OMP_NUM_THREADS=4 TASK_QUEUE_ENABLE=1
 export HCCL_CONNECT_TIMEOUT=120 HCCL_EXEC_TIMEOUT=120 HCCL_BUFFSIZE=256 HCCL_OP_EXPANSION_MODE=AIV

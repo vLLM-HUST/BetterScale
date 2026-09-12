@@ -49,3 +49,11 @@ The linked large artifacts remain in the original local workspace.
 First candidates: inspect the observed timeline overheads, validate finer
 prefix-cache granularity, and assess prefill/mixed graph coverage. These are
 hypotheses, not implemented or promised speedups.
+
+## Opt-in FULL mixed exploration
+
+[The bounded prototype](prototypes/full-mixed/README.md) has passed TP2 dummy
+DSV4 + DSpark K5 target FULL replay, including mixed waves and~4K-token buckets,
+with exact same-state output/KV/MTP comparisons. It is **not production enabled**
+and does not yet establish full-model serving speedup. Release submodules and
+installed runtimes remain unchanged.

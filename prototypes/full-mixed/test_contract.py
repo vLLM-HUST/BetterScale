@@ -25,4 +25,29 @@ class PaddingContract(unittest.TestCase):
     def test_preserve_non_full_route(self):
         self.assertEqual(pad(None,None,256,4,4,'NONE',4),'fallback')
 
+class AlignmentContract(unittest.TestCase):
+    def test_tp8_k5_lcm_without_changing_speculation(self):
+        f=next(x for x in ast.parse(source.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='_adjust_joint_alignment')
+        ns={'_original_adjust_sizes':lambda self,alignment,tp:(alignment,tp)}
+        exec(compile(ast.Module(body=[f],type_ignores=[]),str(source),'exec'),ns)
+        config=NS(pass_config=NS(enable_sp=True))
+        self.assertEqual(ns['_adjust_joint_alignment'](config,6,8),(24,8))
+        self.assertEqual(ns['_adjust_joint_alignment'](config,6,2),(6,2))
+        config.pass_config.enable_sp=False
+        self.assertEqual(ns['_adjust_joint_alignment'](config,6,8),(6,8))
+
+class ShadowContract(unittest.TestCase):
+    def test_bounded_comparison_rejects_changed_element(self):
+        import torch
+        f=next(x for x in ast.parse(source.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='_compare_bounded')
+        ns={'torch':torch}
+        exec(compile(ast.Module(body=[f],type_ignores=[]),str(source),'exec'),ns)
+        compare=ns['_compare_bounded']
+        a=torch.ones((5,7),dtype=torch.bfloat16)
+        self.assertEqual(compare(a,a)['max_diff'],0)
+        b=a.clone();b[-1,-1]=2
+        with self.assertRaises(AssertionError):compare(a,b)
+        empty=a[:0]
+        self.assertEqual(compare(empty,empty)['max_diff'],0)
+
 if __name__=='__main__':unittest.main()

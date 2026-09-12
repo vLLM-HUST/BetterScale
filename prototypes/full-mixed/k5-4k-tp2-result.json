@@ -1,0 +1,34 @@
+{
+  "capsule": "/workspace/strengthen-dsv4/runs/full-mixed-018-k5-4128/engine",
+  "scope": "TP2 dummy four-layer target + DSpark K5, FULL24/4128; full state shadow",
+  "requests": 19,
+  "ranks": [
+    {
+      "rank": "shadow-rank0",
+      "replays": 44,
+      "mixed": 3,
+      "max_valid_tokens": 4112,
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      }
+    },
+    {
+      "rank": "shadow-rank1",
+      "replays": 44,
+      "mixed": 3,
+      "max_valid_tokens": 4112,
+      "max_diff": {
+        "output": 0.0,
+        "kv": 0.0,
+        "mtp": 0.0
+      }
+    }
+  ],
+  "notes": [
+    "Graph memory reported before shadow:0.98GiB/rank; after-warmup allocated13.39GiB/reserved14.08GiB. Four-layer fixture only.",
+    "Final peak/reserved includes full KV shadow clones and is not serving memory.",
+    "Run017 failed inside whole-cache FP32 comparison; run018 uses bounded chunks with unchanged tolerance."
+  ]
+}

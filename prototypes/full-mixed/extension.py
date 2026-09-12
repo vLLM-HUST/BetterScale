@@ -4,6 +4,7 @@ from vllm_ascend.attention.context_parallel.dsa_cp import AscendDSACPMetadataBui
 
 # Experimental admission to reveal real capture failures. This is deliberately
 # confined to a worker_extension_cls selected by the dummy probe.
+_original_support = AscendDSACPMetadataBuilder.__dict__['get_cudagraph_support']
 AscendDSACPMetadataBuilder.get_cudagraph_support = classmethod(
     lambda cls, vllm_config, kv_cache_spec: AttentionCGSupport.ALWAYS)
 
@@ -88,6 +89,22 @@ def _metadata_addresses(value, path='metadata'):
         result.update(_metadata_addresses(value._data,path+'.rope'))
     return result
 
+def _compare_bounded(x, y, *, equal_nan=False, measure_abs=False):
+    # Shadow must not materialize multiple whole-cache FP32 copies. This is an
+    # oracle-memory bound, not a change to graph or cache behavior.
+    assert x.shape == y.shape and x.dtype == y.dtype
+    import math
+    row_elements = math.prod(x.shape[1:])
+    rows = max(1, (16 * 1024 * 1024) // max(1, row_elements))
+    max_diff, max_abs, unequal = 0.0, 0.0, 0
+    for start in range(0, x.shape[0], rows):
+        a, b = x[start:start+rows], y[start:start+rows]
+        torch.testing.assert_close(a, b, rtol=.01, atol=1e-6, equal_nan=equal_nan)
+        max_diff = max(max_diff, float(torch.nan_to_num((a.float()-b.float()).abs()).max()))
+        unequal += int((a != b).sum())
+        if measure_abs: max_abs = max(max_abs, float(a.float().abs().max()))
+    return dict(max_diff=max_diff, unequal=unequal, max_abs=max_abs if measure_abs else None)
+
 def _checked_graph_call(self, *args, **kwargs):
     runner = self.__dict__.get('_probe_runner')
     ctx = get_forward_context()
@@ -109,6 +126,11 @@ def _checked_graph_call(self, *args, **kwargs):
             or entry is None or entry.aclgraph is None
             or len(runner._probe_shadows) >= 96):
         return _original_graph_call(self, *args, **kwargs)
+    meta = next(iter(ctx.attn_metadata.values()))
+    start_qsl = meta.req_metadata.query_start_loc.cpu().tolist()
+    start_meta = dict(descriptor=str(ctx.batch_descriptor),query_offsets=start_qsl,
+                     prefills=meta.num_prefills,decodes=meta.num_decodes)
+    Path(os.environ['FULL_MIXED_OUTPUT'],f'shadow-start-rank{runner._probe_rank}.json').write_text(json.dumps(start_meta))
     tensors, _ = tree_flatten(runner.kv_caches)
     caches = [x for x in tensors if isinstance(x, torch.Tensor)]
     # DSpark also consumes the persistent pre-HC residual, not just returned
@@ -117,7 +139,14 @@ def _checked_graph_call(self, *args, **kwargs):
             if hasattr(m, '_mtp_hidden_buffer')]
     side_before = [x.clone() for x in side]
     before = [x.clone() for x in caches]
-    replay = _original_graph_call(self, *args, **kwargs)
+    if os.environ.get('FULL_MIXED_ORACLE') == 'eager':
+        saved_mode=ctx.cudagraph_runtime_mode
+        try:
+            ctx.cudagraph_runtime_mode=CUDAGraphMode.NONE
+            replay=self.runnable(*args, **kwargs)
+        finally:ctx.cudagraph_runtime_mode=saved_mode
+    else:
+        replay = _original_graph_call(self, *args, **kwargs)
     torch.npu.synchronize()  # attribute a graph failure before starting eager
     clone = lambda x: x.clone() if isinstance(x, torch.Tensor) else x
     actual = tree_map(clone, replay)
@@ -153,9 +182,22 @@ def _checked_graph_call(self, *args, **kwargs):
                         raise AssertionError(f'unknown output token layout {x.shape}, capacity={capacity}')
                     x,y = x[:valid_rows],y[:valid_rows]
                     assert torch.isfinite(x).all() and torch.isfinite(y).all(), 'nonfinite valid dummy output'
-                checks.append(dict(label=label,index=i,shape=list(x.shape),max_abs=float(x.float().abs().max()) if x.numel() and label=='output' else None,max_diff=float(torch.nan_to_num((x.float()-y.float()).abs()).max()) if x.numel() else 0,unequal=int((x!=y).sum())))
+                try:
+                    measurement = _compare_bounded(x,y,equal_nan=label=='kv',measure_abs=label=='output')
+                except AssertionError:
+                    samples=[]
+                    for row in range(min(x.shape[0],128)):
+                        left,right=x[row].reshape(-1),y[row].reshape(-1)
+                        bad=(~torch.isclose(left,right,rtol=.01,atol=1e-6,equal_nan=label=='kv')).nonzero().flatten()[:8]
+                        if bad.numel():
+                            samples.append(dict(row=row,offsets=bad.cpu().tolist(),replay=left[bad].float().cpu().tolist(),eager=right[bad].float().cpu().tolist()))
+                        if len(samples)>=4:break
+                    failure=dict(start=start_meta,end_query_offsets=meta.req_metadata.query_start_loc.cpu().tolist(),label=label,index=i,shape=list(x.shape),dtype=str(x.dtype),samples=samples)
+                    failure_path=Path(os.environ['FULL_MIXED_OUTPUT'],f'shadow-failure-rank{runner._probe_rank}.json')
+                    if not failure_path.exists():failure_path.write_text(json.dumps(failure,indent=2))
+                    raise
+                checks.append(dict(label=label,index=i,shape=list(x.shape),**measurement))
                 Path(os.environ['FULL_MIXED_OUTPUT'],f'checking-rank{runner._probe_rank}.json').write_text(json.dumps(dict(valid_global=valid_global,capacity=capacity,checks=checks),indent=2))
-                torch.testing.assert_close(x, y, rtol=.01, atol=1e-6, equal_nan=label=='kv')
         runner._probe_shadows.append(dict(descriptor=str(ctx.batch_descriptor),valid_tokens=valid_global,num_prefills=metadata.num_prefills,num_decodes=metadata.num_decodes,checks=checks,status='PASS'))
         Path(os.environ['FULL_MIXED_OUTPUT'],f'shadow-rank{runner._probe_rank}.json').write_text(json.dumps(runner._probe_shadows,indent=2))
     finally:
@@ -207,3 +249,26 @@ def _build_fixed_capacity(self, *args, **kwargs):
     return result
 
 AscendDSACPMetadataBuilder.build = _build_fixed_capacity
+
+# Native MRV1 uses max(K+1, TP) when sequence parallelism is enabled. max is
+# not the joint alignment when neither divides the other (K5/TP8 needs24).
+# This hook changes bucket alignment only, never the actual speculative length.
+from vllm.config import CompilationConfig
+_original_adjust_sizes = CompilationConfig.adjust_cudagraph_sizes_for_spec_decode
+
+def _adjust_joint_alignment(self, uniform_decode_query_len, tensor_parallel_size):
+    import math
+    alignment = uniform_decode_query_len
+    if self.pass_config.enable_sp:
+        alignment = math.lcm(alignment, tensor_parallel_size)
+    return _original_adjust_sizes(self, alignment, tensor_parallel_size)
+
+CompilationConfig.adjust_cudagraph_sizes_for_spec_decode = _adjust_joint_alignment
+
+# Unmodified target graph/metadata path for matched donor controls. Retain only
+# dummy loading, receipts and the independently needed K5/TP8 LCM sizing repair.
+if os.environ.get('FULL_MIXED_PATCH', '1') == '0':
+    AscendDSACPMetadataBuilder.get_cudagraph_support = _original_support
+    AscendDSACPMetadataBuilder.build = _original_build
+    dsa_cp.get_cos_and_sin_dsa = _original_rope
+    NPUModelRunner._pad_query_start_loc_for_fia = _original_pad

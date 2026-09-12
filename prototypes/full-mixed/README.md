@@ -83,3 +83,39 @@ are not propagated by upstream. Target callable overrides conflict with Ascend
 quantization, so this repair composes the draft-only config transform. It is not
 part of the proposed serving patch. Run013's missing aux-state tuple and run014's
 quantization validation error were fixture failures, not kernel correctness data.
+
+## Larger-bucket correctness
+
+Run018 passed TP2 K5 with FULL24/4128:19 requests,44 checked replays/rank,
+including3 mixed waves and up to4112 valid input tokens in one wave. All valid
+outputs, complete KV and valid MTP side-buffer rows had max difference0. See
+`k5-4k-tp2-result.json`. Run017's OOM was in the oracle's whole-cache FP32
+conversion, not capture; chunked comparison retains whole-state coverage.
+Before shadow, native logs report0.98GiB graph memory/rank and13.39GiB allocated
+/14.08GiB reserved after warmup. These are FOUR-LAYER dummy figures, not a full
+model capacity estimate. The later~58GiB shadow peak is not serving memory.
+
+For hw3, override PROBE_RUNTIME, PROBE_MODEL and PROBE_HELPERS; the launcher uses
+that execution user's home `tp8.lock`. Transfer the helper dependencies together
+(`probe_host_npus.py`, `supervise.py`, `idle_gate.py`). Dummy model config can be
+copied without any weights. Key installed DSACP/runner/ACLGraph files on hw3 were
+byte-compared to the pinned source before the TP8 experiment.
+
+## Timing pilot and current TP8 boundary
+
+`timing-tp2-pilot.json` compares run019 FULL with run021's original
+FULL_DECODE_ONLY target path (`FULL_MIXED_PATCH=0`), same dummy K5 workload.
+After one warm round, two measured repetitions:6/7 cohorts improved, one worsened;
+generated tokens all matched. The4145+19-input cohort was~0.574s vs~0.458s.
+This measures completion of these small cohorts (eight outputs/request), NOT
+isolated prefill latency or a production-model speedup. NONE-mode run020 is a
+secondary reference, not the donor's best decode baseline.
+
+TP8 run001 stopped at native MRV1 alignment: max(6,8) is not their common
+multiple. The opt-in extension now uses LCM24 for sizing while retaining K5.
+Runs002/003 captured both buckets but failed strict shadow checks: small BF16
+output differences and larger KV differences including NaN mismatches. **TP8
+is not accepted.** Run004 compares eager against eager from the same restored
+state to separate an oracle/state-reproducibility issue from graph-specific
+failure. Do not relax tolerance or relabel NaNs as rounding. First-failure files
+are retained without overwrite by subsequent queued work.

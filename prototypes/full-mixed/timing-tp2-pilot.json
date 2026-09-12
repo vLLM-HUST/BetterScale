@@ -1,0 +1,94 @@
+{
+  "scope": "TP2 four-layer dummy K5; target FULL vs original FULL_DECODE_ONLY; two measured repetitions after one warm round",
+  "limitations": [
+    "Not full-model serving speedup",
+    "Only two measured repetitions; other physical cards were occupied",
+    "Two sparse buckets24/4128 can overpad shorter work",
+    "Draft eager in both arms"
+  ],
+  "outputs_identical": true,
+  "cohorts": [
+    {
+      "lengths": [
+        64,
+        64,
+        64,
+        64
+      ],
+      "seconds": {
+        "full": 0.5099947295384482,
+        "donor": 0.610031804011669
+      },
+      "donor_over_full": 1.196153153511519
+    },
+    {
+      "lengths": [
+        129,
+        17
+      ],
+      "seconds": {
+        "full": 0.4186935654724948,
+        "donor": 0.44620168051915243
+      },
+      "donor_over_full": 1.0656998753148135
+    },
+    {
+      "lengths": [
+        7,
+        128,
+        33
+      ],
+      "seconds": {
+        "full": 0.5037912569241598,
+        "donor": 0.5963133420445956
+      },
+      "donor_over_full": 1.1836516292190518
+    },
+    {
+      "lengths": [
+        256,
+        23,
+        5,
+        9
+      ],
+      "seconds": {
+        "full": 0.42510533350287005,
+        "donor": 0.4505474800243974
+      },
+      "donor_over_full": 1.0598490409703494
+    },
+    {
+      "lengths": [
+        513,
+        257,
+        17
+      ],
+      "seconds": {
+        "full": 0.5107011354411952,
+        "donor": 0.4785054159583524
+      },
+      "donor_over_full": 0.9369578071232818
+    },
+    {
+      "lengths": [
+        1025
+      ],
+      "seconds": {
+        "full": 0.42803188652032986,
+        "donor": 0.4620408639893867
+      },
+      "donor_over_full": 1.0794543082888792
+    },
+    {
+      "lengths": [
+        4145,
+        19
+      ],
+      "seconds": {
+        "full": 0.4576339619816281,
+        "donor": 0.5740845419932157
+      },
+      "donor_over_full": 1.2544622770288683
+    }
+  ]
+}
