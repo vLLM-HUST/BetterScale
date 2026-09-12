@@ -1,0 +1,433 @@
+{
+  "c16": {
+    "capsule": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c16",
+    "profiled": false,
+    "timing": {
+      "schema": "liveinfer-native-online/v1",
+      "requests": 96,
+      "committed_tokens": 22321,
+      "elapsed_seconds_including_drain": 86.32162429497112,
+      "committed_tokens_per_second": 258.5794716249375,
+      "requests_per_second": 1.1121199442674612,
+      "ttft_seconds": {
+        "p50": 1.0744164650095627,
+        "p95": 4.23046413611155,
+        "p99": 5.679963298025541,
+        "max": 5.679963298025541
+      },
+      "e2e_seconds": {
+        "p50": 9.962837467901409,
+        "p95": 24.176688182982616,
+        "p99": 63.909219190943986,
+        "max": 63.909219190943986
+      },
+      "request_average_tpot_seconds": {
+        "p50": 0.04887593696198522,
+        "p95": 0.07466816149495246,
+        "p99": 0.08406681912985244,
+        "max": 0.08406681912985244
+      },
+      "observed_chunk_gap_seconds": {
+        "p50": 0.09622716309968382,
+        "p95": 0.5013013700954616,
+        "p99": 0.6304278030293062,
+        "max": 0.6719482549233362
+      },
+      "scope": "Native closed-loop client arrival to post-quorum committed output; no HTTP/tokenization. Speculation emits chunks: chunk gaps are not per-token device latency. Includes measured drain, excludes warmup. No SLO-qualified goodput or calibrated roofline claim."
+    },
+    "native_observations": 486,
+    "generated_tokens": 22321,
+    "max_kv_usage": 0.902693787795492,
+    "observations_above_95pct": 0,
+    "max_running": 16,
+    "max_waiting": 12,
+    "preemptions": 0,
+    "prefix": {
+      "requests": 103,
+      "queries": 721763,
+      "hits": 0,
+      "preempted_requests": 0,
+      "preempted_queries": 0,
+      "preempted_hits": 0
+    },
+    "spec": {
+      "num_drafts": 4920,
+      "num_draft_tokens": 24600,
+      "num_accepted_tokens": 17523
+    },
+    "prompt": {
+      "computed": 664196,
+      "local_cache_hit": 0,
+      "external_kv_transfer": 0,
+      "cached_tokens": 0,
+      "total": 664196
+    },
+    "accepted_fraction": 0.7123170731707317,
+    "control": [
+      {
+        "request_id": "cache-control-0",
+        "input_tokens": 4096,
+        "output_tokens": 16,
+        "cached_tokens": 0,
+        "start": 622679.678534224,
+        "end": 622680.830364951
+      },
+      {
+        "request_id": "cache-control-1",
+        "input_tokens": 4096,
+        "output_tokens": 16,
+        "cached_tokens": 0,
+        "start": 622680.830370131,
+        "end": 622682.025368227
+      }
+    ]
+  },
+  "c32": {
+    "capsule": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32",
+    "profiled": false,
+    "timing": {
+      "schema": "liveinfer-native-online/v1",
+      "requests": 96,
+      "committed_tokens": 22321,
+      "elapsed_seconds_including_drain": 95.08589291700628,
+      "committed_tokens_per_second": 234.74565274874598,
+      "requests_per_second": 1.0096134879207748,
+      "ttft_seconds": {
+        "p50": 2.4499844800448045,
+        "p95": 9.792626991053112,
+        "p99": 10.813656611018814,
+        "max": 10.813656611018814
+      },
+      "e2e_seconds": {
+        "p50": 18.370615658001043,
+        "p95": 35.3937859259313,
+        "p99": 54.39964800106827,
+        "max": 54.39964800106827
+      },
+      "request_average_tpot_seconds": {
+        "p50": 0.09081615765441071,
+        "p95": 0.12677786796088042,
+        "p99": 0.14865906054226974,
+        "max": 0.14865906054226974
+      },
+      "observed_chunk_gap_seconds": {
+        "p50": 0.19054923905059695,
+        "p95": 0.6555065980646759,
+        "p99": 0.6839448229875416,
+        "max": 0.7273122450569645
+      },
+      "scope": "Native closed-loop client arrival to post-quorum committed output; no HTTP/tokenization. Speculation emits chunks: chunk gaps are not per-token device latency. Includes measured drain, excludes warmup. No SLO-qualified goodput or calibrated roofline claim."
+    },
+    "native_observations": 576,
+    "generated_tokens": 22321,
+    "max_kv_usage": 0.9686641011544805,
+    "observations_above_95pct": 4,
+    "max_running": 32,
+    "max_waiting": 28,
+    "preemptions": 0,
+    "prefix": {
+      "requests": 134,
+      "queries": 913410,
+      "hits": 0,
+      "preempted_requests": 0,
+      "preempted_queries": 0,
+      "preempted_hits": 0
+    },
+    "spec": {
+      "num_drafts": 5182,
+      "num_draft_tokens": 25910,
+      "num_accepted_tokens": 17242
+    },
+    "prompt": {
+      "computed": 664196,
+      "local_cache_hit": 0,
+      "external_kv_transfer": 0,
+      "cached_tokens": 0,
+      "total": 664196
+    },
+    "accepted_fraction": 0.6654573523736009,
+    "control": [
+      {
+        "request_id": "cache-control-4096-0",
+        "input_tokens": 4096,
+        "output_tokens": 16,
+        "cached_tokens": 0,
+        "start": 623174.078332363,
+        "end": 623175.307181822
+      },
+      {
+        "request_id": "cache-control-4096-1",
+        "input_tokens": 4096,
+        "output_tokens": 16,
+        "cached_tokens": 0,
+        "start": 623175.307186953,
+        "end": 623176.463537172
+      },
+      {
+        "request_id": "cache-control-20480-0",
+        "input_tokens": 20480,
+        "output_tokens": 16,
+        "cached_tokens": 0,
+        "start": 623176.463770959,
+        "end": 623178.327355277
+      },
+      {
+        "request_id": "cache-control-20480-1",
+        "input_tokens": 20480,
+        "output_tokens": 16,
+        "cached_tokens": 16384,
+        "start": 623178.327358847,
+        "end": 623179.268159838
+      }
+    ]
+  },
+  "profile": {
+    "scope": "rank0 profiled task intervals, not removable overhead or utilization counters",
+    "span_ms": 3670.24216,
+    "task_union_ms": 3601.29144,
+    "non_hcom_task_union_ms": 1601.7746,
+    "op_totals": [
+      {
+        "op": "hcom_allGather_",
+        "count": 1188,
+        "sum_task_ms": 926.2899
+      },
+      {
+        "op": "hcom_reduceScatter_",
+        "count": 564,
+        "sum_task_ms": 717.34058
+      },
+      {
+        "op": "hcom_alltoall_",
+        "count": 276,
+        "sum_task_ms": 361.46406
+      },
+      {
+        "op": "ScatterNdUpdateV2",
+        "count": 792,
+        "sum_task_ms": 351.15534
+      },
+      {
+        "op": "GroupedMatmulSwigluQuant",
+        "count": 276,
+        "sum_task_ms": 187.90786
+      },
+      {
+        "op": "Compressor",
+        "count": 372,
+        "sum_task_ms": 174.85088
+      },
+      {
+        "op": "QuantBatchMatmulV3",
+        "count": 1524,
+        "sum_task_ms": 139.04566
+      },
+      {
+        "op": "SparseAttnSharedkv",
+        "count": 276,
+        "sum_task_ms": 90.95902
+      },
+      {
+        "op": "HcPre",
+        "count": 552,
+        "sum_task_ms": 85.41058
+      },
+      {
+        "op": "GroupedMatmul",
+        "count": 276,
+        "sum_task_ms": 83.02514
+      },
+      {
+        "op": "MatMulV3",
+        "count": 287,
+        "sum_task_ms": 53.17846
+      },
+      {
+        "op": "TransposeBatchMatMul",
+        "count": 276,
+        "sum_task_ms": 47.43184
+      },
+      {
+        "op": "DynamicQuant",
+        "count": 1374,
+        "sum_task_ms": 42.64368
+      },
+      {
+        "op": "HcPost",
+        "count": 552,
+        "sum_task_ms": 37.1467
+      },
+      {
+        "op": "MoeInitRoutingV3",
+        "count": 276,
+        "sum_task_ms": 36.3376
+      },
+      {
+        "op": "MoeGatingTopKHash",
+        "count": 276,
+        "sum_task_ms": 27.0843
+      },
+      {
+        "op": "InplacePartialRotaryMul",
+        "count": 954,
+        "sum_task_ms": 25.11216
+      },
+      {
+        "op": "RmsNorm",
+        "count": 864,
+        "sum_task_ms": 24.78646
+      },
+      {
+        "op": "MatMulV2",
+        "count": 703,
+        "sum_task_ms": 23.55686
+      },
+      {
+        "op": "MoeTokenUnpermute",
+        "count": 276,
+        "sum_task_ms": 23.42822
+      }
+    ],
+    "cpu_api_totals": [
+      {
+        "name": "npu_fx_compiler inference",
+        "count": 6,
+        "inclusive_ms": 2743.77259
+      },
+      {
+        "name": "vllm::moe_forward_shared",
+        "count": 276,
+        "inclusive_ms": 1416.89548
+      },
+      {
+        "name": "vllm::dsa_forward",
+        "count": 276,
+        "inclusive_ms": 1209.08391
+      },
+      {
+        "name": "vllm::maybe_all_gather_and_maybe_unpad",
+        "count": 1116,
+        "inclusive_ms": 338.18488
+      },
+      {
+        "name": "aten::item",
+        "count": 804,
+        "inclusive_ms": 312.02222
+      },
+      {
+        "name": "aten::_local_scalar_dense",
+        "count": 804,
+        "inclusive_ms": 310.60042
+      },
+      {
+        "name": "vllm::all_gather",
+        "count": 1188,
+        "inclusive_ms": 308.25973
+      },
+      {
+        "name": "empty_tensor",
+        "count": 33384,
+        "inclusive_ms": 219.98578
+      },
+      {
+        "name": "aten::empty",
+        "count": 18558,
+        "inclusive_ms": 158.08525
+      },
+      {
+        "name": "Event::record",
+        "count": 1686,
+        "inclusive_ms": 151.85801
+      },
+      {
+        "name": "vllm::reduce_scatter",
+        "count": 564,
+        "inclusive_ms": 150.50166
+      },
+      {
+        "name": "vllm::matmul_and_reduce",
+        "count": 276,
+        "inclusive_ms": 131.77555
+      },
+      {
+        "name": "c10d::_allgather_base_",
+        "count": 1188,
+        "inclusive_ms": 113.47157
+      },
+      {
+        "name": "vllm::maybe_pad_and_reduce",
+        "count": 318,
+        "inclusive_ms": 100.41399
+      },
+      {
+        "name": "Dequeue@HcclAllGather",
+        "count": 1188,
+        "inclusive_ms": 98.38333
+      }
+    ]
+  },
+  "original_c32_repeat": {
+    "capsule": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-original-repeat",
+    "status": "PASS",
+    "source": {
+      "dataset": "nvidia/Open-SWE-Traces",
+      "revision": "fb0c0dccc7a5cce79b3f6de891848acdede36685",
+      "cohort": "openhands/deepseek_v4_flash/scale-swe",
+      "context_policy": "visible-observation-replay",
+      "tool_wait_policy": "unknown-replaced-with-zero",
+      "tokenizer": "/data/shared_models/DeepSeek-V4-Flash-0731-w8a8",
+      "chat_template": false,
+      "scope": "Recorded system/user/tool text and tool definitions, rendered as role-labelled text deltas; output budgets retokenize recorded visible assistant/reasoning/tool-call text. Each engine supplies its own actual output history. Fixed observations are not executed tools, authentic adaptive agents, original API usage, or SWE-bench task scores.",
+      "selection": {
+        "seed": 20260909,
+        "method": "uniform row sampling without replacement",
+        "population": 21208
+      },
+      "pilot_transform": {
+        "first_turns_per_trace": 3,
+        "output_budgets": "unchanged",
+        "unique_trajectories": 32,
+        "purpose": "bounded startup/traffic qualification; not full trajectory throughput"
+      },
+      "matrix_selection": {
+        "parent": "runs/agent-trace-acceptance/20260909-plans/swe-flash32-pilot3.json",
+        "selection": "all 32 distinct seeded pilot trajectories, unchanged three-turn budgets; same complete cohort at C8/C16/C32"
+      }
+    },
+    "requests": 96,
+    "actual_cached_tokens": 0,
+    "timing": {
+      "schema": "liveinfer-native-online/v1",
+      "requests": 96,
+      "committed_tokens": 22321,
+      "elapsed_seconds_including_drain": 83.71307643700857,
+      "committed_tokens_per_second": 266.6369574506779,
+      "requests_per_second": 1.1467742446693732,
+      "ttft_seconds": {
+        "p50": 2.420880089979619,
+        "p95": 9.1426647399785,
+        "p99": 10.642168146092445,
+        "max": 10.642168146092445
+      },
+      "e2e_seconds": {
+        "p50": 16.905483954004012,
+        "p95": 34.888797625899315,
+        "p99": 48.27560062299017,
+        "max": 48.27560062299017
+      },
+      "request_average_tpot_seconds": {
+        "p50": 0.08373748986438538,
+        "p95": 0.11470185207823912,
+        "p99": 0.1294596709491571,
+        "max": 0.1294596709491571
+      },
+      "observed_chunk_gap_seconds": {
+        "p50": 0.4493309980025515,
+        "p95": 0.6428926819935441,
+        "p99": 0.6733063869178295,
+        "max": 0.6833439519396052
+      },
+      "scope": "Native closed-loop client arrival to post-quorum committed output; no HTTP/tokenization. Speculation emits chunks: chunk gaps are not per-token device latency. Includes measured drain, excludes warmup. No SLO-qualified goodput or calibrated roofline claim."
+    }
+  }
+}
