@@ -34,6 +34,54 @@ class Protocol(unittest.TestCase):
         original.count=2;original.rope.idx=1
         self.assertNotEqual(sig,ns['signature'](original))
 
+    def test_capture_first_call_executes_before_returning(self):
+        # Emulate capture that records but does not commit writes. A successful
+        # later-replay test alone would miss an uninitialized first invocation.
+        import contextlib,json,os
+        from unittest.mock import patch
+        p=Path(__file__).with_name('draft_graph.py')
+        nodes=[x for x in ast.parse(p.read_text()).body if isinstance(x,(ast.FunctionDef,ast.ClassDef)) and x.name!='install']
+        box={}
+        class Graph:
+            def __init__(self):self.executions=0
+            def replay(self):
+                self.executions+=1
+                box['output'].fill_(7)
+        @contextlib.contextmanager
+        def capture(graph):
+            yield
+        fake=NS(Tensor=torch.Tensor,npu=NS(synchronize=lambda:None,NPUGraph=Graph,graph=capture))
+        ctx=NS(attn_metadata={'q':torch.tensor([1])},capturing=False)
+        ns=dict(torch=fake,copy=copy,dataclasses=dataclasses,Enum=Enum,RopeDataProxy=Proxy,
+                os=os,json=json,Path=Path,get_forward_context=lambda:ctx)
+        exec(compile(ast.Module(body=nodes,type_ignores=[]),str(p),'exec'),ns)
+        Drafter=type('AscendDSparkProposer',(),{})
+        d=Drafter();d.use_cuda_graph=False;d._dflash_num_context=24;d.num_speculative_tokens=5
+        for name in ('input_ids','positions','_dflash_hidden_states','_context_positions_buffer',
+                     '_dspark_seed_buffer','_dspark_draft_buffer'):
+            setattr(d,name,torch.zeros(1))
+        d._context_slot_mapping_buffers=[torch.zeros(1)]
+        box['output']=torch.zeros(1)
+        d._runnable=lambda **kw:box['output']
+        worker=NS(rank=0,model_runner=NS(drafter=d,vllm_config=NS(scheduler_config=NS(max_num_seqs=4))))
+        with patch.dict(os.environ,{'FULL_MIXED_OUTPUT':'/tmp','DRAFT_GRAPH_SHADOW':'0'}):
+            graph=ns['ExactDraftGraph'](worker);graph.receipt=lambda:None
+            out=graph(batch_size=4)
+        self.assertEqual(out.item(),7)
+        self.assertEqual(graph.graph.executions,1)
+        self.assertFalse(ctx.capturing)
+        ns['ExactDraftGraph'].receipt=lambda self:None
+        with patch.dict(os.environ,{'FULL_MIXED_OUTPUT':'/tmp','DRAFT_GRAPH_SHADOW':'0'}):
+            bank_set=ns['DraftGraphSet'](worker)
+            for count in range(1,5):
+                d._dflash_num_context=6*count
+                bank_set(batch_size=count)
+            self.assertEqual(set(bank_set.entries),{1,2,3,4})
+            self.assertTrue(all(g.graph.executions==1 for g in bank_set.entries.values()))
+            d._dflash_num_context=30
+            bank_set(batch_size=5)
+            self.assertEqual(len(bank_set.entries),4)
+
     def test_cpu_qli_uses_existing_mirrors_and_checks_them(self):
         p=Path(__file__).with_name('qli_cpu.py')
         f=next(x for x in ast.parse(p.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='_cpu_qli_metadata')

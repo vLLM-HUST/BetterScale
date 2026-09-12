@@ -49,16 +49,42 @@ GPU/CPU maxima before removing these synchronizations in performance runs.
  draft token IDs and byte-identical KV pools. This is dummy-model validation;
  real-weight and performance gates remain separate.
 
+### First-call failure discovered after the replay checks
+
+Run020 real weights passed35 target shadow checks/rank and8 draft replay checks,
+with exact outputs/tokens/KV and verified CPU QLI maxima. However, run021 added
+an explicit check of the INITIAL runtime capture invocation: draft tokens matched,
+but KV pools did not. Thus runs017–020 do not qualify initial-call semantics.
+The normal run019 timings are provisional until rerun with the correction.
+
+The corrective candidate explicitly replays once after capture before exposing
+the invocation's output/state. The first-call oracle now covers capture PLUS
+that initial replay, independently of the later eight replay checks. Never infer
+that capture is a committed invocation from successful later replay checks.
+
+Run022 passed the corrected first call AND eight later replays on all ranks
+with dummy weights. The bounded dispatcher now has at most one exact entry for
+each request count1–4, restricted to K5 verification (context rows =6×requests).
+New multi-count real-weight qualification is run024; do not infer it from022.
+
+The native FULL_DECODE_ONLY target in run023 failed whole-pool graph/eager
+comparison (917 bytes in the first16MiB chunk; output comparisons had passed).
+Padding/null-page writes are a hypothesis, not a diagnosed defect. For the
+incremental replay-policy comparison, `FULL_MIXED_ORACLE=native_graph` compares
+with the unchanged donor GRAPH from identical state, retaining exact byte checks.
+This is a distinct reference contract, NOT a relaxed graph/eager pass.
+
 ## Experimental draft contract
 
-`draft_graph.py` captures ONE observed exact shape for four-request verification,
-with at most24 target context rows. Different shapes/scalar metadata fall back.
+`draft_graph.py` holds at most four exact-shape entries, one per request count1–4,
+for K5 verification with exactly6 context rows/request. Different shapes/scalar
+metadata fall back.
 Its private bank copies fresh metadata into persistent tensors before replay;
 RoPE must NOT borrow/overwrite the target's global cache. Device values can
 change; scalar structure and CPU tensor values are checked in the key.
 The initial implementation favors a clear lifetime contract over minimizing
 metadata copies. It does not cover arbitrary request counts, prefill, K values,
-or target/draft shape dispatch, and is not advertised as production FULL support.
+or arbitrary target/draft shape dispatch, and is not advertised as production FULL support.
 
 Use `DRAFT_GRAPH_SHADOW=1` to compare eight captured draft replays with eager
 from restored identical KV bytes and require exactly identical draft tokens.

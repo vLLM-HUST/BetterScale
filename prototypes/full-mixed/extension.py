@@ -206,8 +206,13 @@ def _checked_graph_call(self, *args, **kwargs):
     for target, source in zip(caches, before): target.copy_(source)
     old_mode = ctx.cudagraph_runtime_mode
     try:
-        ctx.cudagraph_runtime_mode = CUDAGraphMode.NONE
-        expected = self.runnable(*args, **kwargs)
+        if os.environ.get('FULL_MIXED_ORACLE') == 'native_graph':
+            # Compare our replay policy with the unchanged donor graph, including
+            # all backing writes. This is NOT a graph/eager equivalence claim.
+            expected = _native_graph_call(self, *args, **kwargs)
+        else:
+            ctx.cudagraph_runtime_mode = CUDAGraphMode.NONE
+            expected = self.runnable(*args, **kwargs)
         torch.npu.synchronize()
         checks = []
         metadata = next(iter(ctx.attn_metadata.values()))

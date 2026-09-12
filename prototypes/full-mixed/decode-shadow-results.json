@@ -168,5 +168,143 @@
       }
     ],
     "boundary": "Eight exact draft-token and whole-KV byte checks/rank; not a performance result."
+  },
+  "hw3-real-020": {
+    "scope": "real weights, strict HCCL, FULL target plus draft replay; FIRST CAPTURE NOT QUALIFIED (run021 failed)",
+    "ranks": [
+      {
+        "rank": 0,
+        "target_checks": 35,
+        "draft_replay_checks": 8,
+        "max_difference": 0,
+        "kv_byte_exact": true,
+        "capture_checked": false
+      },
+      {
+        "rank": 1,
+        "target_checks": 35,
+        "draft_replay_checks": 8,
+        "max_difference": 0,
+        "kv_byte_exact": true,
+        "capture_checked": false
+      },
+      {
+        "rank": 2,
+        "target_checks": 35,
+        "draft_replay_checks": 8,
+        "max_difference": 0,
+        "kv_byte_exact": true,
+        "capture_checked": false
+      },
+      {
+        "rank": 3,
+        "target_checks": 35,
+        "draft_replay_checks": 8,
+        "max_difference": 0,
+        "kv_byte_exact": true,
+        "capture_checked": false
+      },
+      {
+        "rank": 4,
+        "target_checks": 35,
+        "draft_replay_checks": 8,
+        "max_difference": 0,
+        "kv_byte_exact": true,
+        "capture_checked": false
+      },
+      {
+        "rank": 5,
+        "target_checks": 35,
+        "draft_replay_checks": 8,
+        "max_difference": 0,
+        "kv_byte_exact": true,
+        "capture_checked": false
+      },
+      {
+        "rank": 6,
+        "target_checks": 35,
+        "draft_replay_checks": 8,
+        "max_difference": 0,
+        "kv_byte_exact": true,
+        "capture_checked": false
+      },
+      {
+        "rank": 7,
+        "target_checks": 35,
+        "draft_replay_checks": 8,
+        "max_difference": 0,
+        "kv_byte_exact": true,
+        "capture_checked": false
+      }
+    ]
+  },
+  "hw3-draft-022": {
+    "scope": "dummy, strict HCCL; explicit initial replay after capture",
+    "ranks": [
+      {
+        "captured": true,
+        "replays": 15,
+        "fallbacks": 25,
+        "checks": 8,
+        "capture_checked": true,
+        "rank": 0
+      },
+      {
+        "captured": true,
+        "replays": 15,
+        "fallbacks": 25,
+        "checks": 8,
+        "capture_checked": true,
+        "rank": 1
+      },
+      {
+        "captured": true,
+        "replays": 15,
+        "fallbacks": 25,
+        "checks": 8,
+        "capture_checked": true,
+        "rank": 2
+      },
+      {
+        "captured": true,
+        "replays": 15,
+        "fallbacks": 25,
+        "checks": 8,
+        "capture_checked": true,
+        "rank": 3
+      },
+      {
+        "captured": true,
+        "replays": 15,
+        "fallbacks": 25,
+        "checks": 8,
+        "capture_checked": true,
+        "rank": 4
+      },
+      {
+        "captured": true,
+        "replays": 15,
+        "fallbacks": 25,
+        "checks": 8,
+        "capture_checked": true,
+        "rank": 5
+      },
+      {
+        "captured": true,
+        "replays": 15,
+        "fallbacks": 25,
+        "checks": 8,
+        "capture_checked": true,
+        "rank": 6
+      },
+      {
+        "captured": true,
+        "replays": 15,
+        "fallbacks": 25,
+        "checks": 8,
+        "capture_checked": true,
+        "rank": 7
+      }
+    ]
   }
 }
