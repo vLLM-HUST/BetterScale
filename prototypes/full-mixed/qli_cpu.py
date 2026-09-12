@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Adapted from pinned vLLM-Ascend dsa_cp.py (Apache-2.0).
 """Use the already-created local CPU mirrors for QLI tiling maxima.
 
@@ -20,9 +21,6 @@ def configure(worker, enabled=False, verify=False):
 def _cpu_qli_metadata(self, query_start_loc, seq_lens, seq_lens_q, num_reqs):
     if not _enabled or self.compressor_ratio != 4:
         return _original(self, query_start_loc, seq_lens, seq_lens_q, num_reqs)
-    if self.compressor_ratio != 4:
-        return None
-
     cache_key = "cp_qli"
     metadata = self.common_ratio_to_sas_metadata.get(cache_key)
 

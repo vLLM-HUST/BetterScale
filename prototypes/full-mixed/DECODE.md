@@ -1,110 +1,134 @@
 # Decode/draft graph and replay investigation
 
-Pinned donors, opt-in worker extension, September12. This is experimental,
-not a replacement of the installed donor runtime.
+September 12, 2026. **The bounded DSpark draft FULL graph works, and improves
+matched steady decode cycles by about 20–21%. A stable whole-cohort throughput
+improvement is not established.** Changes are opt-in worker extensions; pinned
+upstreams and installed runtimes are unchanged.
 
-## What exists before our changes
+## What the donor already does
 
-Target decode has FULL graph. DSpark explicitly sets `use_cuda_graph=False`
-in its constructor, independently of the user's `enforce_eager` choice.
-The native scheduler already supports async DSpark scheduling. Do not describe
-this work as inventing async scheduling for a wholly synchronous donor.
+Target decode uses FULL graph. DSpark explicitly sets `use_cuda_graph=False`
+in its constructor, independently of `enforce_eager`. Native async DSpark
+scheduling already exists. Our change does not introduce a new scheduler or
+transplant LiveInfer's entire N+2 budget/receipt protocol.
 
-The wrapper's current-stream host fence protects task-parameter updates in
-other backends. The DSV4 runner excludes `use_sparse/use_compress` from those
-updates. A narrowly admitted DSV4 target can instead replay on the same stream
-as its input/metadata production. `ordered_replay.py` does that, retaining
-internal graph event dependencies. It is **not** by itself a complete
-LiveInfer-style N+2 budget/receipt protocol.
+Native profiling confirmed target replay with eager draft between calls. Dense
+kernel tracks alone are not proof of graph replay. Three avoidable host fences
+were identified: the target wrapper's stream synchronization and two QLI tiling
+maxima read with GPU `.max().item()`.
 
-QLI's builder already has local CPU query-offset/sequence mirrors, but obtains
-two tiling maxima with GPU `.max().item()`. `qli_cpu.py` uses the same CPU
-mirrors already consumed by SAS metadata; optional verification asserts exact
-GPU/CPU maxima before removing these synchronizations in performance runs.
+## Implemented, reversible changes
 
-## Evidence so far
+- `ordered_replay.py`: admit only DSV4 FULL replay on the same stream as input
+  production. Retain graph-internal event dependencies. The ordinary wrapper
+  fence protects task-parameter updates in other backends; the DSV4 runner
+  excludes `use_sparse/use_compress` from that update path. Other paths retain
+  the original behavior. Stream identity is checked, not assumed.
+- `qli_cpu.py`: reuse the existing local CPU query-offset and sequence mirrors
+  for the identical tiling maxima. Optional verification asserts exact GPU/CPU
+  equality. Missing mirrors and ineligible paths retain the original builder.
+- `draft_graph.py`: private persistent metadata banks capture the complete
+  `_run_merged_draft` body: context KV work, neural forward, logits and K5 Markov
+  heads. Metadata preparation before that body remains outside capture.
+  At most four exact-shape entries cover 1–4 requests, each with six context
+  rows. Unsupported shapes/scalars fall back to eager. RoPE banks are private,
+  not aliases of the target's global cache. Input addresses/layouts are guarded.
 
-- `tp8-decode-013-profile`: four-layer dummy, K5, four64-token inputs and
- 64-token outputs. All eight native profiles collected, exported offline because
- the workers are daemonic. Rank1 records66 native graph replay calls, matching
- target forwards, with eager draft calls in between. No claim that dense tasks
- are graph replay. Raw artifacts remain on hw3 in the same capsule.
-- `tp8-ordered-014-shadow`:66 same-state target graph/eager checks on each rank,
- output/MTP differences0 and every KV pool byte-identical.
-- `tp8-qli-016-shadow`:65 same-state checks/rank, same exact outcome, with
- CPU/GPU QLI maxima verified. Both use strict HCCL and dummy weights.
- See `decode-shadow-results.json`. A shadow snapshot fence is not evidence of
- concurrent metadata-buffer reuse safety.
-- `tp8-real-015-replay-study`: one real-model engine, alternating original fence
- and ordered target replay. Completion times differ with20–32 scheduled waves;
- they are NOT evidence of a20–40% replay speedup. Rank0 median target-to-target
- event intervals were68.25/67.41/68.49/68.30ms. Target forward device spans are
- roughly47–49ms, draft around10ms, and the gap from draft end to next target
- around8.3–8.8ms. Event spans include queued work/waits, not pure kernel sums.
- Removing the target fence alone is, at most, a small improvement in this pilot.
-- `tp8-draft-017-capture`: private stable metadata banks allowed the entire
- `_run_merged_draft` body to capture and replay32 times/rank, with8 shape
- fallbacks/rank. This includes context KV work, draft neural forward, logits
- and the K5 Markov chain—not draft metadata preparation. Run018 then passed8 same-state draft graph/eager checks on every rank: exact
- draft token IDs and byte-identical KV pools. This is dummy-model validation;
- real-weight and performance gates remain separate.
+**Capture is not a committed invocation.** The initial call explicitly replays
+once after capture before exposing its output/state. Same-state checks cover
+that first invocation separately from subsequent replays.
 
-### First-call failure discovered after the replay checks
+## Correctness evidence and its boundaries
 
-Run020 real weights passed35 target shadow checks/rank and8 draft replay checks,
-with exact outputs/tokens/KV and verified CPU QLI maxima. However, run021 added
-an explicit check of the INITIAL runtime capture invocation: draft tokens matched,
-but KV pools did not. Thus runs017–020 do not qualify initial-call semantics.
-The normal run019 timings are provisional until rerun with the correction.
+[Receipts](decode-shadow-results.json) preserve all-rank observations.
 
-The corrective candidate explicitly replays once after capture before exposing
-the invocation's output/state. The first-call oracle now covers capture PLUS
-that initial replay, independently of the later eight replay checks. Never infer
-that capture is a committed invocation from successful later replay checks.
+- Run024: real full weights, TP8, K5, strict HCCL, 3 GiB KV/rank for shadow
+  headroom. All eight ranks passed 21 target comparisons against the unchanged
+  **native graph**, with exact outputs/MTP and byte-identical KV pools.
+  Draft counts 1, 3 and 4 each passed first-call graph/eager checks, followed by
+  respectively 4, 3 and 8 replay checks/rank. Draft token IDs and KV bytes match.
+- Run025: dummy TP8 checks cover count 2, including the initial call and eight
+  later replays/rank. **Real-weight count-2 numerical qualification remains open.**
+- Run026: ordinary HCCL, real weights, normal auto KV sizing, all six measured
+  cohorts and the separate profile completed; graph entries 1–4 all executed.
+  Completion is not an independent numerical oracle.
+- Earlier real target FULL-mixed graph/eager acceptance remains documented in
+  [README](README.md). It is not interchangeable with the native-graph reference.
 
-Run022 passed the corrected first call AND eight later replays on all ranks
-with dummy weights. The bounded dispatcher now has at most one exact entry for
-each request count1–4, restricted to K5 verification (context rows =6×requests).
-New multi-count real-weight qualification is run024; do not infer it from022.
+Two failures are retained rather than hidden. Run021 exposed missing KV writes
+on the first capture invocation; adding the initial replay fixed it. Runs017–020
+only qualified later replays, so their performance pilot is superseded here.
+Run023 native target graph/eager whole-pool comparison found 917 differing bytes
+in the first 16 MiB chunk after output checks passed. Padding/null-page writes
+are a hypothesis, not a diagnosis. Run024 uses the unchanged native **graph** as
+reference for the incremental replay policy; it is not a relaxed graph/eager pass.
 
-The native FULL_DECODE_ONLY target in run023 failed whole-pool graph/eager
-comparison (917 bytes in the first16MiB chunk; output comparisons had passed).
-Padding/null-page writes are a hypothesis, not a diagnosed defect. For the
-incremental replay-policy comparison, `FULL_MIXED_ORACLE=native_graph` compares
-with the unchanged donor GRAPH from identical state, retaining exact byte checks.
-This is a distinct reference contract, NOT a relaxed graph/eager pass.
+## Corrected same-engine performance
 
-## Experimental draft contract
+Run026 uses the original `FULL_DECODE_ONLY` target path, full real
+DeepSeek-V4-Flash-0731-w8a8 on 8×910B2, ordinary HCCL, four 64-token inputs and
+128 output tokens/request. Six alternating phases use the same loaded engine:
+original / ordered+CPUQLI / plus draft graph, repeated twice. Short warmup precedes
+each phase. Timing is unprofiled; the profile is a separate final cohort.
 
-`draft_graph.py` holds at most four exact-shape entries, one per request count1–4,
-for K5 verification with exactly6 context rows/request. Different shapes/scalar
-metadata fall back.
-Its private bank copies fresh metadata into persistent tensors before replay;
-RoPE must NOT borrow/overwrite the target's global cache. Device values can
-change; scalar structure and CPU tensor values are checked in the key.
-The initial implementation favors a clear lifetime contract over minimizing
-metadata copies. It does not cover arbitrary request counts, prefill, K values,
-or arbitrary target/draft shape dispatch, and is not advertised as production FULL support.
+Select adjacent waves with **four actual requests, six target queries each**.
+Every rank has 21 selected intervals in every phase. Rank-0 medians in ms:
 
-Use `DRAFT_GRAPH_SHADOW=1` to compare eight captured draft replays with eager
-from restored identical KV bytes and require exactly identical draft tokens.
-Keep shadow and profiler costs out of unprofiled performance measurements.
+| Policy | Cycle, pass 1 / 2 | Draft device span, pass 1 / 2 | Cohort seconds, pass 1 / 2 |
+| --- | ---: | ---: | ---: |
+| Original | 65.64 / 64.32 | 7.91 / 6.79 | 4.320 / 3.856 |
+| Ordered + CPU QLI | 64.89 / 64.32 | 8.09 / 7.27 | 3.292 / 4.447 |
+| Plus draft FULL | **51.74 / 51.50** | **4.15 / 4.12** | 3.750 / 3.797 |
 
-## Reproduction entry points
+Cycle reduction is 21.2% / 19.9%, about 1.27× / 1.25× matched-wave rate.
+All-rank median cycle ranges are 65.14–65.70 / 63.60–64.73 ms originally and
+51.63–51.78 / 51.50–51.57 ms with draft FULL.
+See [all-rank CSV](real-decode-corrected.csv) and [protocol summary](real-decode-corrected.json).
 
-Same launcher/runtime/lease contract as README. Extra flags:
+**Do not turn this into a serving throughput claim.** Actual positive wave counts
+are 49/34/50/43/52/50 despite fixed output lengths. Speculative acceptance and
+batch evolution differ; runtime captures can also occur as requests finish.
+There are only two passes, fixed order, and no long-context or high-concurrency
+service qualification. Fence removal alone has no stable large cycle benefit.
 
-- `--decode-study`: warm up, observe four64-token prompts producing64 tokens.
-- `--ordered-replay`: DSV4 target stream-ordered replay experiment.
-- `--cpu-qli --verify-qli`: exact CPU/GPU tiling-maxima comparison; omit verification
- only in a separately qualified performance run.
-- `--draft-graph`: bounded private-bank runtime capture.
-- `--replay-study --rounds 4`: original/ordered/original/ordered in one engine.
-- `--policy-study --rounds 6`: original / ordered+CPUQLI / plus draft graph,
- repeated twice, warming each phase. `--output-tokens` controls measured output.
-- `--profile-after`: separate short native profile after unprofiled phases.
+## Remaining intervals, not imaginary free performance
 
-`diagnostics.py` stores per-rank wave token counts and device-event spans.
-`summarize_decode_trace.py` summarizes native host scopes and compute/communication
-coverage. Host scope time, device interval and true idle time are distinct;
-never add overlapping spans or count all post-target time as an idle bubble.
+With draft FULL, rank-0 target-to-draft intervals are about 1.44–1.45 ms and
+draft-end-to-next-target intervals 6.10–6.45 ms. The latter remains material.
+They contain metadata, copies and sampling—not necessarily idle hardware.
+Device event spans include queued work and waits. Draft host-call spans shrink
+from about 35 ms to 10 ms, but host and device overlap: never add those savings
+as if they were serialized latency. Likewise target span changes can reflect
+arrival/collective waits rather than a different neural operator.
+
+The native eight-rank profile and TraceLoom candidate clock fit live in:
+`/workspace/strengthen-dsv4/runs/hw3-real-policy-026/analysis/`.
+The short final profile records eight native target replays and eight native
+draft replays on every rank, identified inside their respective host scopes.
+Each has eleven forward calls overall; prefill/ineligible calls remain outside
+these replay counts.
+Compressed timeline: `target-draft-tp8-end-aligned.json.gz`. Clock fits are
+**display-only candidate alignment**, not a physical simultaneity proof. The fitted ranks have holdout P95 residuals of 1.10–1.83 microseconds. Raw
+sources, matching markers and holdout receipts are retained. [Profile helpers](profile_tools/README.md)
+reproduce the import, fit and native export without ingesting raw JSON into chat.
+
+## Reproduction
+
+Use the existing launcher/runtime/model/lease contract in README. Native control:
+`FULL_MIXED_PATCH=0`, `--mode FULL_DECODE_ONLY --tp 8 --spec --budget 288 --real`.
+
+- `--policy-study --rounds 6 --output-tokens 128 --profile-after`: run026 protocol.
+- `--decode-study --requests N`: bounded count 1–4; default 4.
+- `--ordered-replay --cpu-qli --draft-graph`: enable the combined candidate.
+- `--verify-qli`: exact CPU/GPU maxima assertion, excluded from timing runs.
+- `FULL_MIXED_SHADOW=1 FULL_MIXED_ORACLE=native_graph DRAFT_GRAPH_SHADOW=1`,
+  strict HCCL and `--kv-gib 3`: run024 incremental-state qualification.
+- `--replay-study --rounds 4`: fence-only alternating control.
+
+`diagnostics.py` records per-rank scheduler waves and event spans;
+`summarize_policy.py` selects equal-work intervals. CPU contracts cover stable
+metadata banks, first-call execution, bounded bank count and stream admission.
+
+The extension is a useful working prototype, **not production-default FULL draft
+support**. Broader request counts, K values, metadata shapes, long-running reuse
+and service-level throughput require their own qualification.

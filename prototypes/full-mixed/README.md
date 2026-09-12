@@ -130,3 +130,9 @@ CPU contracts (runtime Python supplies NumPy/Torch):
 /workspace/my-ascend-workspace/runs/liveinfer-online/20260908-donor-local-runtime/env/bin/python \
  prototypes/full-mixed/test_contract.py
 ```
+
+## Decode and draft
+
+See [DECODE.md](DECODE.md) for the opt-in private-bank DSpark FULL draft,
+stream-ordered replay, exact initial-call checks and corrected same-engine timings.
+The native proposer remains eager unless the experimental body wrapper is enabled.

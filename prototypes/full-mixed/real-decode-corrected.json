@@ -1,0 +1,89 @@
+{
+  "engine": "runs/hw3-real-policy-026/engine",
+  "selection": "Consecutive positive waves with exactly four requests, each scheduling six target query tokens; median event intervals per rank.",
+  "nonclaims": "Inter-forward intervals include metadata/copy/sampling work; not all idle. Cohort throughput is affected by speculative acceptance. Device event durations are spans, not kernel sums.",
+  "phases": [
+    {
+      "phase": 0,
+      "policy": 0,
+      "cohort_seconds": 4.319625268923119,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 49
+    },
+    {
+      "phase": 1,
+      "policy": 1,
+      "cohort_seconds": 3.292445712024346,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 34
+    },
+    {
+      "phase": 2,
+      "policy": 2,
+      "cohort_seconds": 3.750354646006599,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 50
+    },
+    {
+      "phase": 3,
+      "policy": 0,
+      "cohort_seconds": 3.8557102070190012,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 43
+    },
+    {
+      "phase": 4,
+      "policy": 1,
+      "cohort_seconds": 4.446592919062823,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 52
+    },
+    {
+      "phase": 5,
+      "policy": 2,
+      "cohort_seconds": 3.796648966963403,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 50
+    }
+  ],
+  "scope": "TP8 real DeepSeek-V4-Flash-0731-w8a8, native FULL_DECODE_ONLY, K5, 4x64 input/128 output, ordinary HCCL; corrected initial replay and bounded 1-4 draft graph banks. Not a service throughput claim.",
+  "capsule": "hw3:/workspace/my-ascend-workspace/runs/strengthen-dsv4-full-mixed/tp8-real-026-native-policy-study",
+  "implementation_commit": "d5230f5 plus --requests option (default four, unchanged study cohort)",
+  "profile_coverage": {
+    "ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "identical_each_rank": {
+      "native_replays_by_enclosing_host_scope": {
+        "strengthen::target_forward": 8,
+        "strengthen::draft_forward": 8
+      },
+      "scope_calls": {
+        "strengthen::target_forward": 11,
+        "strengthen::draft_forward": 11
+      }
+    },
+    "method": "CANN aclmdlRIExecuteAsync interval contained in named PYTORCH_API host forward scope; separate 16-output profile, including prefill/ineligible calls."
+  },
+  "profile_alignment": {
+    "status": "candidate_only; display-only",
+    "holdout_p95_ns_by_rank": {
+      "1": 1102.4251065677329,
+      "2": 1388.5023619842357,
+      "3": 1227.0126942886889,
+      "4": 1177.443816622541,
+      "5": 1832.8370481438455,
+      "6": 1249.7464600238904,
+      "7": 1153.7969184650553
+    },
+    "source_archive_sha256": "1b209348716d8bfee6a0faa432247b5e8c17c2499f7aae5a03e9a876de7b9981",
+    "timeline": "/workspace/strengthen-dsv4/runs/hw3-real-policy-026/analysis/target-draft-tp8-end-aligned.json.gz"
+  }
+}

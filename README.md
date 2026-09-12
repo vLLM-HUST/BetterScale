@@ -55,6 +55,13 @@ hypotheses, not implemented or promised speedups.
 [The bounded prototype](prototypes/full-mixed/README.md) has passed TP2 and TP8 dummy
 DSV4 + DSpark K5 target FULL replay, including mixed waves and~4K-token buckets.
 TP8 deterministic controls include byte-exact shared KV pools and exact valid
-output/MTP comparisons; the full real-weight model also completed the probe. It is **not production enabled**
+output/MTP comparisons; the full real-weight model passed the bounded same-state target shadow. It is **not production enabled**
 and does not yet establish full-model serving speedup. Release submodules and
 installed runtimes remain unchanged.
+
+## Decode/draft continuation
+
+[DSpark FULL draft and stream-ordered replay](prototypes/full-mixed/DECODE.md)
+now have bounded TP8 state checks and a corrected real-model comparison:
+matched four-request K5 cycles fall from about65 to52 ms. Whole-cohort throughput
+improvement is not yet stable; this remains opt-in, not a production claim.

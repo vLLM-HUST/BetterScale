@@ -73,3 +73,36 @@ Native MRV1's max(K+1,TP) alignment rejects K5/TP8 although LCM24 works. The
 probe's alignment repair changes capture bucket sizing only, not speculation
 length. Both large and decode buckets must remain divisible by the joint
 alignment and survive max-capture filtering.
+
+## Decode/draft continuation
+
+Enter [`prototypes/full-mixed/DECODE.md`](../../../../../prototypes/full-mixed/DECODE.md)
+for the scoped stream-ordered target replay, CPU QLI maxima and private-bank
+DSpark body graph. Native DSpark explicitly disables graph in its constructor;
+its config flag alone is not evidence of graph coverage. The donor already has
+async DSpark scheduling: reuse it rather than transplanting another scheduler.
+
+A runtime capture is initialization, not a committed invocation. Run021's first
+capture returned matching dummy token IDs but different KV bytes. Explicit first
+replay fixed that boundary in run022; later replay checks alone had missed it.
+Check the INITIAL invocation as well as later replays. The CPU emulation test
+protects this contract even on a backend whose capture does not execute writes.
+
+Match the reference to the owned change without erasing failures: native
+FULL_DECODE_ONLY graph/eager whole-pool comparison failed in run023 after output
+checks passed. Its cause is not established. `native_graph` compares our replay
+policy against the unchanged native graph with exact backing-byte checks; it is
+NOT a graph/eager equivalence claim. Keep this distinction in results.
+
+Compare equal-work intervals (four real requests each scheduling six target
+queries) and report the actual wave counts. Greedy/speculative nondeterminism
+changed a fixed-output cohort from20 to32 waves in run015; cohort completion
+time alone would have dramatically overstated the small fence-only benefit.
+Device-event spans include queued work/waits; the inter-forward interval includes
+metadata/copies/sampling and is not synonymous with idle hardware.
+
+For repeated eight-rank profiles use the tested
+[`profile_tools`](../../../../../prototypes/full-mixed/profile_tools/README.md).
+Worker-side torch-npu export cannot parse in a daemon; collect first, parse
+offline. Reuse TraceLoom's fitter/exporter, retain candidate-only clock receipts,
+and link compressed timelines rather than putting raw JSON into the conversation.

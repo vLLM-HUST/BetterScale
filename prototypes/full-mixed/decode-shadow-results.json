@@ -306,5 +306,90 @@
         "rank": 7
       }
     ]
+  },
+  "hw3-real-shadow-024": {
+    "reference": "real weights; target versus unchanged native FULL graph, draft versus eager",
+    "initial_call_checked": true,
+    "strict_hccl": true,
+    "ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "identical_receipt_each_rank": {
+      "enabled": true,
+      "entries": [
+        {
+          "requests": 1,
+          "captured": true,
+          "replays": 4,
+          "fallbacks": 0,
+          "checks": 4,
+          "capture_checked": true
+        },
+        {
+          "requests": 3,
+          "captured": true,
+          "replays": 3,
+          "fallbacks": 0,
+          "checks": 3,
+          "capture_checked": true
+        },
+        {
+          "requests": 4,
+          "captured": true,
+          "replays": 11,
+          "fallbacks": 0,
+          "checks": 8,
+          "capture_checked": true
+        }
+      ],
+      "replays": 18,
+      "fallbacks": 6,
+      "target_native_graph_checks": 21
+    }
+  },
+  "hw3-draft-025": {
+    "reference": "dummy weights; draft versus eager; two-request coverage",
+    "initial_call_checked": true,
+    "strict_hccl": true,
+    "ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "identical_receipt_each_rank": {
+      "enabled": true,
+      "entries": [
+        {
+          "requests": 1,
+          "captured": true,
+          "replays": 16,
+          "fallbacks": 0,
+          "checks": 8,
+          "capture_checked": true
+        },
+        {
+          "requests": 2,
+          "captured": true,
+          "replays": 17,
+          "fallbacks": 0,
+          "checks": 8,
+          "capture_checked": true
+        }
+      ],
+      "replays": 33,
+      "fallbacks": 4
+    }
   }
 }
