@@ -1,6 +1,14 @@
 [
   {
     "rank": 0,
+    "launch_to_task_us_p50": 59548.545,
+    "launch_to_task_us_p90": 82008.045,
+    "wait_event": {
+      "count": 5508,
+      "total_ms": 38.00742,
+      "max_ms": 0.03682,
+      "over_1ms": 0
+    },
     "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-0_4359_20260912154430823_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_0.db",
     "task_count": 20727,
     "span_ms": 3670.24216,
@@ -191,6 +199,14 @@
   },
   {
     "rank": 1,
+    "launch_to_task_us_p50": 2035.325,
+    "launch_to_task_us_p90": 43903.845,
+    "wait_event": {
+      "count": 5508,
+      "total_ms": 40.06982,
+      "max_ms": 0.03203,
+      "over_1ms": 0
+    },
     "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-1_4361_20260912154430868_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_1.db",
     "task_count": 20727,
     "span_ms": 3674.64334,
@@ -381,6 +397,14 @@
   },
   {
     "rank": 2,
+    "launch_to_task_us_p50": 58625.605,
+    "launch_to_task_us_p90": 84182.185,
+    "wait_event": {
+      "count": 5508,
+      "total_ms": 37.25869,
+      "max_ms": 0.03876,
+      "over_1ms": 0
+    },
     "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-2_4363_20260912154430832_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_2.db",
     "task_count": 20727,
     "span_ms": 3680.07788,
@@ -571,6 +595,14 @@
   },
   {
     "rank": 3,
+    "launch_to_task_us_p50": 3933.125,
+    "launch_to_task_us_p90": 26629.315,
+    "wait_event": {
+      "count": 5508,
+      "total_ms": 54.64734,
+      "max_ms": 14.27622,
+      "over_1ms": 1
+    },
     "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-3_4365_20260912154430905_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_3.db",
     "task_count": 20727,
     "span_ms": 3659.92362,
@@ -761,6 +793,14 @@
   },
   {
     "rank": 4,
+    "launch_to_task_us_p50": 38696.01,
+    "launch_to_task_us_p90": 52441.35,
+    "wait_event": {
+      "count": 5508,
+      "total_ms": 40.88523,
+      "max_ms": 0.0482,
+      "over_1ms": 0
+    },
     "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-4_4367_20260912154430880_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_4.db",
     "task_count": 20727,
     "span_ms": 3673.17454,
@@ -951,6 +991,14 @@
   },
   {
     "rank": 5,
+    "launch_to_task_us_p50": 17780.14,
+    "launch_to_task_us_p90": 45706.1,
+    "wait_event": {
+      "count": 5508,
+      "total_ms": 40.45627,
+      "max_ms": 0.0402,
+      "over_1ms": 0
+    },
     "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-5_4369_20260912154430872_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_5.db",
     "task_count": 20727,
     "span_ms": 3669.21572,
@@ -1141,6 +1189,14 @@
   },
   {
     "rank": 6,
+    "launch_to_task_us_p50": 10024.43,
+    "launch_to_task_us_p90": 24635.5,
+    "wait_event": {
+      "count": 5508,
+      "total_ms": 40.02589,
+      "max_ms": 0.04069,
+      "over_1ms": 0
+    },
     "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-6_4372_20260912154430886_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_6.db",
     "task_count": 20727,
     "span_ms": 3698.57232,
@@ -1331,6 +1387,14 @@
   },
   {
     "rank": 7,
+    "launch_to_task_us_p50": 34902.26,
+    "launch_to_task_us_p90": 50414.48,
+    "wait_event": {
+      "count": 5508,
+      "total_ms": 38.90379,
+      "max_ms": 0.03478,
+      "over_1ms": 0
+    },
     "provider": "/workspace/my-ascend-workspace/runs/donor-c32-diagnosis/20260912-c32-profile/engine/profile/rank-7_4375_20260912154430898_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_7.db",
     "task_count": 20727,
     "span_ms": 3666.93668,

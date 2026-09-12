@@ -78,3 +78,12 @@ cross-rank subtraction. Never sum rank gap durations as wall-time savings.
 Next discriminating work: recover the wait_event's matching producer and
 queue order; assess whether the blocking is profiler-induced or persists
 without profiling. Do not claim proven heterogeneous graph execution.
+
+## Follow-up correction and FULL-graph gap map
+
+The 14ms wait_event is the only >1ms instance among rank3's 5,508 calls;
+other ranks have no >1ms call, including the gappier rank1. It is not the
+unified root cause. See [the source audit](../.agents/skills/repo-knowledge/scenarios/extend-dsv4-full-graph/investigation.md)
+for submission-lead evidence, attribution limits, and the prefill/mixed FULL
+graph implementation gaps. The gap JSON now also records these repeatable
+launch-lead and wait-event counters.

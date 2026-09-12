@@ -22,7 +22,9 @@ for rank in range(8):
    _,end,name,stream,hs,he,conn=nxt
    kind='host_started_after_gap_start' if hs>=lo else ('launch_overlaps_gap_start' if he>lo else 'submitted_before_gap')
    details.append(dict(start_ms=(lo-rows[0][0])/1e6,gap_us=(hi-lo)/1e3,next=name,stream=stream,launch_start_after_gap_us=(hs-lo)/1e3,launch_end_before_device_us=(hi-he)/1e3,kind=kind,connection=conn,absolute_gap_start_ns=lo))
+ lags=sorted((x[0]-x[5])/1e3 for x in rows if x[5] is not None)
+ wait=c.execute("select count(*),sum(a.endNs-a.startNs)/1e6,max(a.endNs-a.startNs)/1e6,sum(a.endNs-a.startNs>1000000) from CANN_API a join STRING_IDS s on s.id=a.name where s.value='aclrtStreamWaitEvent'").fetchone()
  summary={k:dict(count=sum(d['kind']==k for d in details),gap_ms=sum(d['gap_us'] for d in details if d['kind']==k)/1000) for k in ['host_started_after_gap_start','launch_overlaps_gap_start','submitted_before_gap']}
- result.append(dict(rank=rank,provider=db[0],task_count=len(rows),span_ms=(merged[-1][1]-merged[0][0])/1e6,coverage_ms=sum(hi-lo for lo,hi in merged)/1e6,gaps_over_50us=len(gaps),gaps_ms=sum(hi-lo for lo,hi in gaps)/1e6,next_compute_gaps=summary,largest_gaps=sorted(details,key=lambda d:-d['gap_us'])[:15]))
+ result.append(dict(rank=rank,launch_to_task_us_p50=lags[len(lags)//2],launch_to_task_us_p90=lags[int(len(lags)*.9)],wait_event=dict(count=wait[0],total_ms=wait[1],max_ms=wait[2],over_1ms=wait[3]),provider=db[0],task_count=len(rows),span_ms=(merged[-1][1]-merged[0][0])/1e6,coverage_ms=sum(hi-lo for lo,hi in merged)/1e6,gaps_over_50us=len(gaps),gaps_ms=sum(hi-lo for lo,hi in gaps)/1e6,next_compute_gaps=summary,largest_gaps=sorted(details,key=lambda d:-d['gap_us'])[:15]))
  print(json.dumps({k:v for k,v in result[-1].items() if k not in ['provider','largest_gaps']}))
 open(a.output,'w').write(json.dumps(result,indent=2)+'\n')
