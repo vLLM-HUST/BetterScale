@@ -8,7 +8,7 @@ import unittest
 
 class SplitDraftTests(unittest.TestCase):
     def test_context_hook_restored_after_success_and_failure(self):
-        path = (Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('split_draft.py')
+        path = (Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('split_draft/__init__.py')
         node = next(n for n in ast.parse(path.read_text()).body
                     if isinstance(n, ast.FunctionDef) and n.name == 'query_body')
         ns = dict(contextmanager=contextmanager)

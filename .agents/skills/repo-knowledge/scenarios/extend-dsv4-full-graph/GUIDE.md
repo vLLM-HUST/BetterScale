@@ -24,6 +24,17 @@ build output aside recoverably) removes it. Assert no console entry or cli.py in
 the wheel and resolve the installed worker class without depending on checkout
 PYTHONPATH. Native-base stubs cover packaging only, not accelerator execution.
 
+The implementation now uses six closed patch directories: compat_lcm,
+target_full, ordered_replay, qli_cpu, split_draft, cross_step. Each owns install;
+worker alone composes them. split_draft owns _graph.py and _metadata.py. Old flat
+file paths in historical experiments refer to their original capsules, not
+current maintained code. Importing qli_cpu no longer mutates a donor method;
+ordered_replay owns its wrapper hook rather than borrowing target_full's installer.
+Both install after warmup (the previous ordered wrapper was inactive/fallback
+during warmup). `tests/test_patch_installation.py` covers import inertness, isolated
+hook ownership and repeat installation against native CPU doubles. This is not
+new NPU qualification or a promise of arbitrary subset performance.
+
 Ascend preserves explicit worker_cls (only `auto` is substituted). Removing this
 worker also removes its K5/TP8 LCM repair, so a native rollback must use a known
 working donor command, not promise an identical-config unpatched A/B. Historical

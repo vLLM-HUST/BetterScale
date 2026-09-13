@@ -7,8 +7,8 @@ from contextlib import contextmanager
 import torch
 from torch.profiler import record_function
 from vllm.forward_context import get_forward_context
-from .draft_graph import DraftGraphSet, ExactDraftGraph
-from .metadata import graph_metadata
+from ._graph import DraftGraphSet, ExactDraftGraph
+from ._metadata import graph_metadata
 
 
 @contextmanager
@@ -23,7 +23,7 @@ def query_body(drafter):
 
 
 # 当前服务实际安装的外层分流器。理解第一项 draft FULL 优化时，先沿 self.decode
-# 进入 draft_graph.py；下面的 context/query 拆分是后来另一项优化，不要混算收益。
+# 进入本目录 _graph.py；下面的 context/query 拆分是后来另一项优化，不要混算收益。
 class SplitDraftGraphSet(DraftGraphSet):
     def __init__(self, worker):
         super().__init__(worker)

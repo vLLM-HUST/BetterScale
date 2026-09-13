@@ -83,11 +83,14 @@ class WorkerLifecycle(unittest.TestCase):
         import copy,os,sys
         from types import ModuleType
         calls=[];modules={}
-        for name,function in [('target','install'),('split_draft','install'),('cross_step','install'),
-                              ('ordered_replay','configure'),('qli_cpu','configure')]:
+        package=ModuleType('strengthen_dsv4.patches')
+        modules[package.__name__]=package
+        for name in ('compat_lcm','target_full','split_draft','cross_step','ordered_replay','qli_cpu'):
+            function='install'
             module=ModuleType('strengthen_dsv4.patches.'+name)
             setattr(module,function,lambda *a,_name=name,**kw:calls.append(_name))
             modules[module.__name__]=module
+            setattr(package,name,module)
         c=config();before=copy.deepcopy(c);environment=dict(os.environ)
         with patch.dict(sys.modules,modules), patch('pathlib.Path.mkdir',side_effect=AssertionError('No artifact directory')), \
              patch('pathlib.Path.write_text',side_effect=AssertionError('No receipt files')):
@@ -96,7 +99,7 @@ class WorkerLifecycle(unittest.TestCase):
             self.assertEqual(worker.compile_or_warm_up_model(),'native-times')
         self.assertEqual(c,before)
         self.assertEqual(dict(os.environ),environment)
-        self.assertEqual(calls,['compat','target','native-init','native-capture',
+        self.assertEqual(calls,['compat','compat_lcm','target_full','native-init','native-capture',
             'split_draft','cross_step','ordered_replay','qli_cpu','ready'])
 
     def test_bad_configuration_fails_before_native_initialization(self):

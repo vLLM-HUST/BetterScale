@@ -8,10 +8,10 @@ Draft metadata has a PRIVATE stable bank, never the target global RoPE bank.
 # 已维护服务的实际调用链（相邻文件可以顺着读）：
 #   用户 vllm serve --worker-cls strengthen_dsv4.worker.Worker
 #   → Worker.compile_or_warm_up_model() 先完成 donor 原生 warmup
-#   → 调用 split_draft.install(worker)
+#   → 调用 split_draft/__init__.py 的 install(worker)
 #   → drafter._runnable 被替换成 SplitDraftGraphSet
 #   → 普通 K5 decode 分流到本文件 DraftGraphSet → ExactDraftGraph
-#   → 非普通 decode 由 split_draft 先写真实长度的 context，再借本类 capture query。
+#   → 非普通 decode 由外层管理器先写真实长度的 context，再借本类 capture query。
 #
 # 拦截位置是 donor 已准备好输入和 forward context 之后的 _runnable 调用。
 # 原生入口见 pinned vllm_ascend/spec_decode/llm_base_proposer.py：

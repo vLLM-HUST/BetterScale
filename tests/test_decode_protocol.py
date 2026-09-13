@@ -13,7 +13,7 @@ class Proxy:
 
 class Protocol(unittest.TestCase):
     def test_private_bank_updates_without_rebinding(self):
-        p=(Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('draft_graph.py')
+        p=(Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('split_draft/_graph.py')
         fs=[x for x in ast.parse(p.read_text()).body if isinstance(x,ast.FunctionDef) and x.name in ('bank','refresh','signature')]
         ns=dict(torch=torch,copy=copy,dataclasses=dataclasses,Enum=Enum,RopeDataProxy=Proxy)
         exec(compile(ast.Module(body=fs,type_ignores=[]),str(p),'exec'),ns)
@@ -39,7 +39,7 @@ class Protocol(unittest.TestCase):
         # later-replay test alone would miss an uninitialized first invocation.
         import contextlib,json,os
         from unittest.mock import patch
-        p=(Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('draft_graph.py')
+        p=(Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('split_draft/_graph.py')
         nodes=[x for x in ast.parse(p.read_text()).body if isinstance(x,(ast.FunctionDef,ast.ClassDef)) and x.name!='install']
         box={}
         class Graph:
@@ -82,7 +82,7 @@ class Protocol(unittest.TestCase):
             self.assertEqual(len(bank_set.entries),4)
 
     def test_cpu_qli_uses_existing_mirrors_and_checks_them(self):
-        p=(Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('qli_cpu.py')
+        p=(Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('qli_cpu/__init__.py')
         f=next(x for x in ast.parse(p.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='_cpu_qli_metadata')
         recorded=[]
         fake=NS(ops=NS(_C_ascend=NS(npu_vllm_quant_lightning_indexer_metadata=lambda **kw:(recorded.append(kw) or torch.zeros(1024)))))
@@ -99,7 +99,7 @@ class Protocol(unittest.TestCase):
         ns['_enabled']=False;self.assertEqual(ns['_cpu_qli_metadata'](builder,qsl,sl,ql,2),'fallback')
 
     def test_only_admitted_stream_replays(self):
-        p=(Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('ordered_replay.py')
+        p=(Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('ordered_replay/__init__.py')
         f=next(x for x in ast.parse(p.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='call')
         calls=[];ctx=NS(batch_descriptor='x',cudagraph_runtime_mode='FULL',capturing=False)
         fake=NS(npu=NS(current_stream=lambda:NS(npu_stream=7)))

@@ -55,6 +55,10 @@ kept patch bundle.
 The kept patches now live in **`src/strengthen_dsv4/`**, not just the historical
 prototype tree. They use vLLM's explicit `worker_cls` lifecycle and normal OpenAI
 server. No donor source files are modified, upgraded or rebuilt on startup.
+Each patch is a closed directory with its own `install`: `compat_lcm`,
+`target_full`, `ordered_replay`, `qli_cpu`, `split_draft`, `cross_step`.
+Worker owns their composition; importing a module does not install its hooks.
+See each module's README under `src/strengthen_dsv4/patches/` for its contract.
 
 ```sh
 # In your existing vLLM-Ascend environment (no donor dependencies are upgraded):
@@ -70,7 +74,7 @@ CLI, environment setup, automatic plugin discovery, private profile or mandatory
 artifact directory. The package does not select Python/CANN, set HCCL/allocator
 variables, repair library paths, or change service/KV settings. Start with a
 working donor environment. Installation needs existing setuptools>=68; the wheel
-also works with `pip install --no-deps /path/to/strengthen_dsv4-0.2.0-py3-none-any.whl`.
+also works with `pip install --no-deps /path/to/strengthen_dsv4-0.2.1-py3-none-any.whl`.
 
 Current admission remains bounded: TP8/EP/DSACP/K5, four seats,4128 token budget,
 max length<=15104, target FULL, native scheduler, prefix caching off. This entry

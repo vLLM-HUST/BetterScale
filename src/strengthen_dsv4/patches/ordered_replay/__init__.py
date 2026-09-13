@@ -7,17 +7,25 @@ Shared-expert stream dependencies inside the graph are unchanged.
 import torch
 from vllm.config import CUDAGraphMode
 from vllm.forward_context import get_forward_context
+from vllm_ascend.compilation.acl_graph import ACLGraphWrapper
+
+_original_call = ACLGraphWrapper.__call__
+_installed = False
 
 
-def configure(worker, enabled):
+def install(worker):
+    """Own both the wrapper hook and this worker's same-stream admission."""
+    global _installed
     runner = worker.model_runner
-    from vllm_ascend.compilation.acl_graph import ACLGraphWrapper
     assert isinstance(runner.model, ACLGraphWrapper)
     assert runner.use_compress, 'Only the pinned DSV4 compressed-attention path'
     assert runner.vllm_config.model_config.hf_config.model_type == 'deepseek_v4'
     torch.npu.synchronize()  # explicit phase transition, never per replay
-    runner.model._ordered_replay_stream = torch.npu.current_stream().npu_stream if enabled else None
-    return dict(rank=worker.rank, ordered_replay=enabled)
+    runner.model._ordered_replay_stream = torch.npu.current_stream().npu_stream
+    if not _installed:
+        ACLGraphWrapper.__call__ = _ordered_call
+        _installed = True
+    return dict(rank=worker.rank, ordered_replay=True)
 
 
 def call(original, wrapper, *args, **kwargs):
@@ -35,3 +43,7 @@ def call(original, wrapper, *args, **kwargs):
         assert [x.data_ptr() for x in args if isinstance(x, torch.Tensor)] == entry.input_addresses
     entry.aclgraph.replay()
     return entry.output
+
+
+def _ordered_call(self, *args, **kwargs):
+    return call(_original_call, self, *args, **kwargs)

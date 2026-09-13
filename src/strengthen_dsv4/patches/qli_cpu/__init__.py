@@ -11,11 +11,13 @@ _enabled=False
 _verify=False
 
 
-def configure(worker, enabled=False, verify=False):
+def install(worker):
+    """Install after native warmup; import alone never replaces a donor method."""
     global _enabled, _verify
     torch.npu.synchronize()
-    _enabled=enabled;_verify=verify
-    return dict(rank=worker.rank,cpu_qli=enabled,verify=verify)
+    _enabled=True;_verify=False
+    AscendDSACPMetadataBuilder._build_qli_metadata = _cpu_qli_metadata
+    return dict(rank=worker.rank,cpu_qli=True,verify=False)
 
 
 def _cpu_qli_metadata(self, query_start_loc, seq_lens, seq_lens_q, num_reqs):
@@ -58,5 +60,3 @@ def _cpu_qli_metadata(self, query_start_loc, seq_lens, seq_lens_q, num_reqs):
     self.common_ratio_to_sas_metadata[cache_key] = metadata
     self.req_qli_metadata[:1024] = metadata
     return self.req_qli_metadata[:1024]
-
-AscendDSACPMetadataBuilder._build_qli_metadata=_cpu_qli_metadata

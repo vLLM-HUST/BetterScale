@@ -7,15 +7,26 @@ release submodules or `site-packages`, and not a claim that upstream exposes a
 fully public plugin API for all these hooks. Private API compatibility is checked
 against `src/strengthen_dsv4/pins.json` before model loading.
 
-| ID | Maintained code | Native boundary | Installation | Evidence |
-|---|---|---|---|---|
-| compat-lcm | `target.py` | `CompilationConfig.adjust_cudagraph_sizes_for_spec_decode` | Before runner construction, both profiles | K5/TP8 target/state runs007/009/012 |
-| target-full | `target.py` | DSACP support/build/RoPE; runner FIA request padding | Before target capture | Target shadow, real TP8 runs012/045 |
-| ordered-replay | `ordered_replay.py`, `target.py` | `ACLGraphWrapper.__call__` | Wrapper before capture; enable after native warmup | Same-stream guard; policy026/031 |
-| cpu-qli | `qli_cpu.py` | DSACP `_build_qli_metadata` | After native warmup | CPU mirrors and conservative-bound shadow029 |
-| private-draft-banks | `draft_graph.py` | DSpark `_runnable` | After native warmup; lazy first capture/replay | First-call and KV qualification022/045 |
-| split-draft-context | `split_draft.py`, `metadata.py` | Native context hook before query body | Same lifecycle; no scheduler replacement |044/045 state;046 timing;049 quality |
-| stable-receipt-cut | `cross_step.py` | Runner input/state/forward hooks | After native warmup, stable K5 only |028/029 state;031 isolated timing |
+Each directory is a closed feature module with its own `install` entry. Small
+modules keep their implementation in `__init__.py`; only split-draft has private
+helpers. No sibling patch imports or automatic import-time hook installation.
+These are six Python packages in one wheel, not six separately versioned products.
+Worker owns composition and lifecycle; independent source ownership is not a
+claim that arbitrary patch combinations have been hardware-qualified.
+
+| Module | Owned native boundary | Install phase | Mechanism evidence |
+|---|---|---|---|
+| `compat_lcm/` | joint K5/TP capture alignment only | Before runner construction | runs007/009/012 |
+| `target_full/` | DSACP support/build/RoPE and FIA request padding | Before runner construction/capture | runs012/045 |
+| `ordered_replay/` | ACLGraphWrapper hook and same-stream admission | After native warmup | policy026/031 |
+| `qli_cpu/` | DSACP QLI metadata builder | After native warmup | shadow029 |
+| `split_draft/` | DSpark runnable, private graph banks and context/query split | After warmup; lazy capture |022/045/046/049 |
+| `cross_step/` | Runner input/state/forward receipt placement | After native warmup |028/029/031 |
+
+Each directory's README explains scope, original-code interception, prerequisites
+and tests. `split_draft/_graph.py` and `_metadata.py` belong solely to that module.
+The reported seven mechanism IDs still include both draft-bank and split-context
+improvements; they deliberately map to one cohesive split_draft implementation.
 
 All paths in the code column are beneath `src/strengthen_dsv4/patches/`.
 Install the package in the existing donor environment, then add

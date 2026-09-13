@@ -1,23 +1,19 @@
-"""Target FULL admission, persistent metadata and joint K5/TP alignment.
+"""Target FULL admission and persistent metadata; no alignment or replay hooks.
 
 Migrated from the qualified target patch; no shadow, fixtures or N+2 scheduler.
 """
 from contextvars import ContextVar
-from vllm.config import CompilationConfig, CUDAGraphMode
+from vllm.config import CUDAGraphMode
 from vllm.v1.attention.backend import AttentionCGSupport
 from vllm_ascend.attention.context_parallel import dsa_cp
 from vllm_ascend.attention.context_parallel.dsa_cp import AscendDSACPMetadataBuilder
 from vllm_ascend.worker.model_runner_v1 import NPUModelRunner
-from vllm_ascend.compilation.acl_graph import ACLGraphWrapper
-from .ordered_replay import call as ordered_call
 
 _original_build=AscendDSACPMetadataBuilder.build
 _original_rope=dsa_cp.get_cos_and_sin_dsa
 _original_pad=NPUModelRunner._pad_query_start_loc_for_fia
-_original_adjust_sizes=CompilationConfig.adjust_cudagraph_sizes_for_spec_decode
-_original_call=ACLGraphWrapper.__call__
 _target_build=ContextVar('strengthen_target_build',default=False)
-_installed=None
+_installed=False
 
 def _stable_rope(*args, **kwargs):
     if _target_build.get():
@@ -55,31 +51,17 @@ def _build_fixed_capacity(self, *args, **kwargs):
                 result.num_input_tokens // self.compressor_ratio + req.num_reqs_actual)
     return result
 
-def _adjust_joint_alignment(self, uniform_decode_query_len, tensor_parallel_size):
-    import math
-    alignment = uniform_decode_query_len
-    if self.pass_config.enable_sp:
-        alignment = math.lcm(alignment, tensor_parallel_size)
-    return _original_adjust_sizes(self, alignment, tensor_parallel_size)
-
 _fixed_build=_build_target
 
-def _ordered_call(self,*args,**kwargs):
-    return ordered_call(_original_call,self,*args,**kwargs)
 
-
-def install(full):
+def install():
+    """Install before runner construction/capture; importing alone changes nothing."""
     global _installed
-    if _installed is not None:
-        if _installed != full:
-            raise RuntimeError('Do not mix baseline and optimized engines in one worker process')
+    if _installed:
         return
-    CompilationConfig.adjust_cudagraph_sizes_for_spec_decode=_adjust_joint_alignment
-    if full:
-        AscendDSACPMetadataBuilder.get_cudagraph_support=classmethod(
-            lambda cls,config,spec: AttentionCGSupport.ALWAYS)
-        dsa_cp.get_cos_and_sin_dsa=_stable_rope
-        AscendDSACPMetadataBuilder.build=_build_fixed_capacity
-        NPUModelRunner._pad_query_start_loc_for_fia=_pad_dsa_capacity
-        ACLGraphWrapper.__call__=_ordered_call
-    _installed=full
+    AscendDSACPMetadataBuilder.get_cudagraph_support=classmethod(
+        lambda cls,config,spec: AttentionCGSupport.ALWAYS)
+    dsa_cp.get_cos_and_sin_dsa=_stable_rope
+    AscendDSACPMetadataBuilder.build=_build_fixed_capacity
+    NPUModelRunner._pad_query_start_loc_for_fia=_pad_dsa_capacity
+    _installed=True

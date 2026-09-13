@@ -11,7 +11,7 @@ vllm serve /models/DeepSeek-V4-Flash <原有的原生参数> \
 ```
 
 `<原有的原生参数>` 是说明占位符，不是 shell 中直接执行的文本。
-已有 wheel 时直接 `python -m pip install --no-deps /path/to/strengthen_dsv4-0.2.0-py3-none-any.whl`。
+已有 wheel 时直接 `python -m pip install --no-deps /path/to/strengthen_dsv4-0.2.1-py3-none-any.whl`。
 源码安装需要已有 setuptools>=68；包没有 donor 依赖安装/升级动作。
 
 **没有另一套 serve/check/plan CLI，没有私有 profile，没有必须配置的目录。**
@@ -22,9 +22,11 @@ vLLM-Ascend 环境负责；环境缺失应在部署阶段解决，不由补丁�
 ## 补丁如何接入
 
 1. vLLM 按 `--worker-cls` 创建我们的 `NPUWorker` 子类。
-2. 初始化前检查固定 donor 版本与相关私有 API 源码，再安装 target/LCM hooks。
+2. 初始化前检查固定 donor 版本与相关私有 API 源码，再分别安装 compat_lcm 和 target_full。
 3. 原生 warmup 完成后，安装 draft graph、stable receipt cut、ordered replay、CPU QLI。
-4. 继续原生服务；日志中每个 worker 输出 `strengthen-dsv4 rank=... READY patches=...`。
+4. 六个功能模块各自拥有 hook 和 `install`，不相互 import，不在 import 时安装；
+   worker 只选择组合与时机。`split_draft` 内部保留 `_graph.py` 与 `_metadata.py`。
+5. 继续原生服务；日志中每个 worker 输出 `strengthen-dsv4 rank=... READY patches=...`。
 
 不修改 donor 源文件或 installed packages，不添加 scheduler，不带入未采用的双槽
 连续提交方案。graph 仍在首次遇到合法 shape 时捕获，首次 capture 不等于 warm replay。

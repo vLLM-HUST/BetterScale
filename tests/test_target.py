@@ -5,7 +5,7 @@ from types import SimpleNamespace as NS
 import unittest
 import numpy as np
 
-source=Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches/target.py'
+source=Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches/target_full/__init__.py'
 function=next(x for x in ast.parse(source.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='_pad_dsa_capacity')
 namespace={'CUDAGraphMode':NS(FULL='FULL'),'_original_pad':lambda *a: 'fallback'}
 exec(compile(ast.Module(body=[function],type_ignores=[]),str(source),'exec'),namespace)
@@ -27,7 +27,8 @@ class PaddingContract(unittest.TestCase):
 
 class AlignmentContract(unittest.TestCase):
     def test_tp8_k5_lcm_without_changing_speculation(self):
-        f=next(x for x in ast.parse(source.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='_adjust_joint_alignment')
+        alignment_source=source.parent.parent/'compat_lcm/__init__.py'
+        f=next(x for x in ast.parse(alignment_source.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='_adjust_joint_alignment')
         ns={'_original_adjust_sizes':lambda self,alignment,tp:(alignment,tp)}
         exec(compile(ast.Module(body=[f],type_ignores=[]),str(source),'exec'),ns)
         config=NS(pass_config=NS(enable_sp=True))

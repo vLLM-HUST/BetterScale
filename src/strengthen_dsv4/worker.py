@@ -15,24 +15,21 @@ class Worker(NPUWorker):
     def __init__(self, vllm_config, *args, **kwargs):
         check_runtime()
         validate_worker_config(vllm_config)
-        from .patches.target import install
-        install(True)
+        from .patches import compat_lcm, target_full
+        compat_lcm.install()
+        target_full.install()
         super().__init__(vllm_config, *args, **kwargs)
 
     # 原生模型、KV、输入缓冲和 warmup 完成后，只在当前 worker 安装执行补丁。
     # 不依赖激活 RPC，不复制整个 KV 池，也不在生产路径写实验收据。
     def compile_or_warm_up_model(self):
         result = super().compile_or_warm_up_model()
-        from .patches.split_draft import install as split
-        from .patches.cross_step import install as cut
-        from .patches.ordered_replay import configure as order
-        from .patches.qli_cpu import configure as qli
-        # split 分流：普通 K5 → fused 小图；其他波次 → 原生 context + query 图。
-        # cut/order/qli 是独立补丁，不是双槽或完整 N+2 提交协议。
-        # 此处安装路由，各 draft entry 首次遇到合法形状时才 lazy capture。
-        split(self)
-        cut(self)
-        order(self, True)
-        qli(self, True, False)
+        from .patches import split_draft, cross_step, ordered_replay, qli_cpu
+        # 每个模块自带实现与 install；worker 只选择组合与安装时机。
+        # split_draft 自己拥有 graph/metadata，无需安装另一份 draft 补丁。
+        split_draft.install(self)
+        cross_step.install(self)
+        ordered_replay.install(self)
+        qli_cpu.install(self)
         log.info('strengthen-dsv4 rank=%s READY patches=%s', self.rank, PATCH_IDS)
         return result
