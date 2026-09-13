@@ -1,8 +1,9 @@
 """Opt-in A2/TP1 DSA target FULL graph; native DP/EP and draft are untouched.
 
-The native 'decode' kernels already consume ragged causal query ranges. Use
-that single program for all target rows, rather than capturing Python's changing
-[decode | prefill] split. This is experimental until native-state shadow passes.
+Native decode metadata already describes ragged causal query ranges. Reuse its
+persistent buffers, selecting a fixed prefill or decode program per bucket,
+rather than capturing Python's changing [decode | prefill] split. See DP_FULL.md
+for same-program state checks and the native arithmetic/quality boundary.
 """
 from contextvars import ContextVar
 from copy import copy

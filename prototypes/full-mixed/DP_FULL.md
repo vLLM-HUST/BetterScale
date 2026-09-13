@@ -30,7 +30,7 @@ an unaligned1024 capture bucket. Native DP padding can cause other ranks to use
 the largest rank's bucket: saved dispatch overhead must be measured against this
 extra padded attention work, not assumed to produce universal speedups.
 
-## Evidence so far (September13)
+## Acceptance (September13)
 
 - CPU33 tests pass, including exact normalization/padding hooks, restoration on
   exceptions, unchanged native oracle entry, and all32 quality-input DP shards.
@@ -69,8 +69,66 @@ extra padded attention work, not assumed to produce universal speedups.
   checks the first four calls of each larger bucket, even after the small-wave
   cap, so native32-wave drain cannot consume all verification coverage.
 
-Large-bucket DP8 state checks, full-checkpoint quality, same-budget unprofiled performance,
-and the new bounded eight-rank timeline are **not yet accepted**.
+- Run067 closes large-bucket coverage:42 checks on every rank, all output
+  differences0, all KV backing bytes equal, no signed-zero exceptions. Rank0
+  reaches1018 valid rows in the1026 bucket while peer ranks exercise padded,
+  mixed and dummy work. This is graph vs the same eager bucket program, not a
+  bitwise comparison with the original native split.
+
+### Same-budget real-weight performance
+
+Runs065 (FULL) and066 (native control), sequential on hw3:8x910B2 HCCS,
+DSV4 Flash W8A8, DP8TP1/EP8, K5, two active seats/rank,16384 context limit,
+8GiB KV/rank,1026 target budget/rank, prefix cache off. Each cohort is repeated
+ twice without profiling; profile cohorts are separate. EOS is ignored for
+fixed output lengths. These are synthetic token cohorts, not an agent trace.
+
+| Cohort | Native completion seconds | FULL completion seconds | Mean reduction |
+|---|---|---|---|
+|8 requests,4096 input +16 output each|3.642 /3.919|2.812 /2.687|27.3%|
+|1x8192 +7x256 input,16 output each|5.189 /5.194|4.601 /4.589|11.5%|
+|16 requests,128 input +128 output each|4.622 /4.591|3.906 /3.678|17.7%*|
+
+The first four balanced-prefill waves are independently verified on every rank:
+1018 real query rows per wave, one request/rank, followed by a24-row tail.
+Median-of-rank-medians target event durations fall from390.88 /427.45ms to
+296.31 /294.07ms. Candidate padding is1026 vs native1018. These device event
+spans include collective/queue waits, not just arithmetic kernels.
+
+*Do not call the decode-cohort result a steady decode speedup.* For the first
+ ten fully occupied96-query/16-request decode calls, target median durations
+ remain about44ms on both sides; target-cycle medians remain58–60ms. Initial
+prefill, scheduling, acceptance and drain contribute to cohort time. Two
+sequential repeats establish a bounded observation, not universal throughput or
+SLO improvement.
+
+Both real runs score32/32 on the same retained OpenCompass LongBench retrieval
+inputs (roughly9.9–15K input tokens). This is not the entire OpenCompass suite.
+Torch allocator peak is58.016GiB FULL vs58.013GiB native; maximum reserved is
+58.670 vs58.635GiB. This excludes non-Torch physical allocations. No tested
+capacity claim is inferred from the group-aware cache-equivalent token receipt.
+
+Compact receipts and exact metrics: [`dp-full-result.json`](dp-full-result.json).
+The implementation remains **opt-in via the DP probe/native client entry**;
+it does not alter the separately packaged TP8/DSACP `strengthen-dsv4 serve`
+profile or installed donor files.
+
+### Timelines
+
+Eight-rank native profiles cover the first eight target forwards of the skew
+cohort. Canonical local capsules are
+`/workspace/strengthen-dsv4-dp-full/runs/hw3-dp8-065/engine/profileskew` (FULL)
+and the corresponding `hw3-dp8-066` path (native). Each contains the original
+rank DBs, `analysis/sources.json`, clock markers/holdout receipts and
+`analysis/target-draft-tp8-end-aligned.json.gz` (legacy filename; this is DP8).
+Only completed compressed native exports are shareable. Timing in these
+profiled windows is not the table's throughput evidence.
+
+The FULL window has63 unique eager collective identities; their display-only
+candidate affine fit passes the50us holdout gate (P95 1.60–6.84us). The short
+window has too few small-control-only markers; use the unrestricted eager
+identity set and retain its actual residual gate, never weaken the gate or
+invent timestamp-nearest pairs.
 
 ## Reuse
 

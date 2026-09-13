@@ -37,7 +37,10 @@ Python. Reusing its persistent ragged-query metadata is viable, but unifying all
 queries onto decode also changes prefill norm/quant arithmetic under the default
 attention overlap path. Keep replay-vs-unified, original-native, and quality
 claims separate. Large buckets retain prefill arithmetic in the current probe;
-DP8 performance remains an experiment, not an accepted speedup.
+runs065/066 show27% shorter balanced-prefill cohort completion and11% shorter
+skew completion at the same1026 budget/rank; steady occupied decode is unchanged.
+Both real runs pass the retained32-case retrieval quality set. Keep this bounded
+DP8 experiment distinct from the packaged TP8/DSACP serving profile.
 
 DP dummy shadow caveat: native `_dummy_run` builds DSA's copied slot mapping,
 then clears the source mapping. Rebuilding metadata between replay and an eager
@@ -47,3 +50,10 @@ split reference still needs deliberate rebuilding; do not conflate its arithmeti
 with the unified program. Run064 passes40 exact output/KV checks on all eight
 ranks after this correction. Keep first-large-bucket checks independent of the
 initial counter: DP's32-step drain can consume a fixed early-only check budget.
+
+Run067 closes large-bucket same-program checks (42/rank,1018 valid owner rows,
+all output/KV bytes exact). Native offline parsing must use fresh processes per
+rank: reused torch-npu parser workers can leak rank singletons and label rank0
+as rank2. Use `profile_tools/parse.py` and validate RANK_DEVICE_MAP; never repair
+this by renaming DBs or mutating rank rows. Read that folder README for archive
+and bounded export instructions.

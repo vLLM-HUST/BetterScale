@@ -5,7 +5,7 @@ second clock fitter or export a hand-built substitute timeline.
 
 1. Collect outside initialization/warmup with `--profile-after`. Workers are
  daemonic, so torch-npu cannot parse in their stop callback. Use the existing
- runtime's `torch_npu.profiler.profiler.analyse(PROFILE_ROOT)` offline.
+ runtime's Python with `parse.py CAPSULE --jobs 2` offline (fresh process per rank).
 2. Preserve the eight rank roots, official `ASCEND_PROFILER_OUTPUT/*.db` and
  neighboring `PROF_*/host/sqlite` / `device_*/sqlite` DBs. Archive them as
  `profile-sqlite.tar.gz` and extract under `CAPSULE/profile`. Keep raw binary
@@ -74,3 +74,19 @@ A killed exporter can leave a **valid gzip stream containing truncated JSON**:
 also exhausted300s while emitting content after the index fix, so export has a
 600s bound. Preserve failures and verify the native completion receipt before
 linking an artifact; never hand out the partial file.
+
+Run065 parsing lessons: torch-npu's reused worker pool can leak rank identity
+across rank roots (rank0/rank7 DBs named rank2, RANK_DEVICE_MAP wrong). Fresh
+Python processes per rank restore correct native identity; `parse.py` checks
+the filename and rank/device map instead of editing them. Copied profiles must
+be owned by the parsing user: extract trusted run archives with
+`tar --no-same-owner`, not the execution host's unrelated numeric UID.
+A native parse can report errors yet exit0: the checked DB contract is required.
+
+Archive only canonical profiler/native sqlite DBs and profiler-info metadata;
+exclude `REUSED_PARSER_OUTPUT` backups. Use gzip level1 (e.g. tarfile
+`compresslevel=1`), not default Python gzip9: the latter cost minutes of CPU
+without improving the user-facing evidence. Short eight-forward windows may
+have fewer than20 small-control markers. Run065's unrestricted *eager-only*
+identity set has63 markers and passes the unchanged50us gate at1.60–6.84us.
+Do not relax the gate or choose pairs based on residual to force an export.

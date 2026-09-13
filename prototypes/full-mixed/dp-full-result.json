@@ -1,0 +1,136 @@
+{
+  "hardware": "hw3 8x Ascend 910B2 HCCS",
+  "vllm": "752a3a504485790a2e8491cacbb35c137339ad34",
+  "ascend": "9bf964cb4b87c8cd0d6852c41a55b3c29711fa95",
+  "config": {
+    "dp": 8,
+    "tp": 1,
+    "ep": 8,
+    "draft_k": 5,
+    "seats_per_rank": 2,
+    "token_budget_per_rank": 1026,
+    "kv_gib_per_rank": 8,
+    "max_model_len": 16384,
+    "prefix_cache": false,
+    "weights": "DeepSeek-V4-Flash-0731-w8a8"
+  },
+  "runs": {
+    "full": {
+      "capsule": "/workspace/strengthen-dsv4-dp-full/runs/hw3-dp8-065",
+      "cohorts": {
+        "warmup": 2.247245886013843,
+        "decode0": 3.906133158947341,
+        "prefill0": 2.8117345540085807,
+        "skew0": 4.601455511059612,
+        "decode1": 3.677804884966463,
+        "prefill1": 2.686546372016892,
+        "skew1": 4.588977757957764
+      },
+      "peak_torch_gib": 58.01560878753662,
+      "reserved_torch_gib": 58.669921875,
+      "prefill_first_four_median_of_rank_medians_ms": [
+        296.30936431884766,
+        294.07295989990234
+      ],
+      "quality": {
+        "scope": "Retained 32 OpenCompass LongBench English retrieval items; native DP8",
+        "evaluator_commit": "60a28a727d3b7807eb3554928f3530d04c948452",
+        "method": "Unmodified score AST from pinned Git object",
+        "count": 32,
+        "score": {
+          "score": 100.0
+        },
+        "correct": 32,
+        "all_correct": true
+      }
+    },
+    "native": {
+      "capsule": "/workspace/strengthen-dsv4-dp-full/runs/hw3-dp8-066",
+      "cohorts": {
+        "warmup": 3.5941062780329958,
+        "decode0": 4.6223394009284675,
+        "prefill0": 3.6424219069303945,
+        "skew0": 5.189369113068096,
+        "decode1": 4.5905869050184265,
+        "prefill1": 3.9189988130237907,
+        "skew1": 5.1941948980093
+      },
+      "peak_torch_gib": 58.013153076171875,
+      "reserved_torch_gib": 58.634765625,
+      "prefill_first_four_median_of_rank_medians_ms": [
+        390.87659454345703,
+        427.45108795166016
+      ],
+      "quality": {
+        "scope": "Retained 32 OpenCompass LongBench English retrieval items; native DP8",
+        "evaluator_commit": "60a28a727d3b7807eb3554928f3530d04c948452",
+        "method": "Unmodified score AST from pinned Git object",
+        "count": 32,
+        "score": {
+          "score": 100.0
+        },
+        "correct": 32,
+        "all_correct": true
+      }
+    }
+  },
+  "shadow_067": [
+    {
+      "rank": 0,
+      "checks": 42,
+      "max_valid": 1018,
+      "output_max_diff": 0,
+      "all_kv_bytes_equal": true
+    },
+    {
+      "rank": 1,
+      "checks": 42,
+      "max_valid": 134,
+      "output_max_diff": 0,
+      "all_kv_bytes_equal": true
+    },
+    {
+      "rank": 2,
+      "checks": 42,
+      "max_valid": 134,
+      "output_max_diff": 0,
+      "all_kv_bytes_equal": true
+    },
+    {
+      "rank": 3,
+      "checks": 42,
+      "max_valid": 134,
+      "output_max_diff": 0,
+      "all_kv_bytes_equal": true
+    },
+    {
+      "rank": 4,
+      "checks": 42,
+      "max_valid": 134,
+      "output_max_diff": 0,
+      "all_kv_bytes_equal": true
+    },
+    {
+      "rank": 5,
+      "checks": 42,
+      "max_valid": 134,
+      "output_max_diff": 0,
+      "all_kv_bytes_equal": true
+    },
+    {
+      "rank": 6,
+      "checks": 42,
+      "max_valid": 134,
+      "output_max_diff": 0,
+      "all_kv_bytes_equal": true
+    },
+    {
+      "rank": 7,
+      "checks": 42,
+      "max_valid": 134,
+      "output_max_diff": 0,
+      "all_kv_bytes_equal": true
+    }
+  ],
+  "interpretation": "Two sequential same-host unprofiled repeats, synthetic cold-prefix cohorts, original native DP scheduler. Fixed-work prefill event spans include communication waits. Decode cohort changes are not an isolated steady decode speedup. Quality is only 32 retained OpenCompass retrieval cases; original split-vs-unified KV arithmetic is not bit-identical. Profiler timing is excluded."
+}
