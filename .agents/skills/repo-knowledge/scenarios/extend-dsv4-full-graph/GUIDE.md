@@ -1,5 +1,10 @@
 # Extend DSV4 prefill/mixed FULL graph
 
+For the newer bounded **DP8 device preparation/metadata continuation**, enter
+[the fresh evidence and ownership boundary](liveinfer-continuation.md#fresh-bounded-dp8-continuation-september13)
+and `src/strengthen_dsv4/patches/async_decode/README.md`. Do not confuse it with
+the rejected all-mode worker-retirement extension or expand the TP8 claims.
+
 For ping-pong/N+2 residual bubbles, enter the focused
 [worker submission/event audit](worker-submission.md) before re-reading the
 historical campaign or adding scheduler lookahead. It includes the LiveInfer
@@ -41,9 +46,11 @@ bounded evidence. A list of private API names is an inventory, not an explanatio
 Use target_full/README.md as the local example; do not assume the reader shares
 Lumi's experimental context.
 
-The implementation now uses six closed patch directories: compat_lcm,
+The TP combination uses six closed patch directories: compat_lcm,
 target_full, ordered_replay, qli_cpu, split_draft, cross_step. Each owns install;
-worker alone composes them. split_draft owns _graph.py; its metadata normalizer
+worker alone composes them. DP adds the closed async_decode module and native
+DSA branch of target_full; it does not install the TP-only split_draft module.
+split_draft owns _graph.py; its metadata normalizer
 lives inline beside DraftGraphRunner in __init__.py. Old flat
 file paths in historical experiments refer to their original capsules, not
 current maintained code. Importing qli_cpu no longer mutates a donor method;

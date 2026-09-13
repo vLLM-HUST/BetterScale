@@ -118,3 +118,36 @@ remains in `runs/` locally and the corresponding hw3 capsules. Latest compressed
 Its clock model passes the display gate(P95 residual0.72–2.31us), but is a
 candidate affine alignment, not physical calibration. Never send the raw JSON
 through the desktop conversation. All owned NPU tasks and leases are released.
+
+
+## September13: bounded DP8 device preparation and metadata continuation
+
+Separate from the four-seat TP8 claims above. TP1/DP8/EP8,16 global requests,
+K5,2seats/12actual queries per rank,1026local budget,FULL target,native eager
+draft,8GiB KV/rank. The retained TP combination is unchanged.
+
+| Same-engine unprofiled policy (run120) | Cycle ms, repeat0/1 | Draft→target interval ms |
+|---|---:|---:|
+| native decode control within DP FULL engine |60.06 /62.21|10.68 /12.37|
+| dual target endpoints |59.89 /59.09|9.42 /9.49|
+| dual banks + device producer/metadata |50.38 /50.00|1.24 /1.23|
+
+Compared with the dual endpoints, cycle time falls15.9%/15.4% and the cross-step
+interval falls8.18/8.26ms. Each result uses the first10 consecutive common occupied
+ordinals; both endpoints are real FULL K5 work on every rank. Event intervals
+include actual work, not just idle. This is not whole-service throughput proof.
+
+Packaged Worker oracle122 passes384 target/full-KV and96 exact preparation
+checks. Actual wheel entry124 scores32/32 retained OpenCompass retrieval questions;
+its two cycles are50.74/49.88ms and intervals1.24/1.23ms. Preserve123's completed
+50.08/52.16ms repeats too; its quality stage was not completed because the test
+observer omitted a required capacity field.124 repairs only that observer.
+
+Two complete TraceLoom8rank compressed profiles (native and candidate) and their
+candidate-only clock receipts are linked in
+[`evidence/dp-continuation-20260913.json`](evidence/dp-continuation-20260913.json).
+The mechanism is described in
+[`async_decode/README.md`](src/strengthen_dsv4/patches/async_decode/README.md).
+No all-mode scheduler, late worker-retirement experiment, KV-copy oracle or
+profile writer enters the installed package. Native sampler egress retains
+per-invocation output ownership, not claimed fixed-bank whole-wave capture.

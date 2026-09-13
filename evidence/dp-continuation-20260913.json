@@ -1,0 +1,437 @@
+{
+  "date": "2026-09-13",
+  "scope": "DP8 stable K5 matched decode; NOT online/cohort throughput or TP8 gain",
+  "pins": {
+    "vllm": "752a3a504485790a2e8491cacbb35c137339ad34",
+    "vllm_ascend": "9bf964cb4b87c8cd0d6852c41a55b3c29711fa95"
+  },
+  "geometry": {
+    "tp": 1,
+    "dp": 8,
+    "ep": 8,
+    "local_seats": 2,
+    "global_requests": 16,
+    "actual_queries_per_rank": 12,
+    "K": 5,
+    "local_token_budget": 1026,
+    "max_model_len": 16384,
+    "kv_gib_per_rank": 8,
+    "target": "FULL",
+    "draft": "native eager",
+    "prefix_caching": false
+  },
+  "comparator": "Within one DP FULL engine: native decode, dual endpoints, owned producer, producer+metadata. Controls retain inactive experimental allocations. No claim of stock whole-service baseline equivalence.",
+  "performance": {
+    "capsule": "120-dp8-full-dual-bank-study",
+    "selection": "First10 consecutive common occupied cycle ordinals; both endpoints FULL/non-dummy,2requests/12queries on every rank. Median of per-rank medians; no profiler/oracle.",
+    "windows": [
+      {
+        "repeat": 0,
+        "policy": "native",
+        "common_waves": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "median_ms": {
+          "cycle": 60.05799865722656,
+          "target": 43.986284255981445,
+          "draft": 4.165120005607605,
+          "target_to_draft": 1.8127565383911133,
+          "draft_to_target": 10.677425980567932,
+          "target_host": 0.53495575,
+          "draft_host": 26.312955
+        }
+      },
+      {
+        "repeat": 0,
+        "policy": "pair",
+        "common_waves": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "median_ms": {
+          "cycle": 59.893096923828125,
+          "target": 44.15601444244385,
+          "draft": 4.205445170402527,
+          "target_to_draft": 1.7338104248046875,
+          "draft_to_target": 9.416968941688538,
+          "target_host": 0.5475565,
+          "draft_host": 25.985920750000002
+        }
+      },
+      {
+        "repeat": 0,
+        "policy": "producer",
+        "common_waves": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "median_ms": {
+          "cycle": 55.85247802734375,
+          "target": 43.20051097869873,
+          "draft": 4.168239951133728,
+          "target_to_draft": 1.7314338684082031,
+          "draft_to_target": 6.6290905475616455,
+          "target_host": 0.46023400000000003,
+          "draft_host": 26.1442045
+        }
+      },
+      {
+        "repeat": 0,
+        "policy": "metadata",
+        "common_waves": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "median_ms": {
+          "cycle": 50.37725830078125,
+          "target": 43.25322914123535,
+          "draft": 4.199229955673218,
+          "target_to_draft": 1.7343482971191406,
+          "draft_to_target": 1.2381722927093506,
+          "target_host": 4.314238250000001,
+          "draft_host": 26.11296775
+        }
+      },
+      {
+        "repeat": 1,
+        "policy": "native",
+        "common_waves": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "median_ms": {
+          "cycle": 62.20668029785156,
+          "target": 44.51704025268555,
+          "draft": 4.191035032272339,
+          "target_to_draft": 1.7270746231079102,
+          "draft_to_target": 12.368176221847534,
+          "target_host": 0.5175227499999999,
+          "draft_host": 26.44891775
+        }
+      },
+      {
+        "repeat": 1,
+        "policy": "pair",
+        "common_waves": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "median_ms": {
+          "cycle": 59.085357666015625,
+          "target": 43.44783973693848,
+          "draft": 4.124174952507019,
+          "target_to_draft": 1.7257022857666016,
+          "draft_to_target": 9.49313199520111,
+          "target_host": 0.54097375,
+          "draft_host": 26.535001
+        }
+      },
+      {
+        "repeat": 1,
+        "policy": "producer",
+        "common_waves": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "median_ms": {
+          "cycle": 54.913612365722656,
+          "target": 44.025145530700684,
+          "draft": 4.1775548458099365,
+          "target_to_draft": 1.7329940795898438,
+          "draft_to_target": 2.500205874443054,
+          "target_host": 0.462634,
+          "draft_host": 26.447376
+        }
+      },
+      {
+        "repeat": 1,
+        "policy": "metadata",
+        "common_waves": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "median_ms": {
+          "cycle": 49.99794006347656,
+          "target": 42.936134338378906,
+          "draft": 4.0904200077056885,
+          "target_to_draft": 1.7293567657470703,
+          "draft_to_target": 1.2344282865524292,
+          "target_host": 3.5711340000000003,
+          "draft_host": 26.59863425
+        }
+      }
+    ]
+  },
+  "prototype_quality": {
+    "capsule": "120-dp8-full-dual-bank-study",
+    "dataset": "32 retained original-input OpenCompass LongBench English retrieval items",
+    "evaluator": "60a28a727d3b7807eb3554928f3530d04c948452",
+    "correct": 32,
+    "count": 32
+  },
+  "packaged_oracle": {
+    "capsule": "122-dp8-packaged-real-shadow",
+    "hccl": "strict",
+    "target_full_kv_checks": 384,
+    "preparation_checks": 96,
+    "all_pass": true,
+    "max_target_output_diff": 0,
+    "kv_bytes_equal": true,
+    "clients_exitcodes": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "packaged_entry": {
+    "commit": "cdaa6cf54f88a10613cd2ee608fe027b1e89e9c0",
+    "capsule": "124-dp8-packaged-quality-performance",
+    "status": "PASS",
+    "entry": "strengthen_dsv4.worker.Worker installed from wheel; no activation RPC",
+    "quality": {
+      "count": 32,
+      "correct": 32,
+      "all_correct": true
+    },
+    "performance": [
+      {
+        "window": "decode0",
+        "common_waves": [
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "median_ms": {
+          "cycle": 50.73658752441406,
+          "target": 43.48606586456299,
+          "draft": 4.197629928588867,
+          "target_to_draft": 1.8241691589355469,
+          "draft_to_target": 1.2438853979110718,
+          "target_host": 3.38769325,
+          "draft_host": 26.19889975
+        }
+      },
+      {
+        "window": "decode1",
+        "common_waves": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "median_ms": {
+          "cycle": 49.8780517578125,
+          "target": 42.6823148727417,
+          "draft": 4.202329993247986,
+          "target_to_draft": 1.7339544296264648,
+          "draft_to_target": 1.2310411930084229,
+          "target_host": 2.9440595,
+          "draft_host": 26.4812945
+        }
+      }
+    ],
+    "memory_gib": {
+      "allocated": [
+        57.425490856170654,
+        57.425490856170654
+      ],
+      "reserved": [
+        58.658203125,
+        58.69921875
+      ],
+      "peak": [
+        58.01560878753662,
+        58.01560878753662
+      ]
+    },
+    "memory_scope": "End-of-run allocator receipt including long-prefill quality,8GiB/rank user KV; not incremental bank cost.",
+    "cpu_tests": 49,
+    "clients_exitcodes": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "ownership": "Two input/target banks; native uncaptured sampler allocates per-invocation outputs retained through async D2H; numerical progress single-copy. Not fixed-bank full-wave sampler capture.",
+  "profiles": {
+    "native": {
+      "timeline": "/workspace/strengthen-dsv4/runs/decode-continuation/120-dp8-full-dual-bank-study/engine/profiledecode-native/analysis/target-draft-tp8-end-aligned.json.gz",
+      "clock": "TraceLoom affine candidate_only; unique eager provider identity; display only",
+      "max_holdout_p95_us": 3.92,
+      "compared_waves": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "first_rs_arrival_spread_median_ms": 0.17815120918828597
+    },
+    "metadata": {
+      "timeline": "/workspace/strengthen-dsv4/runs/decode-continuation/120-dp8-full-dual-bank-study/engine/profiledecode-metadata/analysis/target-draft-tp8-end-aligned.json.gz",
+      "clock": "TraceLoom affine candidate_only; unique eager provider identity; display only",
+      "max_holdout_p95_us": 2.735203917793653,
+      "compared_waves": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "first_rs_arrival_spread_median_ms": 0.14412406139013
+    }
+  },
+  "artifacts_root": "/workspace/strengthen-dsv4/runs/decode-continuation",
+  "retained_incomplete_quality_run": {
+    "capsule": "123-dp8-packaged-quality-performance",
+    "reason": "Observer omitted max_length_concurrency required by quality harness; own launcher interrupted. No quality claim. Product wheel unchanged in124.",
+    "performance": [
+      {
+        "window": "decode0",
+        "common_waves": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "median_ms": {
+          "cycle": 50.07513427734375,
+          "target": 42.90198993682861,
+          "draft": 4.122269988059998,
+          "target_to_draft": 1.817190170288086,
+          "draft_to_target": 1.248317837715149,
+          "target_host": 0.55056875,
+          "draft_host": 26.258115500000002
+        }
+      },
+      {
+        "window": "decode1",
+        "common_waves": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        "median_ms": {
+          "cycle": 52.1561279296875,
+          "target": 43.89721488952637,
+          "draft": 4.28534996509552,
+          "target_to_draft": 1.7400760650634766,
+          "draft_to_target": 1.939134120941162,
+          "target_host": 0.42378275,
+          "draft_host": 26.017257
+        }
+      }
+    ]
+  }
+}

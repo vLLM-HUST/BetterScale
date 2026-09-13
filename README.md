@@ -74,9 +74,9 @@ CLI, environment setup, automatic plugin discovery, private profile or mandatory
 artifact directory. The package does not select Python/CANN, set HCCL/allocator
 variables, repair library paths, or change service/KV settings. Start with a
 working donor environment. Installation needs existing setuptools>=68; the wheel
-also works with `pip install --no-deps /path/to/strengthen_dsv4-0.2.1-py3-none-any.whl`.
+also works with `pip install --no-deps /path/to/strengthen_dsv4-0.3.0-py3-none-any.whl`.
 
-Current admission remains bounded: TP8/EP/DSACP/K5, four seats,4128 token budget,
+The original TP admission remains bounded: TP8/EP/DSACP/K5, four seats,4128 token budget,
 max length<=15104, target FULL, native scheduler, prefix caching off. This entry
 change does not qualify arbitrary layouts or shapes. KV budget, bind address and
 other native settings belong to the user; there is no patch-imposed minimum of
@@ -95,7 +95,7 @@ not a second production entry. Shared hosts still require lease/admission.
 - [Patch inventory and native integration points](patches/README.md)
 - [Exact TP8 results and comparator definitions](RESULTS.md)
 - [DP8 FULL-prefill follow-up: same-budget comparison](prototypes/full-mixed/DP_FULL.md)
-  (opt-in native DP probe; separate from the TP8 serving package)
+  (historical native DP probe; separate from TP8 measurements)
 - [Historical prototype and state experiments](prototypes/full-mixed/README.md)
 
 Matched K5 studies isolate20–21% draft-graph and another10–12% stable-receipt
@@ -108,3 +108,16 @@ The Markdown report is canonical. Regenerate its self-contained HTML with
 `python docs/render_report.py` in a separate documentation environment containing
 `Markdown==3.8.2`; do not add documentation dependencies to the donor environment.
 The SVG figures are editable vector sources under `docs/figures/`.
+
+
+### DP8 stable decode continuation
+
+The same Worker also has a separately gated TP1/DP8/EP8 path: two seats per
+rank,1026 local token budget,context<=16384,FULL target,DSpark K5 with native
+eager draft,DSACP off,prefix caching off. It combines native DSA FULL target
+with owned input slots and captured device preparation/metadata. It does **not**
+change the kept TP8 combination or enable the rejected all-mode worker extension.
+See [the ownership protocol](src/strengthen_dsv4/patches/async_decode/README.md)
+and [native launch parameters](docs/RUNBOOK.zh-CN.md#dp8-稳定-decode-continuation独立于-tp8-组合).
+Prototype matched-cycle evidence and the packaged-worker acceptance are reported
+separately; a faster step is not by itself an end-to-end throughput claim.
