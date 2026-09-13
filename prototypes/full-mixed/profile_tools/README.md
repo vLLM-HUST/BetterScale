@@ -90,3 +90,9 @@ without improving the user-facing evidence. Short eight-forward windows may
 have fewer than20 small-control markers. Run065's unrestricted *eager-only*
 identity set has63 markers and passes the unchanged50us gate at1.60–6.84us.
 Do not relax the gate or choose pairs based on residual to force an export.
+
+Run066 native skew fails unrestricted eager alignment (rank7 P95 164.53us),
+while small-control-only identities are too few. Preserve the rejected fit;
+export native clocks only, explicitly named `unaligned`. It supports within-rank
+inspection, NOT cross-rank lateness comparisons. Do not keep trying filters
+until a visually pleasing alignment appears.

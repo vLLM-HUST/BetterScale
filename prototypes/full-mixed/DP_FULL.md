@@ -119,8 +119,11 @@ Eight-rank native profiles cover the first eight target forwards of the skew
 cohort. Canonical local capsules are
 `/workspace/strengthen-dsv4-dp-full/runs/hw3-dp8-065/engine/profileskew` (FULL)
 and the corresponding `hw3-dp8-066` path (native). Each contains the original
-rank DBs, `analysis/sources.json`, clock markers/holdout receipts and
-`analysis/target-draft-tp8-end-aligned.json.gz` (legacy filename; this is DP8).
+rank DBs, `analysis/sources.json`, and clock markers/holdout receipts. The FULL
+export is `analysis/target-draft-tp8-end-aligned.json.gz` (legacy filename; DP8).
+The native export is `analysis/native-dp8-skew-unaligned.json.gz`: its original
+rank clocks are retained, NOT aligned. Use it for within-rank structure, not
+cross-rank arrival ordering or visual duration differences against FULL.
 Only completed compressed native exports are shareable. Timing in these
 profiled windows is not the table's throughput evidence.
 
@@ -129,6 +132,12 @@ candidate affine fit passes the50us holdout gate (P95 1.60–6.84us). The short
 window has too few small-control-only markers; use the unrestricted eager
 identity set and retain its actual residual gate, never weaken the gate or
 invent timestamp-nearest pairs.
+
+The native window fails unrestricted eager alignment (rank7 holdout P95
+164.53us). Small-control-only identities are too few for the20-marker gate.
+Both facts are retained, and the rejected fit is in `analysis/clock-all-eager`.
+No fitted clock is applied to its export; no profile recapture is needed for
+this task's independently collected performance/state acceptance.
 
 ## Reuse
 

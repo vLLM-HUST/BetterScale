@@ -76,7 +76,9 @@ perform admission before accelerator work.
 - [Self-contained printable HTML report](docs/REPORT.zh-CN.html) (download and open locally)
 - [Launch, checks and rollback (中文)](docs/RUNBOOK.zh-CN.md)
 - [Patch inventory and native integration points](patches/README.md)
-- [Exact results and comparator definitions](RESULTS.md)
+- [Exact TP8 results and comparator definitions](RESULTS.md)
+- [DP8 FULL-prefill follow-up: same-budget comparison](prototypes/full-mixed/DP_FULL.md)
+  (opt-in native DP probe; separate from the TP8 serving package)
 - [Historical prototype and state experiments](prototypes/full-mixed/README.md)
 
 Matched K5 studies isolate20–21% draft-graph and another10–12% stable-receipt
