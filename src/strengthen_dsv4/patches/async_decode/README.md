@@ -88,6 +88,17 @@ CPU carrier 身份，避免交替输入槽引用错误的 CPU metadata。prefill
 对照及 12 次精确 preparation 对照；run120 的 32 道原始长输入 OpenCompass
 LongBench retrieval 题全部通过。这是有限质量集，不是完整 OpenCompass。
 
-包内接入另行验收；不要将原型资格直接当作 native `Worker` 部署资格。
+**包内接入已单独验收。** run122 通过外部 oracle 子类完成同样的 384 次
+ target/整份 KV 与 96 次 preparation 对照；run124 从 wheel 加载实际
+`strengthen_dsv4.worker.Worker`，无需激活 RPC，32/32 检索题通过。
+该轮两次 matched cycle 为 **50.74 / 49.88 ms**，draft→target 为
+**1.24 / 1.23 ms**。包含长 prefill 质量题后的总预留为 **58.66–58.70 GiB/rank**，
+测量峰值 allocated **58.02 GiB/rank**，其中用户指定的 KV 预算为 8 GiB/rank。
+这些不是相对于未打补丁单图路径的净增量内存。
+
+保留不那么漂亮的观察：前一轮 run123 已完成的 cycle 为 **50.08 / 52.16 ms**，
+区间 **1.25 / 1.94 ms**；之后因观察器漏返回 quality 所需容量字段而停止，
+不能计为质量通过。run124 仅修复测试观察器，wheel 的产品代码未改。
+明细见仓库 `evidence/dp-continuation-20260913.json`。
 整组生成轨迹、波次数和总吞吐可能变化，不能把上述 cycle 改善当成已经证明的
 在线吞吐提升。旧 worker-retirement 扩展没有稳定增量收益，未纳入这个补丁。

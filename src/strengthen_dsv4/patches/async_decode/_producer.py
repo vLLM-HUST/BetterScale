@@ -1,3 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+# Adapted from pinned vLLM-Ascend worker/model_runner_v1.py.
+# Copyright (c) 2025 Huawei Technologies Co., Ltd. All Rights Reserved.
+# Copyright 2025 The vLLM team.
 """Explicit stable-K5 host construction / banked ingress / device derivation.
 
 Adapted from the pinned donor preparation arithmetic and LiveInfer's invocation

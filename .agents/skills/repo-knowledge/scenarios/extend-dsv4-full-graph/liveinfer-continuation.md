@@ -1,7 +1,8 @@
 # Read LiveInfer's continuation protocol before reopening donor cross-step work
 
-Source audit, September 13. This is an explanation and comparison, not renewed
-authorization to deploy the rejected ping-pong candidate or a new speedup claim.
+Source audit, September 13. The source mapping below is not itself a speedup
+claim. Fletcher subsequently authorized the narrower continuation goal; fresh
+DP8 evidence and the kept/omitted boundaries are recorded at the end.
 
 ## Source identities and entry points
 
@@ -117,3 +118,52 @@ already-queued device work from host-late issuance. Do not blindly reinstall N+2
 or count every draft-to-target millisecond as idle. Gap-free steady execution
 also requires host quorum/retirement/planning/ingress to finish within the next
 wave's overlap window; the abstraction alone cannot guarantee that inequality.
+
+
+## Fresh bounded DP8 continuation, September13
+
+Read `src/strengthen_dsv4/patches/async_decode/README.md` for the packaged
+ownership map and hook flow. This is not adoption of the entire old worker
+candidate. TP8 retains its prior combination; its already~1.3ms steady interval
+is not another10ms of available savings.
+
+Same-host run120 uses TP1/DP8/EP8,2seats/rank,K5,1026local budget,FULL target,
+native eager draft,8GiB KV/rank,normal HCCL. First10 consecutive common occupied
+ordinals (2requests/12queries on EACH rank) across two repeats:
+
+- dual target endpoints: cycles59.893/59.085ms; draft->target9.417/9.493ms;
+- owned producer + captured metadata:50.377/49.998ms; interval1.238/1.234ms.
+
+Thus8.179/8.259ms of that interval was removed; do not call the whole interval
+idle hardware or promise the same percent gain in cohort throughput. Run120's
+32 original-input LongBench retrieval items score32/32 under unmodified pinned
+OpenCompass evaluator60a28a7. Real-weight strict-HCCL121 passes8x48 target/full-KV
+checks (maxoutputdiff0) and8x12 exact preparation checks. Whole-pool copies are
+oracle-only, never capacity/performance evidence.
+
+Run122 repeats those same numerical gates through the extracted packaged
+Worker plus an EXTERNAL oracle subclass: all480 checks pass, all8 clients exit0.
+The package is committed atcdaa6cf; normal wheel-entry gate124 passes32/32 quality and cycles50.737/49.878ms
+with1.244/1.231ms intervals.123 completed cycles50.075/52.156ms but did not
+complete quality: the observer omitted native capacity required by run_dp.
+The repaired test harness is covered by two CPU contract tests; product wheel
+unchanged. Preserve this less-favorable timing repeat rather than replacing it. Experiments and source capsules are under main checkout
+`runs/decode-continuation/`; retained experimental branch is
+`lumi/decode-continuation`. Do not import its fixture/diagnostic modules from the
+serving package. Imported patch modules remain inert until worker installation.
+
+Both invocation input and output ownership matter. Here target packets and
+host input sources are banked; the uncaptured native sampler allocates separate
+outputs per invocation, retained through its asynchronous D2H. This is safe
+ownership but NOT a fixed two-bank whole-wave captured egress. If the sampler
+later enters a graph, fixed output slots require explicit copy-complete reuse
+fences. Numerical progress remains single-copy, device ordered.
+
+Run120 profiles start at cohort start and stop early. `continuation.py
+--profile-prefix` admits complete leading pairs while the mode receipts continue
+after profiling; wave0 has no preceding draft. Both compressed8rank exports use
+TraceLoom's existing candidate-only affine fitter. Fewer than20small-control
+markers require the existing unrestricted unique eager identity route; unchanged
+50us holdout gate passes at~1–4us. In matched profile waves3–12, native/candidate
+first-RS arrival spread medians are0.178/0.144ms. Main gain is earlier input and
+metadata preparation, not an8ms reduction of collective skew.

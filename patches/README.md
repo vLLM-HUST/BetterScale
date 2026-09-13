@@ -22,7 +22,7 @@ claim that arbitrary patch combinations have been hardware-qualified.
 | `split_draft/` | DSpark runnable, private graph banks and context/query split | After warmup; lazy capture |022/045/046/049 |
 | `cross_step/` | Runner input/state/forward receipt placement | After native warmup |028/029/031 |
 
-| `async_decode/` | DP8 pinned source slots, target banks, device input/metadata producer | Before capture + after warmup | DP8 prototype120/121; packaged acceptance separate |
+| `async_decode/` | DP8 pinned source slots, target banks, device input/metadata producer | Before capture + after warmup | DP8 prototype120/121; packaged oracle122 + wheel quality124 |
 
 Each directory's README explains scope, original-code interception, prerequisites
 and tests. `split_draft/_graph.py` belongs solely to that module; its small metadata

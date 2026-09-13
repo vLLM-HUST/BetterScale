@@ -131,7 +131,7 @@ vllm serve /models/DeepSeek-V4-Flash <原有原生参数> \
 移除补丁时停止服务，回到原 native worker 和已知可运行命令；不在同一进程热切换。
 包不修改 CANN、动态库路径、HCCL/allocator、端口或 KV 预算，也不再提供额外 CLI。
 
-当前仍检查已验收的 TP8/DSACP/K5/四席位/4128预算/<=15104长度等边界，
+TP 路线仍检查 TP8/DSACP/K5/四席位/4128预算/<=15104长度等边界，
 版本和所依赖的私有 API 在 worker 初始化前检查；不支持的配置明确拒绝。
 这次入口收敛不声称扩大配置范围、提高性能或已重跑八卡 HTTP 质量验收。
 
@@ -150,3 +150,14 @@ vllm serve /models/DeepSeek-V4-Flash <原有原生参数> \
 汇报建议：先讲65→52→46这条有边界的成绩，再用执行契约图解释为什么能做到；
 重点展开 context/query 拆分和 pinned host ownership，最后展示原生 worker 接入、回退和验收。
 补丁对应的源码、安装阶段与证据索引见[补丁目录](../patches/README.md)。
+
+
+## 独立的 DP8 continuation 结果
+
+2026-09-13 的 DP8 工作不与上面的四席位 TP8 成绩混算。16 个全局活跃请求、
+每 rank 两席位、K5、FULL target + native eager draft 下，显式 producer 和
+captured device metadata 的原型把 matched cycle 约59ms压到50ms，跨步区间
+约9.4ms压到1.24ms。它不是新 scheduler，也没有恢复无稳定收益的整波
+worker-retirement 扩展。包内路线及其单独验收见
+[`async_decode/README.md`](../src/strengthen_dsv4/patches/async_decode/README.md)。
+这些数字不能解释为 TP8 又获得同样提升，或未经在线测试的服务吞吐承诺。
