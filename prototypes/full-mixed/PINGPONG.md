@@ -350,3 +350,21 @@ require duplicating model activation workspace. Different allocation layouts and
 live graph outputs can still add memory; capture count alone is not an HBM bill.
 Run098 restores the qualified performance configuration8192/8GiB without the
 numerical oracle; its policy-boundary receipts will measure actual growth.
+
+Run098 completes real TP8 performance and both native/candidate eight-rank raw
+profiles, with normal HCCL and no numeric oracle. Matched16-request/96-query-row
+cycle medians (ms, two repeats) are: native68.44/68.68, prior receipt-cut
+68.17/68.71, endpoint pair68.18/68.34, explicit producer64.40/64.55, and captured
+metadata57.01/56.75. Thus the complete producer+metadata path shortens these
+matched cycles16.7–17.4%; endpoint banking alone still does not. Target-event
+spans include queued preparation/waits and are NOT isolated model compute.
+Whole-cohort durations still vary with acceptance/drain/cold shape admission;
+no workload-throughput guarantee follows from these step measurements.
+
+Final allocated49.376GiB, reserved50.178GiB, peak49.700GiB/rank. Reserved memory
+is28MiB above run083 with the same8192/8GiB configuration. In-engine policy
+receipts range50.051–50.178GiB reserved while prep banks grow6→11 and metadata
+entries6→10. All policies retain the same graphs, so this is not a comparison
+against an unpatched engine's memory. It supports bounded extra memory for this
+shared-pool implementation, not proof of run095's failure cause. The raw profile
+parse is offline; daemon parse warnings are expected, not dropped rank evidence.
