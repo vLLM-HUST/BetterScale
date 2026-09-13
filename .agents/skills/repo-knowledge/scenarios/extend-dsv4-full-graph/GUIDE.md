@@ -198,6 +198,13 @@ same-rank timing conclusions independent of distributed display alignment.
 
 ## All-mode N+2 continuation
 
+Before reopening continuous decode, read [LiveInfer's continuation protocol](liveinfer-continuation.md).
+It distinguishes host authorization from device-derived execution parameters,
+explains DONE/generation drain across N+2, and separates the producer/metadata
+speedups from the later worker cut's lack of incremental benefit. Do not infer
+that acceptance is an unavoidable CPU barrier or that the whole transplant was
+qualified from the target replay's submission lead alone.
+
 Enter [`N2.md`](../../../../../prototypes/full-mixed/N2.md) for the native
 two-wave queue, deferred-free fence, mixed/turnover bounds and bounded all-mode
 draft banks. Run036 qualifies the dummy envelope, not real-weight service.
