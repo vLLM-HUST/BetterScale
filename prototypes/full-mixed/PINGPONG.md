@@ -121,3 +121,78 @@ there is no DP performance evidence from it. The walker now visits each
 (source,destination) identity pair once; a CPU test protects both DAG reuse and
 alias-split rejection. Runs079/080 retest this specific diagnosis. No slowdown
 is dismissed as noise, and the banking bridge remains opt-in.
+
+### Stop per-layer host copies at the graph boundary
+
+Runs079/080 remove the repeated DAG walk but still find about10ms of pair
+submission overhead: DP pair71.3/72.8ms versus native62.0/61.7ms; TP pair78.4/
+79.3ms versus native67.7/68.2ms (two within-engine repeats, first10 occupied
+cycles). This rejects the runtime packet-refresh bridge as a performance patch.
+
+`--pingpong-captured-copy` instead records the fixed native-input-backing copies
+inside each target bank's graph. It relies on the SAME persistent capture input
+addresses as the untouched native FULL graph, holds those source allocations,
+and removes the metadata walk/per-copy host dispatch from replay altogether.
+It still does not create an independent ingress stream. It is an explicit
+alternative to runtime refresh, not a relaxed numerical acceptance threshold.
+
+Run081 TP8 passes48 checks/rank and run082 DP8 passes40 checks/rank after this
+change, with exact outputs/KV. Runs083/084 measure the real-weight effect.
+The observation now attaches actual query/request counts and dummy status at
+native mode selection; padded cross-DP buckets are never actual work counts.
+Older early occupied windows use their retained real-schedule ordinals; requests
+can arrive one tick apart, so take a common later window only when every rank
+still has all16 global requests active. Do not assume rank-local window starts
+are equal or include native drain dummy waves in the throughput denominator.
+
+## Fletcher's correction: enter at shadow construction, not after preparation
+
+The captured-copy bridge is still an endpoint adapter. It does NOT implement
+LiveInfer's host shadow protocol, even if its copies are captured. Stop layering
+more endpoint machinery onto it; retain it as a bounded negative/control result.
+
+Read the retained LiveInfer checkout's:
+- `src/livemodule/runtime/invocation.py:134`: `shadow_replay` runs the recorded
+  explicit construction program and publishes its ingress before PREPARED.
+- `src/livemodule/runtime/shadow.py:GraphIngressEffectTrace`: graph-owned stable
+  host sources and device destinations, ordered H2D effect matching and staging.
+- `src/livemodule/arch/ascend/request_parallel/dsv4/speculative.py:752`:
+  `_construct_wave_routes` makes CPU owner geometry into ingress; actual lengths,
+  addresses, validity, rotary selection and descriptors remain device work.
+- `src/livemodule/arch/ascend/request_parallel/dsv4/wave_executor.py:186`:
+  ingress waits the SAME bank's graph-done, compute waits ingress-ready and that
+  bank's old copy-done, then egress runs separately and retains host source leases.
+
+This is NOT the same as our numerical same-state `*_shadow.py` oracle. Do not
+confuse the name with validation, and do not move actual speculative progress
+to host merely because some metadata are host-constructed.
+
+### Donor seam to change
+
+Pinned MRV1 `_prepare_inputs` (814) interleaves CPU projection, H2D, and real
+State-dependent GPU operations. Its larger `synchronize_input_prep` scope (1773)
+also includes state bookkeeping, DP shape agreement and metadata building.
+Wrapping the resulting call tree cannot extract that producer dependency.
+
+For admitted stable K5, separate:
+
+| Responsibility | Producer / lifetime |
+| --- | --- |
+| Request identity, scheduled width, block leases, previous-row mapping, CPU tiling bounds | Host construction; snapshot into bank-owned pinned ingress, not mutable runner bookkeeping arrays |
+| Actual accepted counts, sampled/draft IDs, computed-token progress, KV | Single continuation State on device; preserve native arithmetic and ordering |
+| Exact positions, lengths, slot mapping, SAS/QLI descriptors, selected RoPE | Device derivation ordered after previous feedback and before the target; not speculative host guesses |
+| Output receipt and CPU accounting | Separate retained egress/source lifetime; do not recycle pages or mutate in-flight H2D sources |
+
+The minimal credible integration is producer-level host snapshot + explicit
+publication and device derivation, with per-bank reuse events. Preserve native
+DP collective order/shape agreement and prefill/turnover fallback. DP and TP
+share the protocol but NOT the same metadata builder or collective schedule.
+A generic copy of every field, a FakeTensor walk through the whole model on each
+step, and an extra end-of-preparation packet clone are not substitutes.
+
+Open implementation hinge: identify the exact H2D input set and separate the
+late CPU bookkeeping destinations from DMA source slots. In particular native
+`num_computed_tokens_cpu_tensor.to(device)` is a host budget input to the GPU
+correction kernel, not the numerical progress State. `num_computed_tokens` on
+GPU must remain single-copy. The existing current-input-DMA host fence can only
+be removed after this ownership separation, not just after adding a ready event.

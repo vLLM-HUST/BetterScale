@@ -71,6 +71,17 @@ class CallPacket:
         for destination, origin in copies.values():
             destination.copy_(origin, non_blocking=True)
 
+    def captured_copies(self, source):
+        """Freeze native FULL input backings, not live Python metadata views.
+
+        The native graph already reads these persistent capture addresses.
+        Put the bank copies in the same graph so no per-layer Python traversal
+        or per-copy host launches survive in the serving path.
+        """
+        copies = {}
+        self._bind(self.tree, source, copies, seen=set())
+        return [(d, s) for d, s in copies.values() if d.device.type != 'cpu']
+
     def _bind(self, dst, src, copies, path=(), seen=None):
         # Metadata are a DAG shared across model layers, not a tree. Validate
         # each actual source/destination pair once without hiding alias splits.

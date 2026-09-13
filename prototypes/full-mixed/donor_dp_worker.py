@@ -57,10 +57,20 @@ class DonorDPWorker:
         runner=self.model_runner
         original=runner._determine_batch_execution_and_padding
         self._donor_modes=[]
+        self._donor_dummy=False
+        dummy=runner._dummy_run
+        def observed_dummy(*args,**kwargs):
+            previous=self._donor_dummy;self._donor_dummy=True
+            try:return dummy(*args,**kwargs)
+            finally:self._donor_dummy=previous
+        self._donor_observer._decode_observation_originals.append((runner,'_dummy_run',dummy))
+        runner._dummy_run=observed_dummy
         def observed(*args,**kwargs):
             result=original(*args,**kwargs)
-            self._donor_modes.append(dict(mode=str(result[0]),padded=result[1].num_tokens,
-                across_dp=None if result[3] is None else result[3].tolist()))
+            self._donor_modes.append(dict(mode=str(result[0]),padded=result[1].num_tokens,dummy=self._donor_dummy,
+                across_dp=None if result[3] is None else result[3].tolist(),
+                actual_tokens=int(kwargs.get('num_tokens',args[0] if args else -1)),
+                actual_requests=int(kwargs.get('num_reqs',args[1] if len(args)>1 else -1))))
             return result
         self._donor_observer._decode_observation_originals.append((runner,'_determine_batch_execution_and_padding',original))
         runner._determine_batch_execution_and_padding=observed

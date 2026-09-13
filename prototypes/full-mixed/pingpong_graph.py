@@ -24,6 +24,7 @@ class DecodePair:
         self.shadow_runner = None
         self.checks = []
         self.policy = 'pair'
+        self.captured_copy = os.environ.get('DONOR_PINGPONG_CAPTURED_COPY') == '1'
         self.sequence = 0
         self.replays = [0, 0]
         self.stream = None  # native startup capture uses its own temporary stream
@@ -34,6 +35,7 @@ class DecodePair:
         key = ctx.batch_descriptor
         source = (args, kwargs, ctx.attn_metadata)
         old_entries, old_meta, was_capturing = w.concrete_aclgraph_entries, ctx.attn_metadata, ctx.capturing
+        runnable = w.runnable
         assert self.stream is None or torch.npu.current_stream().npu_stream == self.stream
         try:
             if key not in self.packets[0]:
@@ -49,7 +51,18 @@ class DecodePair:
                                                                            native_views=w.vllm_config.parallel_config.tensor_parallel_size > 1)
                     a, k, ctx.attn_metadata = packet.tree
                     w.concrete_aclgraph_entries = self.catalogs[bank]
+                    if self.captured_copy:
+                        copies = packet.captured_copies(source)
+                        # Keep native source allocations alive for the graph's
+                        # entire lifetime, just as the untouched native FULL entry.
+                        packet.copy_sources = copies
+                        def copied_forward(*args, _copies=copies, **kwargs):
+                            for destination, origin in _copies:
+                                destination.copy_(origin, non_blocking=True)
+                            return runnable(*args, **kwargs)
+                        w.runnable = copied_forward
                     output = original_call(w, *a, **k)
+                    w.runnable = runnable
                     assert self.catalogs[bank][key].aclgraph is not None
                 return output
             if self.policy != 'pair':
@@ -63,7 +76,8 @@ class DecodePair:
             packet = self.packets[bank][key]
             # The present bridge is stream-ordered D2D into private packets.
             # Do not describe it as overlapping ingress or delete CPU fences.
-            packet.refresh(source)
+            if not self.captured_copy:
+                packet.refresh(source)
             a, k, ctx.attn_metadata = packet.tree
             w.concrete_aclgraph_entries = self.catalogs[bank]
             entry = self.catalogs[bank][key]
@@ -77,9 +91,10 @@ class DecodePair:
             w.concrete_aclgraph_entries = old_entries
             ctx.attn_metadata = old_meta
             ctx.capturing = was_capturing
+            w.runnable = runnable
 
     def receipt(self):
-        return dict(stage='private-graph-packets-only', sequence=self.sequence,
+        return dict(stage='private-graph-packets-only', captured_copy=self.captured_copy, sequence=self.sequence,
                     replays=self.replays, shapes=[str(k) for k in self.packets[0]],
                     packet_bytes=sum(p.bytes for bank in self.packets for p in bank.values()),
                     native_input_prep_fence_retained=True)

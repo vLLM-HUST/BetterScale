@@ -40,21 +40,36 @@ def summarize(root):
                 padded_shapes=dict(Counter(x['padded'] for x in modes))))
         if label in ('decode0','decode1') or label.startswith('decode-'):
             matched=[]
+            observed=[]
             for rank in range(8):
                 w=json.loads((root/label/f'{label}-waves-rank{rank}.json').read_text())
                 m=json.loads((root/label/f'{label}-modes-rank{rank}.json').read_text())
                 t=[x for x in json.loads((root/label/f'{label}-timing-rank{rank}.json').read_text())
                    if x['label']=='strengthen::target_forward']
                 assert len(m)==len(t)
+                if m and 'actual_tokens' in m[0]:
+                    # Direct per-forward association includes dummy EP waves;
+                    # padded across-DP counts are NOT actual scheduled work.
+                    w=[dict(total=x['actual_tokens'] if not x['dummy'] else 0,
+                            scheduled=range(x['actual_requests'])) for x in m]
                 start=next(i for i in range(min(len(w),len(m))-10)
                            if all(w[j]['total']==96//dp and len(w[j]['scheduled'])==16//dp
                                   and m[j]['mode']=='FULL' for j in range(i,i+11)))
-                assert all(x['total']>0 for x in w[:start+11])
+                if 'actual_tokens' not in m[0]:
+                    assert all(x['total']>0 for x in w[:start+11])
+                observed.append((rank,start,w,m,t))
+            # Requests can enter different DP shards one scheduler tick apart.
+            # Use a common later ordinal only if ALL retained real schedules
+            # still show the complete occupied cohort; never average unlike windows.
+            start=max(x[1] for x in observed)
+            for rank,_,w,m,t in observed:
+                assert all(w[j]['total']==96//dp and len(w[j]['scheduled'])==16//dp
+                           and m[j]['mode']=='FULL' and m[j]['padded']==96//dp
+                           for j in range(start,start+11))
                 matched.append(dict(rank=rank,start=start,
                     target_ms=median(x['device_elapsed_ms'] for x in t[start:start+10]),
                     cycle_ms=median(t[j+1]['device_start_ms']-t[j]['device_start_ms']
                                     for j in range(start,start+10))))
-            assert len({x['start'] for x in matched})==1
             item['first_10_full_occupancy_forwards']=dict(global_requests=16,global_query_rows=96,
                 ranks=matched,all_rank_target_median_ms=median(x['target_ms'] for x in matched),
                 all_rank_cycle_median_ms=median(x['cycle_ms'] for x in matched))

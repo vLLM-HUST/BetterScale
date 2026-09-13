@@ -16,6 +16,7 @@ def rank_main(args,dp_rank,barrier):
                      VLLM_DP_MASTER_PORT='30651',DONOR_DP_OUTPUT=str(args.output))
     os.environ['VLLM_ASCEND_ENABLE_FLASHCOMM1']='1' if args.tp>1 else '0'
     os.environ['DONOR_PINGPONG']='1' if args.pingpong else '0'
+    os.environ['DONOR_PINGPONG_CAPTURED_COPY']='1' if args.pingpong_captured_copy else '0'
     os.environ['DONOR_PINGPONG_SHADOW']='1' if args.pingpong_shadow else '0'
     os.environ['DONOR_PINGPONG_STUDY']='1' if args.pingpong_study else '0'
     from vllm import LLM,SamplingParams
