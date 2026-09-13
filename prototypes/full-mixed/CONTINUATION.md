@@ -133,3 +133,12 @@ launcher, retained both timing windows, and fixed the observation contract (no
 product runtime change). A CPU consumer-contract test now protects that field;
 client exceptions abort the shared barrier before native teardown can conceal
 failure from the parent.124 repeats wheel quality/performance with that repair.
+
+
+Final closure:124 actual installed wheel Worker scores32/32, all8 clients exit0.
+Its matched cycles50.737/49.878ms and intervals1.244/1.231ms retain the mechanism.
+Allocated peak58.016GiB/rank and reserved58.658–58.699GiB/rank include long-prefill
+quality and user KV8GiB; not a baseline-subtracted bank cost. Main7f7bda3 contains
+only the narrow package (367bdb7) and scoped evidence, not this historical branch.
+Final runtime AST matches the tested wheel; attribution comments are the only
+post-test source change. NPU release recorded and goal closed after publication.
