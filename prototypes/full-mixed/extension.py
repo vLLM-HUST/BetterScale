@@ -9,6 +9,12 @@ AscendDSACPMetadataBuilder.get_cudagraph_support = classmethod(
     lambda cls, vllm_config, kv_cache_spec: AttentionCGSupport.ALWAYS)
 
 class FullMixedProbeWorker:
+    def quality_capacity(self):
+        from vllm.v1.core.kv_cache_utils import get_kv_cache_capacity
+        r = self.model_runner
+        tokens, concurrency = get_kv_cache_capacity(r.vllm_config, r.kv_cache_config)
+        return dict(rank=self.rank, tokens=tokens, max_length_concurrency=concurrency)
+
     def enable_split_draft(self):
         from split_draft import install
         return install(self)

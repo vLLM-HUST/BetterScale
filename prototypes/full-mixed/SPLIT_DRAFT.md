@@ -97,3 +97,8 @@ Run046 native timeline lives at
 TraceLoom export. Named CPU regions distinguish `draft_context_ingest` and
 `draft_query_graph`; GPU task timing must still come from native links rather
 than assuming CPU scope duration equals device execution time.
+
+Subsequent quality gate: runs048/049 both score32/32 on the retained OpenCompass
+LongBench retrieval inputs. See `QUALITY.md` for the exact scope, source inputs,
+capacity correction and score receipts; the earlier "unrun" status above belongs
+to the performance-run handoff, not the current state.

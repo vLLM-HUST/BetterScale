@@ -1,0 +1,81 @@
+{
+  "scope": "Retained 32 OpenCompass LongBench English passage-retrieval items; not full suite",
+  "evaluator_commit": "60a28a727d3b7807eb3554928f3530d04c948452",
+  "tp": 8,
+  "k5": true,
+  "active_seats": 4,
+  "kv_gib_per_rank": 12,
+  "budget": 4128,
+  "max_model_len": 15104,
+  "arms": [
+    {
+      "run": 48,
+      "arm": "prior-optimized-control",
+      "count": 32,
+      "score": {
+        "score": 100.0
+      },
+      "correct": 32,
+      "all_correct": true,
+      "failed_request_ids": [],
+      "receipt": "runs/hw3-quality-048/quality-score.json"
+    },
+    {
+      "run": 49,
+      "arm": "split-context-query",
+      "count": 32,
+      "score": {
+        "score": 100.0
+      },
+      "correct": 32,
+      "all_correct": true,
+      "failed_request_ids": [],
+      "receipt": "runs/hw3-quality-049/quality-score.json",
+      "all_eight_ranks_identical": true,
+      "split_receipt": {
+        "context_calls": 101,
+        "context_rows": 399854,
+        "context_max": 4112,
+        "context_padding": 0,
+        "query_banks": [
+          {
+            "key": [
+              1,
+              "ChunkedPrefill",
+              true
+            ],
+            "captured": true,
+            "replays": 29,
+            "checks": 0,
+            "capture_checked": false,
+            "fallbacks": 0
+          },
+          {
+            "key": [
+              2,
+              "ChunkedPrefill",
+              true
+            ],
+            "captured": true,
+            "replays": 69,
+            "checks": 0,
+            "capture_checked": false,
+            "fallbacks": 0
+          },
+          {
+            "key": [
+              3,
+              "ChunkedPrefill",
+              true
+            ],
+            "captured": true,
+            "replays": 0,
+            "checks": 0,
+            "capture_checked": false,
+            "fallbacks": 0
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -8,6 +8,7 @@ p.add_argument('--tp',type=int,default=2)
 p.add_argument('--spec',action='store_true')
 p.add_argument('--n2',action='store_true')
 p.add_argument('--split-draft',action='store_true')
+p.add_argument('--quality-requests',type=Path)
 p.add_argument('--turnover',action='store_true')
 p.add_argument('--observe-cohorts',action='store_true')
 p.add_argument('--budget',type=int,default=256)
@@ -43,6 +44,10 @@ config=dict(model=os.environ.get('PROBE_MODEL','/data/shared_models/DeepSeek-V4-
  compilation_config=dict(cudagraph_mode=a.mode,cudagraph_capture_sizes=[24 if a.spec else 8,a.budget],max_cudagraph_capture_size=a.budget),
  additional_config=dict(ascend_compilation_config=dict(enable_npugraph_ex=True,enable_static_kernel=False),
  enable_cpu_binding=False,enable_dsa_cp=True,multistream_overlap_shared_expert=True))
+if a.quality_requests:
+ quality_rows=json.loads(a.quality_requests.read_text())
+ assert a.real and a.spec and a.mode=='FULL' and not a.n2
+ config['max_model_len']=max(config['max_model_len'],((max(len(r['prompt_token_ids'])+r['max_new_tokens'] for r in quality_rows)+127)//128)*128)
 if a.n2:
  assert a.spec and a.mode=='FULL' and not (a.draft_graph or a.cross_step_bounds or a.cross_step_study or a.policy_study)
  config.update(async_scheduling=True,scheduler_cls='n2_scheduler.N2Scheduler')
@@ -90,6 +95,10 @@ if a.warm_draft_banks:
  assert all(x['banks']=={str(n):True for n in range(1,5)} for x in banks), banks
  (a.output/'draft-bank-warmup.json').write_text(json.dumps(dict(seconds=time.monotonic()-started,ranks=banks),indent=2))
 assert not a.observe_cohorts or not (a.decode_study or a.replay_study or a.policy_study or a.cross_step_study)
+if a.quality_requests:
+ from quality import run as run_quality
+ run_quality(llm,a.output,a.quality_requests)
+ raise SystemExit(0)
 results=[]
 if a.decode_study or a.replay_study or a.policy_study or a.cross_step_study:
  llm.generate([dict(prompt_token_ids=[17]*64)]*a.requests,SamplingParams(temperature=0,max_tokens=8,ignore_eos=True,detokenize=False))

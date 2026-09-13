@@ -175,3 +175,11 @@ wave counts, including first-token differences within a repeated run. Their
 cause is not established. Fletcher stopped the separate divergence inquiry;
 do not restart it implicitly or relabel it proven harmless. Quality acceptance
 uses an explicit OpenCompass gate; matched-step timing is a separate claim.
+
+For a bounded quality gate use [`QUALITY.md`](../../../../../prototypes/full-mixed/QUALITY.md)
+and its native runner/scorer instead of rediscovering the workspace's historical
+OpenCompass deployments. The retained32 original-input retrieval questions are
+9.9–15K tokens:3GiB KV only holds1.19 max-length requests and is NOT a four-seat
+quality envelope. Native hybrid-aware capacity gives4.77 at12GiB. Runs048/049
+score32/32 for both the prior optimized control and split candidate. This is a
+LongBench retrieval subset pass, never a full OpenCompass-suite claim.
