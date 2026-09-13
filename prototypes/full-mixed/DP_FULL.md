@@ -121,8 +121,9 @@ cohort. Canonical local capsules are
 and the corresponding `hw3-dp8-066` path (native). Each contains the original
 rank DBs, `analysis/sources.json`, and clock markers/holdout receipts. The FULL
 export is `analysis/target-draft-tp8-end-aligned.json.gz` (legacy filename; DP8).
-The native export is `analysis/native-dp8-skew-unaligned.json.gz`: its original
-rank clocks are retained, NOT aligned. Use it for within-rank structure, not
+The native export is `analysis/native-dp8-skew-unaligned.json.gz`: the native exporter
+normalizes each rank to its first event, with NO collective-based clock fit.
+Within-rank time intervals are retained. Use it for within-rank structure, not
 cross-rank arrival ordering or visual duration differences against FULL.
 Only completed compressed native exports are shareable. Timing in these
 profiled windows is not the table's throughput evidence.

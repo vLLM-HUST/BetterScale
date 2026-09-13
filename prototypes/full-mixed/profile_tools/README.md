@@ -93,6 +93,7 @@ Do not relax the gate or choose pairs based on residual to force an export.
 
 Run066 native skew fails unrestricted eager alignment (rank7 P95 164.53us),
 while small-control-only identities are too few. Preserve the rejected fit;
-export native clocks only, explicitly named `unaligned`. It supports within-rank
+export without a collective clock model, explicitly named `unaligned` (native
+first-event normalization per rank). It supports within-rank
 inspection, NOT cross-rank lateness comparisons. Do not keep trying filters
 until a visually pleasing alignment appears.
