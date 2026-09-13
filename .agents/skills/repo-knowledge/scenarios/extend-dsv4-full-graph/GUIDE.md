@@ -106,3 +106,23 @@ For repeated eight-rank profiles use the tested
 Worker-side torch-npu export cannot parse in a daemon; collect first, parse
 offline. Reuse TraceLoom's fitter/exporter, retain candidate-only clock receipts,
 and link compressed timelines rather than putting raw JSON into the conversation.
+
+## Cross-step authorization and receipt placement
+
+For the next dependency cut enter
+[`CROSS_STEP.md`](../../../../../prototypes/full-mixed/CROSS_STEP.md).
+DSV4 device progress correction already exists. CPU sequence lengths and exact
+positions are different contracts: in the admitted DSACP decode path CPU lengths
+only set conservative tiling maxima, while device tensors drive actual addresses
+and attention. Do not transfer that conclusion to DCP or other builders.
+
+There are TWO pre-forward receipt consumers: CPU length correction and the
+compressed-model early deferred-state callback. Removing only the former still
+leaves the latter. The bounded prototype submits target first, retires current
+input DMA, then applies the original callback once. Native input-prep fences
+remain necessary: the callback can mutate pinned CPU H2D source tensors.
+
+A valid oracle must rebuild ORIGINAL exact-length metadata before reference
+execution, not run both sides with the candidate metadata. Run028 passed 65
+such checks per rank with dummy weights; real qualification and unprofiled
+performance are separate gates, recorded in the linked note.

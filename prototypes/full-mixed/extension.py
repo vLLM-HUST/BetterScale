@@ -9,6 +9,10 @@ AscendDSACPMetadataBuilder.get_cudagraph_support = classmethod(
     lambda cls, vllm_config, kv_cache_spec: AttentionCGSupport.ALWAYS)
 
 class FullMixedProbeWorker:
+    def set_cross_step_bounds(self, enabled=True):
+        from cross_step import install
+        return install(self, enabled)
+
     def set_cpu_qli(self, enabled=False, verify=False):
         from qli_cpu import configure
         return configure(self, enabled, verify)
@@ -33,6 +37,8 @@ class FullMixedProbeWorker:
         if hasattr(self,"_exact_draft_graph"):self._exact_draft_graph.receipt()
         import torch
         from vllm_ascend.compilation.acl_graph import ACLGraphWrapper
+        if hasattr(self.model_runner, "_cross_step_bounds"):
+            self.model_runner._cross_step_bounds.receipt()
         model=self.model_runner.model
         wrappers=[]
         if isinstance(model,ACLGraphWrapper):
@@ -205,7 +211,11 @@ def _checked_graph_call(self, *args, **kwargs):
     for target, source in zip(side, side_before): target.copy_(source)
     for target, source in zip(caches, before): target.copy_(source)
     old_mode = ctx.cudagraph_runtime_mode
+    cross_step = getattr(runner, "_cross_step_bounds", None)
+    reference_upper = None
     try:
+        if cross_step is not None:
+            reference_upper = cross_step.reference_begin(ctx)
         if os.environ.get('FULL_MIXED_ORACLE') == 'native_graph':
             # Compare our replay policy with the unchanged donor graph, including
             # all backing writes. This is NOT a graph/eager equivalence claim.
@@ -264,6 +274,8 @@ def _checked_graph_call(self, *args, **kwargs):
         Path(os.environ['FULL_MIXED_OUTPUT'],f'shadow-rank{runner._probe_rank}.json').write_text(json.dumps(runner._probe_shadows,indent=2))
     finally:
         ctx.cudagraph_runtime_mode = old_mode
+        if cross_step is not None:
+            cross_step.reference_end(ctx, reference_upper)
         for target, source in zip(caches, after): target.copy_(source)
         for target, source in zip(side, side_after): target.copy_(source)
     return replay
