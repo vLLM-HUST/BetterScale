@@ -201,3 +201,18 @@ OpenCompass deployments. The retained32 original-input retrieval questions are
 quality envelope. Native hybrid-aware capacity gives4.77 at12GiB. Runs048/049
 score32/32 for both the prior optimized control and split candidate. This is a
 LongBench retrieval subset pass, never a full OpenCompass-suite claim.
+
+## Producer-level decode shadow (experimental branch)
+
+Enter [`PINGPONG.md`](../../../../../prototypes/full-mixed/PINGPONG.md) before
+continuing double-buffered donor metadata. The endpoint graph-packet adapter
+alone gave no stable incremental speedup in matched real TP8/DP8 runs083/084;
+do not repeat its runtime metadata-tree walk or promote it as continuous replay.
+Fletcher's intended LiveInfer **shadow protocol** is host construction plus
+banked H2D publication and device derivation, distinct from the numerical shadow
+oracle. Generic FakeTensor dispatch does NOT intercept direct Triton launches:
+run085 failed in slot mapping; explicitly bounded run086 then passed discovery.
+The manually split `decode_shadow.py` / `decode_metadata.py` serving prototype
+keeps GPU progress single-copy and native prefill/turnover fallbacks. Enter the
+linked note for current qualification; single-card dummy gates are not TP8/DP8
+performance or deployment evidence.

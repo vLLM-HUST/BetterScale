@@ -76,6 +76,22 @@ class Contract(unittest.TestCase):
         r,s=fixture();r.use_dcp=True
         with self.assertRaises(AssertionError):self.make(r)
 
+    def test_banked_budget_retires_receipt_without_native_dma_fence(self):
+        r,s=fixture();events=[]
+        r._update_states=lambda schedule:lambda:events.append('receipt')
+        r._model_forward=lambda **kwargs:events.append('forward')
+        r.prepare_inputs_event=NS(synchronize=lambda:events.append('dma_retired'))
+        state=self.make(r)
+        r._decode_shadow=NS(active=object())
+        state.admitted=True
+        r._update_states(s)();r._model_forward()
+        self.assertEqual(events,['forward','receipt'])
+        self.assertEqual(state.banked_dma_fences_avoided,1)
+        # A subsequent native/fallback wave must keep the old guard.
+        r._decode_shadow.active=None
+        r._update_states(s)();r._model_forward()
+        self.assertEqual(events[-3:],['forward','dma_retired','receipt'])
+
     def test_all_modes_admits_mixed_and_turnover_but_not_missing_rows(self):
         r,s=fixture()
         with patch.dict('os.environ',{'FULL_MIXED_OUTPUT':tempfile.gettempdir()}):

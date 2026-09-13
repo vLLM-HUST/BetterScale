@@ -7,6 +7,21 @@ import torch
 
 
 class DonorDPWorker:
+    def enable_shadow_decode(self,verify=False,metadata=False):
+        from decode_shadow import DecodeShadow
+        self._decode_shadow=DecodeShadow(self,verify)
+        if metadata:
+            if self.model_runner.vllm_config.parallel_config.tensor_parallel_size > 1:
+                from qli_cpu import configure
+                configure(self,True,False)
+            from decode_metadata import DecodeMetadata
+            self._decode_metadata=DecodeMetadata(self._decode_shadow)
+        return {'scope':'explicit stable K5 input producer','verify':verify}
+
+    def enable_producer_shadow_audit(self):
+        from producer_shadow import install
+        return install(self)
+
     def enable_pingpong(self):
         torch.npu.synchronize()
         pair=self.model_runner.model._decode_pair
@@ -14,13 +29,15 @@ class DonorDPWorker:
         return pair.receipt()
 
     def set_pingpong_policy(self, policy):
-        assert policy in ('native', 'cut', 'sources', 'pair')
+        assert policy in ('native', 'cut', 'sources', 'pair', 'producer', 'metadata')
         torch.npu.synchronize()
         r=self.model_runner;pair=r.model._decode_pair;slots=r._host_source_slots
         assert pair.reference_catalog
-        pair.policy='native' if policy=='native' else 'pair' if policy=='pair' else 'ordered'
-        r.synchronize_input_prep=slots.scope if policy in ('sources','pair') else slots.original_scope
+        pair.policy='native' if policy=='native' else 'pair' if policy in ('pair','producer','metadata') else 'ordered'
+        r.synchronize_input_prep=slots.scope if policy in ('sources','pair','producer','metadata') else slots.original_scope
         r._cross_step_bounds.enabled=policy!='native'
+        if hasattr(self,'_decode_shadow'):self._decode_shadow.enabled=policy in ('producer','metadata')
+        if hasattr(self,'_decode_metadata'):self._decode_metadata.enabled=policy=='metadata'
         if r.vllm_config.parallel_config.tensor_parallel_size > 1:
             from qli_cpu import configure
             configure(self,policy!='native',False)
@@ -88,7 +105,9 @@ class DonorDPWorker:
         from vllm.distributed import get_ep_group
         r=self.model_runner;p=r.vllm_config.parallel_config
         tokens,concurrency=get_kv_cache_capacity(r.vllm_config,r.kv_cache_config)
-        return dict(cross_step=(r._cross_step_bounds.receipt() if '_cross_step_bounds' in r.__dict__ else None),
+        return dict(decode_shadow=(self._decode_shadow.receipt() if hasattr(self,'_decode_shadow') else None),
+                    decode_metadata=(self._decode_metadata.receipt() if hasattr(self,'_decode_metadata') else None),
+                    cross_step=(r._cross_step_bounds.receipt() if '_cross_step_bounds' in r.__dict__ else None),
                     host_source_slots=(r._host_source_slots.receipt() if '_host_source_slots' in r.__dict__ else None),
                     pingpong=(r.model._decode_pair.receipt() if '_decode_pair' in r.model.__dict__ else None),
                     dp_rank=p.data_parallel_rank,tp_rank=self.rank,ep_rank=get_ep_group().rank_in_group,

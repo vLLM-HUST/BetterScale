@@ -45,6 +45,7 @@ class CrossStepBounds:
         self.forward = r._model_forward
         self.pending = None
         self.late_commits = 0
+        self.banked_dma_fences_avoided = 0
         self.full_forwards = 0
         self.prepare = r._prepare_inputs
         self.correct = r._correct_optimistic_seq_lens_cpu
@@ -94,10 +95,20 @@ class CrossStepBounds:
             # CPU state tensors may still be H2D sources: retire input-prep DMA
             # before allowing the callback to mutate them. Never substitute a
             # device wait for ownership of pinned host memory.
-            event = self.runner.prepare_inputs_event
-            assert event is not None
-            with record_function("strengthen::retire_input_dma"):
-                event.synchronize()
+            producer = getattr(self.runner, '_decode_shadow', None)
+            if self.admitted and producer is not None and producer.active is not None:
+                # The admitted DSV4 callback only corrects req_state and CPU
+                # num_computed_tokens. Its H2D budget source has already been
+                # SNAPSHOTTED into producer-owned pinned storage. No native
+                # query-layout source is mutated by that callback. Keep the
+                # actual old-receipt wait inside callback; remove only this
+                # now-unnecessary current-preparation DMA fence.
+                self.banked_dma_fences_avoided += 1
+            else:
+                event = self.runner.prepare_inputs_event
+                assert event is not None
+                with record_function("strengthen::retire_input_dma"):
+                    event.synchronize()
             callback, self.pending = self.pending, None
             with record_function("strengthen::late_receipt"):
                 callback()
@@ -153,6 +164,7 @@ class CrossStepBounds:
 
     def receipt(self):
         result = dict(enabled=self.enabled,all_modes=self.all_modes,calls=self.calls,bypassed=self.bypassed,full_forwards=self.full_forwards,
+                      banked_dma_fences_avoided=self.banked_dma_fences_avoided,
                       exact_metadata_shadow_checks=self.reference_checks,late_commits=self.late_commits,rows=self.rows)
         self.path.write_text(json.dumps(result,indent=2))
         return result

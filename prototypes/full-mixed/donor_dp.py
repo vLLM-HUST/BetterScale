@@ -65,6 +65,11 @@ def rank_main(args,dp_rank,barrier):
     if args.dp_shadow:
         assert args.dp_full
         llm.collective_rpc('enable_dp_shadow')
+    if args.shadow_decode:
+        assert args.pingpong_continuous
+        llm.collective_rpc('enable_shadow_decode',args=(args.shadow_decode_verify,args.shadow_metadata,))
+    if args.producer_shadow_audit:
+        llm.collective_rpc('enable_producer_shadow_audit')
     rows=[]
     def wave(label,lengths,output,profile=False,observe=True):
         barrier.wait(timeout=600)
@@ -86,7 +91,7 @@ def rank_main(args,dp_rank,barrier):
     if args.pingpong_study:
         assert args.real and args.pingpong_continuous and not (args.dp_shadow or args.pingpong_shadow)
         for repeat in range(2):
-            for policy in ('native', 'cut', 'sources', 'pair'):
+            for policy in (('native','cut','pair','producer','metadata') if args.shadow_metadata else ('native', 'cut', 'sources', 'pair')):
                 barrier.wait(timeout=120)
                 llm.collective_rpc('set_pingpong_policy',args=(policy,))
                 wave(f'warm-{repeat}-{policy}',[128]*local_seats,16,observe=False)
@@ -116,7 +121,8 @@ def main(args):
     assert args.spec, "This bounded DP comparison is a K5 study"
     assert not any((args.n2,args.split_draft,args.ordered_replay,args.cpu_qli,args.draft_graph,args.cross_step_bounds))
     assert (args.donor_dp*args.tp==8 and args.donor_dp in (1,2,4,8)) or (
-        args.tp == 1 and args.donor_dp in (1,2,4) and args.dp_full and not args.real)
+        args.tp in (1,2,4) and args.donor_dp in (1,2,4) and args.donor_dp*args.tp <= 8
+        and (args.dp_full or args.tp > 1) and not args.real)
     args.output.mkdir(parents=True,exist_ok=True)
     ctx=mp.get_context('spawn');barrier=ctx.Barrier(args.donor_dp)
     processes=[ctx.Process(target=rank_main,args=(args,i,barrier),name=f'donor-dp-client-{i}') for i in range(args.donor_dp)]

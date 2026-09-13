@@ -196,3 +196,95 @@ late CPU bookkeeping destinations from DMA source slots. In particular native
 correction kernel, not the numerical progress State. `num_computed_tokens` on
 GPU must remain single-copy. The existing current-input-DMA host fence can only
 be removed after this ownership separation, not just after adding a ready event.
+
+### Closed endpoint-adapter measurements (083/084)
+
+Both layouts use16 actual requests,96 target rows,K5,8GiB KV/rank and eager native
+draft. Two within-engine repetitions; numbers are occupied cycle medians in ms:
+
+| Layout | native | receipt cut | + host source slots | + captured-copy graph pair |
+| --- | --- | --- | --- | --- |
+| TP8DP1 | 69.31 / 69.16 | 67.35 / 68.60 | 67.57 / 69.19 | 69.23 / 69.27 |
+| DP8TP1 | 62.25 / 60.57 | 62.54 / 61.63 | 62.81 / 62.63 | 62.55 / 62.94 |
+
+Capture removes the adapter's large host-launch tax but does NOT establish an
+incremental speedup. Do not promote this bridge or use cohort-time variation as
+a banking win. Packaged defaults and main remain untouched. These measurements
+are not a test of the producer-level LiveInfer shadow protocol.
+
+### Producer host-projection audit
+
+`--producer-shadow-audit` is one diagnostic stable `_prepare_inputs` call, not a
+new serving path. It uses the same host-real/device-fake separation as LiveInfer
+to inventory inputs and find explicit device action boundaries. Do NOT treat
+FakeTensor's disabled fallback as protection against arbitrary direct launchers.
+
+Run085 entered native block-table `compute_slot_mapping`, which directly calls a
+Triton kernel outside Torch dispatch, and ended with507035 / invalid MPU address.
+The owned process was reclaimed; release records show no residual NPU processes.
+No successful projection or correctness claim comes from this run. Source shows
+this direct launcher consumes fake positions. Run086 explicitly excludes that
+pure device-write action from host projection and preserves its persistent
+output contract; this is a changed boundary, not a retry of unguarded fake mode.
+The audit checks progress/input/position/length/slot-map device buffers unchanged
+and never modifies production defaults. Further native direct launchers, if any,
+need explicit boundaries before they can enter host shadow.
+
+Run086 completes the input-preparation host projection with the explicit
+slot-mapping boundary:115 virtualized Torch operations, no observed readbacks,
+and unchanged progress/input/position/length/slot-map device buffers. Its21-copy
+H2D inventory is incomplete: it omitted ten `aten.to.dtype_layout` occurrences
+(the detector now recognizes that overload). Do not call21 the complete ingress
+count. This diagnostic is discovery, not the serving implementation.
+
+Fletcher explicitly chose manual construction of the actual shadow protocol.
+`decode_shadow.py` now implements a bounded producer instead of replaying that
+FakeTensor audit at runtime:
+- explicit CPU K5 geometry and mutable resource/budget snapshots;
+- two pinned ingress/source and device-input banks, their own H2D stream;
+- H2D-source reuse waits old upload, device bank reuse waits old consumption;
+- native accepted-count arithmetic and direct slot-mapping kernel in a real
+  captured device-preparation program, leaving progress single-copy;
+- current native sampled/draft feedback handed to the preparation program on the
+  compute stream, never guessed from CPU budgets;
+- prefills, turnover, masked partial queries and hybrid feedback remain native.
+
+This first producer boundary covers `_prepare_inputs`, NOT the entire downstream
+DSA/DSACP metadata builder or a complete three-stream donor runtime. Existing
+late-receipt/current-input-DMA guards remain until the remaining H2D owners are
+separated. Run087 checks the new producer's device fields and complete sampler
+metadata against original preparation from identical State. No new performance
+claim precedes that gate.
+
+Run087 caught an exact sampler **dtype** contract error (target logits indices
+were int64, native uses in-place int32 arithmetic). No tolerance relaxation:
+geometry now emits the native int32 result. Run088 passes12 original-preparation
+checks, including initial capture, both banks, and stable2-request to1-request
+shapes. Run089 additionally captures the device metadata program and passes38
+original-native target output/KV checks (all output differences0, KV bytes exact)
+and12 input/sampler checks. Both are single-card dummy gates, not throughput or
+TP/DP qualification.
+
+`decode_metadata.py` refuses Torch-visible host/device transfers in the captured
+metadata stage; reviewed direct native Triton metadata operations execute with
+REAL device tensors. Tiling maxima use the admitted model limit, while exact
+lengths and positions stay dynamic on device. Cache identity includes actual and
+padded geometry plus CPU source-carrier identity; target metadata is cached but
+DSpark receives a fresh common envelope and refreshed per-group views. Native
+prefill/dummy/turnover and original exact-bound oracle builders remain separate.
+
+The next scoped fence removal follows the actual callback writes: native
+`correct_spec_decode_token_counts` changes request state and CPU computed-token
+budgets only. The explicit producer already snapshots that budget into owned
+pinned ingress, so its admitted waves can retire the old receipt without waiting
+for CURRENT native input DMA. The real receipt wait itself remains in the native
+callback. Native/fallback waves retain the current-DMA guard. This change is
+CPU-contract-tested and enters the next multirank gate; it is not yet a measured
+continuous-replay gain.
+
+TP2 run090 exposed a missing activation, not a new QLI algorithm gap: the native
+DSACP builder still extracted NPU scalars because this new entry had not enabled
+the already-qualified CPU-QLI hook. Capture rejected that readback (107027).
+The metadata entry now explicitly activates CPU-QLI on TP layouts; DeviceOnly
+also rejects `_local_scalar_dense` before a backend readback. CPU tests cover
+local host/device work, H2D, D2H, cross-device copy and scalar extraction.
