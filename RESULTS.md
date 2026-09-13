@@ -103,7 +103,7 @@ needed. Native same-stream ordering preserves context-write ->query-read order.
   benchmarking.12GiB quality candidate peak allocated is53.42GiB/rank.
 - At the original closeout, the deliverable was an opt-in prototype/patch
   collection. The kept path is now maintained in `src/strengthen_dsv4/` with
-  an explicit worker/HTTP entry; see the [runbook](docs/RUNBOOK.zh-CN.md).
+  a native `--worker-cls` entry (the later custom CLI was removed); see the [runbook](docs/RUNBOOK.zh-CN.md).
   This promotion does not broaden the performance or quality claims above.
   Runtime pins and unrelated work remain unchanged.
 

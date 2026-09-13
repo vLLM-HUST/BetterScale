@@ -7,19 +7,56 @@ protocol mapping and run098 worker-only timing evidence.
 
 ## Maintained serving entry
 
-For deployment and reporting, start from `bin/strengthen-dsv4`,
-`docs/RUNBOOK.zh-CN.md` and `patches/README.md`, not the historical prototype
-launchers below. The kept implementation is `src/strengthen_dsv4/patches`;
-the native worker subclass installs it during initialization/warmup without
-post-start activation RPC. `baseline` retains only the TP8/K5 LCM repair.
-The launcher rejects incompatible private API sources and unqualified layouts.
-`docs/acceptance.json` records the shipped HTTP-entry acceptance envelope.
+For deployment and reporting, start from `docs/RUNBOOK.zh-CN.md` and
+`patches/README.md`, not historical launchers. Install the package into the user's
+existing donor environment; the only public entry is native
+`vllm serve ... --worker-cls strengthen_dsv4.worker.Worker`. The worker installs
+the kept hooks before construction and after native warmup. No custom CLI,
+CANN/LD_LIBRARY_PATH/HCCL/allocator setup, private profile, required artifact
+folder or post-start activation RPC remains. Receipts in old capsules are
+historical; the shipped worker now logs READY and performs no file writes.
 
-Two deployment traps were observed: Ascend's explicit `worker_cls` survives
-platform config updates (only `auto` is substituted), whereas a worker extension
-cannot override colliding lifecycle methods. Native API server termination may
-also bypass `Worker.shutdown`; bank files are checkpoint receipts, not guaranteed
-final counters. Verify process/device release independently.
+The launcher removal does not expand the qualified configuration envelope or
+prove fresh NPU quality/performance. `config.py` validates native options without
+mutating them; the four-full-context KV-capacity gate is removed, not the graph
+shape/parallelism guards. `docs/acceptance.json` is the OLD CLI's HTTP acceptance,
+not the new entry's hardware result. CPU lifecycle tests verify hook order,
+native configuration/environment preservation, and no artifact-directory writes.
+Build/install the wheel in a disposable environment; do not upgrade donor deps.
+Check wheel contents, not only the source tree: setuptools reused a stale
+`build/lib/strengthen_dsv4/cli.py` after source deletion. A clean build (move old
+build output aside recoverably) removes it. Assert no console entry or cli.py in
+the wheel and resolve the installed worker class without depending on checkout
+PYTHONPATH. Native-base stubs cover packaging only, not accelerator execution.
+
+Maintain readable package code with `python -m black src/strengthen_dsv4`
+(default style, py312 target in pyproject.toml). Do not pack assignments or
+control-flow statements onto one line. Run the formatter in a development
+environment, not by adding dependencies to the donor runtime.
+
+Write module READMEs for a reader who has not inspected donor source: lead with
+the supported workload and problem, place the patch in the original execution
+flow, explain the mechanism with concrete input examples, then map to hooks and
+bounded evidence. A list of private API names is an inventory, not an explanation.
+Use target_full/README.md as the local example; do not assume the reader shares
+Lumi's experimental context.
+
+The implementation now uses six closed patch directories: compat_lcm,
+target_full, ordered_replay, qli_cpu, split_draft, cross_step. Each owns install;
+worker alone composes them. split_draft owns _graph.py; its metadata normalizer
+lives inline beside DraftGraphRunner in __init__.py. Old flat
+file paths in historical experiments refer to their original capsules, not
+current maintained code. Importing qli_cpu no longer mutates a donor method;
+ordered_replay owns its wrapper hook rather than borrowing target_full's installer.
+Both install after warmup (the previous ordered wrapper was inactive/fallback
+during warmup). `tests/test_patch_installation.py` covers import inertness, isolated
+hook ownership and repeat installation against native CPU doubles. This is not
+new NPU qualification or a promise of arbitrary subset performance.
+
+Ascend preserves explicit worker_cls (only `auto` is substituted). Removing this
+worker also removes its K5/TP8 LCM repair, so a native rollback must use a known
+working donor command, not promise an identical-config unpatched A/B. Historical
+prototype controls remain separate from the sole packaged integration entry.
 
 ## Historical investigation and experiments
 
@@ -234,7 +271,8 @@ across serialized shape/bank captures; stable ingress/live outputs remain owned
 separately. Target graphs already share the native pool. Run097/099 qualify
 real TP8/DP8 exact preparation, target and whole-KV behavior. Run098 measures
 about17% shorter matched TP8 cycles, with only28MiB more reserved memory than
-run083's same-configuration endpoint control; DP throughput/quality remain open.
+run083's same-configuration endpoint control. Run101 later qualifies DP quality
+and matched-step gains; its cohort throughput is not a stable win.
 Use8192 admission/8GiB KV for the retained TP performance envelope:192 admission
 fragmented the cohort, and3GiB KV fails native capacity validation at8192. See
 PINGPONG for the distinct oracle budgets and address-reservation failure boundary.
@@ -246,6 +284,25 @@ arrival is host-starved on rank5 while peers wait at the first ReduceScatter.
 That control intentionally had no split-draft graph. Do not rediscover target
 banking or blame collective bandwidth; compose the already-kept draft route,
 then independently qualify its expanded seat envelope. The new TP2 composition
-passes102; real TP8 composition was blocked at admission in103. Keep the
+passes102;103 was blocked, then104/108 qualified real TP8. Read the linked
+worker note for107/112 profiles and the subsequent non-adoption decision. Keep the
 existing tool's eager-draft selector closed to composed profiles until a distinct
 model-ID/occurrence association is provided.
+
+## Investigate KV prefetch hidden behind matrix work
+
+Enter `prototypes/kv-prefetch-overlap/README.md` before repeating communication /
+GEMM interference experiments or proposing PCP integration. It maps existing TP
+output-weight gathers and DP/MoE multistream consumers, retains native rank-local
+matmul shape/block inventories, and separates net block-time savings from compute
+slowdown. Neither a Matmul name nor timeline-envelope overlap proves spare Vector
+resources or free communication. The HCCL payload microbench omits owner State pack
+and existing EP traffic; it is not a serving or whole-layer qualification.
+
+This runtime rejects elapsed_time for timing events captured inside a graph
+(`event recorder null`,507000). Use external events around fixed repeated-operation
+graph blocks, preserve that throughput-block scope, and record actual NZ format.
+The probe explicitly enables internal format; otherwise format_cast can warn and
+silently leave ND. Keep selected-device admission and source/destination roles in
+the capsule, including rejected windows. Do not compare different hosts as if
+only the communication policy changed.
