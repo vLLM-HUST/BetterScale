@@ -74,3 +74,22 @@ measurements with explicit policy scope. Preserve graph-bank memory and output
 copy lifetime evidence; profile separately from throughput. Do not enable the
 unhelpful worker retirement extension by default. The package/main runtime is
 unchanged so far.
+
+116 completed: each DP2 rank passes48 target/full-KV comparisons (maximum
+output difference0) and12 exact preparation checks. Both target banks replay55
+times/rank. Ingress has4 shape/bank slots (83,824 pinned bytes/rank). Metadata
+cache reaches5/8 entries across the two ranks; all are within the original
+bounded geometry. This run used runtime packet refresh, not captured copies,
+so its elapsed time is not the intended performance configuration.
+
+117 failed full-machine admission (foreign jobs on local6/7).118 acquired a
+later window and began real-weight loading, then a new foreign process appeared
+on card6. The launcher stopped only its owned workers and released the lease;
+there is no118 correctness or timing result. hw3 card6 remains occupied too.
+
+Another bounded observation: run101 rank0 metadata cache grew4->8 entries
+between repeats. Do not count first-shape capture as steady-state performance or
+assume a2-request warmup covers independently padded DP shapes. The receipt now
+exposes finite `(requests,padded_requests,padded_tokens,host_carrier)` keys without
+publishing raw addresses, so a warmup can be checked instead of guessed. This
+adds cohort-boundary evidence only, not per-wave host synchronization.

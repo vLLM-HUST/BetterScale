@@ -90,6 +90,13 @@ class DecodeMetadata:
         return metadata, common
 
     def receipt(self):
+        carriers = {}
+        shapes = []
+        for n, nr, nt, carrier in self.entries:
+            slot = carriers.setdefault(carrier, len(carriers))
+            shapes.append(dict(requests=n, padded_requests=nr, padded_tokens=nt,
+                               host_carrier=slot))
         return dict(stage='stable-device-metadata-program', shapes=len(self.entries),
+                    shape_keys=shapes,
                     replays=self.replays, tiling_upper_bound=self.r.max_model_len,
                     host_transfers_in_capture=False)
