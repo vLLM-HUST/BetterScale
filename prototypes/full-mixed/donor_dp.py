@@ -50,6 +50,11 @@ def rank_main(args,dp_rank,barrier):
         config['hf_overrides']=dict(num_hidden_layers=4,compress_ratios=[0,0,4,128],n_routed_experts=8,
                                    num_hash_layers=0,num_nextn_predict_layers=1,dspark_target_layer_ids=[1,2,3])
     (args.output/f'dp{dp_rank}-config.json').write_text(json.dumps(config,indent=2))
+    (args.output/f'dp{dp_rank}-protocol.json').write_text(json.dumps(dict(
+        shadow_decode=args.shadow_decode, shadow_metadata=args.shadow_metadata,
+        producer_oracle=args.shadow_decode_verify, target_oracle=args.pingpong_shadow,
+        hccl_deterministic=os.environ.get('HCCL_DETERMINISTIC'),
+        decode_only=args.decode_only, study=args.pingpong_study),indent=2))
     llm=LLM(**config)
     if args.pingpong:
         llm.collective_rpc('enable_pingpong')
@@ -99,14 +104,22 @@ def rank_main(args,dp_rank,barrier):
     elif args.real:
         for repeat in range(2):
             wave(f'decode{repeat}',[128]*local_seats,128)
-            wave(f'prefill{repeat}',[4096]*(8//args.donor_dp),16)
-            wave(f'skew{repeat}',[8192 if dp_rank*(8//args.donor_dp)+i==0 else 256 for i in range(8//args.donor_dp)],16)
+            if not args.decode_only:
+                wave(f'prefill{repeat}',[4096]*(8//args.donor_dp),16)
+                wave(f'skew{repeat}',[8192 if dp_rank*(8//args.donor_dp)+i==0 else 256 for i in range(8//args.donor_dp)],16)
     elif not args.real:
         wave('dummybalanced',[128]*local_seats,16)
         wave('dummyskew',[args.budget*2+17 if dp_rank==0 else 32]*(1 if single_card else 8//args.donor_dp),16)
     if args.profile_after:
-        wave('profiledecode',[128]*local_seats,64,profile=True)
-        wave('profileskew',[8192 if dp_rank*(8//args.donor_dp)+i==0 else 256 for i in range(8//args.donor_dp)],32,profile=True)
+        if args.pingpong_study and args.shadow_metadata:
+            for policy in ('native','metadata'):
+                barrier.wait(timeout=120)
+                llm.collective_rpc('set_pingpong_policy',args=(policy,))
+                wave(f'profile-warm-{policy}',[128]*local_seats,16,observe=False)
+                wave(f'profiledecode-{policy}',[128]*local_seats,64,profile=True)
+        else:
+            wave('profiledecode',[128]*local_seats,64,profile=True)
+            if not args.decode_only:wave('profileskew',[8192 if dp_rank*(8//args.donor_dp)+i==0 else 256 for i in range(8//args.donor_dp)],32,profile=True)
     if args.quality_requests:
         assert args.real and args.donor_dp == 8 and args.tp == 1 and not args.dp_shadow
         from quality import run_dp

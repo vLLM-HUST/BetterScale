@@ -288,3 +288,20 @@ the already-qualified CPU-QLI hook. Capture rejected that readback (107027).
 The metadata entry now explicitly activates CPU-QLI on TP layouts; DeviceOnly
 also rejects `_local_scalar_dense` before a backend readback. CPU tests cover
 local host/device work, H2D, D2H, cross-device copy and scalar extraction.
+
+Run091 TP2 dummy passes12 input/sampler checks and28 original-native target
+output/KV checks on EACH rank (all output differences0, KV bytes exact). Both
+ranks execute22 captured metadata replays across8 CPU-carrier/shape entries and
+avoid22 current-input-DMA fences. Run092 DP2 dummy passes12 input/sampler checks
+and48 target output/KV checks per rank, including independent DP progress and
+native dummy EP drain. These do not establish eight-rank real-weight throughput.
+
+Real-weight qualification uses `HCCL_DETERMINISTIC=strict` to separate scheduling
+from collective arithmetic variation; performance runs use normal HCCL. Run093
+was stopped during initialization to correct that missing qualification setting,
+with owned launcher cleanup, and provides no result. Protocol settings are now
+retained per DP rank. `--decode-only` bounds the large-real-model investigation
+to the entrusted decode path instead of repeating unrelated long-prefill cohorts.
+The same-engine producer study separates native, previous receipt cut, endpoint
+pair, explicit input producer, and captured metadata; optional profiles are
+collected in separate warmed native/candidate cohorts, never timed as throughput.
