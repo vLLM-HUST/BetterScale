@@ -16,7 +16,7 @@ our previously installed donor packages byte-for-byte. The Ascend pin is a
 release candidate, not a stable release. Submodule gitlinks are authoritative.
 
 ```sh
-git clone --recurse-submodules git@github.com:CubeLander/strengthen-dsv4.git
+git clone --recurse-submodules git@github.com:vLLM-HUST/strengthen-dsv4.git
 cd strengthen-dsv4
 git submodule status
 ```
