@@ -35,4 +35,3 @@ class AlignmentContract(unittest.TestCase):
         self.assertEqual(ns['_adjust_joint_alignment'](config,6,2),(6,2))
         config.pass_config.enable_sp=False
         self.assertEqual(ns['_adjust_joint_alignment'](config,6,8),(6,8))
-

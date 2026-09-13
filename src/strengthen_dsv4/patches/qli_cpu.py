@@ -34,7 +34,7 @@ def _cpu_qli_metadata(self, query_start_loc, seq_lens, seq_lens_q, num_reqs):
         max_seqlen_k = max(1, int(cpu['sl_cpu'].max().item()))
         if _verify:
             assert max_seqlen_q == max(1, int(seq_lens_q.max().item())), 'CPU Q maximum diverged'
-            assert max_seqlen_k == max(1, int(seq_lens.max().item())), 'CPU KV maximum diverged' 
+            assert max_seqlen_k == max(1, int(seq_lens.max().item())), 'CPU KV maximum diverged'
         metadata = torch.ops._C_ascend.npu_vllm_quant_lightning_indexer_metadata(
             actual_seq_lengths_query=query_start_loc[1:].clone(),
             actual_seq_lengths_key=seq_lens.clone(),
