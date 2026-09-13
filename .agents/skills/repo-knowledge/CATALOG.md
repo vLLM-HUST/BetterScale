@@ -17,3 +17,7 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 - **Investigate donor dispatch gaps and extend DSV4 FULL prefill/mixed:**
   read [extend-dsv4-full-graph](scenarios/extend-dsv4-full-graph/GUIDE.md)
   before changing graph coverage or interpreting the eight-rank trace.
+
+- **Study native donor DP+EP, skew and cache ownership:** read
+  [study-native-dp](scenarios/study-native-dp/GUIDE.md) before launching native
+  offline DP or interpreting its eight-rank profiles and capacity receipts.

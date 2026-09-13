@@ -5,6 +5,7 @@ p=argparse.ArgumentParser()
 p.add_argument('--output',type=Path,required=True)
 p.add_argument('--mode',choices=['FULL','FULL_DECODE_ONLY','NONE'],default='FULL')
 p.add_argument('--tp',type=int,default=2)
+p.add_argument('--donor-dp',type=int,default=0)
 p.add_argument('--spec',action='store_true')
 p.add_argument('--n2',action='store_true')
 p.add_argument('--split-draft',action='store_true')
@@ -30,6 +31,9 @@ p.add_argument('--ordered-replay',action='store_true')
 p.add_argument('--decode-study',action='store_true')
 p.add_argument('--profile',action='store_true')
 a=p.parse_args()
+if a.donor_dp:
+ import sys
+ os.execv(sys.executable,[sys.executable,'-m','donor_dp',json.dumps(vars(a),default=str)])
 assert sum((a.decode_study,a.replay_study,a.policy_study,a.cross_step_study))<=1
 if a.cross_step_study:
  assert a.ordered_replay and a.cpu_qli and a.draft_graph

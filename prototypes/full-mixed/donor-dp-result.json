@@ -1,0 +1,753 @@
+{
+  "date": "2026-09-13",
+  "host": "hw3",
+  "workload": "fixed synthetic tokens; greedy EOS-ignored K5; cold prefix cache; no serving SLO or quality acceptance",
+  "arms": {
+    "dp8tp1": {
+      "configuration": {
+        "dp": 8,
+        "tp": 1,
+        "exitcodes": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "logical_kv_tokens_per_dp_shard": [
+        178080,
+        178080,
+        178080,
+        178080,
+        178080,
+        178080,
+        178080,
+        178080
+      ],
+      "aggregate_logical_kv_tokens": 1424640,
+      "receipts": [
+        {
+          "dp_rank": 0,
+          "tp_rank": 0,
+          "ep_rank": 0,
+          "ep_size": 8,
+          "device": "npu:0",
+          "kv_capacity_tokens": 178080,
+          "max_length_concurrency": 10.869158878504672,
+          "allocated": 61606937600,
+          "reserved": 62937628672,
+          "peak": 62289689600,
+          "attention_builders": [
+            "AscendDSAMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 1,
+          "tp_rank": 0,
+          "ep_rank": 1,
+          "ep_size": 8,
+          "device": "npu:1",
+          "kv_capacity_tokens": 178080,
+          "max_length_concurrency": 10.869158878504672,
+          "allocated": 61606937600,
+          "reserved": 62937628672,
+          "peak": 62289689600,
+          "attention_builders": [
+            "AscendDSAMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 2,
+          "tp_rank": 0,
+          "ep_rank": 2,
+          "ep_size": 8,
+          "device": "npu:2",
+          "kv_capacity_tokens": 178080,
+          "max_length_concurrency": 10.869158878504672,
+          "allocated": 61606937600,
+          "reserved": 62937628672,
+          "peak": 62289689600,
+          "attention_builders": [
+            "AscendDSAMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 3,
+          "tp_rank": 0,
+          "ep_rank": 3,
+          "ep_size": 8,
+          "device": "npu:3",
+          "kv_capacity_tokens": 178080,
+          "max_length_concurrency": 10.869158878504672,
+          "allocated": 61606937600,
+          "reserved": 62937628672,
+          "peak": 62289689600,
+          "attention_builders": [
+            "AscendDSAMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 4,
+          "tp_rank": 0,
+          "ep_rank": 4,
+          "ep_size": 8,
+          "device": "npu:4",
+          "kv_capacity_tokens": 178080,
+          "max_length_concurrency": 10.869158878504672,
+          "allocated": 61606937600,
+          "reserved": 62937628672,
+          "peak": 62289689600,
+          "attention_builders": [
+            "AscendDSAMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 5,
+          "tp_rank": 0,
+          "ep_rank": 5,
+          "ep_size": 8,
+          "device": "npu:5",
+          "kv_capacity_tokens": 178080,
+          "max_length_concurrency": 10.869158878504672,
+          "allocated": 61606937600,
+          "reserved": 62937628672,
+          "peak": 62289689600,
+          "attention_builders": [
+            "AscendDSAMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 6,
+          "tp_rank": 0,
+          "ep_rank": 6,
+          "ep_size": 8,
+          "device": "npu:6",
+          "kv_capacity_tokens": 178080,
+          "max_length_concurrency": 10.869158878504672,
+          "allocated": 61606937600,
+          "reserved": 62937628672,
+          "peak": 62289689600,
+          "attention_builders": [
+            "AscendDSAMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 7,
+          "tp_rank": 0,
+          "ep_rank": 7,
+          "ep_size": 8,
+          "device": "npu:7",
+          "kv_capacity_tokens": 178080,
+          "max_length_concurrency": 10.869158878504672,
+          "allocated": 61606937600,
+          "reserved": 62937628672,
+          "peak": 62289689600,
+          "attention_builders": [
+            "AscendDSAMetadataBuilder"
+          ]
+        }
+      ],
+      "capsule": "hw3-dp8-052",
+      "cohorts": [
+        {
+          "label": "warmup",
+          "seconds": 3.1372684420784935,
+          "input_tokens": 1024,
+          "output_tokens": 256,
+          "output_tokens_per_second": 81.59964782305835,
+          "launch_skew_ms": 0.12459105346351862,
+          "profile": false
+        },
+        {
+          "label": "decode0",
+          "seconds": 4.657424301025458,
+          "input_tokens": 2048,
+          "output_tokens": 2048,
+          "output_tokens_per_second": 439.72802725941835,
+          "launch_skew_ms": 0.12229103595018387,
+          "profile": false,
+          "first_10_full_occupancy_forwards": {
+            "global_requests": 16,
+            "global_query_rows": 96,
+            "ranks": [
+              {
+                "rank": 0,
+                "start": 2,
+                "target_ms": 44.402320861816406,
+                "cycle_ms": 61.0087890625
+              },
+              {
+                "rank": 1,
+                "start": 2,
+                "target_ms": 44.47298049926758,
+                "cycle_ms": 60.783203125
+              },
+              {
+                "rank": 2,
+                "start": 2,
+                "target_ms": 43.27415084838867,
+                "cycle_ms": 60.76708984375
+              },
+              {
+                "rank": 3,
+                "start": 2,
+                "target_ms": 43.442331314086914,
+                "cycle_ms": 61.080322265625
+              },
+              {
+                "rank": 4,
+                "start": 2,
+                "target_ms": 44.5046501159668,
+                "cycle_ms": 60.79443359375
+              },
+              {
+                "rank": 5,
+                "start": 2,
+                "target_ms": 43.737680435180664,
+                "cycle_ms": 60.63995361328125
+              },
+              {
+                "rank": 6,
+                "start": 2,
+                "target_ms": 43.7056999206543,
+                "cycle_ms": 60.7919921875
+              },
+              {
+                "rank": 7,
+                "start": 2,
+                "target_ms": 44.38290023803711,
+                "cycle_ms": 60.8692626953125
+              }
+            ],
+            "all_rank_target_median_ms": 44.06029033660889,
+            "all_rank_cycle_median_ms": 60.793212890625
+          }
+        },
+        {
+          "label": "prefill0",
+          "seconds": 3.668167321011424,
+          "input_tokens": 32768,
+          "output_tokens": 128,
+          "output_tokens_per_second": 34.89480953249061,
+          "launch_skew_ms": 0.10482105426490307,
+          "profile": false
+        },
+        {
+          "label": "skew0",
+          "seconds": 5.159186576027423,
+          "input_tokens": 9984,
+          "output_tokens": 128,
+          "output_tokens_per_second": 24.810112624102864,
+          "launch_skew_ms": 0.11276104487478733,
+          "profile": false
+        },
+        {
+          "label": "decode1",
+          "seconds": 5.175678086932749,
+          "input_tokens": 2048,
+          "output_tokens": 2048,
+          "output_tokens_per_second": 395.69694358902876,
+          "launch_skew_ms": 0.09736092761158943,
+          "profile": false,
+          "first_10_full_occupancy_forwards": {
+            "global_requests": 16,
+            "global_query_rows": 96,
+            "ranks": [
+              {
+                "rank": 0,
+                "start": 3,
+                "target_ms": 44.876190185546875,
+                "cycle_ms": 59.87451171875
+              },
+              {
+                "rank": 1,
+                "start": 3,
+                "target_ms": 44.179931640625,
+                "cycle_ms": 59.70556640625
+              },
+              {
+                "rank": 2,
+                "start": 3,
+                "target_ms": 44.04689025878906,
+                "cycle_ms": 59.9111328125
+              },
+              {
+                "rank": 3,
+                "start": 3,
+                "target_ms": 44.34766960144043,
+                "cycle_ms": 59.934326171875
+              },
+              {
+                "rank": 4,
+                "start": 3,
+                "target_ms": 44.68341064453125,
+                "cycle_ms": 59.88818359375
+              },
+              {
+                "rank": 5,
+                "start": 3,
+                "target_ms": 44.272300720214844,
+                "cycle_ms": 59.888427734375
+              },
+              {
+                "rank": 6,
+                "start": 3,
+                "target_ms": 44.38179969787598,
+                "cycle_ms": 59.9345703125
+              },
+              {
+                "rank": 7,
+                "start": 3,
+                "target_ms": 44.60750961303711,
+                "cycle_ms": 59.92578125
+              }
+            ],
+            "all_rank_target_median_ms": 44.3647346496582,
+            "all_rank_cycle_median_ms": 59.8997802734375
+          }
+        },
+        {
+          "label": "prefill1",
+          "seconds": 3.6213053530082107,
+          "input_tokens": 32768,
+          "output_tokens": 128,
+          "output_tokens_per_second": 35.34637030640641,
+          "launch_skew_ms": 0.10502105578780174,
+          "profile": false
+        },
+        {
+          "label": "skew1",
+          "seconds": 5.123451075982302,
+          "input_tokens": 9984,
+          "output_tokens": 128,
+          "output_tokens_per_second": 24.983160393594463,
+          "launch_skew_ms": 0.09886093903332949,
+          "profile": false
+        },
+        {
+          "label": "profiledecode",
+          "seconds": 6.495877484907396,
+          "input_tokens": 2048,
+          "output_tokens": 1024,
+          "output_tokens_per_second": 157.63844105421856,
+          "launch_skew_ms": 0.16560195945203304,
+          "profile": true
+        },
+        {
+          "label": "profileskew",
+          "seconds": 7.259943273034878,
+          "input_tokens": 9984,
+          "output_tokens": 256,
+          "output_tokens_per_second": 35.261983513127944,
+          "launch_skew_ms": 0.14644104521721601,
+          "profile": true
+        }
+      ]
+    },
+    "tp8dp1": {
+      "configuration": {
+        "dp": 1,
+        "tp": 8,
+        "exitcodes": [
+          0
+        ]
+      },
+      "logical_kv_tokens_per_dp_shard": [
+        27066
+      ],
+      "aggregate_logical_kv_tokens": 27066,
+      "receipts": [
+        {
+          "dp_rank": 0,
+          "tp_rank": 0,
+          "ep_rank": 0,
+          "ep_size": 8,
+          "device": "npu:0",
+          "kv_capacity_tokens": 27066,
+          "max_length_concurrency": 1.6519886363636365,
+          "allocated": 52961101824,
+          "reserved": 54347694080,
+          "peak": 53729939968,
+          "attention_builders": [
+            "AscendDSACPMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 0,
+          "tp_rank": 1,
+          "ep_rank": 1,
+          "ep_size": 8,
+          "device": "npu:1",
+          "kv_capacity_tokens": 27066,
+          "max_length_concurrency": 1.6519886363636365,
+          "allocated": 52961101824,
+          "reserved": 54347694080,
+          "peak": 53729939968,
+          "attention_builders": [
+            "AscendDSACPMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 0,
+          "tp_rank": 2,
+          "ep_rank": 2,
+          "ep_size": 8,
+          "device": "npu:2",
+          "kv_capacity_tokens": 27066,
+          "max_length_concurrency": 1.6519886363636365,
+          "allocated": 52961101824,
+          "reserved": 54347694080,
+          "peak": 53729939968,
+          "attention_builders": [
+            "AscendDSACPMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 0,
+          "tp_rank": 3,
+          "ep_rank": 3,
+          "ep_size": 8,
+          "device": "npu:3",
+          "kv_capacity_tokens": 27066,
+          "max_length_concurrency": 1.6519886363636365,
+          "allocated": 52961101824,
+          "reserved": 54347694080,
+          "peak": 53729939968,
+          "attention_builders": [
+            "AscendDSACPMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 0,
+          "tp_rank": 4,
+          "ep_rank": 4,
+          "ep_size": 8,
+          "device": "npu:4",
+          "kv_capacity_tokens": 27066,
+          "max_length_concurrency": 1.6519886363636365,
+          "allocated": 52961101824,
+          "reserved": 54347694080,
+          "peak": 53729939968,
+          "attention_builders": [
+            "AscendDSACPMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 0,
+          "tp_rank": 5,
+          "ep_rank": 5,
+          "ep_size": 8,
+          "device": "npu:5",
+          "kv_capacity_tokens": 27066,
+          "max_length_concurrency": 1.6519886363636365,
+          "allocated": 52961101824,
+          "reserved": 54347694080,
+          "peak": 53729939968,
+          "attention_builders": [
+            "AscendDSACPMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 0,
+          "tp_rank": 6,
+          "ep_rank": 6,
+          "ep_size": 8,
+          "device": "npu:6",
+          "kv_capacity_tokens": 27066,
+          "max_length_concurrency": 1.6519886363636365,
+          "allocated": 52961101824,
+          "reserved": 54347694080,
+          "peak": 53729939968,
+          "attention_builders": [
+            "AscendDSACPMetadataBuilder"
+          ]
+        },
+        {
+          "dp_rank": 0,
+          "tp_rank": 7,
+          "ep_rank": 7,
+          "ep_size": 8,
+          "device": "npu:7",
+          "kv_capacity_tokens": 27066,
+          "max_length_concurrency": 1.6519886363636365,
+          "allocated": 52961101824,
+          "reserved": 54347694080,
+          "peak": 53729939968,
+          "attention_builders": [
+            "AscendDSACPMetadataBuilder"
+          ]
+        }
+      ],
+      "capsule": "hw3-tp8-053",
+      "cohorts": [
+        {
+          "label": "warmup",
+          "seconds": 14.359959883033298,
+          "input_tokens": 1024,
+          "output_tokens": 256,
+          "output_tokens_per_second": 17.82734785369918,
+          "launch_skew_ms": 0.0,
+          "profile": false
+        },
+        {
+          "label": "decode0",
+          "seconds": 5.013233222998679,
+          "input_tokens": 2048,
+          "output_tokens": 2048,
+          "output_tokens_per_second": 408.51879593484847,
+          "launch_skew_ms": 0.0,
+          "profile": false,
+          "first_10_full_occupancy_forwards": {
+            "global_requests": 16,
+            "global_query_rows": 96,
+            "ranks": [
+              {
+                "rank": 0,
+                "start": 3,
+                "target_ms": 52.90044021606445,
+                "cycle_ms": 67.7889404296875
+              },
+              {
+                "rank": 1,
+                "start": 3,
+                "target_ms": 52.984500885009766,
+                "cycle_ms": 67.75640869140625
+              },
+              {
+                "rank": 2,
+                "start": 3,
+                "target_ms": 52.176279067993164,
+                "cycle_ms": 68.15838623046875
+              },
+              {
+                "rank": 3,
+                "start": 3,
+                "target_ms": 52.80631065368652,
+                "cycle_ms": 67.79083251953125
+              },
+              {
+                "rank": 4,
+                "start": 3,
+                "target_ms": 49.016929626464844,
+                "cycle_ms": 67.71380615234375
+              },
+              {
+                "rank": 5,
+                "start": 3,
+                "target_ms": 53.00994110107422,
+                "cycle_ms": 67.78131103515625
+              },
+              {
+                "rank": 6,
+                "start": 3,
+                "target_ms": 52.6815299987793,
+                "cycle_ms": 67.799560546875
+              },
+              {
+                "rank": 7,
+                "start": 3,
+                "target_ms": 52.904409408569336,
+                "cycle_ms": 67.90771484375
+              }
+            ],
+            "all_rank_target_median_ms": 52.85337543487549,
+            "all_rank_cycle_median_ms": 67.78988647460938
+          }
+        },
+        {
+          "label": "prefill0",
+          "seconds": 3.357122405897826,
+          "input_tokens": 32768,
+          "output_tokens": 128,
+          "output_tokens_per_second": 38.127891844255764,
+          "launch_skew_ms": 0.0,
+          "profile": false
+        },
+        {
+          "label": "skew0",
+          "seconds": 2.1361155100166798,
+          "input_tokens": 9984,
+          "output_tokens": 128,
+          "output_tokens_per_second": 59.92185319557018,
+          "launch_skew_ms": 0.0,
+          "profile": false
+        },
+        {
+          "label": "decode1",
+          "seconds": 4.792272243998013,
+          "input_tokens": 2048,
+          "output_tokens": 2048,
+          "output_tokens_per_second": 427.35468598742005,
+          "launch_skew_ms": 0.0,
+          "profile": false,
+          "first_10_full_occupancy_forwards": {
+            "global_requests": 16,
+            "global_query_rows": 96,
+            "ranks": [
+              {
+                "rank": 0,
+                "start": 3,
+                "target_ms": 55.37034034729004,
+                "cycle_ms": 70.1495361328125
+              },
+              {
+                "rank": 1,
+                "start": 3,
+                "target_ms": 55.92513084411621,
+                "cycle_ms": 70.343994140625
+              },
+              {
+                "rank": 2,
+                "start": 3,
+                "target_ms": 54.45600891113281,
+                "cycle_ms": 69.37603759765625
+              },
+              {
+                "rank": 3,
+                "start": 3,
+                "target_ms": 49.8417911529541,
+                "cycle_ms": 69.82965087890625
+              },
+              {
+                "rank": 4,
+                "start": 3,
+                "target_ms": 54.57361030578613,
+                "cycle_ms": 69.33447265625
+              },
+              {
+                "rank": 5,
+                "start": 3,
+                "target_ms": 55.93532943725586,
+                "cycle_ms": 70.37005615234375
+              },
+              {
+                "rank": 6,
+                "start": 3,
+                "target_ms": 55.480621337890625,
+                "cycle_ms": 70.1754150390625
+              },
+              {
+                "rank": 7,
+                "start": 3,
+                "target_ms": 49.06796073913574,
+                "cycle_ms": 68.4718017578125
+              }
+            ],
+            "all_rank_target_median_ms": 54.971975326538086,
+            "all_rank_cycle_median_ms": 69.98959350585938
+          }
+        },
+        {
+          "label": "prefill1",
+          "seconds": 3.5866569810314104,
+          "input_tokens": 32768,
+          "output_tokens": 128,
+          "output_tokens_per_second": 35.68782871541599,
+          "launch_skew_ms": 0.0,
+          "profile": false
+        },
+        {
+          "label": "skew1",
+          "seconds": 2.0353330220095813,
+          "input_tokens": 9984,
+          "output_tokens": 128,
+          "output_tokens_per_second": 62.888971296510235,
+          "launch_skew_ms": 0.0,
+          "profile": false
+        },
+        {
+          "label": "profiledecode",
+          "seconds": 4.415229317033663,
+          "input_tokens": 2048,
+          "output_tokens": 1024,
+          "output_tokens_per_second": 231.92453357959815,
+          "launch_skew_ms": 0.0,
+          "profile": true
+        },
+        {
+          "label": "profileskew",
+          "seconds": 2.9450804439838976,
+          "input_tokens": 9984,
+          "output_tokens": 256,
+          "output_tokens_per_second": 86.92462052197841,
+          "launch_skew_ms": 0.0,
+          "profile": true
+        }
+      ]
+    }
+  },
+  "source_identity": [
+    {
+      "file": "vllm_ascend/worker/worker.py",
+      "matches_pinned_source": true
+    },
+    {
+      "file": "vllm_ascend/worker/model_runner_v1.py",
+      "matches_pinned_source": true
+    },
+    {
+      "file": "vllm_ascend/attention/dsa_v1.py",
+      "matches_pinned_source": true
+    },
+    {
+      "file": "vllm_ascend/ops/fused_moe/prepare_finalize.py",
+      "matches_pinned_source": true
+    },
+    {
+      "file": "vllm_ascend/ops/fused_moe/token_dispatcher.py",
+      "matches_pinned_source": true
+    },
+    {
+      "file": "vllm_ascend/ascend_forward_context.py",
+      "matches_pinned_source": true
+    },
+    {
+      "file": "vllm/config/parallel.py",
+      "matches_pinned_source": true
+    },
+    {
+      "file": "vllm/config/compilation.py",
+      "matches_pinned_source": true
+    }
+  ],
+  "limitations": [
+    "Two repeats only; end-to-end output throughput has no stable winner.",
+    "Budget per DP engine is1024 versus8192 for TP: aggregate equal, skewed single-request budget unequal.",
+    "Native hybrid capacity depends on prefill budget; aggregate ratio is not pure DP capacity savings or a residency test.",
+    "Native DP dummy drain and profiler overhead are excluded from matched occupied unprofiled windows.",
+    "LCM capture sizing startup repair retained; no FULL mixed, draft graph, N+2, CPU QLI or ordered replay patches."
+  ],
+  "communication_dtype_observation": {
+    "hw3-dp8-052": {
+      "source": "/workspace/strengthen-dsv4/runs/hw3-dp8-052/profiledecode/profile/rank0_2032194_20260913070117551_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_0.db",
+      "query": "select d.name,o.count,count(*) from COMMUNICATION_OP o join STRING_IDS t on t.id=o.opType join ENUM_HCCL_DATA_TYPE d on d.id=o.dataType where t.value like '%AllGather%' and o.count=49152 group by d.name,o.count",
+      "rows": [
+        [
+          "BFP16",
+          49152,
+          464
+        ]
+      ]
+    },
+    "hw3-tp8-053": {
+      "source": "/workspace/strengthen-dsv4/runs/hw3-tp8-053/profiledecode/profile/rank0_2040342_20260913070725977_ascend_pt/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_0.db",
+      "query": "select d.name,o.count,count(*) from COMMUNICATION_OP o join STRING_IDS t on t.id=o.opType join ENUM_HCCL_DATA_TYPE d on d.id=o.dataType where t.value like '%AllGather%' and o.count=49152 group by d.name,o.count",
+      "rows": [
+        [
+          "BFP16",
+          49152,
+          581
+        ],
+        [
+          "INT8",
+          49152,
+          478
+        ]
+      ]
+    }
+  }
+}

@@ -43,3 +43,19 @@ name/type/group/count as before. This produced 0.86–1.51 us holdout P95 across
 ranks. The discarded all-provider fit is preserved in run030's
 `analysis/clock-all-provider/`; its old candidate export has a distinct name.
 The eager-only fit remains display-only candidate alignment, not calibration.
+
+For larger windows use `analyze.py CAPSULE --jobs 4 --resume` to run bounded
+CPU-only native analyses concurrently and reuse completed rank databases.
+Resume verifies the native embedded source path/digest and SQLite quick-check;
+incomplete `.tmp` files are never accepted. This preserves the source/archive
+receipts and clock gate. No NPU lease is held during offline parsing/export.
+
+Frozen37323af also lacks a child-edge lookup index for the recursive tree view's
+root anti-join. On run052's larger profiles, `EXPLAIN QUERY PLAN` showed a
+correlated `SCAN e`; export timed out at300s. A bounded stack sample was inside
+SQLite `load_rank`, not gzip or NPU work. `analyze.py` now adds
+`strengthen_viz_edge_child(child_node_id)` **only to derived analysis DBs**.
+The plan becomes `SEARCH e USING COVERING INDEX`; run052 skew rank0's43562 atom
+nodes enumerate in0.57s including index creation. No profile rows, graph
+hierarchy, clock markers, or original source DBs are changed. Do not merely
+raise export timeouts for this stable query-plan failure.
