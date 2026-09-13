@@ -1,0 +1,62 @@
+{
+  "engine": "runs/hw3-cross-step-030/engine",
+  "selection": "Consecutive positive waves with exactly four requests, each scheduling six target query tokens; median event intervals per rank.",
+  "nonclaims": "Inter-forward intervals include metadata/copy/sampling work; not all idle. Cohort throughput is affected by speculative acceptance. Device event durations are spans, not kernel sums.",
+  "phases": [
+    {
+      "phase": 0,
+      "policy": false,
+      "cohort_seconds": 3.3822837959742174,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 43
+    },
+    {
+      "phase": 1,
+      "policy": true,
+      "cohort_seconds": 4.153767953044735,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 44
+    },
+    {
+      "phase": 2,
+      "policy": false,
+      "cohort_seconds": 3.517609163071029,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 45
+    },
+    {
+      "phase": 3,
+      "policy": true,
+      "cohort_seconds": 3.3032969989581034,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 46
+    }
+  ],
+  "scope": "Real TP8 K5, four64-token inputs,128 outputs/request, native target FULL_DECODE_ONLY; both arms use ordered replay, CPU QLI, draft FULL. Ordinary HCCL. Initial small-bank capture not fully prewarmed.",
+  "outlier": {
+    "phase": 1,
+    "zero_based_wave": 26,
+    "queries": [
+      6,
+      6
+    ],
+    "draft_host_ms": 901.981873,
+    "draft_device_span_ms": 900.9224853515625,
+    "interpretation": "consistent with first two-seat bank capture; not independently timestamped as capture. Do not blame solely acceptance randomness."
+  },
+  "profile_alignment": {
+    "status": "candidate_only; eager native-task marker membership",
+    "holdout_p95_ns_by_rank": {
+      "1": 1116.0431252033884,
+      "2": 857.4011241659251,
+      "3": 990.7219605725328,
+      "4": 975.9398797954515,
+      "5": 990.9975662173592,
+      "6": 1153.9653755921745,
+      "7": 1506.2503763146567
+    },
+    "rejected_all_provider_rank2_p95_ns": 113355856.35489096,
+    "source_archive_sha256": "f9fe8e0a527f3f59babb63c17cd9ea83690a300b8c824da733c5c936ff54a116",
+    "timeline": "/workspace/strengthen-dsv4/runs/hw3-cross-step-030/analysis/target-draft-tp8-end-aligned.json.gz"
+  }
+}

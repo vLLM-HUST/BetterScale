@@ -48,7 +48,8 @@ that first invocation separately from subsequent replays.
   Draft counts 1, 3 and 4 each passed first-call graph/eager checks, followed by
   respectively 4, 3 and 8 replay checks/rank. Draft token IDs and KV bytes match.
 - Run025: dummy TP8 checks cover count 2, including the initial call and eight
-  later replays/rank. **Real-weight count-2 numerical qualification remains open.**
+  later replays/rank. Real-weight count-2 numerical qualification was subsequently added in
+  [cross-step run029](CROSS_STEP.md): initial capture plus one replay on all ranks.
 - Run026: ordinary HCCL, real weights, normal auto KV sizing, all six measured
   cohorts and the separate profile completed; graph entries 1–4 all executed.
   Completion is not an independent numerical oracle.
@@ -132,3 +133,6 @@ metadata banks, first-call execution, bounded bank count and stream admission.
 The extension is a useful working prototype, **not production-default FULL draft
 support**. Broader request counts, K values, metadata shapes, long-running reuse
 and service-level throughput require their own qualification.
+
+The next dependency cut, conservative CPU bounds and post-submit receipts, is
+documented in [CROSS_STEP.md](CROSS_STEP.md).

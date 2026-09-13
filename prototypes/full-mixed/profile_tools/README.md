@@ -28,3 +28,18 @@ The export can take several minutes. Full logs stay in the capsule. Link the
 compressed timeline, never paste/load its raw JSON into the conversation.
 Use the corrected run026 capsule for user-facing results. Run019 remains an
 older profile, not an initial-call numerical qualification.
+
+Run030 exposed a marker-identity trap: some replay-associated provider names
+matched across ranks but their endpoints differed by 56–291 ms on rank2. The
+all-provider holdout P95 was 113 ms even though the robust median fit looked
+near identity. That is NOT evidence that rank2's physical clock moved or that
+its device computation stalled by that amount.
+
+`align.py` now refuses export above 50 us holdout P95. Inspect identity rather
+than deleting high-residual points. For this trace, `--eager-markers` restricts
+candidates independently of timestamp residual: require linked native tasks and
+exclude every op with a captured model ID. Then match the same unique provider
+name/type/group/count as before. This produced 0.86–1.51 us holdout P95 across
+ranks. The discarded all-provider fit is preserved in run030's
+`analysis/clock-all-provider/`; its old candidate export has a distinct name.
+The eager-only fit remains display-only candidate alignment, not calibration.

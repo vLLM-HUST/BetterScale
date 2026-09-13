@@ -124,5 +124,19 @@ remain necessary: the callback can mutate pinned CPU H2D source tensors.
 
 A valid oracle must rebuild ORIGINAL exact-length metadata before reference
 execution, not run both sides with the candidate metadata. Run028 passed 65
-such checks per rank with dummy weights; real qualification and unprofiled
-performance are separate gates, recorded in the linked note.
+such checks per rank with dummy weights; run029 passed 17 with full real weights
+and 0–5-token CPU bound slack. Run030/031 independently measured the dependency
+cut at about 10–12% shorter matched K5 cycles. Keep the scope in the linked note.
+
+Warm all bounded draft bank counts and verify coverage on every rank before
+claiming warm cohort throughput. Eight-token warmup did not guarantee that;
+run030 had a 902 ms two-seat draft spike consistent with first capture. Run031
+explicitly prewarmed all four shapes and eliminated the spike. Preserve cold
+shape-admission cost separately rather than blaming every outlier on acceptance.
+
+Do not trust a near-identity clock fit without its holdout residual. Run030's
+replay-associated provider names gave rank2 a 113 ms P95 despite a near-zero
+median offset. The helper now gates export at 50 us; eager-only native-task
+membership gives consistent candidate markers. This is a semantic restriction,
+not deletion of inconvenient residuals. Preserve the rejected fit and keep
+same-rank timing conclusions independent of distributed display alignment.

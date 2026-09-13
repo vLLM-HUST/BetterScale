@@ -1,0 +1,175 @@
+{
+  "hw3-cross-step-027": {
+    "ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "strict_hccl": true,
+    "weights": "dummy",
+    "each_rank": {
+      "target_checks": 67,
+      "max_diff": 0.0,
+      "metadata_checks": 65,
+      "late_commits": 0,
+      "upper_minus_exact_range": [
+        0,
+        5
+      ],
+      "draft": {
+        "enabled": true,
+        "entries": [
+          {
+            "requests": 1,
+            "captured": true,
+            "replays": 1,
+            "fallbacks": 0,
+            "checks": 1,
+            "capture_checked": true
+          },
+          {
+            "requests": 3,
+            "captured": true,
+            "replays": 31,
+            "fallbacks": 0,
+            "checks": 8,
+            "capture_checked": true
+          },
+          {
+            "requests": 4,
+            "captured": true,
+            "replays": 32,
+            "fallbacks": 0,
+            "checks": 8,
+            "capture_checked": true
+          }
+        ],
+        "replays": 64,
+        "fallbacks": 6
+      }
+    }
+  },
+  "hw3-cross-step-028": {
+    "ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "strict_hccl": true,
+    "weights": "dummy",
+    "each_rank": {
+      "target_checks": 67,
+      "max_diff": 0.0,
+      "metadata_checks": 65,
+      "late_commits": 65,
+      "upper_minus_exact_range": [
+        0,
+        5
+      ],
+      "draft": {
+        "enabled": true,
+        "entries": [
+          {
+            "requests": 1,
+            "captured": true,
+            "replays": 1,
+            "fallbacks": 0,
+            "checks": 1,
+            "capture_checked": true
+          },
+          {
+            "requests": 3,
+            "captured": true,
+            "replays": 31,
+            "fallbacks": 0,
+            "checks": 8,
+            "capture_checked": true
+          },
+          {
+            "requests": 4,
+            "captured": true,
+            "replays": 32,
+            "fallbacks": 0,
+            "checks": 8,
+            "capture_checked": true
+          }
+        ],
+        "replays": 64,
+        "fallbacks": 6
+      }
+    }
+  },
+  "hw3-cross-step-029": {
+    "ranks": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "strict_hccl": true,
+    "weights": "real",
+    "each_rank": {
+      "target_checks": 21,
+      "max_diff": 0.0,
+      "metadata_checks": 17,
+      "late_commits": 17,
+      "upper_minus_exact_range": [
+        0,
+        5
+      ],
+      "draft": {
+        "enabled": true,
+        "entries": [
+          {
+            "requests": 1,
+            "captured": true,
+            "replays": 2,
+            "fallbacks": 0,
+            "checks": 2,
+            "capture_checked": true
+          },
+          {
+            "requests": 2,
+            "captured": true,
+            "replays": 1,
+            "fallbacks": 0,
+            "checks": 1,
+            "capture_checked": true
+          },
+          {
+            "requests": 3,
+            "captured": true,
+            "replays": 3,
+            "fallbacks": 0,
+            "checks": 3,
+            "capture_checked": true
+          },
+          {
+            "requests": 4,
+            "captured": true,
+            "replays": 11,
+            "fallbacks": 0,
+            "checks": 8,
+            "capture_checked": true
+          }
+        ],
+        "replays": 17,
+        "fallbacks": 6
+      }
+    }
+  }
+}

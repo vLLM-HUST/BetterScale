@@ -1,0 +1,134 @@
+{
+  "engine": "runs/hw3-cross-step-031/engine",
+  "selection": "Consecutive positive waves with exactly four requests, each scheduling six target query tokens; median event intervals per rank.",
+  "nonclaims": "Inter-forward intervals include metadata/copy/sampling work; not all idle. Cohort throughput is affected by speculative acceptance. Device event durations are spans, not kernel sums.",
+  "phases": [
+    {
+      "phase": 0,
+      "policy": false,
+      "cohort_seconds": 3.756631240947172,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 50,
+      "max_draft_host_ms_rank0": 36.517287
+    },
+    {
+      "phase": 1,
+      "policy": true,
+      "cohort_seconds": 3.141922853072174,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 42,
+      "max_draft_host_ms_rank0": 36.605538
+    },
+    {
+      "phase": 2,
+      "policy": false,
+      "cohort_seconds": 2.950396039057523,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 34,
+      "max_draft_host_ms_rank0": 37.386349
+    },
+    {
+      "phase": 3,
+      "policy": true,
+      "cohort_seconds": 2.7651612929766998,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 34,
+      "max_draft_host_ms_rank0": 39.501449
+    },
+    {
+      "phase": 4,
+      "policy": false,
+      "cohort_seconds": 3.4032135320594534,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 43,
+      "max_draft_host_ms_rank0": 36.913302
+    },
+    {
+      "phase": 5,
+      "policy": true,
+      "cohort_seconds": 3.3778641188982874,
+      "generated_tokens": 512,
+      "positive_waves_rank0": 48,
+      "max_draft_host_ms_rank0": 36.74361
+    }
+  ],
+  "scope": "Run031: same-engine real TP8 K5, original target FULL_DECODE_ONLY, ordered replay+CPUQLI+draft FULL in BOTH arms. Only cross-step bounds/late receipts alternate. All four draft bank shapes prewarmed on every rank before timing. Normal HCCL, short synthetic prompts, no general serving SLA claim.",
+  "warmup": {
+    "seconds": 12.491013075923547,
+    "ranks": [
+      {
+        "rank": 0,
+        "banks": {
+          "1": true,
+          "2": true,
+          "3": true,
+          "4": true
+        }
+      },
+      {
+        "rank": 1,
+        "banks": {
+          "1": true,
+          "2": true,
+          "3": true,
+          "4": true
+        }
+      },
+      {
+        "rank": 2,
+        "banks": {
+          "1": true,
+          "2": true,
+          "3": true,
+          "4": true
+        }
+      },
+      {
+        "rank": 3,
+        "banks": {
+          "1": true,
+          "2": true,
+          "3": true,
+          "4": true
+        }
+      },
+      {
+        "rank": 4,
+        "banks": {
+          "1": true,
+          "2": true,
+          "3": true,
+          "4": true
+        }
+      },
+      {
+        "rank": 5,
+        "banks": {
+          "1": true,
+          "2": true,
+          "3": true,
+          "4": true
+        }
+      },
+      {
+        "rank": 6,
+        "banks": {
+          "1": true,
+          "2": true,
+          "3": true,
+          "4": true
+        }
+      },
+      {
+        "rank": 7,
+        "banks": {
+          "1": true,
+          "2": true,
+          "3": true,
+          "4": true
+        }
+      }
+    ]
+  },
+  "capsule": "hw3:/workspace/my-ascend-workspace/runs/strengthen-dsv4-full-mixed/tp8-cross-step-031-warmed-study"
+}

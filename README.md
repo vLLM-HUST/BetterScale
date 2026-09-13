@@ -65,3 +65,8 @@ installed runtimes remain unchanged.
 now have bounded TP8 state checks and a corrected real-model comparison:
 matched four-request K5 cycles fall from about65 to52 ms. Whole-cohort throughput
 improvement is not yet stable; this remains opt-in, not a production claim.
+
+[Cross-step authorization](prototypes/full-mixed/CROSS_STEP.md) adds conservative
+CPU bounds and moves receipt bookkeeping after target submission while preserving
+DMA ownership. Real TP8 matched K5 cycles improve another 10–12%; warmed short
+cohort results and the narrower-than-production admission are recorded separately.
