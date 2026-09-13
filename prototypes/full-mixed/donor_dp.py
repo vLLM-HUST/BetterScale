@@ -103,7 +103,7 @@ def rank_main(args,dp_rank,barrier):
     if args.pingpong_study:
         assert args.real and args.pingpong_continuous and not (args.dp_shadow or args.pingpong_shadow)
         for repeat in range(2):
-            for policy in (('draft','worker') if args.worker_continuous else ('metadata','draft') if args.split_draft else ('native','cut','pair','producer','metadata') if args.shadow_metadata else ('native', 'cut', 'sources', 'pair')):
+            for policy in (('worker-tree','worker') if args.worker_continuous else ('metadata','draft') if args.split_draft else ('native','cut','pair','producer','metadata') if args.shadow_metadata else ('native', 'cut', 'sources', 'pair')):
                 barrier.wait(timeout=120)
                 llm.collective_rpc('set_pingpong_policy',args=(policy,))
                 wave(f'warm-{repeat}-{policy}',[128]*local_seats,16,observe=False)
@@ -119,7 +119,7 @@ def rank_main(args,dp_rank,barrier):
         wave('dummyskew',[args.budget*2+17 if dp_rank==0 else 32]*(1 if single_card else 8//args.donor_dp),16)
     if args.profile_after:
         if args.pingpong_study and args.shadow_metadata:
-            for policy in (('draft','worker') if args.worker_continuous else ('metadata','draft') if args.split_draft else ('native','metadata')):
+            for policy in (('worker-tree','worker') if args.worker_continuous else ('metadata','draft') if args.split_draft else ('native','metadata')):
                 barrier.wait(timeout=120)
                 llm.collective_rpc('set_pingpong_policy',args=(policy,))
                 wave(f'profile-warm-{policy}',[128]*local_seats,16,observe=False)

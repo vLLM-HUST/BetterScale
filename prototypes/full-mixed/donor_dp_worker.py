@@ -44,8 +44,12 @@ class DonorDPWorker:
         return pair.receipt()
 
     def set_pingpong_policy(self, policy):
-        assert policy in ('native', 'cut', 'sources', 'pair', 'producer', 'metadata', 'draft', 'worker')
+        assert policy in ('native', 'cut', 'sources', 'pair', 'producer', 'metadata', 'draft', 'worker', 'worker-tree')
         torch.npu.synchronize()
+        from draft_graph import ExactDraftGraph
+        ExactDraftGraph.metadata_dag=policy!='worker-tree'
+        execution_policy='worker' if policy=='worker-tree' else policy
+        label=policy;policy=execution_policy
         r=self.model_runner;pair=r.model._decode_pair;slots=r._host_source_slots
         assert pair.reference_catalog
         pair.policy='native' if policy=='native' else 'pair' if policy in ('pair','producer','metadata','draft','worker') else 'ordered'
@@ -59,14 +63,14 @@ class DonorDPWorker:
             from qli_cpu import configure
             configure(self,policy!='native',False)
         history=getattr(self,'_policy_memory',[])
-        history.append(dict(policy=policy,allocated=torch.npu.memory_allocated(),
+        history.append(dict(policy=label,allocated=torch.npu.memory_allocated(),
                             reserved=torch.npu.memory_reserved(),
                             preparation_banks=len(self._decode_shadow.slots) if hasattr(self,'_decode_shadow') else 0,
                             metadata_graphs=len(self._decode_metadata.entries) if hasattr(self,'_decode_metadata') else 0))
         self._policy_memory=history
         rank=r.vllm_config.parallel_config.data_parallel_rank*r.vllm_config.parallel_config.tensor_parallel_size+self.rank
         (Path(os.environ['DONOR_DP_OUTPUT'])/f'policy-memory-rank{rank}.json').write_text(json.dumps(history,indent=2))
-        return {'policy':policy}
+        return {'policy':label}
 
     def enable_pingpong_shadow(self):
         pair=self.model_runner.model._decode_pair

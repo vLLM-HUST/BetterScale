@@ -14,7 +14,7 @@ class Proxy:
 class Protocol(unittest.TestCase):
     def test_private_bank_updates_without_rebinding(self):
         p=Path(__file__).with_name('draft_graph.py')
-        fs=[x for x in ast.parse(p.read_text()).body if isinstance(x,ast.FunctionDef) and x.name in ('bank','refresh','signature')]
+        fs=[x for x in ast.parse(p.read_text()).body if isinstance(x,ast.FunctionDef) and x.name in ('bank','_bank','refresh','signature','_signature')]
         ns=dict(torch=torch,copy=copy,dataclasses=dataclasses,Enum=Enum,RopeDataProxy=Proxy)
         exec(compile(ast.Module(body=fs,type_ignores=[]),str(p),'exec'),ns)
         @dataclasses.dataclass

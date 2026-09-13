@@ -16,15 +16,24 @@ from vllm.forward_context import get_forward_context
 from vllm_ascend.attention.context_parallel.dsa_cp import RopeDataProxy
 
 
-def signature(value):
+def signature(value, memo=None):
+    # kwargs and context share metadata nodes. Visit that DAG once, while
+    # retaining the original structural signature/admission contract.
+    if memo is False:return _signature(value,False)  # same-graph traversal control
+    if memo is None:memo={}
+    if id(value) not in memo:memo[id(value)]=_signature(value,memo)
+    return memo[id(value)]
+
+
+def _signature(value,memo):
     if isinstance(value, torch.Tensor):
         return ('tensor',str(value.device),str(value.dtype),tuple(value.shape),
                 tuple(value.flatten().tolist()) if value.device.type=='cpu' else None)
-    if isinstance(value, RopeDataProxy):return ('rope',value.idx,signature(value._data))
+    if isinstance(value, RopeDataProxy):return ('rope',value.idx,signature(value._data,memo))
     if dataclasses.is_dataclass(value):
-        return (type(value).__name__,tuple((f.name,signature(getattr(value,f.name))) for f in dataclasses.fields(value)))
-    if isinstance(value,dict):return tuple((k,signature(v)) for k,v in value.items())
-    if isinstance(value,(tuple,list)):return (type(value).__name__,tuple(map(signature,value)))
+        return (type(value).__name__,tuple((f.name,signature(getattr(value,f.name),memo)) for f in dataclasses.fields(value)))
+    if isinstance(value,dict):return tuple((k,signature(v,memo)) for k,v in value.items())
+    if isinstance(value,(tuple,list)):return (type(value).__name__,tuple(signature(v,memo) for v in value))
     if isinstance(value,Enum):return (type(value).__name__,value.name)
     if value is None or isinstance(value,(str,int,float,bool)):return value
     raise TypeError(f'Unreviewed graph metadata type: {type(value)}')
@@ -49,32 +58,53 @@ def key_changes(old,new,path=()):
     return [dict(path=path,old=repr(old)[:500],new=repr(new)[:500])]
 
 
-def bank(value):
+def bank(value,memo=None):
+    if memo is None:memo={}
+    if id(value) not in memo:memo[id(value)]=_bank(value,memo)
+    return memo[id(value)]
+
+
+def _bank(value,memo):
     if isinstance(value,torch.Tensor):return value.clone()
     if isinstance(value,RopeDataProxy):
-        result=copy.copy(value);result._data=bank(value._data);return result
+        result=copy.copy(value);result._data=bank(value._data,memo);return result
     if dataclasses.is_dataclass(value):
         result=copy.copy(value)
-        for f in dataclasses.fields(value):setattr(result,f.name,bank(getattr(value,f.name)))
+        for f in dataclasses.fields(value):setattr(result,f.name,bank(getattr(value,f.name),memo))
         return result
-    if isinstance(value,dict):return {k:bank(v) for k,v in value.items()}
-    if isinstance(value,list):return [bank(v) for v in value]
-    if isinstance(value,tuple):return tuple(bank(v) for v in value)
+    if isinstance(value,dict):return {k:bank(v,memo) for k,v in value.items()}
+    if isinstance(value,list):return [bank(v,memo) for v in value]
+    if isinstance(value,tuple):return tuple(bank(v,memo) for v in value)
     return value
 
 
-def refresh(dst,src):
+def refresh(dst,src,seen=None,bindings=None):
+    if seen is None:seen=set()
+    if bindings is None:bindings={}
+    # A destination aliased at capture must not silently take the last of two
+    # distinct runtime sources. Signature equality alone cannot detect that.
+    if isinstance(src,torch.Tensor):
+        layout=(str(src.device),src.data_ptr(),tuple(src.shape),tuple(src.stride()),src.dtype)
+        previous=bindings.setdefault(id(dst),layout)
+        assert previous==layout, 'Draft metadata source alias split'
+    pair=(id(dst),id(src))
+    if seen is not False:
+        if pair in seen:return
+        seen.add(pair)
     if isinstance(src,torch.Tensor):dst.copy_(src,non_blocking=True)
-    elif isinstance(src,RopeDataProxy):refresh(dst._data,src._data)
+    elif isinstance(src,RopeDataProxy):refresh(dst._data,src._data,seen,bindings)
     elif dataclasses.is_dataclass(src):
-        for f in dataclasses.fields(src):refresh(getattr(dst,f.name),getattr(src,f.name))
+        for f in dataclasses.fields(src):refresh(getattr(dst,f.name),getattr(src,f.name),seen,bindings)
     elif isinstance(src,dict):
-        for k,v in src.items():refresh(dst[k],v)
+        for k,v in src.items():refresh(dst[k],v,seen,bindings)
     elif isinstance(src,(list,tuple)):
-        for d,s in zip(dst,src):refresh(d,s)
+        for d,s in zip(dst,src):refresh(d,s,seen,bindings)
 
 
 class ExactDraftGraph:
+    # Bounded same-engine study switch: both controls share graph banks/layout;
+    # false reproduces the old repeated signature/refresh walk and copy count.
+    metadata_dag = True
     def __init__(self,worker,original=None,request_count=4,context_capacity=None,reference=None,pool=None):
         self.worker=worker;self.drafter=worker.model_runner.drafter
         assert type(self.drafter).__name__=='AscendDSparkProposer'
@@ -103,7 +133,7 @@ class ExactDraftGraph:
         if not query_only:
             names += ('_dflash_hidden_states','_context_positions_buffer','_context_slot_mapping_buffers')
         state_inputs=tuple(persistent_layout(getattr(d,name)) for name in names)
-        key=(None if query_only else d._dflash_num_context,signature(current),state_inputs)
+        key=(None if query_only else d._dflash_num_context,signature(current,None if self.metadata_dag else False),state_inputs)
         if self.key is not None and key!=self.key:
             if getattr(self,'strict_signature',False):
                 self.path.with_suffix('.signature.json').write_text(json.dumps(key_changes(self.key,key),indent=2))
@@ -131,7 +161,7 @@ class ExactDraftGraph:
             else:
                 capture()
             self.receipt();return self.output
-        refresh(self.buffers,current)
+        refresh(self.buffers,current,None if self.metadata_dag else False)
         if os.environ.get('DRAFT_GRAPH_SHADOW')=='1' and self.checks<8:
             self.checked_call(lambda:(self.graph.replay(),self.output)[1],kwargs)
             self.checks+=1

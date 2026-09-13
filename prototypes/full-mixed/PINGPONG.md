@@ -5,12 +5,14 @@ scheduler, prefill route, release pins, State ownership and eager/kept draft
 choice. No N+2 scheduler rewrite. Experimental branch only; deployment defaults
 remain unchanged.
 
-Worker follow-up: real TP8 target+split-draft composition passes run104. The
-opt-in `--worker-continuous` cut queues the complete wave before retiring the
-prior CPU correction, with generation-local count receipts. TP2 dummy passes
-run106; full TP8 worker/performance gates remain open. See the focused worker
-note linked below rather than treating the earlier eager-draft profile as the
-current composition's performance evidence.
+Worker follow-up: real TP8 target+split-draft composition passes run104, and
+the optional whole-wave retirement cut passes run108. Its isolated performance
+is not a stable win (run109), so keep it opt-in. The composed graph profile
+already queues most full-window target replays40ms ahead; it does not reproduce
+the old persistent rank5 starvation. A218-copy draft metadata traversal tax is
+now DAG-deduplicated; TP2 and real TP8 native oracles pass runs110/111. The
+same-graph `worker-tree`/`worker` traversal comparison is the next gate. See the
+focused worker note below for exact evidence and scope.
 
 ## Current checkpoint (September13, runs097–101)
 

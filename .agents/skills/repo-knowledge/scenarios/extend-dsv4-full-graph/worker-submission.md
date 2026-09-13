@@ -121,3 +121,47 @@ model initialization because a remote-only dummy-config path was used locally;
 106 used the local checkpoint config with dummy loading. Both leases released.
 All54 CPU tests pass. Real TP8 worker qualification and matched performance are
 still separate gates; the implementation must not yet be called gap-free.
+
+## Matched worker experiment and the actual next bottleneck
+
+Run108 passes real TP8 worker qualification:146 submitted waves/122 deferred
+corrections per rank,48 exact target/full-KV checks and12 producer checks per
+rank;88 draft-bank receipts checked. Run109 isolates retirement timing with
+normal HCCL/8GiB KV. Matched96-query cycles(ms), two repetitions, are
+`draft`56.765/57.809 versus `worker`57.262/56.567. This is NOT a stable incremental
+speedup. Keep the retirement cut opt-in; do not promote a more complex default
+because its whole cohorts happened to finish sooner.
+
+Run107's already-composed target/draft profile has11 fully occupied waves.
+Target replay submission lead medians are40.637–44.248ms on ranks1–7 and
+42.857ms on rank0; one rank1 occurrence is only54us ahead. The cross-rank first
+ReduceScatter arrival spread median is54us, maximum1.527ms, and the last rank
+rotates. Thus the old run098 persistent rank5 starvation is NOT reproduced
+after draft graph composition, even without the extra worker-retirement cut.
+Use native launch links and the retained clock model; do not attribute this
+improvement to the new cut or promise that every bubble is gone.
+
+There is still an observed host-side copy tax: in run107 `profiledecode-draft`,
+rank0 full waves3–5 each issue218 `aten::copy_` before draft graph replay.
+Draft host spans are13.35–13.72ms, with12.94–13.34ms before the replay API.
+`draft_graph.bank/signature/refresh` traversed duplicate metadata references
+through both kwargs and forward context as a tree. The new implementation
+preserves object-level DAG sharing when cloning, memoizes signature traversal,
+refreshes each destination/source pair once and rejects a captured tensor alias
+splitting into different runtime backings. It does not share model State or
+freeze changing native metadata pointers.
+
+Run110 TP2 dummy and run111 real TP8 qualify this DAG route against the unchanged
+native oracles. Run111 has127 submissions/106 deferred corrections per rank,
+48 exact target/full-KV plus12 producer checks per rank,112 checked draft-bank
+receipts. All56 CPU tests pass (the AST-only legacy fixture needed its helper
+dependency list updated for `_bank`/`_signature`). This proves the native
+numerical boundary, not a speedup.
+
+The next same-engine `--worker-continuous --pingpong-study` comparison is named
+`worker-tree` versus `worker`. Both use identical DAG-banked graph inputs and
+the same retirement cut; only repeated versus deduplicated signature/refresh
+traversal changes. `worker-tree` preserves the original repeated copy count,
+not the original independent destination allocation topology. This isolates
+issue/copy work without assigning allocator changes to traversal. Run109's
+source capsule retains the earlier `draft`/`worker` study semantics.
