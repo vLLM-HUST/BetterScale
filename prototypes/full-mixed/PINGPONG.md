@@ -334,3 +334,19 @@ result. Run097 uses5GiB: run094 measured43.82GiB resident/49.72GiB shadow peak a
 3GiB KV; the extra2GiB KV plus two extra2GiB snapshots predicts about55.72GiB peak.
 The performance control retains its previously qualified8GiB KV budget without
 oracle snapshots. Do not reuse a small-prefill KV minimum after changing admission.
+
+Run097 passes with the shared auxiliary pools, real TP8/strict HCCL,8192
+admission and5GiB KV: each rank has12 exact producer/sampler checks and48
+original-native target checks (output max difference0 and whole KV bytes exact),
+including the16-request/96-row shape. Final allocated46.43GiB/reserved47.21GiB;
+oracle peak56.74GiB includes full backing snapshots, not serving demand.
+Eight preparation banks and eight metadata entries were exercised per rank.
+This is a passing bounded configuration, NOT proof that private pools caused
+run095's address-reservation error (admission/KV budgets also differ).
+The target pair already uses the native wrapper's shared graph pool. New
+auxiliary preparation and metadata programs now each have one shared scratch
+pool; their live outputs/ingress are retained independently. Ping-pong does not
+require duplicating model activation workspace. Different allocation layouts and
+live graph outputs can still add memory; capture count alone is not an HBM bill.
+Run098 restores the qualified performance configuration8192/8GiB without the
+numerical oracle; its policy-boundary receipts will measure actual growth.
