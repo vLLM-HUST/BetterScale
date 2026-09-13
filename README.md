@@ -70,3 +70,11 @@ improvement is not yet stable; this remains opt-in, not a production claim.
 CPU bounds and moves receipt bookkeeping after target submission while preserving
 DMA ownership. Real TP8 matched K5 cycles improve another 10–12%; warmed short
 cohort results and the narrower-than-production admission are recorded separately.
+
+## September13 closeout
+
+[Results and exact comparison configurations](RESULTS.md) summarize the kept
+split-context/query design, isolated20–21% draft-graph and10–12% cross-step
+steady-wave improvements, short mixed-wave observations, and32/32 OpenCompass
+retrieval quality gate. Whole-service throughput and KV-capacity improvements
+are not claimed; this round is closed without further scheduler expansion.
