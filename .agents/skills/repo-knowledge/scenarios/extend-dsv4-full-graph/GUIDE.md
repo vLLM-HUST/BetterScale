@@ -29,6 +29,13 @@ Maintain readable package code with `python -m black src/strengthen_dsv4`
 control-flow statements onto one line. Run the formatter in a development
 environment, not by adding dependencies to the donor runtime.
 
+Write module READMEs for a reader who has not inspected donor source: lead with
+the supported workload and problem, place the patch in the original execution
+flow, explain the mechanism with concrete input examples, then map to hooks and
+bounded evidence. A list of private API names is an inventory, not an explanation.
+Use target_full/README.md as the local example; do not assume the reader shares
+Lumi's experimental context.
+
 The implementation now uses six closed patch directories: compat_lcm,
 target_full, ordered_replay, qli_cpu, split_draft, cross_step. Each owns install;
 worker alone composes them. split_draft owns _graph.py; its metadata normalizer
