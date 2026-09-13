@@ -4,6 +4,29 @@ One observed pure-verification shape per request count (1–4) is captured.
 Other shapes fall back; the bank cache cannot grow without bound.
 Draft metadata has a PRIVATE stable bank, never the target global RoPE bank.
 """
+# 阅读入口：这是「把 draft 计算主体变成 graph」的机制，不是双槽连续调度器。
+# 已维护服务的实际调用链（相邻文件可以顺着读）：
+#   config.engine_options() 选择 strengthen_dsv4.worker.Worker
+#   → Worker.compile_or_warm_up_model() 先完成 donor 原生 warmup
+#   → optimized 才调用 split_draft.install(worker)
+#   → drafter._runnable 被替换成 SplitDraftGraphSet
+#   → 普通 K5 decode 分流到本文件 DraftGraphSet → ExactDraftGraph
+#   → 非普通 decode 由 split_draft 先写真实长度的 context，再借本类 capture query。
+# 因此底部 install() 不是当前服务入口；它是仅安装 fused decode 版本的入口。
+#
+# 拦截位置是 donor 已准备好输入和 forward context 之后的 _runnable 调用。
+# 原生入口见 pinned vllm_ascend/spec_decode/llm_base_proposer.py：
+# _runnable 原本指向 _run_merged_draft；DSpark 继承它并关闭原生 graph。
+# 我们保留该函数的数学计算，只把其设备工作记录下来，再按固定地址 replay。
+# metadata 的 Python 构造和本文件 refresh 仍在图外；没有捕获整个 worker。
+#
+# 生效范围由 config.validate_worker_config 再收窄为：DSV4 Flash W8A8、
+# TP8/DP1/PP1+EP、DSACP、K5、最多四席位、原生 scheduler 等已验收配置。
+# 本文件不改 target、权重、KV 分布、拒绝验证或请求调度；baseline 不安装它。
+# 普通 decode 每个请求数只有一个 exact-shape graph，不是每个桶双 graph 交替。
+# 代价是各 graph 的 metadata 副本、输出/临时存储及首次 capture；不是零成本。
+# run026 同等四请求 K5 周期约65→52ms，证据见 prototypes/full-mixed/DECODE.md；
+# 不能把该周期收益当成稳定端到端吞吐，或转移给后来未采用的连续提交方案。
 import copy
 import dataclasses
 import json
@@ -15,6 +38,11 @@ from vllm.forward_context import get_forward_context
 from vllm_ascend.attention.context_parallel.dsa_cp import RopeDataProxy
 
 
+# 捕获时 Python 分支/标量也可能被固定，不能只比较 tensor 地址。
+# GPU tensor 这里只记 device/dtype/shape，内容允许逐波刷新，不读回 GPU。
+# CPU tensor 的值和普通标量进入签名；变化时不能假装还是同一个计算程序。
+# 固定的原生状态输入另用 persistent_layout 检查地址、shape 和 stride。
+# 这不是任意 tensor 别名/布局的通用证明，只覆盖 pinned donor 的已验收组织。
 def signature(value):
     if isinstance(value, torch.Tensor):
         return ('tensor',str(value.device),str(value.dtype),tuple(value.shape),
@@ -48,6 +76,10 @@ def key_changes(old,new,path=()):
     return [dict(path=path,old=repr(old)[:500],new=repr(new)[:500])]
 
 
+# 复制的是 kwargs/attention metadata 树，不是整个 drafter 或 KV cache。
+# 尤其 RopeDataProxy 要复制其 _data，不能让 target 下一次 metadata 准备覆盖
+# draft graph 所绑定的 RoPE。模型权重、KV backing、原生输入/反馈缓冲仍由 donor 持有。
+# 这里是朴素的递归 clone，没有保留重复引用的 DAG 共享；后来的去重实验未合入。
 def bank(value):
     if isinstance(value,torch.Tensor):return value.clone()
     if isinstance(value,RopeDataProxy):
@@ -62,6 +94,9 @@ def bank(value):
     return value
 
 
+# 只复制内容，不把捕获时的目标 tensor 换成新对象。replay 仍读取旧的固定地址。
+# non_blocking=True 不代表自动创建传输 stream 或保证消除等待；本路径依赖原生
+# 提交顺序，当前副本刷新与 replay 有序执行。它不是 LiveInfer 的双槽 H2D 协议。
 def refresh(dst,src):
     if isinstance(src,torch.Tensor):dst.copy_(src,non_blocking=True)
     elif isinstance(src,RopeDataProxy):refresh(dst._data,src._data)
@@ -73,13 +108,18 @@ def refresh(dst,src):
         for d,s in zip(dst,src):refresh(d,s)
 
 
+# 一个 entry 对应一个捕获程序及其私有 metadata，不是一个请求的 KV 生命周期。
+# 同形状的后续请求可以复用 entry，前提是所有运行时数据都按原生协议刷新。
 class ExactDraftGraph:
     def __init__(self,worker,original=None,request_count=4,context_capacity=None,reference=None):
         self.worker=worker;self.drafter=worker.model_runner.drafter
         assert type(self.drafter).__name__=='AscendDSparkProposer'
         assert not self.drafter.use_cuda_graph
+        # 保存安装前的 bound callable。capture 和 fallback 调用同一原生实现，
+        # 不能从已经被我们替换的 drafter._runnable 再调用，否则会递归进入自身。
         self.original=original or self.drafter._runnable
         self.request_count=request_count
+        # 6 是此验收配置的 K+1，不是可以任意沿用到其他 K 的常量。
         self.context_capacity=context_capacity or 6*request_count
         self.reference=reference or self.original
         self.enabled=True;self.key=None;self.graph=None;self.replays=0;self.fallbacks=0;self.checks=0;self.capture_checked=False;self.signed_zero_words=0
@@ -91,25 +131,35 @@ class ExactDraftGraph:
     def __call__(self,**kwargs):
         if not self.enabled:return self.original(**kwargs)
         ctx=get_forward_context();d=self.drafter
+        # 两个使用者共用本类：普通 decode 捕获 context+query；split 路线已经
+        # 在外面完成 context 写入，临时屏蔽原生 context hook 后只捕获 query。
         query_only = getattr(self, 'query_only', False)
         eligible=(kwargs['batch_size']==self.request_count and (query_only or d._dflash_num_context==self.context_capacity)
                   and not kwargs.get('is_prefill',False) and not ctx.capturing)
         if not eligible:
             self.fallbacks+=1;return self.original(**kwargs)
         current=(kwargs,ctx.attn_metadata)
+        # 这里检查原生持久输入/反馈缓冲的布局，不重绑这些属性或改变其所有权。
+        # query-only 图不读取大 context 的三个输入，所以不把它们纳入其地址契约。
         names = ('input_ids','positions','_dspark_seed_buffer','_dspark_draft_buffer')
         if not query_only:
             names += ('_dflash_hidden_states','_context_positions_buffer','_context_slot_mapping_buffers')
         state_inputs=tuple(persistent_layout(getattr(d,name)) for name in names)
         key=(None if query_only else d._dflash_num_context,signature(current),state_inputs)
+        # 普通 decode 对不匹配的签名回退；split entry 设置 strict_signature，
+        # 因为其输入和 context hook 已转换，不能静默改走另一种程序，故显式报错。
         if self.key is not None and key!=self.key:
             if getattr(self,'strict_signature',False):
                 self.path.with_suffix('.signature.json').write_text(json.dumps(key_changes(self.key,key),indent=2))
                 raise AssertionError('FULL draft bank signature changed; see signature receipt')
             self.fallbacks+=1;return self.original(**kwargs)
+        # 第一次遇到这个已准入形状才捕获，不在每波重新 capture。
+        # 这里的全设备 synchronize 是首次初始化成本，不是稳态每次 replay 的 fence。
         if self.key is None:
             self.key=key;self.buffers=bank(current)
             def capture():
+                # 同时换入 kwargs 与 forward context 两处 metadata，确保原生
+                # 算子看见的都是 graph 私有地址；finally 恢复图外 context。
                 old=ctx.attn_metadata;ctx.attn_metadata=self.buffers[1]
                 graph=torch.npu.NPUGraph()
                 torch.npu.synchronize()
@@ -125,6 +175,9 @@ class ExactDraftGraph:
                 return self.output
             capture()
             self.receipt();return self.output
+        # 稳态热路径：检查契约 → 刷新固定 metadata → replay。
+        # output 是 graph 保留的缓冲，会被后续 replay 复用；这里没有复制输出、
+        # 并发调用保护或跨 stream 消费协议，仍须遵守 donor 的原生消费/复用顺序。
         refresh(self.buffers,current)
         self.graph.replay()
         self.replays+=1
@@ -148,6 +201,8 @@ class DraftGraphSet:
         if (not 1<=count<=4 or self.drafter._dflash_num_context!=6*count
                 or kwargs.get('is_prefill',False) or get_forward_context().capturing):
             self.fallbacks+=1;return self.original(**kwargs)
+        # 最多四个请求数 entry（1/2/3/4）；每个 entry 只接受首次捕获的签名，
+        # 签名变化不会偷偷增长 graph cache。大 context/mixed 由外层 split 管理。
         if count not in self.entries:
             self.entries[count]=ExactDraftGraph(self.worker,self.original,count)
         return self.entries[count](**kwargs)
@@ -164,6 +219,9 @@ class DraftGraphSet:
             fallbacks=self.fallbacks+sum(g.fallbacks for g in self.entries.values())),indent=2))
 
 
+# 独立安装 fused-decode 版本：只改此 worker 的 drafter 实例，不改 donor 文件。
+# 当前 optimized 服务使用 split_draft.install；不要把这两个 install 叠加调用。
+# enabled 开关不构成在线热切换的公开契约，部署 profile 切换仍要求重启 worker。
 def install(worker, enabled=True):
     torch.npu.synchronize()
     if hasattr(worker,"_exact_draft_graph"):

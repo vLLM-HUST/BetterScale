@@ -23,6 +23,9 @@ class Worker(NPUWorker):
         install(self.strengthen_profile=='optimized')
         super().__init__(vllm_config,*args,**kwargs)
 
+    # Draft graph 的安装入口：原生模型、KV、输入缓冲与 warmup 先照常完成，
+    # 再在每个 worker 实例替换 drafter 的 callable。不是修改 site-packages，
+    # 也不是依赖服务启动后的激活 RPC。baseline 不进入下面的 optimized 分支。
     def compile_or_warm_up_model(self):
         result=super().compile_or_warm_up_model()
         if self.strengthen_profile=='optimized':
@@ -30,6 +33,11 @@ class Worker(NPUWorker):
             from .patches.cross_step import install as cut
             from .patches.ordered_replay import configure as order
             from .patches.qli_cpu import configure as qli
+            # split 安装的是组合管理器：普通 K5 → draft_graph 的 fused 小图；
+            # prefill/mixed → 原生真实长度 context 写入 + 小 query 图。
+            # cut/order/qli 是另外三个补丁边界，不应统称为 draft graph 的实现，
+            # 更不是后来试验的 ping-pong 或完整 N+2 worker 提交协议。
+            # 此处只安装路由；各 draft entry 在首次遇到合法形状时才 lazy capture。
             split(self); cut(self); order(self,True); qli(self,True,False)
         receipt=self.strengthen_status()
         if receipt['max_length_concurrency'] < 4:

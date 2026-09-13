@@ -25,6 +25,8 @@ def query_body(drafter):
         drafter.build_model_inputs_first_pass = original
 
 
+# 当前服务实际安装的外层分流器。理解第一项 draft FULL 优化时，先沿 self.decode
+# 进入 draft_graph.py；下面的 context/query 拆分是后来另一项优化，不要混算收益。
 class SplitDraftGraphSet(DraftGraphSet):
     def __init__(self, worker):
         super().__init__(worker)
@@ -41,11 +43,15 @@ class SplitDraftGraphSet(DraftGraphSet):
         if not self.enabled:
             return self.original(**kwargs)
         prefill = any(bool(m.num_prefills) for m in ctx.attn_metadata.values())
+        # 普通 K5：每请求 K+1=6 行小 context，完整 context+query 一起 replay。
+        # 这里并非所有声称 decode 的调用都能进图：内部还检查固定输入/metadata 签名。
         if actual == 6 * count and not prefill and not kwargs.get('is_prefill', False):
             return self.decode(**kwargs)
 
         # Exactly the unpadded native operation, before ANY query graph capture.
         # No H2D round-trip or host fence is required between these same-stream ops.
+        # 其他波次仍有很多 target hidden 行需要写进 draft 的 context KV；
+        # 只调用 donor 原生写入，不把这些行补到大桶后塞进小 query 图。
         with record_function('strengthen::draft_context_ingest'):
             d.build_model_inputs_first_pass(kwargs['num_input_tokens'], d._context_slot_mapping_buffers)
         self.context_calls += 1
@@ -62,6 +68,9 @@ class SplitDraftGraphSet(DraftGraphSet):
         mode, prefill = modes.pop()
         key = (count, mode, prefill)
         try:
+            # 原生 _run_merged_draft 内仍会调用 context hook：在此作用域临时
+            # 将其变成 no-op，避免写两遍；query_body 的 finally 保证异常也恢复。
+            # 数学 query/Markov 逻辑仍由原生 callable 执行，不是自写第二个 drafter。
             with query_body(d), record_function('strengthen::draft_query_graph'):
                 if key not in self.entries:
                     entry = ExactDraftGraph(self.worker, self.original, count)
@@ -90,6 +99,9 @@ class SplitDraftGraphSet(DraftGraphSet):
         return result
 
 
+# worker.compile_or_warm_up_model() 的 optimized 分支调用这里。
+# 保存原 _runnable 后再替换实例属性；原生上游调用点不变，动态派发到管理器。
+# 影响的是本 worker 的 DSpark proposal 主体，调度、target 与拒绝验证仍走原生链路。
 def install(worker):
     torch.npu.synchronize()
     assert not hasattr(worker, '_exact_draft_graph')
