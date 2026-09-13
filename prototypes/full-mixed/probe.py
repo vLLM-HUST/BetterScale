@@ -7,6 +7,8 @@ p.add_argument('--mode',choices=['FULL','FULL_DECODE_ONLY','NONE'],default='FULL
 p.add_argument('--tp',type=int,default=2)
 p.add_argument('--donor-dp',type=int,default=0)
 p.add_argument('--dp-full',action='store_true')
+p.add_argument('--packaged',action='store_true')
+p.add_argument('--packaged-oracle',action='store_true')
 p.add_argument('--dp-shadow',action='store_true')
 p.add_argument('--pingpong',action='store_true')
 p.add_argument('--pingpong-sources',action='store_true')

@@ -119,3 +119,12 @@ worker-thread CANN calls, not cross-rank timestamps. Output is
 `analysis/worker-submission.json`; see the local Skill's worker-submission note
 for the interpretation boundary. The explicit range is zero-based forward
 ordinal, not a request generation or an engine scheduler sequence.
+
+For run120-style bounded profiling (`schedule(wait=0,warmup=0,active=N)`), mode
+receipts continue after the profiler stops. `continuation.py --profile-prefix`
+explicitly admits only complete leading target/draft pairs; it does not pick an
+interior interval or infer correspondence from timestamp proximity. The ordinary
+mode still requires equal full-window counts. Wave0 has no preceding draft in
+the profile, so its previous-draft fields are null rather than wrapping to the
+last recorded wave. Small-control markers were too few in120; unrestricted
+unique eager endpoints pass the unchanged50us gate (native1–4us, candidate1–3us).

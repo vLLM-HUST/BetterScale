@@ -44,6 +44,13 @@ def rank_main(args,dp_rank,barrier):
                     cudagraph_capture_sizes=capture_sizes,max_cudagraph_capture_size=capture_sizes[-1]),
                 additional_config=dict(ascend_compilation_config=dict(enable_npugraph_ex=True,enable_static_kernel=False),
                     enable_cpu_binding=False,enable_dsa_cp=args.tp>1,multistream_overlap_shared_expert=True))
+    if args.packaged:
+        assert args.real and args.donor_dp == 8 and args.tp == 1 and args.dp_full
+        assert not any((args.pingpong, args.pingpong_sources, args.pingpong_continuous,
+                        args.shadow_decode, args.pingpong_study, args.dp_shadow))
+        config['worker_cls'] = ('packaged_oracle.AcceptanceWorker' if args.packaged_oracle
+                                else 'strengthen_dsv4.worker.Worker')
+        config['worker_extension_cls'] = 'packaged_observer.PackagedObserver'
     if args.spec:
         config['speculative_config']=dict(method='dspark',num_speculative_tokens=5,enforce_eager=True)
     if not args.real:

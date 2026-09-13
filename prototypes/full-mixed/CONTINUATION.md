@@ -66,7 +66,7 @@ Local artifacts are under main `runs/decode-continuation/`.
   an output/KV mismatch. The launcher released the workers.
 - 116: same dual-bank composition without that redundant projection audit.
   Retains exact native preparation comparisons and independent target/full-KV
-  oracle. Pending. The runner now rejects the invalid flag combination before
+  oracle. Completed successfully (details below). The runner now rejects the invalid flag combination before
   importing the model runtime. Preserve both the failed capsule and the gate.
 
 Next gate: finish bounded dual-bank correctness, then real TP8/DP8 matched-cycle
@@ -93,3 +93,32 @@ assume a2-request warmup covers independently padded DP shapes. The receipt now
 exposes finite `(requests,padded_requests,padded_tokens,host_carrier)` keys without
 publishing raw addresses, so a warmup can be checked instead of guessed. This
 adds cohort-boundary evidence only, not per-wave host synchronization.
+
+
+## Fresh DP8 closure and packaging gate
+
+121 passes real-weight strict-HCCL same-state checks: all8 ranks each pass48
+native-graph target/whole-KV checks with output maxdiff0, and12 exact native
+preparation checks. Oracle memory peaks58.469GiB/rank; not a serving peak.
+
+120 passes real-weight normal-HCCL study and32/32 retained OpenCompass retrieval
+questions. First10 consecutive common fully occupied ordinals, repeated twice:
+pair cycle59.893/59.085ms -> metadata50.377/49.998ms; draft-to-target interval
+9.417/9.493 ->1.238/1.234ms. The interval is not entirely idle hardware.
+No claim of stable cohort-throughput gain. Quality scoring uses the unchanged
+OpenCompass60a28a7 evaluator, not a full-suite run.
+
+The eight-rank profile is limited to the beginning of each cohort. Its mode
+receipt continues to drain after profiling stops; continuation.py therefore
+requires explicit --profile-prefix to inspect only complete leading pairs.
+Small-control markers are fewer than20; unrestricted unique eager collective
+identities pass the SAME50us display gate (candidate metadata1–3us P95).
+No captured-instance guessing or residual-based point deletion.
+
+A closed async_decode package is being qualified separately, with native DSA
+FULL in target_full and unchanged TP8 composition. It omits study policies,
+reference graphs, runtime tree-copy walks, FakeTensor discovery, file output,
+and the unhelpful worker-retirement extension. Run122 exercises the actual
+package through an external numerical-oracle subclass; it is not accepted yet.
+Final sampler output remains native per-invocation allocation retained through
+D2H, not a falsely claimed captured whole-wave two-slot egress implementation.

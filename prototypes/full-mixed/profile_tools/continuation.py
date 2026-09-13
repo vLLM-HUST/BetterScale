@@ -14,6 +14,7 @@ import sqlite3
 from statistics import median
 
 p=argparse.ArgumentParser();p.add_argument('window',type=Path)
+p.add_argument('--profile-prefix', action='store_true', help='Profile began at window start and ended early; match complete leading forward/draft pairs only')
 a=p.parse_args();root=a.window.resolve();label=root.name
 models={x['rank']:x for x in map(json.loads,(root/'analysis/clock/models.jsonl').read_text().splitlines())}
 ranks=[];origin=None
@@ -21,13 +22,19 @@ for rank in range(8):
     db=next((root/'profile').glob(f'rank{rank}_*/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_{rank}.db'))
     c=sqlite3.connect(f'file:{db}?mode=ro',uri=True)
     modes=json.loads((root/f'{label}-modes-rank{rank}.json').read_text())
-    full=[i for i,m in enumerate(modes) if m['mode']=='FULL']
     # (start,end,stream,task,model,name,connection), using real compute tasks.
     tasks=c.execute('select t.startNs,t.endNs,t.streamId,t.taskId,t.modelId,n.value,t.connectionId from TASK t join COMPUTE_TASK_INFO i using(globalTaskId) join STRING_IDS n on n.id=i.name order by t.startNs').fetchall()
     functions=c.execute("select cast(a.startNs as integer),cast(a.endNs as integer),n.value from PYTORCH_API a join STRING_IDS n on n.id=a.name where n.value like 'strengthen::%' order by cast(a.startNs as integer)").fetchall()
     forward=[x for x in functions if x[2]=='strengthen::target_forward']
     draft=[x for x in functions if x[2]=='strengthen::draft_forward']
+    if a.profile_prefix:
+        # diagnostics schedule(wait=0,warmup=0,active=N) stops before the full
+        # cohort drains. Only use complete leading pairs; no timestamp matching
+        # and no selection of faster interior waves.
+        assert len(forward) == len(draft) <= len(modes)
+        modes = modes[:len(forward)]
     assert len(forward)==len(modes)==len(draft)
+    full=[i for i,m in enumerate(modes) if m['mode']=='FULL']
     apis=c.execute("select a.startNs,a.endNs,n.value,a.connectionId from CANN_API a join STRING_IDS n on n.id=a.name where n.value in ('aclmdlRIExecuteAsync','aclrtSynchronizeEvent') order by a.startNs").fetchall()
     launches=c.execute("select t.startNs,t.connectionId,t.streamId from TASK t join STRING_IDS n on n.id=t.taskType where n.value='MODEL_EXECUTE' order by t.startNs").fetchall()
     occurrences=[]
@@ -59,15 +66,15 @@ for rank in range(8):
         end=max(x[1] for x in body)
         rs=next(x for x in comm if start[0]<=x[0]<end and comm_models[x[6]]=={start[4]})
         previous=ended[max(0,bisect_left(ends,start[0])-8):bisect_left(ends,start[0])]
-        sync=[x for x in apis if x[2]=='aclrtSynchronizeEvent' and forward[wave-1][0]<=x[0]<call[0]]
+        sync=[x for x in apis if x[2]=='aclrtSynchronizeEvent' and forward[wave-1][0]<=x[0]<call[0]] if wave else []
         records.append(dict(wave=wave,requests=modes[wave]['actual_requests'],tokens=modes[wave]['actual_tokens'],model=start[4],
             launch_connection=launch[1],launch_stream=launch[2],
             graph_start_ms=aligned(start[0]),graph_end_ms=aligned(end),replay_host_start_ms=aligned(call[0]),replay_host_end_ms=aligned(call[1]),
             replay_to_graph_ms=(start[0]-call[1])/1e6,
             first_rs=dict(name=rs[2],type=rs[3],count=rs[4],group=rs[5],start_ms=aligned(rs[0]),end_ms=aligned(rs[1])),
             prefix_us=(rs[0]-start[0])/1e3,
-            previous_draft_host_ms=(draft[wave-1][1]-draft[wave-1][0])/1e6,
-            previous_draft_host_end_ms=aligned(draft[wave-1][1]),
+            previous_draft_host_ms=(draft[wave-1][1]-draft[wave-1][0])/1e6 if wave else None,
+            previous_draft_host_end_ms=aligned(draft[wave-1][1]) if wave else None,
             previous_compute=[dict(name=x[5],model=x[4],stream=x[2],start_ms=aligned(x[0]),end_ms=aligned(x[1])) for x in previous],
             host_sync=[dict(start_ms=aligned(x[0]),duration_ms=(x[1]-x[0])/1e6) for x in sync]))
     ranks.append(records);c.close()
@@ -90,7 +97,7 @@ for records in zip(*ranks):
         first_arriver_rs_duration_ms=records[early]['first_rs']['end_ms']-arrival[early],
         last_arriver_rs_duration_ms=records[late]['first_rs']['end_ms']-arrival[late],
         median_graph_span_ms=median(x['graph_end_ms']-x['graph_start_ms'] for x in records),ranks=list(records)))
-result=dict(contract=__doc__,window=str(root),waves=waves)
+result=dict(contract=__doc__,window=str(root),profile_prefix=a.profile_prefix,waves=waves)
 (root/'analysis/continuation.json').write_text(json.dumps(result,indent=2))
 for w in waves:
     print({k:round(v,3) if isinstance(v,float) else v for k,v in w.items() if k!='ranks'})
