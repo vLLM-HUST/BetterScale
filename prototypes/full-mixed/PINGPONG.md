@@ -2,7 +2,24 @@
 
 Scope: native DP8TP1 / TP8DP1, EP8, K5, stable text decode. Keep the existing
 scheduler, prefill route, release pins, State ownership and eager/kept draft
-choice. No N+2 scheduler rewrite. No performance or deployment acceptance yet.
+choice. No N+2 scheduler rewrite. Experimental branch only; deployment defaults
+remain unchanged.
+
+## Current checkpoint (September13, runs097–100)
+
+- Real TP8 and DP8 pass exact producer/sampler, target output and full-KV
+  qualification with strict HCCL; performance uses normal HCCL instead.
+- TP8,16 requests/96 target queries: matched cycles are68.44/68.68ms native
+  versus57.01/56.75ms with the explicit producer plus captured metadata, two
+  repeats (16.7–17.4% shorter). Endpoint ping-pong alone has no stable win.
+- At the same8192 admission/8GiB KV configuration, reserved memory is50.178GiB,
+  only28MiB above the retained endpoint control. Shared auxiliary scratch pools
+  avoid requiring one private pool per shape/bank; live outputs remain owned.
+- DP8 performance and retained32-item quality are pending an eight-card window:
+  run100 lost usable memory on card6 during startup and measured no serving.
+- Detailed boundaries, reproducible flags and failure observations follow below.
+  This is not yet the packaged TP8 profile's split-draft integration or a complete
+  three-stream serving implementation.
 
 ## Transfer the invariant, not the old engine
 
@@ -40,11 +57,19 @@ metadata tiling and GPU lengths used for addresses are separate contracts.
    consuming the previous CPU bookkeeping receipt. Retain the current source
    DMA completion fence before mutating its CPU logical view. Extend the shadow
    oracle to rebuild exact CPU metadata for its eager reference.
+4. `--shadow-decode`: manually construct owned pinned ingress on the host,
+   publish it on an independent H2D stream, then replay the native device
+   preparation arithmetic. Stable K5 only; keep numerical progress single-copy.
+5. `--shadow-metadata`: capture downstream native device metadata construction
+   with conservative tiling bounds and exact device lengths. Reject unbanked
+   host transfers/readbacks. This permits skipping the CURRENT input-DMA fence
+   for the admitted budget-only late callback; original receipt waits remain.
 
 These flags are experimental and compose in that order. None is enabled by
 `strengthen-dsv4 serve`; do not promote a partial bridge as the complete
-LiveInfer three-stream protocol. A separate H2D lane is justified only after
-source/destination lifetime qualification and an observed remaining gap.
+LiveInfer three-stream protocol. Stages4–5 own the separate H2D lane and were
+qualified independently of the earlier endpoint bridge. Numerical shadow-check
+flags are separate from this serving protocol and excluded from timing.
 
 ## Evidence / unresolved gates
 
@@ -384,3 +409,12 @@ workers, and wrote release.txt; no foreign process was killed. Failed native DP
 clients can leave sibling clients blocked at initialization: the outer launcher
 owns process-group reclamation, so do not wait for a Python traceback alone to
 release the lease. DP performance/quality still requires an uncontended window.
+
+Run098's two complete eight-rank profiles are now parsed and exported through
+frozen TraceLoom37323af, with native rank/device identity checks. Local roots are
+`runs/098-tp8-shared-pool-study/engine/profiledecode-{native,metadata}`;
+user-facing files are `analysis/target-draft-tp8-end-aligned.json.gz` within each.
+Both pass the unchanged50us holdout gate using eager small-control collective
+identities. Fits are candidate-only display alignment, not physical clock
+calibration. Official profiler DBs, derived rank DBs, rejected/accepted protocol
+boundaries and raw timestamps remain available; no raw JSON need be opened.
