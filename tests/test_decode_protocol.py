@@ -51,12 +51,16 @@ class Protocol(unittest.TestCase):
         def capture(graph):
             yield
         fake=NS(Tensor=torch.Tensor,npu=NS(synchronize=lambda:None,NPUGraph=Graph,graph=capture))
-        ctx=NS(attn_metadata={'q':torch.tensor([1])},capturing=False)
+        @dataclasses.dataclass
+        class Metadata:
+            num_prefills:int=0
+        ctx=NS(attn_metadata={'q':Metadata()},capturing=False)
         ns=dict(torch=fake,copy=copy,dataclasses=dataclasses,Enum=Enum,RopeDataProxy=Proxy,
                 os=os,json=json,Path=Path,get_forward_context=lambda:ctx)
         exec(compile(ast.Module(body=nodes,type_ignores=[]),str(p),'exec'),ns)
         Drafter=type('AscendDSparkProposer',(),{})
         d=Drafter();d.use_cuda_graph=False;d._dflash_num_context=24;d.num_speculative_tokens=5
+        d.parallel_drafting=True
         for name in ('input_ids','positions','_dflash_hidden_states','_context_positions_buffer',
                      '_dspark_seed_buffer','_dspark_draft_buffer'):
             setattr(d,name,torch.zeros(1))
@@ -70,16 +74,23 @@ class Protocol(unittest.TestCase):
         self.assertEqual(out.item(),7)
         self.assertEqual(graph.graph.executions,1)
         self.assertFalse(ctx.capturing)
-        with patch('pathlib.Path.write_text',side_effect=AssertionError('No production receipts')):
-            bank_set=ns['DraftGraphSet'](worker)
-            for count in range(1,5):
-                d._dflash_num_context=6*count
-                bank_set(batch_size=count)
-            self.assertEqual(set(bank_set.entries),{1,2,3,4})
-            self.assertTrue(all(g.graph.executions==1 for g in bank_set.entries.values()))
-            d._dflash_num_context=30
-            bank_set(batch_size=5)
-            self.assertEqual(len(bank_set.entries),4)
+        manager_source=p.with_name('__init__.py')
+        manager=next(n for n in ast.parse(manager_source.read_text()).body
+                     if isinstance(n,ast.ClassDef) and n.name=='SplitDraftGraphSet')
+        exec(compile(ast.Module(body=[manager],type_ignores=[]),str(manager_source),'exec'),ns)
+        bank_set=ns['SplitDraftGraphSet'](worker)
+        for count in range(1,5):
+            d._dflash_num_context=6*count
+            bank_set(batch_size=count)
+        self.assertEqual(set(bank_set.decode_graphs),{1,2,3,4})
+        self.assertTrue(all(g.graph.executions==1 for g in bank_set.decode_graphs.values()))
+        d._dflash_num_context=24
+        bank_set(batch_size=4)
+        self.assertEqual(bank_set.decode_graphs[4].graph.executions,2)
+        self.assertEqual(bank_set.query_graphs,{})
+        d._dflash_num_context=30
+        with self.assertRaises(AssertionError):bank_set(batch_size=5)
+        self.assertEqual(len(bank_set.decode_graphs),4)
 
     def test_cpu_qli_uses_existing_mirrors_and_checks_them(self):
         p=(Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('qli_cpu/__init__.py')

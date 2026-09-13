@@ -2,7 +2,8 @@
 
 本目录是一个完整交付功能，全部辅助实现都留在内部：
 
-- `__init__.py`：`install(worker)` 和分流管理器；替换当前 drafter 的 `_runnable`。
+- `__init__.py`：安装与分流；`SplitDraftGraphSet` 直接持有 decode/query 两个缓存，
+  替换当前 drafter 的 `_runnable`，没有继承或嵌套的 graph-set 管理器。
 - `_graph.py`：固定 metadata bank、签名准入、首次 capture/replay 与普通 K5 小图。
 - `_metadata.py`：query 图需要的 metadata 标量整理，不是通用 metadata 框架。
 

@@ -10,7 +10,7 @@ Draft metadata has a PRIVATE stable bank, never the target global RoPE bank.
 #   → Worker.compile_or_warm_up_model() 先完成 donor 原生 warmup
 #   → 调用 split_draft/__init__.py 的 install(worker)
 #   → drafter._runnable 被替换成 SplitDraftGraphSet
-#   → 普通 K5 decode 分流到本文件 DraftGraphSet → ExactDraftGraph
+#   → 管理器直接选择 decode/query 缓存里的 ExactDraftGraph
 #   → 非普通 decode 由外层管理器先写真实长度的 context，再借本类 capture query。
 #
 # 拦截位置是 donor 已准备好输入和 forward context 之后的 _runnable 调用。
@@ -173,26 +173,3 @@ class ExactDraftGraph:
         self.graph.replay()
         self.replays+=1
         return self.output
-
-
-
-class DraftGraphSet:
-    """One exact shape per native request count; never an unbounded shape cache."""
-    def __init__(self,worker):
-        self.worker=worker;self.drafter=worker.model_runner.drafter
-        self.original=self.drafter._runnable
-        assert self.drafter.num_speculative_tokens==5, 'Only K5 is qualified here'
-        assert worker.model_runner.vllm_config.scheduler_config.max_num_seqs==4
-        self.enabled=True;self.entries={};self.fallbacks=0
-
-    def __call__(self,**kwargs):
-        if not self.enabled:return self.original(**kwargs)
-        count=kwargs['batch_size']
-        if (not 1<=count<=4 or self.drafter._dflash_num_context!=6*count
-                or kwargs.get('is_prefill',False) or get_forward_context().capturing):
-            self.fallbacks+=1;return self.original(**kwargs)
-        # 最多四个请求数 entry（1/2/3/4）；每个 entry 只接受首次捕获的签名，
-        # 签名变化不会偷偷增长 graph cache。大 context/mixed 由外层 split 管理。
-        if count not in self.entries:
-            self.entries[count]=ExactDraftGraph(self.worker,self.original,count)
-        return self.entries[count](**kwargs)
