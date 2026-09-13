@@ -1,0 +1,332 @@
+{
+  "claim": "Single-run, same-host same-shaped initial waves; not identical token trajectories or stable end-to-end gain",
+  "runs": [
+    {
+      "run": 41,
+      "waves": [
+        {
+          "cohort": 8,
+          "wave": 1,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              6,
+              17
+            ],
+            "target_ms": 38.59321975708008,
+            "draft_ms": 8.803979873657227,
+            "cycle_ms": 65.01348876953125
+          },
+          "median_across_ranks": {
+            "target_ms": 39.380001068115234,
+            "draft_ms": 8.740540027618408,
+            "cycle_ms": 63.96100616455078
+          }
+        },
+        {
+          "cohort": 9,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              7
+            ],
+            "target_ms": 35.33652114868164,
+            "draft_ms": 13.844759941101074,
+            "cycle_ms": 67.77033996582031
+          },
+          "median_across_ranks": {
+            "target_ms": 36.4356803894043,
+            "draft_ms": 13.037650108337402,
+            "cycle_ms": 63.04947853088379
+          }
+        },
+        {
+          "cohort": 7,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              64
+            ],
+            "target_ms": 190.43661499023438,
+            "draft_ms": 3.2135798931121826,
+            "cycle_ms": 202.9620819091797
+          },
+          "median_across_ranks": {
+            "target_ms": 190.4098892211914,
+            "draft_ms": 3.221019983291626,
+            "cycle_ms": 202.92108154296875
+          }
+        },
+        {
+          "cohort": 12,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              1025
+            ],
+            "target_ms": 212.9121551513672,
+            "draft_ms": 4.0914998054504395,
+            "cycle_ms": 220.08221435546875
+          },
+          "median_across_ranks": {
+            "target_ms": 212.8221893310547,
+            "draft_ms": 4.107069969177246,
+            "cycle_ms": 219.96099853515625
+          }
+        },
+        {
+          "cohort": 13,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              4112
+            ],
+            "target_ms": 249.2152862548828,
+            "draft_ms": 5.317860126495361,
+            "cycle_ms": 259.70819091796875
+          },
+          "median_across_ranks": {
+            "target_ms": 249.20172119140625,
+            "draft_ms": 5.3378400802612305,
+            "cycle_ms": 259.65155029296875
+          }
+        }
+      ],
+      "warm_cohort_seconds": 9.18464201723691,
+      "steady_four_seat": [
+        {
+          "cohort": 7,
+          "rank0_intervals": 10,
+          "median_of_rank_cycle_medians": 46.1988525390625
+        },
+        {
+          "cohort": 10,
+          "rank0_intervals": 10,
+          "median_of_rank_cycle_medians": 46.98370361328125
+        }
+      ]
+    },
+    {
+      "run": 42,
+      "waves": [
+        {
+          "cohort": 8,
+          "wave": 1,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              6,
+              17
+            ],
+            "target_ms": 38.52067947387695,
+            "draft_ms": 6.63424015045166,
+            "cycle_ms": 47.90087890625
+          },
+          "median_across_ranks": {
+            "target_ms": 38.53639030456543,
+            "draft_ms": 6.632719993591309,
+            "cycle_ms": 47.895790100097656
+          }
+        },
+        {
+          "cohort": 9,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              7
+            ],
+            "target_ms": 37.58802032470703,
+            "draft_ms": 5.8913798332214355,
+            "cycle_ms": 46.62294006347656
+          },
+          "median_across_ranks": {
+            "target_ms": 37.55060958862305,
+            "draft_ms": 5.888060092926025,
+            "cycle_ms": 46.515079498291016
+          }
+        },
+        {
+          "cohort": 7,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              64
+            ],
+            "target_ms": 191.72337341308594,
+            "draft_ms": 6.007619857788086,
+            "cycle_ms": 200.97940063476562
+          },
+          "median_across_ranks": {
+            "target_ms": 191.56317138671875,
+            "draft_ms": 6.0209801197052,
+            "cycle_ms": 200.74742889404297
+          }
+        },
+        {
+          "cohort": 12,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              1025
+            ],
+            "target_ms": 212.87062072753906,
+            "draft_ms": 5.870759963989258,
+            "cycle_ms": 221.8043670654297
+          },
+          "median_across_ranks": {
+            "target_ms": 212.94947052001953,
+            "draft_ms": 5.883429765701294,
+            "cycle_ms": 221.8728256225586
+          }
+        },
+        {
+          "cohort": 13,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              4112
+            ],
+            "target_ms": 249.72935485839844,
+            "draft_ms": 5.745180130004883,
+            "cycle_ms": 260.6478576660156
+          },
+          "median_across_ranks": {
+            "target_ms": 249.7373046875,
+            "draft_ms": 5.742140054702759,
+            "cycle_ms": 260.6266326904297
+          }
+        }
+      ],
+      "warm_cohort_seconds": 9.677967902040109,
+      "steady_four_seat": [
+        {
+          "cohort": 7,
+          "rank0_intervals": 10,
+          "median_of_rank_cycle_medians": 46.55029296875
+        },
+        {
+          "cohort": 10,
+          "rank0_intervals": 10,
+          "median_of_rank_cycle_medians": 46.7271728515625
+        }
+      ]
+    },
+    {
+      "run": 46,
+      "waves": [
+        {
+          "cohort": 8,
+          "wave": 1,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              6,
+              17
+            ],
+            "target_ms": 39.47208023071289,
+            "draft_ms": 3.907639980316162,
+            "cycle_ms": 46.088897705078125
+          },
+          "median_across_ranks": {
+            "target_ms": 39.58675003051758,
+            "draft_ms": 3.8971500396728516,
+            "cycle_ms": 46.367095947265625
+          }
+        },
+        {
+          "cohort": 9,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              7
+            ],
+            "target_ms": 37.11724090576172,
+            "draft_ms": 3.033639907836914,
+            "cycle_ms": 49.391319274902344
+          },
+          "median_across_ranks": {
+            "target_ms": 37.09762954711914,
+            "draft_ms": 3.0521600246429443,
+            "cycle_ms": 49.55340003967285
+          }
+        },
+        {
+          "cohort": 7,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              64
+            ],
+            "target_ms": 191.8076171875,
+            "draft_ms": 3.455120086669922,
+            "cycle_ms": 204.2779998779297
+          },
+          "median_across_ranks": {
+            "target_ms": 191.45227813720703,
+            "draft_ms": 3.481819987297058,
+            "cycle_ms": 204.0348892211914
+          }
+        },
+        {
+          "cohort": 12,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              1025
+            ],
+            "target_ms": 213.84938049316406,
+            "draft_ms": 4.451320171356201,
+            "cycle_ms": 221.38119506835938
+          },
+          "median_across_ranks": {
+            "target_ms": 213.65771484375,
+            "draft_ms": 4.4573400020599365,
+            "cycle_ms": 221.14611053466797
+          }
+        },
+        {
+          "cohort": 13,
+          "wave": 0,
+          "rank0": {
+            "rank": 0,
+            "tokens": [
+              4112
+            ],
+            "target_ms": 251.5637664794922,
+            "draft_ms": 5.641019821166992,
+            "cycle_ms": 262.3775939941406
+          },
+          "median_across_ranks": {
+            "target_ms": 251.37572479248047,
+            "draft_ms": 5.624190092086792,
+            "cycle_ms": 262.1603546142578
+          }
+        }
+      ],
+      "warm_cohort_seconds": 8.641647691954859,
+      "steady_four_seat": [
+        {
+          "cohort": 7,
+          "rank0_intervals": 10,
+          "median_of_rank_cycle_medians": 46.28550720214844
+        },
+        {
+          "cohort": 10,
+          "rank0_intervals": 10,
+          "median_of_rank_cycle_medians": 46.027862548828125
+        }
+      ]
+    }
+  ]
+}
