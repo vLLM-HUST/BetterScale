@@ -45,6 +45,8 @@ p.add_argument('--ordered-replay',action='store_true')
 p.add_argument('--decode-study',action='store_true')
 p.add_argument('--profile',action='store_true')
 a=p.parse_args()
+if a.producer_shadow_audit and a.shadow_decode:
+ p.error('--producer-shadow-audit inspects native preparation; it cannot wrap the live --shadow-decode producer')
 assert not a.worker_continuous or a.donor_dp, 'worker protocol uses the native donor runner'
 if a.donor_dp:
  import sys
