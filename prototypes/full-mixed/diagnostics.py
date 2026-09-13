@@ -7,7 +7,7 @@ import torch
 from torch.profiler import record_function
 
 
-def start_decode_observation(worker, profile=False, label="decode"):
+def start_decode_observation(worker, profile=False, label="decode", profile_steps=0):
     assert label.replace("-", "").isalnum()
     worker._decode_observation_label = label
     runner = worker.model_runner
@@ -40,6 +40,8 @@ def start_decode_observation(worker, profile=False, label="decode"):
                 if event_pair is not None:
                     event_pair[1].record()
                     worker._decode_event_rows.append((label, start, time.monotonic_ns(), event_pair))
+                if profile and profile_steps and name == '_model_forward':
+                    worker._decode_profiler.step()
                 return result
         worker._decode_observation_originals.append((obj, name, original))
         setattr(obj, name, observed)
@@ -51,7 +53,11 @@ def start_decode_observation(worker, profile=False, label="decode"):
         wrap(drafter, '_runnable', 'strengthen::draft_forward')
     if profile:
         import torch_npu
+        schedule = {}
+        if profile_steps:
+            schedule["schedule"] = torch_npu.profiler.schedule(wait=0, warmup=0, active=profile_steps, repeat=1)
         worker._decode_profiler = torch_npu.profiler.profile(
+            **schedule,
             activities=[torch_npu.profiler.ProfilerActivity.CPU,
                         torch_npu.profiler.ProfilerActivity.NPU],
             record_shapes=False, profile_memory=False, with_stack=False,

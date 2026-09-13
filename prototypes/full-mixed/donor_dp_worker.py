@@ -15,7 +15,8 @@ class DonorDPWorker:
         root.mkdir(parents=True,exist_ok=True)
         os.environ['FULL_MIXED_OUTPUT'] = str(root)
         self._donor_observer = SimpleNamespace(rank=rank,model_runner=self.model_runner)
-        receipt=start_decode_observation(self._donor_observer,profile,label)
+        receipt=start_decode_observation(self._donor_observer,profile,label,
+                                         profile_steps=int(os.environ.get('DONOR_DP_PROFILE_STEPS', '0')))
         runner=self.model_runner
         original=runner._determine_batch_execution_and_padding
         self._donor_modes=[]

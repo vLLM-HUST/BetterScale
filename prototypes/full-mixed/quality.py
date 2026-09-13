@@ -39,3 +39,31 @@ def run(llm, output, source):
     result=dict(status='COMPLETED_UNSCORED',scope='Retained 32 OpenCompass LongBench English retrieval items',
                 elapsed_seconds=time.monotonic()-started,requests=results,receipts=receipts)
     (output/'quality-result.json').write_text(json.dumps(result,indent=2))
+
+
+def run_dp(llm, output, source, dp_rank, dp_size, barrier):
+    """Same retained gate, sharded into two-seat native DP clients."""
+    from vllm import SamplingParams
+    requests = json.loads(Path(source).read_text())
+    assert len(requests) == 32 and len({r['request_id'] for r in requests}) == 32
+    capacity = llm.collective_rpc('donor_receipt')
+    assert all(r['max_length_concurrency'] >= 2 for r in capacity), 'Insufficient two-seat quality capacity'
+    shard = requests[dp_rank::dp_size]
+    results = []
+    for offset in range(0, len(shard), 2):
+        batch = shard[offset:offset+2]
+        barrier.wait(timeout=600)
+        actual = llm.generate([dict(prompt_token_ids=r['prompt_token_ids']) for r in batch],
+            [SamplingParams(temperature=0, max_tokens=r['max_new_tokens'], stop_token_ids=[r['eos_token_id']],
+                            ignore_eos=False, detokenize=False) for r in batch])
+        barrier.wait(timeout=600)  # retain EP service for the other DP ranks
+        assert len(actual) == len(batch)
+        for request, response in zip(batch, actual):
+            assert list(response.prompt_token_ids) == request['prompt_token_ids']
+            assert response.finished and len(response.outputs) == 1
+            result = response.outputs[0]
+            results.append(dict(request_id=request['request_id'], prompt_tokens=len(request['prompt_token_ids']),
+                                token_ids=list(result.token_ids), finish_reason=result.finish_reason,
+                                stop_reason=result.stop_reason))
+        (output/f'dp{dp_rank}-quality.json').write_text(json.dumps(results, indent=2))
+    return results

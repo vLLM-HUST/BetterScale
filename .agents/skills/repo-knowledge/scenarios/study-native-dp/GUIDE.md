@@ -28,3 +28,13 @@ missing child-edge index. Reuse `profile_tools/analyze.py --jobs 4 --resume`:
 it adds the lookup index to derived DBs only and reuses completed native rank
 analyses. Read its README before repeating a slow export; do not truncate real
 waves or recapture the model to work around this CPU query issue.
+
+
+For the opt-in native DSA FULL-target extension, enter
+[`DP_FULL.md`](../../../../../prototypes/full-mixed/DP_FULL.md).
+Do not apply DSACP hooks unchanged to DSA: native DSA splits query segments in
+Python. Reusing its persistent ragged-query metadata is viable, but unifying all
+queries onto decode also changes prefill norm/quant arithmetic under the default
+attention overlap path. Keep replay-vs-unified, original-native, and quality
+claims separate. Large buckets retain prefill arithmetic in the current probe;
+DP8 performance remains an experiment, not an accepted speedup.

@@ -9,14 +9,14 @@ import quality
 
 
 class Engine:
-    def __init__(self, capacity=4): self.capacity=capacity; self.generated=[]
+    def __init__(self, capacity=4, batch_size=4): self.capacity=capacity; self.generated=[]; self.batch_size=batch_size
     def collective_rpc(self,name,args=()):
-        if name=='quality_capacity':return [dict(rank=i,max_length_concurrency=self.capacity) for i in range(8)]
+        if name in ('quality_capacity', 'donor_receipt'):return [dict(rank=i,max_length_concurrency=self.capacity) for i in range(8)]
         if name=='graph_receipt':return [dict(wrappers=[dict(entries=[dict(captured=True,replays=1,tokens=4128)])]) for _ in range(8)]
         return []
     def generate(self,prompts,params):
         self.generated.extend(prompts)
-        assert len(prompts)==len(params)==4
+        assert len(prompts)==len(params)==self.batch_size
         assert all(p.temperature==0 and not p.ignore_eos and p.stop_token_ids==[1] for p in params)
         return [NS(prompt_token_ids=p['prompt_token_ids'],finished=True,
                    outputs=[NS(token_ids=[17],finish_reason='stop',stop_reason=1)]) for p in prompts]
@@ -40,3 +40,21 @@ class QualityTests(unittest.TestCase):
                 self.assertEqual(result['status'],'COMPLETED_UNSCORED')
     def test_complete_case_mapping(self):self.exercise(4)
     def test_capacity_rejects_before_generation(self):self.exercise(1.19)
+
+
+class DPQualityTests(unittest.TestCase):
+    def test_complete_disjoint_dp_shards(self):
+        with TemporaryDirectory() as tmp, patch.dict('sys.modules',vllm=NS(SamplingParams=NS)):
+            root=Path(tmp); source=root/'inputs.json'
+            source.write_text(json.dumps([dict(request_id=str(i),prompt_token_ids=[i+2]*7,max_new_tokens=32,eos_token_id=1) for i in range(32)]))
+            results=[]; waits=[]
+            barrier=NS(wait=lambda timeout: waits.append(timeout))
+            for rank in range(8):
+                results.extend(quality.run_dp(Engine(2,2),root,source,rank,8,barrier))
+            self.assertEqual(len(results),32)
+            self.assertEqual({r['request_id'] for r in results},{str(i) for i in range(32)})
+            self.assertEqual(len(waits),32)
+            engine=Engine(1.9,2)
+            with self.assertRaisesRegex(AssertionError,'quality capacity'):
+                quality.run_dp(engine,root,source,0,8,barrier)
+            self.assertEqual(engine.generated,[])
