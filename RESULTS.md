@@ -101,8 +101,11 @@ needed. Native same-stream ordering preserves context-write ->query-read order.
   capacity estimates for the SAME requests, not quantities to multiply by8.
   The current harness admits only4 active requests; this is not maximum-concurrency
   benchmarking.12GiB quality candidate peak allocated is53.42GiB/rank.
-- The deliverable is an opt-in prototype/patch collection, not an installed
-  production plugin. Runtime pins and unrelated work are unchanged.
+- At the original closeout, the deliverable was an opt-in prototype/patch
+  collection. The kept path is now maintained in `src/strengthen_dsv4/` with
+  an explicit worker/HTTP entry; see the [runbook](docs/RUNBOOK.zh-CN.md).
+  This promotion does not broaden the performance or quality claims above.
+  Runtime pins and unrelated work remain unchanged.
 
 ## Artifacts and handoff
 

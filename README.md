@@ -46,35 +46,46 @@ cache, scheduler and FULL-graph observations. It does **not** establish a stable
 C32 throughput collapse or a measured benefit from broader FULL graph capture.
 The linked large artifacts remain in the original local workspace.
 
-First candidates: inspect the observed timeline overheads, validate finer
-prefix-cache granularity, and assess prefill/mixed graph coverage. These are
-hypotheses, not implemented or promised speedups.
+These starting hypotheses preceded the graph work below; they are not current
+completion or performance claims. Prefix-cache granularity remains outside the
+kept patch bundle.
 
-## Opt-in FULL mixed exploration
+## Maintained serving entry and report
 
-[The bounded prototype](prototypes/full-mixed/README.md) has passed TP2 and TP8 dummy
-DSV4 + DSpark K5 target FULL replay, including mixed waves and~4K-token buckets.
-TP8 deterministic controls include byte-exact shared KV pools and exact valid
-output/MTP comparisons; the full real-weight model passed the bounded same-state target shadow. It is **not production enabled**
-and does not yet establish full-model serving speedup. Release submodules and
-installed runtimes remain unchanged.
+The kept patches now live in **`src/strengthen_dsv4/`**, not just the historical
+prototype tree. They use vLLM's explicit `worker_cls` lifecycle and normal OpenAI
+server. No donor source files are modified, upgraded or rebuilt on startup.
 
-## Decode/draft continuation
+```sh
+export STRENGTHEN_PYTHON=/path/to/pinned-donor-env/bin/python
+./bin/strengthen-dsv4 check
+./bin/strengthen-dsv4 plan --model /models/DeepSeek-V4-Flash
+./bin/strengthen-dsv4 serve --model /models/DeepSeek-V4-Flash \
+  --profile optimized --artifacts runs/serve-optimized-001
+```
 
-[DSpark FULL draft and stream-ordered replay](prototypes/full-mixed/DECODE.md)
-now have bounded TP8 state checks and a corrected real-model comparison:
-matched four-request K5 cycles fall from about65 to52 ms. Whole-cohort throughput
-improvement is not yet stable; this remains opt-in, not a production claim.
+Use a fresh process and `--profile baseline` to roll back to native target decode
+FULL + eager DSpark (retaining only the K5/TP8 LCM startup fix). Current qualified
+entry: TP8/EP/DSACP/K5, four seats,4128 budget, max length15104,12GiB KV/rank.
+The launcher fails closed on unsupported private API sources or configurations.
+It is a bounded serving integration, not certification of arbitrary production
+traffic, concurrency or parallel layouts. Acquire the shared-host NPU lease and
+perform admission before accelerator work.
 
-[Cross-step authorization](prototypes/full-mixed/CROSS_STEP.md) adds conservative
-CPU bounds and moves receipt bookkeeping after target submission while preserving
-DMA ownership. Real TP8 matched K5 cycles improve another 10–12%; warmed short
-cohort results and the narrower-than-production admission are recorded separately.
+- [Technical report, with mechanism diagrams (中文)](docs/REPORT.zh-CN.md)
+- [Self-contained printable HTML report](docs/REPORT.zh-CN.html) (download and open locally)
+- [Launch, checks and rollback (中文)](docs/RUNBOOK.zh-CN.md)
+- [Patch inventory and native integration points](patches/README.md)
+- [Exact results and comparator definitions](RESULTS.md)
+- [Historical prototype and state experiments](prototypes/full-mixed/README.md)
 
-## September13 closeout
+Matched K5 studies isolate20–21% draft-graph and another10–12% stable-receipt
+cycle improvement. Split context/query improves observed short mixed waves;
+large prefill has no general speedup claim. Both historical arms pass the retained
+32-item OpenCompass retrieval gate. These are not proven maximum-concurrency,
+KV-capacity or stable end-to-end throughput improvements.
 
-[Results and exact comparison configurations](RESULTS.md) summarize the kept
-split-context/query design, isolated20–21% draft-graph and10–12% cross-step
-steady-wave improvements, short mixed-wave observations, and32/32 OpenCompass
-retrieval quality gate. Whole-service throughput and KV-capacity improvements
-are not claimed; this round is closed without further scheduler expansion.
+The Markdown report is canonical. Regenerate its self-contained HTML with
+`python docs/render_report.py` in a separate documentation environment containing
+`Markdown==3.8.2`; do not add documentation dependencies to the donor environment.
+The SVG figures are editable vector sources under `docs/figures/`.

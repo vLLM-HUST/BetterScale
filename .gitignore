@@ -8,3 +8,5 @@ __pycache__/
 
 /extra-info/
 /kernel_meta/
+
+*.egg-info/

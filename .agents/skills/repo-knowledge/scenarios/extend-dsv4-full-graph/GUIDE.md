@@ -1,5 +1,23 @@
 # Extend DSV4 prefill/mixed FULL graph
 
+## Maintained serving entry
+
+For deployment and reporting, start from `bin/strengthen-dsv4`,
+`docs/RUNBOOK.zh-CN.md` and `patches/README.md`, not the historical prototype
+launchers below. The kept implementation is `src/strengthen_dsv4/patches`;
+the native worker subclass installs it during initialization/warmup without
+post-start activation RPC. `baseline` retains only the TP8/K5 LCM repair.
+The launcher rejects incompatible private API sources and unqualified layouts.
+`docs/acceptance.json` records the shipped HTTP-entry acceptance envelope.
+
+Two deployment traps were observed: Ascend's explicit `worker_cls` survives
+platform config updates (only `auto` is substituted), whereas a worker extension
+cannot override colliding lifecycle methods. Native API server termination may
+also bypass `Worker.shutdown`; bank files are checkpoint receipts, not guaranteed
+final counters. Verify process/device release independently.
+
+## Historical investigation and experiments
+
 Enter here when interpreting donor host gaps, deciding graph coverage, or
 implementing a fixed-budget DSV4 prefill/mixed graph. Read
 [the investigation and gap map](investigation.md) before changing graph modes.
