@@ -97,13 +97,18 @@ def check(wrapper, runner, replay_call, args, kwargs):
         target.copy_(source)
     row = dict(descriptor=str(ctx.batch_descriptor), valid=valid, status='RUNNING', signed_zero_words=0,
                reference=os.environ.get('DP_FULL_REFERENCE', 'native'))
+    bounds = None
+    upper = None
     try:
         mode = os.environ.get('DP_FULL_REFERENCE', 'native')
-        reference = reference_metadata(mode, runner, metadata_args, metadata_kwargs, old_metadata)
+        bounds = getattr(runner, '_cross_step_bounds', None)
+        upper = bounds.reference_begin(ctx) if bounds is not None else None
+        prepared = ctx.attn_metadata if upper is not None else old_metadata
+        reference = reference_metadata(mode, runner, metadata_args, metadata_kwargs, prepared)
         ctx.attn_metadata = reference
         ctx.cudagraph_runtime_mode = CUDAGraphMode.NONE
         refmeta = next(iter(reference.values()))
-        row.update(prefills=refmeta.num_prefills, decodes=refmeta.num_decodes)
+        row.update(prefills=refmeta.num_prefills, decodes=refmeta.num_decodes, exact_metadata=upper is not None)
         expected = wrapper.runnable(*args, **kwargs)
         torch.npu.synchronize()
         max_diff = 0.0
@@ -152,6 +157,8 @@ def check(wrapper, runner, replay_call, args, kwargs):
         (root/f'dp-full-shadow-failure-rank{rank}.json').write_text(json.dumps(row, indent=2))
         raise
     finally:
+        if bounds is not None and upper is not None:
+            bounds.reference_end(ctx, upper)
         # Native reference changes shared metadata buffers; re-establish the
         # candidate's values before returning control to native sampling/draft.
         if os.environ.get('DP_FULL_REFERENCE', 'native') != 'unified':

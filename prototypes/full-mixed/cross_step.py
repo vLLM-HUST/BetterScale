@@ -12,11 +12,11 @@ import torch
 from torch.profiler import record_function
 
 
-def stable_verification(runner, schedule, counts):
+def stable_verification(runner, schedule, counts, max_requests=4):
     ids = tuple(runner.input_batch.req_ids)
     previous = runner.input_batch.prev_req_id_to_index
     return (
-        1 <= len(ids) <= 4
+        1 <= len(ids) <= max_requests
         and len(counts) == len(ids) and all(int(n) == 6 for n in counts)
         and previous == {rid: i for i, rid in enumerate(ids)}
         and not schedule.scheduled_new_reqs
@@ -30,7 +30,8 @@ def stable_verification(runner, schedule, counts):
 
 
 class CrossStepBounds:
-    def __init__(self, worker, all_modes=False):
+    def __init__(self, worker, all_modes=False, *, native_dsa=False, max_requests=4):
+        self.max_requests = max_requests
         self.all_modes = all_modes
         r = self.runner = worker.model_runner
         assert r.use_compress and r.use_async_spec_decode and not r.use_dcp
@@ -38,7 +39,7 @@ class CrossStepBounds:
         assert r.num_spec_tokens == 5 and not r.need_accepted_tokens
         assert not r.supports_mm_inputs and not r.enable_prompt_embeds
         self.path = Path(os.environ['FULL_MIXED_OUTPUT']) / f'cross-step-rank{worker.rank}.json'
-        assert all(type(group.get_metadata_builder()).__name__ == "AscendDSACPMetadataBuilder"
+        assert all(type(group.get_metadata_builder()).__name__ in (("AscendDSAMetadataBuilder", "AscendDSACPMetadataBuilder") if native_dsa else ("AscendDSACPMetadataBuilder",))
                    for groups in r.attn_groups for group in groups)
         self.update = r._update_states
         self.forward = r._model_forward
@@ -62,7 +63,7 @@ class CrossStepBounds:
 
     def authorized(self, schedule, counts):
         if not self.all_modes:
-            return stable_verification(self.runner, schedule, counts)
+            return stable_verification(self.runner, schedule, counts, self.max_requests)
         ids = self.runner.input_batch.req_ids
         return (1 <= len(ids) <= 4 and len(counts) == len(ids)
                 and all(int(n) > 0 for n in counts)

@@ -7,6 +7,30 @@ import torch
 
 
 class DonorDPWorker:
+    def enable_pingpong(self):
+        torch.npu.synchronize()
+        pair=self.model_runner.model._decode_pair
+        pair.stream=torch.npu.current_stream().npu_stream
+        return pair.receipt()
+
+    def enable_pingpong_shadow(self):
+        pair=self.model_runner.model._decode_pair
+        assert pair.reference_catalog
+        pair.shadow_runner=self.model_runner
+        return {'shadow':'original-native-graph'}
+
+    def enable_pingpong_continuous(self):
+        from cross_step import CrossStepBounds
+        r=self.model_runner;p=r.vllm_config.parallel_config
+        os.environ['FULL_MIXED_OUTPUT']=os.environ['DONOR_DP_OUTPUT']
+        observer=SimpleNamespace(rank=p.data_parallel_rank*p.tensor_parallel_size+self.rank,model_runner=r)
+        r._cross_step_bounds=CrossStepBounds(observer,native_dsa=True,max_requests=r.max_num_reqs)
+        return r._cross_step_bounds.receipt()
+
+    def enable_pingpong_sources(self):
+        from pingpong_sources import install
+        return install(self)
+
     def start_window(self, label, profile=False):
         from diagnostics import start_decode_observation
         p = self.model_runner.vllm_config.parallel_config
@@ -41,7 +65,10 @@ class DonorDPWorker:
         from vllm.distributed import get_ep_group
         r=self.model_runner;p=r.vllm_config.parallel_config
         tokens,concurrency=get_kv_cache_capacity(r.vllm_config,r.kv_cache_config)
-        return dict(dp_rank=p.data_parallel_rank,tp_rank=self.rank,ep_rank=get_ep_group().rank_in_group,
+        return dict(cross_step=(r._cross_step_bounds.receipt() if '_cross_step_bounds' in r.__dict__ else None),
+                    host_source_slots=(r._host_source_slots.receipt() if '_host_source_slots' in r.__dict__ else None),
+                    pingpong=(r.model._decode_pair.receipt() if '_decode_pair' in r.model.__dict__ else None),
+                    dp_rank=p.data_parallel_rank,tp_rank=self.rank,ep_rank=get_ep_group().rank_in_group,
                     ep_size=get_ep_group().world_size,device=str(r.device),kv_capacity_tokens=tokens,
                     max_length_concurrency=concurrency,allocated=torch.npu.memory_allocated(),
                     reserved=torch.npu.memory_reserved(),peak=torch.npu.max_memory_allocated(),
@@ -76,3 +103,7 @@ def joint_alignment(self,query_len,tp):
     return _original_adjust(self,alignment,tp)
 
 CompilationConfig.adjust_cudagraph_sizes_for_spec_decode=joint_alignment
+
+
+if os.environ.get('DONOR_PINGPONG') == '1':
+    import pingpong_graph  # opt-in before native startup graph capture

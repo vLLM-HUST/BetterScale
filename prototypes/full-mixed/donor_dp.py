@@ -15,12 +15,14 @@ def rank_main(args,dp_rank,barrier):
                      VLLM_DP_SIZE=str(args.donor_dp),VLLM_DP_MASTER_IP='127.0.0.1',
                      VLLM_DP_MASTER_PORT='30651',DONOR_DP_OUTPUT=str(args.output))
     os.environ['VLLM_ASCEND_ENABLE_FLASHCOMM1']='1' if args.tp>1 else '0'
+    os.environ['DONOR_PINGPONG']='1' if args.pingpong else '0'
+    os.environ['DONOR_PINGPONG_SHADOW']='1' if args.pingpong_shadow else '0'
     from vllm import LLM,SamplingParams
     if not args.real:
         from fixture import install_dummy_draft_config
         install_dummy_draft_config()
     single_card = args.donor_dp == args.tp == 1
-    local_seats=2 if not args.real else 16//args.donor_dp
+    local_seats=(4 if args.tp > 1 else 2) if not args.real else 16//args.donor_dp
     capture_sizes=[6,12] if args.tp==1 else [24,48,96]
     if args.dp_full:
         assert args.tp == 1
@@ -47,6 +49,17 @@ def rank_main(args,dp_rank,barrier):
                                    num_hash_layers=0,num_nextn_predict_layers=1,dspark_target_layer_ids=[1,2,3])
     (args.output/f'dp{dp_rank}-config.json').write_text(json.dumps(config,indent=2))
     llm=LLM(**config)
+    if args.pingpong:
+        llm.collective_rpc('enable_pingpong')
+    if args.pingpong_sources:
+        assert args.pingpong
+        llm.collective_rpc('enable_pingpong_sources')
+    if args.pingpong_continuous:
+        assert args.pingpong and args.pingpong_sources
+        llm.collective_rpc('enable_pingpong_continuous')
+    if args.pingpong_shadow:
+        assert args.pingpong and not args.dp_shadow
+        llm.collective_rpc('enable_pingpong_shadow')
     if args.dp_shadow:
         assert args.dp_full
         llm.collective_rpc('enable_dp_shadow')
