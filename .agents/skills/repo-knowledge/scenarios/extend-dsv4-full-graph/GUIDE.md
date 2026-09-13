@@ -1,5 +1,10 @@
 # Extend DSV4 prefill/mixed FULL graph
 
+For ping-pong/N+2 residual bubbles, enter the focused
+[worker submission/event audit](worker-submission.md) before re-reading the
+historical campaign or adding scheduler lookahead. It includes the LiveInfer
+protocol mapping and run098 worker-only timing evidence.
+
 ## Maintained serving entry
 
 For deployment and reporting, start from `bin/strengthen-dsv4`,

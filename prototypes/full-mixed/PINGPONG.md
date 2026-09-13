@@ -27,6 +27,10 @@ remain unchanged.
 
 ## Transfer the invariant, not the old engine
 
+For the worker-command/event audit and the distinction between a queued RPC
+and a queued device replay, see
+[worker submission](../../.agents/skills/repo-knowledge/scenarios/extend-dsv4-full-graph/worker-submission.md).
+
 LiveInfer's source reference is `AscendDSV4WaveExecutor` in
 `src/livemodule/arch/ascend/request_parallel/dsv4/wave_executor.py` in the retained
 `/root/my-ascend-workspace/livemodule-main-integration` checkout. It binds two

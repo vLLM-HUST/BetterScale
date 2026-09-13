@@ -109,3 +109,10 @@ bounds and use the existing clock transform (reference-target plus scaled delta;
 `offset_ns` is descriptive, not an extra additive term). The >1000-task target
 model selector is specific to these full-model profiles with eager draft; do
 NOT apply it unchanged once draft graphs are also enabled.
+
+`worker_submission.py WINDOW --first-wave 3 --last-wave 13` separately audits
+CPU issue phases in run098. It uses enclosing target/sample/draft ranges and
+worker-thread CANN calls, not cross-rank timestamps. Output is
+`analysis/worker-submission.json`; see the local Skill's worker-submission note
+for the interpretation boundary. The explicit range is zero-based forward
+ordinal, not a request generation or an engine scheduler sequence.
