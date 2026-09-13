@@ -238,3 +238,21 @@ OpenCompass deployments. The retained32 original-input retrieval questions are
 quality envelope. Native hybrid-aware capacity gives4.77 at12GiB. Runs048/049
 score32/32 for both the prior optimized control and split candidate. This is a
 LongBench retrieval subset pass, never a full OpenCompass-suite claim.
+
+## Investigate KV prefetch hidden behind matrix work
+
+Enter `prototypes/kv-prefetch-overlap/README.md` before repeating communication /
+GEMM interference experiments or proposing PCP integration. It maps existing TP
+output-weight gathers and DP/MoE multistream consumers, retains native rank-local
+matmul shape/block inventories, and separates net block-time savings from compute
+slowdown. Neither a Matmul name nor timeline-envelope overlap proves spare Vector
+resources or free communication. The HCCL payload microbench omits owner State pack
+and existing EP traffic; it is not a serving or whole-layer qualification.
+
+This runtime rejects elapsed_time for timing events captured inside a graph
+(`event recorder null`,507000). Use external events around fixed repeated-operation
+graph blocks, preserve that throughput-block scope, and record actual NZ format.
+The probe explicitly enables internal format; otherwise format_cast can warn and
+silently leave ND. Keep selected-device admission and source/destination roles in
+the capsule, including rejected windows. Do not compare different hosts as if
+only the communication policy changed.
