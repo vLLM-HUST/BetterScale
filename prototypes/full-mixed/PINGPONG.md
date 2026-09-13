@@ -5,7 +5,7 @@ scheduler, prefill route, release pins, State ownership and eager/kept draft
 choice. No N+2 scheduler rewrite. Experimental branch only; deployment defaults
 remain unchanged.
 
-## Current checkpoint (September13, runs097–100)
+## Current checkpoint (September13, runs097–101)
 
 - Real TP8 and DP8 pass exact producer/sampler, target output and full-KV
   qualification with strict HCCL; performance uses normal HCCL instead.
@@ -15,8 +15,12 @@ remain unchanged.
 - At the same8192 admission/8GiB KV configuration, reserved memory is50.178GiB,
   only28MiB above the retained endpoint control. Shared auxiliary scratch pools
   avoid requiring one private pool per shape/bank; live outputs remain owned.
-- DP8 performance and retained32-item quality are pending an eight-card window:
-  run100 lost usable memory on card6 during startup and measured no serving.
+- DP8 matched cycles are64.61/66.50ms native versus50.61/50.86ms with metadata;
+  all32 retained retrieval questions pass the pinned OpenCompass scorer. Whole
+  cohort completion did NOT improve consistently; do not call it a throughput win.
+- Continuous scheduling is NOT established: the candidate TP profile retains
+  eager draft, and rank5 arrives2.45–6.19ms late to the first ReduceScatter in all
+  eleven full-occupancy waves. Split-draft composition is the next bounded probe.
 - Detailed boundaries, reproducible flags and failure observations follow below.
   This is not yet the packaged TP8 profile's split-draft integration or a complete
   three-stream serving implementation.
@@ -418,3 +422,32 @@ Both pass the unchanged50us holdout gate using eager small-control collective
 identities. Fits are candidate-only display alignment, not physical clock
 calibration. Official profiler DBs, derived rank DBs, rejected/accepted protocol
 boundaries and raw timestamps remain available; no raw JSON need be opened.
+
+Run101 recovers the uncontended DP8 window and completes the study plus all32
+retained LongBench retrieval questions (100%,32/32, pinned OpenCompass scorer).
+Matched96-global-query cycle medians(ms) are native64.61/66.50, previous receipt
+cut62.30/68.56, endpoint pair63.06/68.67, producer58.27/57.96, metadata50.61/50.86.
+The22–24% cycle reduction does NOT imply better whole-cohort throughput: metadata
+cohort times were5.93/4.81s versus native3.99/4.16s, including changed
+acceptance/drain/cold admission. Final DP memory57.426GiB allocated,58.699GiB
+reserved,58.016GiB peak. No DP profile was collected in101.
+
+Fletcher correctly identified remaining target-entry ReduceScatter waits in098.
+`profile_tools/continuation.py` matches FULL forward order to native graph task
+occurrences, then requires identical provider collective identities across ranks;
+turnover name mismatches are preserved, not force-aligned. All11 full16-request
+candidate profile waves have rank5 last to the first ReduceScatter. Arrival skew
+is2.45–6.19ms, versus37–39us communication duration at the last arriver. Target
+prefix compute is about130us across ranks. Rank5's replay submission is late;
+it starts executing about60–75us after submission while other ranks had already
+queued it. This is launch starvation, not expensive ReduceScatter arithmetic.
+
+Important control boundary:098/101 retained native EAGER draft to isolate the
+producer. They do not yet compose the packaged split-draft optimization and do
+not establish continuous replay. Profiling also increases exposed host work:
+rank0 full-occupancy draft host medians~36ms unprofiled/~47ms profiled; candidate
+cycle~57ms/~73ms. Device draft spans remain~5ms. Do not subtract all profiled wait
+milliseconds from unprofiled serving or assert Linux preemption without scheduler
+evidence. The next bounded TP composition reuses split-draft with an explicit
+1–16-request envelope and a shared scratch pool, keeping DSA/DP admission closed
+until its different metadata semantics have an independent gate.

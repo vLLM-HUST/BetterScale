@@ -97,3 +97,15 @@ export without a collective clock model, explicitly named `unaligned` (native
 first-event normalization per rank). It supports within-rank
 inspection, NOT cross-rank lateness comparisons. Do not keep trying filters
 until a visually pleasing alignment appears.
+
+For the DSV4/eager-draft continuation studies, `continuation.py WINDOW` links
+observed FULL forward order to graph compute-task occurrences and checks the
+counts. It attributes the first ReduceScatter only to that target graph's model,
+requires matching provider name/type/group/count for cross-rank comparisons,
+and preserves turnover name mismatches without inventing timestamp-nearest
+matches. Source `COMMUNICATION_TASK_INFO.opId` can link multiple replay instances;
+OP membership alone is not a particular physical occurrence. Keep occurrence
+bounds and use the existing clock transform (reference-target plus scaled delta;
+`offset_ns` is descriptive, not an extra additive term). The >1000-task target
+model selector is specific to these full-model profiles with eager draft; do
+NOT apply it unchanged once draft graphs are also enabled.

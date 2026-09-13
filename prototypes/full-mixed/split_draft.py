@@ -26,10 +26,10 @@ def query_body(drafter):
 
 
 class SplitDraftGraphSet(DraftGraphSet):
-    def __init__(self, worker):
-        super().__init__(worker)
+    def __init__(self, worker, max_requests=4):
+        super().__init__(worker,max_requests=max_requests)
         assert self.drafter.parallel_drafting
-        self.decode = DraftGraphSet(worker)
+        self.decode = DraftGraphSet(worker,max_requests=max_requests,pool=self.pool)
         self.context_calls = self.context_rows = 0
         self.context_max = 0
 
@@ -37,7 +37,7 @@ class SplitDraftGraphSet(DraftGraphSet):
         d, ctx = self.drafter, get_forward_context()
         assert not ctx.capturing
         count, actual = kwargs['batch_size'], d._dflash_num_context
-        assert 1 <= count <= 4 and actual > 0
+        assert 1 <= count <= self.max_requests and actual > 0
         if not self.enabled:
             return self.original(**kwargs)
         prefill = any(bool(m.num_prefills) for m in ctx.attn_metadata.values())
@@ -64,7 +64,7 @@ class SplitDraftGraphSet(DraftGraphSet):
         try:
             with query_body(d), record_function('strengthen::draft_query_graph'):
                 if key not in self.entries:
-                    entry = ExactDraftGraph(self.worker, self.original, count)
+                    entry = ExactDraftGraph(self.worker, self.original, count,pool=self.pool)
                     entry.query_only = True
                     entry.strict_signature = True
                     entry.reference_kind = 'native-query-after-native-unpadded-context'

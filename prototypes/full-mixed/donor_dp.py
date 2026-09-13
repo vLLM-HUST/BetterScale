@@ -54,6 +54,7 @@ def rank_main(args,dp_rank,barrier):
         shadow_decode=args.shadow_decode, shadow_metadata=args.shadow_metadata,
         producer_oracle=args.shadow_decode_verify, target_oracle=args.pingpong_shadow,
         hccl_deterministic=os.environ.get('HCCL_DETERMINISTIC'),
+        split_draft=args.split_draft,draft_oracle=os.environ.get('DRAFT_GRAPH_SHADOW')=='1',
         decode_only=args.decode_only, study=args.pingpong_study),indent=2))
     llm=LLM(**config)
     if args.pingpong:
@@ -73,6 +74,9 @@ def rank_main(args,dp_rank,barrier):
     if args.shadow_decode:
         assert args.pingpong_continuous
         llm.collective_rpc('enable_shadow_decode',args=(args.shadow_decode_verify,args.shadow_metadata,))
+    if args.split_draft:
+        assert args.shadow_metadata and args.tp>1
+        llm.collective_rpc('enable_producer_draft')
     if args.producer_shadow_audit:
         llm.collective_rpc('enable_producer_shadow_audit')
     rows=[]
@@ -96,7 +100,7 @@ def rank_main(args,dp_rank,barrier):
     if args.pingpong_study:
         assert args.real and args.pingpong_continuous and not (args.dp_shadow or args.pingpong_shadow)
         for repeat in range(2):
-            for policy in (('native','cut','pair','producer','metadata') if args.shadow_metadata else ('native', 'cut', 'sources', 'pair')):
+            for policy in (('metadata','draft') if args.split_draft else ('native','cut','pair','producer','metadata') if args.shadow_metadata else ('native', 'cut', 'sources', 'pair')):
                 barrier.wait(timeout=120)
                 llm.collective_rpc('set_pingpong_policy',args=(policy,))
                 wave(f'warm-{repeat}-{policy}',[128]*local_seats,16,observe=False)
@@ -112,7 +116,7 @@ def rank_main(args,dp_rank,barrier):
         wave('dummyskew',[args.budget*2+17 if dp_rank==0 else 32]*(1 if single_card else 8//args.donor_dp),16)
     if args.profile_after:
         if args.pingpong_study and args.shadow_metadata:
-            for policy in ('native','metadata'):
+            for policy in (('metadata','draft') if args.split_draft else ('native','metadata')):
                 barrier.wait(timeout=120)
                 llm.collective_rpc('set_pingpong_policy',args=(policy,))
                 wave(f'profile-warm-{policy}',[128]*local_seats,16,observe=False)
@@ -132,7 +136,7 @@ def rank_main(args,dp_rank,barrier):
 
 def main(args):
     assert args.spec, "This bounded DP comparison is a K5 study"
-    assert not any((args.n2,args.split_draft,args.ordered_replay,args.cpu_qli,args.draft_graph,args.cross_step_bounds))
+    assert not any((args.n2,args.ordered_replay,args.cpu_qli,args.draft_graph,args.cross_step_bounds))
     assert (args.donor_dp*args.tp==8 and args.donor_dp in (1,2,4,8)) or (
         args.tp in (1,2,4) and args.donor_dp in (1,2,4) and args.donor_dp*args.tp <= 8
         and (args.dp_full or args.tp > 1) and not args.real)

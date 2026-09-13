@@ -48,9 +48,10 @@ class Protocol(unittest.TestCase):
                 self.executions+=1
                 box['output'].fill_(7)
         @contextlib.contextmanager
-        def capture(graph):
+        def capture(graph,pool=None):
+            graph.pool=pool
             yield
-        fake=NS(Tensor=torch.Tensor,npu=NS(synchronize=lambda:None,NPUGraph=Graph,graph=capture))
+        fake=NS(Tensor=torch.Tensor,npu=NS(synchronize=lambda:None,NPUGraph=Graph,graph=capture,graph_pool_handle=object))
         ctx=NS(attn_metadata={'q':torch.tensor([1])},capturing=False)
         ns=dict(torch=fake,copy=copy,dataclasses=dataclasses,Enum=Enum,RopeDataProxy=Proxy,
                 os=os,json=json,Path=Path,get_forward_context=lambda:ctx)
@@ -78,9 +79,18 @@ class Protocol(unittest.TestCase):
                 bank_set(batch_size=count)
             self.assertEqual(set(bank_set.entries),{1,2,3,4})
             self.assertTrue(all(g.graph.executions==1 for g in bank_set.entries.values()))
+            self.assertTrue(all(g.graph.pool is bank_set.pool for g in bank_set.entries.values()))
             d._dflash_num_context=30
             bank_set(batch_size=5)
             self.assertEqual(len(bank_set.entries),4)
+            worker.model_runner.vllm_config.scheduler_config.max_num_seqs=16
+            wider=ns['DraftGraphSet'](worker,max_requests=16,pool=bank_set.pool)
+            for count in (1,8,16):
+                d._dflash_num_context=6*count
+                wider(batch_size=count)
+            self.assertEqual(set(wider.entries),{1,8,16})
+            self.assertTrue(all(g.graph.pool is bank_set.pool for g in wider.entries.values()))
+            with self.assertRaises(AssertionError):ns['DraftGraphSet'](worker,max_requests=17)
 
     def test_cpu_qli_uses_existing_mirrors_and_checks_them(self):
         p=Path(__file__).with_name('qli_cpu.py')

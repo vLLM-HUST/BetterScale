@@ -74,7 +74,7 @@ def refresh(dst,src):
 
 
 class ExactDraftGraph:
-    def __init__(self,worker,original=None,request_count=4,context_capacity=None,reference=None):
+    def __init__(self,worker,original=None,request_count=4,context_capacity=None,reference=None,pool=None):
         self.worker=worker;self.drafter=worker.model_runner.drafter
         assert type(self.drafter).__name__=='AscendDSparkProposer'
         assert not self.drafter.use_cuda_graph
@@ -82,6 +82,7 @@ class ExactDraftGraph:
         self.request_count=request_count
         self.context_capacity=context_capacity or 6*request_count
         self.reference=reference or self.original
+        self.pool=pool
         self.enabled=True;self.key=None;self.graph=None;self.replays=0;self.fallbacks=0;self.checks=0;self.capture_checked=False;self.signed_zero_words=0
         self.path=Path(os.environ['FULL_MIXED_OUTPUT'])/f'draft-graph-rank{worker.rank}-requests{request_count}.json'
 
@@ -115,7 +116,7 @@ class ExactDraftGraph:
                 torch.npu.synchronize()
                 was_capturing=ctx.capturing;ctx.capturing=True
                 try:
-                    with torch.npu.graph(graph):self.output=self.original(**self.buffers[0])
+                    with torch.npu.graph(graph,pool=self.pool):self.output=self.original(**self.buffers[0])
                 finally:
                     ctx.attn_metadata=old;ctx.capturing=was_capturing
                 self.graph=graph
@@ -140,10 +141,9 @@ class ExactDraftGraph:
         return self.output
 
     def checked_call(self,run,kwargs):
-        from extension import _unique_byte_pools
-        from torch.utils._pytree import tree_flatten
-        leaves,_=tree_flatten(self.worker.model_runner.kv_caches)
-        pools=_unique_byte_pools([x for x in leaves if isinstance(x,torch.Tensor)])
+        # The byte-pool helper has no runner patch-installation side effects.
+        from dp_full_shadow import byte_pools
+        pools=byte_pools(self.worker.model_runner.kv_caches)
         torch.npu.synchronize()
         before=[x.clone() for x in pools]
         observed=run().clone()
@@ -196,21 +196,24 @@ class ExactDraftGraph:
 
 class DraftGraphSet:
     """One exact shape per native request count; never an unbounded shape cache."""
-    def __init__(self,worker):
+    def __init__(self,worker,max_requests=4,pool=None):
         self.worker=worker;self.drafter=worker.model_runner.drafter
         self.original=self.drafter._runnable
         assert self.drafter.num_speculative_tokens==5, 'Only K5 is qualified here'
-        assert worker.model_runner.vllm_config.scheduler_config.max_num_seqs==4
+        assert 1<=max_requests<=16
+        assert worker.model_runner.vllm_config.scheduler_config.max_num_seqs==max_requests
+        self.max_requests=max_requests
+        self.pool=pool if pool is not None else torch.npu.graph_pool_handle()
         self.enabled=True;self.entries={};self.fallbacks=0
 
     def __call__(self,**kwargs):
         if not self.enabled:return self.original(**kwargs)
         count=kwargs['batch_size']
-        if (not 1<=count<=4 or self.drafter._dflash_num_context!=6*count
+        if (not 1<=count<=self.max_requests or self.drafter._dflash_num_context!=6*count
                 or kwargs.get('is_prefill',False) or get_forward_context().capturing):
             self.fallbacks+=1;return self.original(**kwargs)
         if count not in self.entries:
-            self.entries[count]=ExactDraftGraph(self.worker,self.original,count)
+            self.entries[count]=ExactDraftGraph(self.worker,self.original,count,pool=self.pool)
         return self.entries[count](**kwargs)
 
     def receipt(self):
