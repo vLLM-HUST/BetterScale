@@ -1,0 +1,197 @@
+{
+  "comparison": "Prior optimized stable-K5 cross-step control vs all-mode N+2 candidate; not untouched donor",
+  "conditions": "hw3 TP8 real DSV4 K5 greedy, budget4128, four seats, KV3GiB/rank, ordinary HCCL, no shadows; seven cohorts twice, 64 outputs/request; second round reported",
+  "runs": [
+    {
+      "run": 41,
+      "role": "control",
+      "seconds": 9.18464201723691,
+      "generated_tokens": 1216,
+      "tokens_per_second": 132.39492597729128,
+      "cohorts": [
+        {
+          "cohort": 7,
+          "seconds": 1.6747978460043669,
+          "generated_tokens": 256,
+          "waves": 28,
+          "initial_wave_tokens": [
+            64,
+            70,
+            140
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": 46.1988525390625
+        },
+        {
+          "cohort": 8,
+          "seconds": 1.3959169790614396,
+          "generated_tokens": 128,
+          "waves": 29,
+          "initial_wave_tokens": [
+            129,
+            23,
+            12
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": null
+        },
+        {
+          "cohort": 9,
+          "seconds": 1.2751409290358424,
+          "generated_tokens": 192,
+          "waves": 22,
+          "initial_wave_tokens": [
+            7,
+            134,
+            45
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": null
+        },
+        {
+          "cohort": 10,
+          "seconds": 1.9203888670308515,
+          "generated_tokens": 256,
+          "waves": 33,
+          "initial_wave_tokens": [
+            256,
+            34,
+            27
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": 46.98370361328125
+        },
+        {
+          "cohort": 11,
+          "seconds": 1.1294537299545482,
+          "generated_tokens": 192,
+          "waves": 19,
+          "initial_wave_tokens": [
+            513,
+            280,
+            18
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": null
+        },
+        {
+          "cohort": 12,
+          "seconds": 0.7093827550997958,
+          "generated_tokens": 64,
+          "waves": 14,
+          "initial_wave_tokens": [
+            1025,
+            6,
+            6
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": null
+        },
+        {
+          "cohort": 13,
+          "seconds": 1.0795609110500664,
+          "generated_tokens": 128,
+          "waves": 17,
+          "initial_wave_tokens": [
+            4112,
+            52,
+            12
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": null
+        }
+      ]
+    },
+    {
+      "run": 42,
+      "role": "candidate",
+      "seconds": 9.677967902040109,
+      "generated_tokens": 1216,
+      "tokens_per_second": 125.64621130265043,
+      "cohorts": [
+        {
+          "cohort": 7,
+          "seconds": 1.8432467229431495,
+          "generated_tokens": 256,
+          "waves": 31,
+          "initial_wave_tokens": [
+            64,
+            70,
+            140
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": 46.55029296875
+        },
+        {
+          "cohort": 8,
+          "seconds": 1.4132056368980557,
+          "generated_tokens": 128,
+          "waves": 29,
+          "initial_wave_tokens": [
+            129,
+            23,
+            12
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": null
+        },
+        {
+          "cohort": 9,
+          "seconds": 1.870607570046559,
+          "generated_tokens": 192,
+          "waves": 37,
+          "initial_wave_tokens": [
+            7,
+            134,
+            45
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": null
+        },
+        {
+          "cohort": 10,
+          "seconds": 1.6184794909786433,
+          "generated_tokens": 256,
+          "waves": 27,
+          "initial_wave_tokens": [
+            256,
+            34,
+            27
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": 46.7271728515625
+        },
+        {
+          "cohort": 11,
+          "seconds": 1.1380481980741024,
+          "generated_tokens": 192,
+          "waves": 19,
+          "initial_wave_tokens": [
+            513,
+            280,
+            18
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": null
+        },
+        {
+          "cohort": 12,
+          "seconds": 0.7176261420827359,
+          "generated_tokens": 64,
+          "waves": 14,
+          "initial_wave_tokens": [
+            1025,
+            6,
+            6
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": null
+        },
+        {
+          "cohort": 13,
+          "seconds": 1.0767541410168633,
+          "generated_tokens": 128,
+          "waves": 17,
+          "initial_wave_tokens": [
+            4112,
+            52,
+            12
+          ],
+          "matched_four_request_cycle_ms_median_across_rank_medians": null
+        }
+      ]
+    }
+  ],
+  "nonclaims": [
+    "One paired run, not a stable throughput win or regression estimate",
+    "Wave counts vary; draft padding changes proposals and may affect acceptance",
+    "Profile collected separately after timed cohorts; affine clock alignment is display-only"
+  ]
+}

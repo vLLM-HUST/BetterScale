@@ -1,886 +1,124 @@
 {
   "capsule": "hw3:/workspace/my-ascend-workspace/runs/strengthen-dsv4-full-mixed/tp8-n2-038-real-diagnostic",
   "interpretation": "Padding changes the draft proposal numerically. Padded eager matches graph token IDs and all KV bytes. Repeated unpadded eager and canonical-count unpadded eager match each other. This is not unpadded-donor bitwise equivalence.",
-  "ranks": [
-    {
-      "file": "full-draft-rank0-requests2-context288-ChunkedPrefill-1.output-failure.json",
-      "graph_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
+  "representative": {
+    "graph_tokens": [
+      [
+        835,
+        4253,
+        835,
+        4253,
+        835
       ],
-      "eager_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "capacity": 288,
-      "requests": 2,
-      "addressed_kv_differences": [
-        {
-          "pool": 43,
-          "addressed_values": 79872,
-          "unequal": 3,
-          "max_diff": 0.00390625,
-          "max_abs": 10.3125
-        },
-        {
-          "pool": 44,
-          "addressed_values": 79872,
-          "unequal": 2328,
-          "max_diff": 0.07421875,
-          "max_abs": 6.03125
-        },
-        {
-          "pool": 45,
-          "addressed_values": 79872,
-          "unequal": 2466,
-          "max_diff": 0.818359375,
-          "max_abs": 8.9375
-        }
-      ],
-      "repeated_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_kv_matches_graph": true,
-      "actual_context": 146,
-      "canonical_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
+      [
+        18,
+        201,
+        18,
+        201,
+        18
       ]
-    },
-    {
-      "file": "full-draft-rank1-requests2-context288-ChunkedPrefill-1.output-failure.json",
-      "graph_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
+    ],
+    "eager_tokens": [
+      [
+        835,
+        223,
+        1915,
+        4253,
+        835
       ],
-      "eager_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "capacity": 288,
-      "requests": 2,
-      "addressed_kv_differences": [
-        {
-          "pool": 43,
-          "addressed_values": 79872,
-          "unequal": 3,
-          "max_diff": 0.00390625,
-          "max_abs": 10.3125
-        },
-        {
-          "pool": 44,
-          "addressed_values": 79872,
-          "unequal": 2328,
-          "max_diff": 0.07421875,
-          "max_abs": 6.03125
-        },
-        {
-          "pool": 45,
-          "addressed_values": 79872,
-          "unequal": 2466,
-          "max_diff": 0.818359375,
-          "max_abs": 8.9375
-        }
-      ],
-      "repeated_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_kv_matches_graph": true,
-      "actual_context": 146,
-      "canonical_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
+      [
+        18,
+        201,
+        18,
+        201,
+        18
       ]
-    },
-    {
-      "file": "full-draft-rank2-requests2-context288-ChunkedPrefill-1.output-failure.json",
-      "graph_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
+    ],
+    "capacity": 288,
+    "requests": 2,
+    "addressed_kv_differences": [
+      {
+        "pool": 43,
+        "addressed_values": 79872,
+        "unequal": 3,
+        "max_diff": 0.00390625,
+        "max_abs": 10.3125
+      },
+      {
+        "pool": 44,
+        "addressed_values": 79872,
+        "unequal": 2328,
+        "max_diff": 0.07421875,
+        "max_abs": 6.03125
+      },
+      {
+        "pool": 45,
+        "addressed_values": 79872,
+        "unequal": 2466,
+        "max_diff": 0.818359375,
+        "max_abs": 8.9375
+      }
+    ],
+    "repeated_unpadded_tokens": [
+      [
+        835,
+        223,
+        1915,
+        4253,
+        835
       ],
-      "eager_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "capacity": 288,
-      "requests": 2,
-      "addressed_kv_differences": [
-        {
-          "pool": 43,
-          "addressed_values": 79872,
-          "unequal": 3,
-          "max_diff": 0.00390625,
-          "max_abs": 10.3125
-        },
-        {
-          "pool": 44,
-          "addressed_values": 79872,
-          "unequal": 2328,
-          "max_diff": 0.07421875,
-          "max_abs": 6.03125
-        },
-        {
-          "pool": 45,
-          "addressed_values": 79872,
-          "unequal": 2466,
-          "max_diff": 0.818359375,
-          "max_abs": 8.9375
-        }
-      ],
-      "repeated_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_kv_matches_graph": true,
-      "actual_context": 146,
-      "canonical_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
+      [
+        18,
+        201,
+        18,
+        201,
+        18
       ]
-    },
-    {
-      "file": "full-draft-rank3-requests2-context288-ChunkedPrefill-1.output-failure.json",
-      "graph_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
+    ],
+    "padded_eager_tokens": [
+      [
+        835,
+        4253,
+        835,
+        4253,
+        835
       ],
-      "eager_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "capacity": 288,
-      "requests": 2,
-      "addressed_kv_differences": [
-        {
-          "pool": 43,
-          "addressed_values": 79872,
-          "unequal": 3,
-          "max_diff": 0.00390625,
-          "max_abs": 10.3125
-        },
-        {
-          "pool": 44,
-          "addressed_values": 79872,
-          "unequal": 2328,
-          "max_diff": 0.07421875,
-          "max_abs": 6.03125
-        },
-        {
-          "pool": 45,
-          "addressed_values": 79872,
-          "unequal": 2466,
-          "max_diff": 0.818359375,
-          "max_abs": 8.9375
-        }
-      ],
-      "repeated_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_kv_matches_graph": true,
-      "actual_context": 146,
-      "canonical_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
+      [
+        18,
+        201,
+        18,
+        201,
+        18
       ]
-    },
-    {
-      "file": "full-draft-rank4-requests2-context288-ChunkedPrefill-1.output-failure.json",
-      "graph_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
+    ],
+    "padded_eager_kv_matches_graph": true,
+    "actual_context": 146,
+    "canonical_unpadded_tokens": [
+      [
+        835,
+        223,
+        1915,
+        4253,
+        835
       ],
-      "eager_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "capacity": 288,
-      "requests": 2,
-      "addressed_kv_differences": [
-        {
-          "pool": 43,
-          "addressed_values": 79872,
-          "unequal": 3,
-          "max_diff": 0.00390625,
-          "max_abs": 10.3125
-        },
-        {
-          "pool": 44,
-          "addressed_values": 79872,
-          "unequal": 2328,
-          "max_diff": 0.07421875,
-          "max_abs": 6.03125
-        },
-        {
-          "pool": 45,
-          "addressed_values": 79872,
-          "unequal": 2466,
-          "max_diff": 0.818359375,
-          "max_abs": 8.9375
-        }
-      ],
-      "repeated_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_kv_matches_graph": true,
-      "actual_context": 146,
-      "canonical_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
+      [
+        18,
+        201,
+        18,
+        201,
+        18
       ]
-    },
-    {
-      "file": "full-draft-rank5-requests2-context288-ChunkedPrefill-1.output-failure.json",
-      "graph_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "eager_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "capacity": 288,
-      "requests": 2,
-      "addressed_kv_differences": [
-        {
-          "pool": 43,
-          "addressed_values": 79872,
-          "unequal": 3,
-          "max_diff": 0.00390625,
-          "max_abs": 10.3125
-        },
-        {
-          "pool": 44,
-          "addressed_values": 79872,
-          "unequal": 2328,
-          "max_diff": 0.07421875,
-          "max_abs": 6.03125
-        },
-        {
-          "pool": 45,
-          "addressed_values": 79872,
-          "unequal": 2466,
-          "max_diff": 0.818359375,
-          "max_abs": 8.9375
-        }
-      ],
-      "repeated_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_kv_matches_graph": true,
-      "actual_context": 146,
-      "canonical_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ]
-    },
-    {
-      "file": "full-draft-rank6-requests2-context288-ChunkedPrefill-1.output-failure.json",
-      "graph_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "eager_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "capacity": 288,
-      "requests": 2,
-      "addressed_kv_differences": [
-        {
-          "pool": 43,
-          "addressed_values": 79872,
-          "unequal": 3,
-          "max_diff": 0.00390625,
-          "max_abs": 10.3125
-        },
-        {
-          "pool": 44,
-          "addressed_values": 79872,
-          "unequal": 2328,
-          "max_diff": 0.07421875,
-          "max_abs": 6.03125
-        },
-        {
-          "pool": 45,
-          "addressed_values": 79872,
-          "unequal": 2466,
-          "max_diff": 0.818359375,
-          "max_abs": 8.9375
-        }
-      ],
-      "repeated_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_kv_matches_graph": true,
-      "actual_context": 146,
-      "canonical_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ]
-    },
-    {
-      "file": "full-draft-rank7-requests2-context288-ChunkedPrefill-1.output-failure.json",
-      "graph_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "eager_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "capacity": 288,
-      "requests": 2,
-      "addressed_kv_differences": [
-        {
-          "pool": 43,
-          "addressed_values": 79872,
-          "unequal": 3,
-          "max_diff": 0.00390625,
-          "max_abs": 10.3125
-        },
-        {
-          "pool": 44,
-          "addressed_values": 79872,
-          "unequal": 2328,
-          "max_diff": 0.07421875,
-          "max_abs": 6.03125
-        },
-        {
-          "pool": 45,
-          "addressed_values": 79872,
-          "unequal": 2466,
-          "max_diff": 0.818359375,
-          "max_abs": 8.9375
-        }
-      ],
-      "repeated_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_tokens": [
-        [
-          835,
-          4253,
-          835,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ],
-      "padded_eager_kv_matches_graph": true,
-      "actual_context": 146,
-      "canonical_unpadded_tokens": [
-        [
-          835,
-          223,
-          1915,
-          4253,
-          835
-        ],
-        [
-          18,
-          201,
-          18,
-          201,
-          18
-        ]
-      ]
-    }
+    ]
+  },
+  "all_eight_ranks_identical": true,
+  "source_files": [
+    "full-draft-rank0-requests2-context288-ChunkedPrefill-1.output-failure.json",
+    "full-draft-rank1-requests2-context288-ChunkedPrefill-1.output-failure.json",
+    "full-draft-rank2-requests2-context288-ChunkedPrefill-1.output-failure.json",
+    "full-draft-rank3-requests2-context288-ChunkedPrefill-1.output-failure.json",
+    "full-draft-rank4-requests2-context288-ChunkedPrefill-1.output-failure.json",
+    "full-draft-rank5-requests2-context288-ChunkedPrefill-1.output-failure.json",
+    "full-draft-rank6-requests2-context288-ChunkedPrefill-1.output-failure.json",
+    "full-draft-rank7-requests2-context288-ChunkedPrefill-1.output-failure.json"
   ]
 }
