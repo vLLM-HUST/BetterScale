@@ -368,3 +368,19 @@ entries6→10. All policies retain the same graphs, so this is not a comparison
 against an unpatched engine's memory. It supports bounded extra memory for this
 shared-pool implementation, not proof of run095's failure cause. The raw profile
 parse is offline; daemon parse warnings are expected, not dropped rank evidence.
+
+Run099 additionally passes real DP8/strict HCCL at1026 admission and3GiB KV:
+12 producer/sampler and48 original-native target/KV checks per rank, all output
+max differences0 and full KV bytes exact. This includes independent rank
+progress and native dummy EP service. Reserved53.717–53.719GiB; the58.469GiB
+peak includes oracle backing snapshots. This is correctness, not DP performance.
+
+Run100 cannot provide a performance or quality result. All eight devices passed
+initial admission, but rank6 then reported only32.49/60.96GiB free during native
+startup, below the0.92 utilization check. npu-smi showed33352MiB on device6 with
+no listed process. Do not attribute this to graph scratch or invent ownership;
+model capture never began. The owned launcher was interrupted, reclaimed its
+workers, and wrote release.txt; no foreign process was killed. Failed native DP
+clients can leave sibling clients blocked at initialization: the outer launcher
+owns process-group reclamation, so do not wait for a Python traceback alone to
+release the lease. DP performance/quality still requires an uncontended window.

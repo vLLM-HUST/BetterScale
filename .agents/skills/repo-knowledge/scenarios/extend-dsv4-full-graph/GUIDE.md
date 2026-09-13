@@ -216,3 +216,13 @@ The manually split `decode_shadow.py` / `decode_metadata.py` serving prototype
 keeps GPU progress single-copy and native prefill/turnover fallbacks. Enter the
 linked note for current qualification; single-card dummy gates are not TP8/DP8
 performance or deployment evidence.
+
+For this producer, auxiliary graph scratch pools must be explicitly shared
+across serialized shape/bank captures; stable ingress/live outputs remain owned
+separately. Target graphs already share the native pool. Run097/099 qualify
+real TP8/DP8 exact preparation, target and whole-KV behavior. Run098 measures
+about17% shorter matched TP8 cycles, with only28MiB more reserved memory than
+run083's same-configuration endpoint control; DP throughput/quality remain open.
+Use8192 admission/8GiB KV for the retained TP performance envelope:192 admission
+fragmented the cohort, and3GiB KV fails native capacity validation at8192. See
+PINGPONG for the distinct oracle budgets and address-reservation failure boundary.
