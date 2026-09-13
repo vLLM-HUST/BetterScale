@@ -158,10 +158,55 @@ receipts. All56 CPU tests pass (the AST-only legacy fixture needed its helper
 dependency list updated for `_bank`/`_signature`). This proves the native
 numerical boundary, not a speedup.
 
-The next same-engine `--worker-continuous --pingpong-study` comparison is named
+The run112 same-engine `--worker-continuous --pingpong-study` comparison is named
 `worker-tree` versus `worker`. Both use identical DAG-banked graph inputs and
 the same retirement cut; only repeated versus deduplicated signature/refresh
 traversal changes. `worker-tree` preserves the original repeated copy count,
 not the original independent destination allocation topology. This isolates
 issue/copy work without assigning allocator changes to traversal. Run109's
 source capsule retains the earlier `draft`/`worker` study semantics.
+
+
+## Final bounded result: submission headroom, not a throughput win
+
+Run112 completes the same-graph TP8 K5 study (16 requests/96 target queries,
+8192 admission, 8GiB KV, normal HCCL). Two repetitions:
+
+| Policy | Matched cycle ms | Rank0 draft host ms |
+| --- | --- | --- |
+| worker-tree | 57.415 / 56.709 | 14.635 / 14.703 |
+| worker (DAG) | 56.435 / 57.889 | 4.143 / 4.216 |
+
+There is no stable whole-cycle win. The tree control includes the NEW alias
+validation and shares DAG-banked destinations; its14.7ms is NOT the old product
+baseline (old draft host was roughly9.4–10.3ms in runs107/109). Do not report a
+71% product speedup. Native profiled copy counts give the direct mechanism:
+run107's218 calls per full draft wave become47 in each of run112's11 full waves.
+Those profiled candidate host spans are5.47–5.67ms, distinct from unprofiled
+study host times above. Reserved memory is50.418GiB, without oracle snapshots.
+
+The candidate TraceLoom eight-rank window is
+`runs/112-tp8-worker-dag-study/engine/profiledecode-worker`.
+Its `analysis/continuation.json` uses exact native MODEL_EXECUTE launch links.
+Across11 full waves, first-ReduceScatter arrival spread median is0.05295ms,
+maximum1.80452ms (first full wave). Last arrivals rotate
+`0,1,5,1,4,1,5,4,6,5,4`; no persistently late rank. Per-rank target submission
+lead medians are61.45–62.71ms; the first full wave on rank0 has only0.048ms
+lead, so this does not establish gap-free startup. Turnover waves14/15 still
+show3.169/2.649ms arrival spread, and later provider identities are unmatched:
+do not extend the stable-window result to all request turnover.
+Clock transforms are retained display-only fits, not physical calibration.
+
+The native compressed export is
+`analysis/target-draft-tp8-end-aligned.json.gz` (publish only after the exporter
+successfully renames its partial output). The preceding composed graph control
+is the identically named export under run107 `engine/profiledecode-draft`.
+Raw JSON is not suitable for the desktop handoff.
+
+Decision: preserve the qualified opt-in worker cut and metadata DAG change on
+`lumi/decode-pingpong`; leave main and packaged defaults alone. No new scheduler
+queue is justified by this evidence. Existing graph composition already gets
+most replay submission ahead of device consumption; less CPU issue work buys
+headroom, not automatically lower device-cycle latency. All owned NPU probes
+have completed and released their leases. Future throughput work needs a new
+observed bottleneck, not repeated reruns of this negative comparison.

@@ -11,10 +11,13 @@ is not a stable win (run109), so keep it opt-in. The composed graph profile
 already queues most full-window target replays40ms ahead; it does not reproduce
 the old persistent rank5 starvation. A218-copy draft metadata traversal tax is
 now DAG-deduplicated; TP2 and real TP8 native oracles pass runs110/111. The
-same-graph `worker-tree`/`worker` traversal comparison is the next gate. See the
-focused worker note below for exact evidence and scope.
+same-graph run112 comparison cuts draft host issue to4.14/4.22ms and copy calls
+to47, but cycles remain56–58ms without a stable win. The latest aligned profile
+has rotating first-RS last arrivals (median spread53us) and target replay lead
+medians61–63ms. Keep worker retirement opt-in; this is CPU headroom, not a
+throughput claim. See the focused worker note below for controls and timelines.
 
-## Current checkpoint (September13, runs097–101)
+## Earlier checkpoint (September13, runs097–101; worker follow-up above supersedes the eager-draft observation)
 
 - Real TP8 and DP8 pass exact producer/sampler, target output and full-KV
   qualification with strict HCCL; performance uses normal HCCL instead.
