@@ -91,15 +91,17 @@ class ExactDraftGraph:
     def __call__(self,**kwargs):
         if not self.enabled:return self.original(**kwargs)
         ctx=get_forward_context();d=self.drafter
-        eligible=(kwargs['batch_size']==self.request_count and d._dflash_num_context==self.context_capacity
+        query_only = getattr(self, 'query_only', False)
+        eligible=(kwargs['batch_size']==self.request_count and (query_only or d._dflash_num_context==self.context_capacity)
                   and not kwargs.get('is_prefill',False) and not ctx.capturing)
         if not eligible:
             self.fallbacks+=1;return self.original(**kwargs)
         current=(kwargs,ctx.attn_metadata)
-        state_inputs=tuple(persistent_layout(getattr(d,name)) for name in (
-            'input_ids','positions','_dflash_hidden_states','_context_positions_buffer',
-            '_context_slot_mapping_buffers','_dspark_seed_buffer','_dspark_draft_buffer'))
-        key=(d._dflash_num_context,signature(current),state_inputs)
+        names = ('input_ids','positions','_dspark_seed_buffer','_dspark_draft_buffer')
+        if not query_only:
+            names += ('_dflash_hidden_states','_context_positions_buffer','_context_slot_mapping_buffers')
+        state_inputs=tuple(persistent_layout(getattr(d,name)) for name in names)
+        key=(None if query_only else d._dflash_num_context,signature(current),state_inputs)
         if self.key is not None and key!=self.key:
             if getattr(self,'strict_signature',False):
                 self.path.with_suffix('.signature.json').write_text(json.dumps(key_changes(self.key,key),indent=2))

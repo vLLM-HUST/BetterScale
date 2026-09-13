@@ -159,3 +159,19 @@ BF16 differences amplify downstream and change proposals. Keep target/state
 correctness separate from proposal quality; the unchanged greedy rejection
 kernel verifies every published token, while acceptance changes still belong
 in the work/throughput account. Do not silently switch oracle meaning.
+
+## Prefer separate context ingestion to oversized draft banks
+
+Enter [`SPLIT_DRAFT.md`](../../../../../prototypes/full-mixed/SPLIT_DRAFT.md)
+for the smaller post-N2 route. DSpark's native merged runnable contains TWO
+workloads: target-hidden context KV ingestion and small candidate-query execution.
+Do not mistake large context counts for large candidate-query counts, or pad all
+context to the target wave budget merely to graph the query body. The split
+prototype retains fused small decode and admits actual-length context ingestion
+before query-only capture; no new scheduler is required.
+
+The041/042 total-time difference includes different output trajectories and
+wave counts, including first-token differences within a repeated run. Their
+cause is not established. Fletcher stopped the separate divergence inquiry;
+do not restart it implicitly or relabel it proven harmless. Quality acceptance
+uses an explicit OpenCompass gate; matched-step timing is a separate claim.

@@ -1,0 +1,130 @@
+[
+  {
+    "run": 44,
+    "weights": "dummy",
+    "budget": 288,
+    "all_eight_ranks_identical": true,
+    "representative": {
+      "rank": 0,
+      "target_checks": 66,
+      "context_calls": 20,
+      "context_rows": 3065,
+      "context_max": 272,
+      "context_padding": 0,
+      "query_banks": [
+        {
+          "key": [
+            1,
+            "ChunkedPrefill",
+            true
+          ],
+          "captured": true,
+          "replays": 9,
+          "checks": 8,
+          "capture_checked": true,
+          "fallbacks": 0
+        },
+        {
+          "key": [
+            2,
+            "ChunkedPrefill",
+            true
+          ],
+          "captured": true,
+          "replays": 5,
+          "checks": 5,
+          "capture_checked": true,
+          "fallbacks": 0
+        },
+        {
+          "key": [
+            4,
+            "ChunkedPrefill",
+            true
+          ],
+          "captured": true,
+          "replays": 1,
+          "checks": 1,
+          "capture_checked": true,
+          "fallbacks": 0
+        },
+        {
+          "key": [
+            3,
+            "ChunkedPrefill",
+            true
+          ],
+          "captured": true,
+          "replays": 1,
+          "checks": 1,
+          "capture_checked": true,
+          "fallbacks": 0
+        }
+      ]
+    }
+  },
+  {
+    "run": 45,
+    "weights": "real",
+    "budget": 4128,
+    "all_eight_ranks_identical": true,
+    "representative": {
+      "rank": 0,
+      "target_checks": 44,
+      "context_calls": 16,
+      "context_rows": 6905,
+      "context_max": 4112,
+      "context_padding": 0,
+      "query_banks": [
+        {
+          "key": [
+            1,
+            "ChunkedPrefill",
+            true
+          ],
+          "captured": true,
+          "replays": 6,
+          "checks": 6,
+          "capture_checked": true,
+          "fallbacks": 0
+        },
+        {
+          "key": [
+            2,
+            "ChunkedPrefill",
+            true
+          ],
+          "captured": true,
+          "replays": 4,
+          "checks": 4,
+          "capture_checked": true,
+          "fallbacks": 0
+        },
+        {
+          "key": [
+            4,
+            "ChunkedPrefill",
+            true
+          ],
+          "captured": true,
+          "replays": 1,
+          "checks": 1,
+          "capture_checked": true,
+          "fallbacks": 0
+        },
+        {
+          "key": [
+            3,
+            "ChunkedPrefill",
+            true
+          ],
+          "captured": true,
+          "replays": 1,
+          "checks": 1,
+          "capture_checked": true,
+          "fallbacks": 0
+        }
+      ]
+    }
+  }
+]

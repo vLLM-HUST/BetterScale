@@ -9,6 +9,10 @@ AscendDSACPMetadataBuilder.get_cudagraph_support = classmethod(
     lambda cls, vllm_config, kv_cache_spec: AttentionCGSupport.ALWAYS)
 
 class FullMixedProbeWorker:
+    def enable_split_draft(self):
+        from split_draft import install
+        return install(self)
+
     def verify_draft_rejection(self):
         from draft_oracle import verify_rejection
         return verify_rejection(self.rank)
