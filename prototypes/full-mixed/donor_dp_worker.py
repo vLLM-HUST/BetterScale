@@ -13,6 +13,19 @@ class DonorDPWorker:
         pair.stream=torch.npu.current_stream().npu_stream
         return pair.receipt()
 
+    def set_pingpong_policy(self, policy):
+        assert policy in ('native', 'cut', 'sources', 'pair')
+        torch.npu.synchronize()
+        r=self.model_runner;pair=r.model._decode_pair;slots=r._host_source_slots
+        assert pair.reference_catalog
+        pair.policy='native' if policy=='native' else 'pair' if policy=='pair' else 'ordered'
+        r.synchronize_input_prep=slots.scope if policy in ('sources','pair') else slots.original_scope
+        r._cross_step_bounds.enabled=policy!='native'
+        if r.vllm_config.parallel_config.tensor_parallel_size > 1:
+            from qli_cpu import configure
+            configure(self,policy!='native',False)
+        return {'policy':policy}
+
     def enable_pingpong_shadow(self):
         pair=self.model_runner.model._decode_pair
         assert pair.reference_catalog

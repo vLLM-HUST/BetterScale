@@ -10,7 +10,8 @@ import torch
 
 
 class CallPacket:
-    def __init__(self, tree, *, shared_fields=()):
+    def __init__(self, tree, *, shared_fields=(), native_views=False):
+        self.native_views = native_views
         self.shared_fields = frozenset(shared_fields)
         self.shared = {}
         self.storages = {}
@@ -65,20 +66,34 @@ class CallPacket:
 
     def refresh(self, source):
         copies = {}
-        self._bind(self.tree, source, copies)
+        self._bind(self.tree, source, copies, seen=set())
         # Validate the complete packet before modifying any bank.
         for destination, origin in copies.values():
             destination.copy_(origin, non_blocking=True)
 
-    def _bind(self, dst, src, copies):
+    def _bind(self, dst, src, copies, path=(), seen=None):
+        # Metadata are a DAG shared across model layers, not a tree. Validate
+        # each actual source/destination pair once without hiding alias splits.
+        key = (id(dst), id(src))
+        if key in seen:
+            return
+        seen.add(key)
         if isinstance(src, torch.Tensor):
             assert isinstance(dst, torch.Tensor)
             if id(dst) in self.shared:
                 assert (self.storage_key(dst), dst.shape, dst.stride(), dst.storage_offset()) == (self.storage_key(src), src.shape, src.stride(), src.storage_offset()), "Immutable metadata backing changed"
                 return
-            assert (dst.shape, dst.stride(), dst.dtype, dst.device, dst.storage_offset()) == (src.shape, src.stride(), src.dtype, src.device, src.storage_offset())
+            layout = (dst.stride(), dst.dtype, dst.device, dst.storage_offset())
+            source_layout = (src.stride(), src.dtype, src.device, src.storage_offset())
+            assert layout == source_layout, f'{path}: capture {dst.shape}/{layout}, runtime {src.shape}/{source_layout}'
+            if dst.shape != src.shape:
+                # Native DSACP changes the visible leading row count while
+                # FULL retains the capture-time view over the SAME allocation.
+                # Copy the full backing, as native graph observes it, not just
+                # the shorter live view. Arguments and non-leading dims stay fixed.
+                assert self.native_views and path[:1] == (2,) and dst.ndim == src.ndim and dst.shape[1:] == src.shape[1:], f'{path}: capture {dst.shape}, runtime {src.shape}'
             origin, destination = self.raw(src), self.raw(dst)
-            assert origin.numel() == destination.numel()
+            assert origin.numel() == destination.numel(), f'{path}: backing extent {destination.numel()} -> {origin.numel()}'
             key = self.storage_key(dst)
             if key in copies:
                 assert self.storage_key(copies[key][1]) == self.storage_key(origin), 'Source alias topology changed'
@@ -86,16 +101,16 @@ class CallPacket:
                 copies[key] = (destination, origin)
         elif dataclasses.is_dataclass(src):
             assert type(dst) is type(src)
-            for f in dataclasses.fields(src): self._bind(getattr(dst, f.name), getattr(src, f.name), copies)
+            for f in dataclasses.fields(src): self._bind(getattr(dst, f.name), getattr(src, f.name), copies, path+(f.name,), seen)
         elif type(src).__name__ == 'RopeDataProxy':
             assert dst.idx == src.idx
-            self._bind(dst._data, src._data, copies)
+            self._bind(dst._data, src._data, copies, path+('rope',), seen)
         elif isinstance(src, dict):
             assert isinstance(dst, dict) and dst.keys() == src.keys()
-            for key in src: self._bind(dst[key], src[key], copies)
+            for key in src: self._bind(dst[key], src[key], copies, path+(key,), seen)
         elif isinstance(src, (list, tuple)):
             assert type(dst) is type(src) and len(dst) == len(src)
-            for d, s in zip(dst, src): self._bind(d, s, copies)
+            for i,(d,s) in enumerate(zip(dst,src)): self._bind(d,s,copies,path+(i,),seen)
         else:
             # Native FULL already fixes scalar bounds at capture. Do not
             # rebuild a graph on changing logging counts / CPU sequence lists.

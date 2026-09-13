@@ -48,7 +48,7 @@ source/destination lifetime qualification and an observed remaining gap.
 
 ## Evidence / unresolved gates
 
-- 41 CPU tests pass, including independent bank/storage-view identity, repeated
+- 43 CPU tests pass, including independent bank/storage-view identity, repeated
   tensor aliases, rejection before partial refresh, same-bank-only host waits,
   coherent logical CPU state on rotation, and fail-closed generation poisoning.
 - Run068: local card6 was admitted, then a foreign process arrived during
@@ -75,12 +75,19 @@ source/destination lifetime qualification and an observed remaining gap.
   per-wave admission/reference flags at entry to the common source scope (used
   by BOTH actual and dummy waves). A CPU gate protects that reset. Run074 checks
   this diagnosis rather than loosening the KV oracle.
-- Runs074/075: DP8 corrected same-program shadow and TP8 unchanged-native-graph
-  shadow queued on hw3. TP uses strict HCCL,4 dummy seats and native K5 alignment.
-  The latter oracle is incremental graph-vs-graph, NOT a new native graph/eager
-  equivalence claim; source retains the earlier native-graph/eager uncertainty.
-- Still required: exact-metadata bound shadow, all-rank DP/TP state checks,
-  matching control/candidate steady windows and compressed diagnostic timelines,
+- Run074 DP8: all eight ranks pass40 checks, exact output and whole-KV bytes;
+  immutable-table sharing reduces private packet backing to1,127,872bytes/rank.
+- Run075 TP8: the packet layout guard rejected a shorter leading metadata view.
+  Native DSACP FULL retains its capture view over the same backing. The bridge
+  now copies that entire backing and permits only leading metadata-view changes,
+  retaining dtype/stride/offset/backing-extent guards (never argument reshaping).
+- Run076 TP8: all eight ranks pass48 checks against the unchanged native graph;
+  output difference0, whole-KV bytes exact,43 exact-CPU-metadata checks/rank.
+  Private packet backing878,776bytes/rank. TP uses strict HCCL,4 dummy seats and
+  native K5 alignment. This is incremental graph-vs-graph, NOT a new native
+  graph/eager equivalence claim; earlier native graph/eager uncertainty remains.
+- Still required: matching real-weight control/candidate steady windows and
+  compressed diagnostic timelines,
   memory delta, real retained OpenCompass quality before default promotion.
 
 Original capsules live on hw3 under
@@ -88,3 +95,29 @@ Original capsules live on hw3 under
 Never include profile/shadow time in the performance comparison. DP and TP must
 match global active requests and actual target query rows; retain acceptance
 and output-throughput accounting separately from step time.
+
+## Isolate the benefit before promotion
+
+`--pingpong-study` runs two within-engine repetitions at16 global requests,
+96 target query rows, K5, eager native draft. Four policies share the weights,
+State allocation, prefill route and reserved graph pool:
+
+- `native`: original native target replay/fences and receipt handling.
+- `cut`: previously qualified ordered replay + late receipt, plus CPU QLI
+  metadata maxima for TP. No banked packets/sources in the executing path.
+- `sources`: cut plus two pinned CPU source slots.
+- `pair`: sources plus two private graph packets and alternating replay.
+
+Warm each policy separately. Compare the first10 fully occupied FULL cycles,
+not total cohort time alone; keep every request's actual output/wave count.
+`cut -> pair` is the incremental banking effect, NOT `native -> pair`.
+The retained native reference graph exists only under study/shadow flags.
+
+Run077 exposed a real-weight host cost hidden by the four-layer fixture: TP8
+`pair` took336ms/cycle versus about71ms native. The refresh walker treated
+metadata shared across layers as a tree, repeating validation/temporary-view
+creation. Run078 was stopped by its verified owned launcher during startup;
+there is no DP performance evidence from it. The walker now visits each
+(source,destination) identity pair once; a CPU test protects both DAG reuse and
+alias-split rejection. Runs079/080 retest this specific diagnosis. No slowdown
+is dismissed as noise, and the banking bridge remains opt-in.

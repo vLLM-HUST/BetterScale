@@ -17,6 +17,7 @@ def rank_main(args,dp_rank,barrier):
     os.environ['VLLM_ASCEND_ENABLE_FLASHCOMM1']='1' if args.tp>1 else '0'
     os.environ['DONOR_PINGPONG']='1' if args.pingpong else '0'
     os.environ['DONOR_PINGPONG_SHADOW']='1' if args.pingpong_shadow else '0'
+    os.environ['DONOR_PINGPONG_STUDY']='1' if args.pingpong_study else '0'
     from vllm import LLM,SamplingParams
     if not args.real:
         from fixture import install_dummy_draft_config
@@ -81,7 +82,15 @@ def rank_main(args,dp_rank,barrier):
         rows.append(record);(args.output/f'dp{dp_rank}-results.json').write_text(json.dumps(rows,indent=2))
         barrier.wait(timeout=120)
     wave('warmup',[64]*local_seats,16,observe=False)
-    if args.real:
+    if args.pingpong_study:
+        assert args.real and args.pingpong_continuous and not (args.dp_shadow or args.pingpong_shadow)
+        for repeat in range(2):
+            for policy in ('native', 'cut', 'sources', 'pair'):
+                barrier.wait(timeout=120)
+                llm.collective_rpc('set_pingpong_policy',args=(policy,))
+                wave(f'warm-{repeat}-{policy}',[128]*local_seats,16,observe=False)
+                wave(f'decode-{repeat}-{policy}',[128]*local_seats,128)
+    elif args.real:
         for repeat in range(2):
             wave(f'decode{repeat}',[128]*local_seats,128)
             wave(f'prefill{repeat}',[4096]*(8//args.donor_dp),16)

@@ -23,6 +23,7 @@ class DecodePair:
         self.reference_catalog = {}
         self.shadow_runner = None
         self.checks = []
+        self.policy = 'pair'
         self.sequence = 0
         self.replays = [0, 0]
         self.stream = None  # native startup capture uses its own temporary stream
@@ -40,16 +41,24 @@ class DecodePair:
                 # use the native capture exemplar (conservative scalar bounds),
                 # not the first live request's potentially short sequence.
                 assert key not in self.catalogs[0] or self.catalogs[0][key].aclgraph is None
-                if os.environ.get('DONOR_PINGPONG_SHADOW') == '1':
+                if os.environ.get('DONOR_PINGPONG_SHADOW') == '1' or os.environ.get('DONOR_PINGPONG_STUDY') == '1':
                     w.concrete_aclgraph_entries = self.reference_catalog
                     original_call(w, *args, **kwargs)
                 for bank in (0, 1):
-                    packet = self.packets[bank][key] = CallPacket(source, shared_fields=('full_compress_cos', 'full_compress_sin', 'hadamard'))
+                    packet = self.packets[bank][key] = CallPacket(source, shared_fields=('full_compress_cos', 'full_compress_sin', 'hadamard'),
+                                                                           native_views=w.vllm_config.parallel_config.tensor_parallel_size > 1)
                     a, k, ctx.attn_metadata = packet.tree
                     w.concrete_aclgraph_entries = self.catalogs[bank]
                     output = original_call(w, *a, **k)
                     assert self.catalogs[bank][key].aclgraph is not None
                 return output
+            if self.policy != 'pair':
+                w.concrete_aclgraph_entries = self.reference_catalog
+                if self.policy == 'native':
+                    return original_call(w, *args, **kwargs)
+                entry = self.reference_catalog[key]
+                entry.aclgraph.replay()
+                return entry.output
             bank = self.sequence % 2
             packet = self.packets[bank][key]
             # The present bridge is stream-ordered D2D into private packets.

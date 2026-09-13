@@ -98,3 +98,26 @@ class DummyScopeTests(unittest.TestCase):
         with state.scope():
             self.assertFalse(bounds.admitted)
             self.assertFalse(bounds.skipped)
+
+class NativeViewTests(unittest.TestCase):
+    def test_metadata_leading_view_uses_full_backing_not_partial_copy(self):
+        t=torch.arange(8,dtype=torch.int32)
+        p=CallPacket(((),{},Metadata(t[:4],4)),native_views=True)
+        t.add_(10);p.refresh(((),{},Metadata(t[:3],3)))
+        torch.testing.assert_close(p.tree[2].rows,t[:4])
+        with self.assertRaisesRegex(AssertionError,'backing'):
+            p.refresh(((),{},Metadata(t[:3].clone(),3)))
+
+class SharedDAGTests(unittest.TestCase):
+    def test_shared_layer_metadata_visited_once_without_hiding_alias_split(self):
+        from unittest.mock import patch
+        tensor=torch.arange(12)
+        meta=Metadata(tensor,12)
+        source={str(i):meta for i in range(60)}
+        packet=CallPacket(source)
+        with patch.object(packet,'raw',wraps=packet.raw) as raw:
+            packet.refresh(source)
+            self.assertEqual(raw.call_count,2)
+        changed=dict(source);changed['59']=Metadata(tensor.clone(),12)
+        with self.assertRaisesRegex(AssertionError,'alias'):
+            packet.refresh(changed)

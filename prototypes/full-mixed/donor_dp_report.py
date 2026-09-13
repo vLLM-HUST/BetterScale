@@ -38,7 +38,7 @@ def summarize(root):
                 inter_target_median_ms=median(intervals) if intervals else None,
                 modes=dict(Counter(x['mode'] for x in modes)),
                 padded_shapes=dict(Counter(x['padded'] for x in modes))))
-        if label in ('decode0','decode1'):
+        if label in ('decode0','decode1') or label.startswith('decode-'):
             matched=[]
             for rank in range(8):
                 w=json.loads((root/label/f'{label}-waves-rank{rank}.json').read_text())

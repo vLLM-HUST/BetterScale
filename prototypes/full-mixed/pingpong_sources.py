@@ -102,5 +102,6 @@ def install(worker):
                               ('num_prompt_tokens_cpu_tensor','num_prompt_tokens')):
         fields.append(HostField(r.input_batch,name,numpy_name))
     state=r._host_source_slots=HostSourceSlots(r,fields,lambda:torch.npu.Event())
+    state.original_scope=r.synchronize_input_prep
     r.synchronize_input_prep=state.scope
     return state.receipt()
