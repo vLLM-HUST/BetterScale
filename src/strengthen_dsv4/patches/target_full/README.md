@@ -175,3 +175,15 @@ W8A8、TP8/EP、DSACP、K5、四席位等组合；完整限制见
 [`test_target.py`](../../../../tests/test_target.py)、
 [`test_patch_installation.py`](../../../../tests/test_patch_installation.py)。
 没有把这些测试描述成任意 graph shape、backend 或长程服务质量的保证。
+
+## TP1 × DP8 的 native DSA 分支
+
+`install(native_dsa=True)` 只由对应配置的 Worker 选择，实现在 `_dp.py`。
+它不是把 DSACP 的类名替换一下：TP1 native DSA 原本按当波 decode/prefill
+切两套 metadata，而 FULL 要求捕获形状稳定。该分支把 query 表示统一为具有
+显式起止位置的 ragged ranges，重复最后一个有效 offset 补齐 inactive seats。
+小 bucket 用 decode 程序，大 prefill bucket 仍保留原生 **BF16 norm 后 quant**
+的 prefill prolog，并不为了入图悄悄改成 decode 的融合算术。
+
+native DP/EP 的调度、各 rank token 数协调和 MoE 通信均不改动。这个分支负责
+FULL target 覆盖，稳定跨步输入/metadata 的异步准备另见 `async_decode/README.md`。

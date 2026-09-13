@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 
 from strengthen_dsv4.compat import check_runtime
-from strengthen_dsv4.config import PATCH_IDS, validate_worker_config
+from strengthen_dsv4.config import PATCH_IDS, DP_PATCH_IDS, validate_worker_config
 
 
 def config():
@@ -74,7 +74,7 @@ class WorkerLifecycle(unittest.TestCase):
             def compile_or_warm_up_model(self):calls.append('native-capture');return 'native-times'
         ns=dict(__name__='strengthen_dsv4.worker_test',__package__='strengthen_dsv4',
             NPUWorker=Native,check_runtime=lambda:calls.append('compat'),
-            validate_worker_config=validate_worker_config,PATCH_IDS=PATCH_IDS,
+            validate_worker_config=validate_worker_config,PATCH_IDS=PATCH_IDS,DP_PATCH_IDS=DP_PATCH_IDS,
             log=NS(info=lambda *a,**kw:calls.append('ready')))
         exec(compile(ast.Module(body=[node],type_ignores=[]),str(source),'exec'),ns)
         return ns['Worker']
@@ -106,3 +106,56 @@ class WorkerLifecycle(unittest.TestCase):
         calls=[];c=config();c.speculative_config.num_speculative_tokens=3
         with self.assertRaises(ValueError):self.worker_class(calls)(c)
         self.assertEqual(calls,['compat'])
+
+
+class NativeDPAdmission(unittest.TestCase):
+    def test_bounded_dp_config_and_backend_are_validated_without_mutation(self):
+        import copy
+        c = config()
+        c.parallel_config.tensor_parallel_size = 1
+        c.parallel_config.data_parallel_size = 8
+        c.scheduler_config.max_num_seqs = 2
+        c.scheduler_config.max_num_batched_tokens = 1026
+        c.model_config.max_model_len = 16384
+        c.additional_config["enable_dsa_cp"] = False
+        before = copy.deepcopy(c)
+        validate_worker_config(c)
+        self.assertEqual(c, before)
+        c.additional_config["enable_dsa_cp"] = True
+        with self.assertRaisesRegex(ValueError, "backend"):
+            validate_worker_config(c)
+        c.additional_config["enable_dsa_cp"] = False
+        c.scheduler_config.max_num_seqs = 4
+        with self.assertRaisesRegex(ValueError, "seats"):
+            validate_worker_config(c)
+
+
+class DPLifecycle(WorkerLifecycle):
+    def test_native_dp_composition_excludes_tp_draft_and_experiment_hooks(self):
+        import copy, sys
+        from types import ModuleType
+        calls = []
+        package = ModuleType("strengthen_dsv4.patches")
+        modules = {package.__name__: package}
+        for name in ("compat_lcm", "target_full", "cross_step", "async_decode"):
+            module = ModuleType("strengthen_dsv4.patches." + name)
+            module.install = lambda *a, _name=name, **kw: calls.append((_name, kw))
+            if name == "async_decode":
+                module.install_capture = lambda: calls.append("capture-hook")
+            modules[module.__name__] = module
+            setattr(package, name, module)
+        c = config()
+        c.parallel_config.tensor_parallel_size = 1
+        c.parallel_config.data_parallel_size = 8
+        c.scheduler_config.max_num_seqs = 2
+        c.scheduler_config.max_num_batched_tokens = 1026
+        c.additional_config["enable_dsa_cp"] = False
+        before = copy.deepcopy(c)
+        with patch.dict(sys.modules, modules), patch("pathlib.Path.write_text", side_effect=AssertionError("No receipts")):
+            worker = self.worker_class(calls)(c)
+            self.assertEqual(worker.compile_or_warm_up_model(), "native-times")
+        self.assertEqual(c, before)
+        self.assertEqual(calls, ["compat", ("compat_lcm", {}),
+            ("target_full", {"native_dsa": True}), "capture-hook", "native-init", "native-capture",
+            ("cross_step", {"native_dsa": True, "max_requests": 2}),
+            ("async_decode", {}), "ready"])

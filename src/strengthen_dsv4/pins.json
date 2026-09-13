@@ -63,6 +63,11 @@
       "distribution": "vllm-ascend",
       "path": "vllm_ascend/models/deepseek_v4_dspark.py",
       "sha256": "12b4758a01df81f6a5a0d98af411f5296dd4cc39f71fda045bd485f600438746"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/attention/dsa_v1.py",
+      "sha256": "1c2bdc8fcb38db40c3d084114d0c02f329607ba4855ac4ed11983251d3f144aa"
     }
   ]
 }
