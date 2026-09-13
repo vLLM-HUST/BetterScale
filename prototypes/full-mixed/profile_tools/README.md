@@ -59,3 +59,18 @@ The plan becomes `SEARCH e USING COVERING INDEX`; run052 skew rank0's43562 atom
 nodes enumerate in0.57s including index creation. No profile rows, graph
 hierarchy, clock markers, or original source DBs are changed. Do not merely
 raise export timeouts for this stable query-plan failure.
+
+Run053 skew's unrestricted eager endpoints exceeded the50us gate (P95 up to76us).
+The rejected fit is retained in `clock-all-eager/`. Large-payload collective
+completion need not be simultaneous across ranks. The semantic small-control
+filter `--eager-markers --max-marker-count 128` (chosen by payload count, never
+residual) gives0.60–1.15us holdout P95 here. It does not relax the clock gate.
+Retain this filter in markers.json; do not reinterpret large-collective end
+skew as clock error or manufacture timestamp-nearest matches.
+
+Exports now write a `.partial.json.gz` and rename only after native success.
+A killed exporter can leave a **valid gzip stream containing truncated JSON**:
+`gzip -t` alone is not completion evidence. The largest run052 decode window
+also exhausted300s while emitting content after the index fix, so export has a
+600s bound. Preserve failures and verify the native completion receipt before
+linking an artifact; never hand out the partial file.

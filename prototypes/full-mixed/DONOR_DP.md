@@ -107,3 +107,21 @@ For profiles, parse with native `torch_npu.profiler.profiler.analyse` offline,
 then use `profile_tools` on each window separately. Preserve provider databases
 and rank/device maps; link only compressed exported timelines. The affine clock
 fit is display-only candidate alignment with the existing50us holdout gate.
+
+## Completed compressed timelines
+
+All four are eight-rank, collective-end affine **candidate** display alignment;
+all pass the50us holdout gate. Paths and byte sizes are in
+`donor-dp-result.json`. The legacy exporter filename contains `tp8` even for
+the DP8 skew trace; its capsule and receipts determine the actual topology.
+
+- DP decode: `runs/hw3-dp8-052/profiledecode/analysis/donor-dp8-decode-8rank-aligned.json.gz`
+- DP skew: `runs/hw3-dp8-052/profileskew/analysis/target-draft-tp8-end-aligned.json.gz`
+- TP decode: `runs/hw3-tp8-053/profiledecode/analysis/target-draft-tp8-end-aligned.json.gz`
+- TP skew: `runs/hw3-tp8-053/profileskew/analysis/target-draft-tp8-end-aligned.json.gz`
+
+TP skew's all-eager clock candidate failed the gate; the retained small-control
+filter (count≤128) passes with0.60–1.15us P95, without changing the gate.
+Run052 decode emission completed in323.3s after the derived-DB index fix and
+an explicit600s bound. A prior timed-out gzip is labeled `.partial` and must
+not be used. See `profile_tools/README.md` for these earned recovery boundaries.

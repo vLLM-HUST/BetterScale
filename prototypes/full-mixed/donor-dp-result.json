@@ -749,5 +749,101 @@
         ]
       ]
     }
-  }
+  },
+  "profile_clock_receipts": [
+    {
+      "run": "hw3-dp8-052",
+      "window": "profiledecode",
+      "holdout_p95_us": [
+        12.20043347149474,
+        1.392963545279152,
+        9.411560684102424,
+        1.3664645251388223,
+        38.33384322240561,
+        2.7901128917127394,
+        9.926632041206082
+      ],
+      "marker_max_count": null,
+      "clock_status": "candidate_only",
+      "holdout_gate_us": 50
+    },
+    {
+      "run": "hw3-dp8-052",
+      "window": "profileskew",
+      "holdout_p95_us": [
+        8.014885560595998,
+        25.92271489016317,
+        26.086285072543703,
+        25.57424432089763,
+        19.041,
+        28.46799625526657,
+        28.13412752799108
+      ],
+      "marker_max_count": null,
+      "clock_status": "candidate_only",
+      "holdout_gate_us": 50
+    },
+    {
+      "run": "hw3-tp8-053",
+      "window": "profiledecode",
+      "holdout_p95_us": [
+        1.016687603702358,
+        1.876927908113753,
+        4.748762676818198,
+        2.4465378633611197,
+        1.2704340181502403,
+        2.814717971211947,
+        3.54
+      ],
+      "marker_max_count": null,
+      "clock_status": "candidate_only",
+      "holdout_gate_us": 50
+    },
+    {
+      "run": "hw3-tp8-053",
+      "window": "profileskew",
+      "holdout_p95_us": [
+        0.6500385571303744,
+        0.7538105834355604,
+        1.1497565700382548,
+        0.779,
+        0.72,
+        0.6515191138599414,
+        0.6
+      ],
+      "marker_max_count": 128,
+      "clock_status": "candidate_only",
+      "holdout_gate_us": 50
+    }
+  ],
+  "completed_timelines": [
+    {
+      "run": "hw3-dp8-052",
+      "window": "profiledecode",
+      "path": "/workspace/strengthen-dsv4/runs/hw3-dp8-052/profiledecode/analysis/donor-dp8-decode-8rank-aligned.json.gz",
+      "bytes": 119217129,
+      "ranks": 8
+    },
+    {
+      "run": "hw3-dp8-052",
+      "window": "profileskew",
+      "path": "/workspace/strengthen-dsv4/runs/hw3-dp8-052/profileskew/analysis/target-draft-tp8-end-aligned.json.gz",
+      "bytes": 65560644,
+      "ranks": 8
+    },
+    {
+      "run": "hw3-tp8-053",
+      "window": "profiledecode",
+      "path": "/workspace/strengthen-dsv4/runs/hw3-tp8-053/profiledecode/analysis/target-draft-tp8-end-aligned.json.gz",
+      "bytes": 76575479,
+      "ranks": 8
+    },
+    {
+      "run": "hw3-tp8-053",
+      "window": "profileskew",
+      "path": "/workspace/strengthen-dsv4/runs/hw3-tp8-053/profileskew/analysis/target-draft-tp8-end-aligned.json.gz",
+      "bytes": 36125585,
+      "ranks": 8
+    }
+  ]
 }
