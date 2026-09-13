@@ -203,10 +203,17 @@ successfully renames its partial output). The preceding composed graph control
 is the identically named export under run107 `engine/profiledecode-draft`.
 Raw JSON is not suitable for the desktop handoff.
 
-Decision: preserve the qualified opt-in worker cut and metadata DAG change on
-`lumi/decode-pingpong`; leave main and packaged defaults alone. No new scheduler
-queue is justified by this evidence. Existing graph composition already gets
-most replay submission ahead of device consumption; less CPU issue work buys
-headroom, not automatically lower device-cycle latency. All owned NPU probes
-have completed and released their leases. Future throughput work needs a new
-observed bottleneck, not repeated reruns of this negative comparison.
+## Accepted disposition — do not adopt (Fletcher, September 13)
+
+Fletcher rejected this continuous-submission candidate: no stable incremental
+service improvement justifies the additional metadata banks, paired graph
+maintenance and lifetime protocol complexity. The earlier keep-opt-in decision
+is superseded. Leave main and packaged defaults unchanged; retain
+`lumi/decode-pingpong` and its timelines only as experimental evidence, NOT as a
+pending production integration. Do not relaunch or extend this route without
+a new objective and evidence that changes this tradeoff.
+
+This disposition does not revert independently qualified earlier optimizations
+or erase their bounded results. Less CPU issue work is not automatically a
+lower device-cycle latency or higher serving throughput. All owned NPU probes
+have completed and released their leases.

@@ -1,4 +1,4 @@
-# Native DSV4 decode ping-pong integration (work in progress)
+# Native DSV4 decode ping-pong experiment (continuous-submission candidate not adopted)
 
 Scope: native DP8TP1 / TP8DP1, EP8, K5, stable text decode. Keep the existing
 scheduler, prefill route, release pins, State ownership and eager/kept draft
@@ -16,6 +16,15 @@ to47, but cycles remain56–58ms without a stable win. The latest aligned profil
 has rotating first-RS last arrivals (median spread53us) and target replay lead
 medians61–63ms. Keep worker retirement opt-in; this is CPU headroom, not a
 throughput claim. See the focused worker note below for controls and timelines.
+
+## Accepted disposition (September13)
+
+Fletcher declined adoption of this continuous-submission candidate: the measured
+incremental service benefit does not justify metadata-bank, paired-graph and
+lifetime-maintenance complexity. This supersedes the keep-opt-in recommendation
+above. Retain the branch and artifacts as evidence, not a pending integration;
+main and packaged defaults remain unchanged. Independently qualified earlier
+optimizations are not reverted by this decision. No further runs are planned.
 
 ## Earlier checkpoint (September13, runs097–101; worker follow-up above supersedes the eager-draft observation)
 
