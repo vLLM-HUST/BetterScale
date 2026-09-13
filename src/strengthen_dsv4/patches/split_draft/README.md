@@ -2,10 +2,10 @@
 
 本目录是一个完整交付功能，全部辅助实现都留在内部：
 
-- `__init__.py`：安装与分流；`SplitDraftGraphSet` 直接持有 decode/query 两个缓存，
+- `__init__.py`：安装与分流；`DraftGraphRunner` 直接持有 decode/query 两个缓存，
   替换当前 drafter 的 `_runnable`，没有继承或嵌套的 graph-set 管理器。
 - `_graph.py`：固定 metadata bank、签名准入、首次 capture/replay 与普通 K5 小图。
-- `_metadata.py`：query 图需要的 metadata 标量整理，不是通用 metadata 框架。
+- query metadata 的小型整理函数直接放在 `__init__.py`，不再单独跳文件。
 
 普通 K5 decode 用 fused context+query 小图。其他准入波次先原生写入真实长度的
 context KV，再执行小 query 图；不会把大 context 一起补到 graph 上限。

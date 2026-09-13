@@ -4,12 +4,29 @@ Keep the already-qualified fused small-context K5 route for normal decoding.
 The split route uses the current stream for context writes and query reads.
 """
 
+import copy
 from contextlib import contextmanager
 import torch
 from torch.profiler import record_function
 from vllm.forward_context import get_forward_context
 from ._graph import ExactDraftGraph
-from ._metadata import graph_metadata
+
+
+def graph_metadata(value):
+    if isinstance(value, dict):
+        return {k: graph_metadata(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [graph_metadata(v) for v in value]
+    if type(value).__name__ == "AscendDSAMetadata":
+        result = copy.copy(value)
+        # In the pinned DSACP forward, only num_prefills > 0 is consumed.
+        # Exact counts were used by the builder already; tensor offsets and
+        # req.num_reqs_actual remain untouched. Do not specialize graph bodies
+        # on logging-only decode counts or the number of prefill requests.
+        result.num_prefills = int(value.num_prefills > 0)
+        result.num_decodes = result.num_decode_tokens = 0
+        return result
+    return value
 
 
 @contextmanager
@@ -23,9 +40,31 @@ def query_body(drafter):
         drafter.build_model_inputs_first_pass = original
 
 
-# 一个管理器直接拥有两种 graph 缓存：普通 decode 和拆分后的 query。
-# 两条路径共用 ExactDraftGraph，但不再嵌套另一层 graph-set 管理器。
-class SplitDraftGraphSet:
+# 在 donor 源码中的位置（文件均位于 pinned vllm_ascend）：
+#   worker/model_runner_v1.py: sample_tokens()
+#     → 当前 target logits 的原生采样/拒绝验证
+#     → propose_draft_token_ids() → drafter._propose(...)
+#   spec_decode/llm_base_proposer.py: _propose()
+#     → 准备 draft 输入、attention metadata，进入 Ascend forward context
+#     → self._runnable(**model_inputs)  ← 本类接在这里
+#
+# 安装点是下面的 install(worker)：原生 warmup 完成后，保存原 _runnable
+# （即 donor 的 _run_merged_draft），再将该属性绑定到 DraftGraphRunner 实例。
+# 调用方不变；Python 调用实例时进入这里的 __call__，不是另起一套 proposer。
+#
+# 在一波推理中的位置：
+#   target forward → 原生采样/验证 → [本类执行 draft 计算主体]
+#     → 返回 K5 draft token IDs 给原生 _propose / model runner
+#     → runner 保存 _draft_token_ids，供后续 target 波次验证。
+# 因此本类不是 target forward 的 wrapper，也不负责整个 worker 的调度。
+# draft 的 Python 输入/metadata 准备仍在图外，候选接受与否仍由原生验证决定。
+#
+# 本类只选择如何执行同一份原生 draft 主体：
+#   普通 K5：context KV 更新 + query/Markov 计算一起进小图；
+#   其他准入波次：先按真实行数更新 context KV，再运行 query 小图。
+# 两种 graph 缓存直接由这里持有；单图固定地址、capture/replay 交给 ExactDraftGraph。
+# 没有第二层 graph-set 转发，也没有双槽/N+2 调度协议。
+class DraftGraphRunner:
     def __init__(self, worker):
         self.worker = worker
         self.drafter = worker.model_runner.drafter
@@ -107,7 +146,7 @@ class SplitDraftGraphSet:
 def install(worker):
     torch.npu.synchronize()
     assert not hasattr(worker, "_exact_draft_graph")
-    manager = SplitDraftGraphSet(worker)
-    worker.model_runner.drafter._runnable = manager
-    worker._exact_draft_graph = manager
+    runner = DraftGraphRunner(worker)
+    worker.model_runner.drafter._runnable = runner
+    worker._exact_draft_graph = runner
     return dict(rank=worker.rank, policy="native-context-plus-query-graph")

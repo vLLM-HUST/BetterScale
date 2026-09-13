@@ -32,7 +32,7 @@ class SplitDraftTests(unittest.TestCase):
         path = Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches/split_draft/__init__.py'
         nodes = [n for n in ast.parse(path.read_text()).body
                  if isinstance(n, (ast.FunctionDef, ast.ClassDef))
-                 and n.name in ('query_body', 'SplitDraftGraphSet')]
+                 and n.name in ('query_body', 'DraftGraphRunner')]
         calls=[]
         original=lambda **kw: 'native'
         ingest=lambda *args: calls.append('context')
@@ -59,7 +59,7 @@ class SplitDraftTests(unittest.TestCase):
         ns=dict(contextmanager=contextmanager,record_function=nullcontext,ExactDraftGraph=Entry,
             get_forward_context=lambda:ctx,graph_metadata=lambda value:dict(value))
         exec(compile(ast.Module(body=nodes,type_ignores=[]),str(path),'exec'),ns)
-        manager=ns['SplitDraftGraphSet'](worker)
+        manager=ns['DraftGraphRunner'](worker)
         d._runnable=manager
         self.assertEqual(manager(batch_size=1),'result')
         self.assertEqual(manager(batch_size=1),'result')

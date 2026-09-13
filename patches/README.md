@@ -24,7 +24,8 @@ claim that arbitrary patch combinations have been hardware-qualified.
 | `cross_step/` | Runner input/state/forward receipt placement | After native warmup |028/029/031 |
 
 Each directory's README explains scope, original-code interception, prerequisites
-and tests. `split_draft/_graph.py` and `_metadata.py` belong solely to that module.
+and tests. `split_draft/_graph.py` belongs solely to that module; its small metadata
+normalizer is inline beside `DraftGraphRunner` in `split_draft/__init__.py`.
 The reported seven mechanism IDs still include both draft-bank and split-context
 improvements; they deliberately map to one cohesive split_draft implementation.
 

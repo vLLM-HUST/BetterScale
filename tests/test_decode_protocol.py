@@ -76,9 +76,9 @@ class Protocol(unittest.TestCase):
         self.assertFalse(ctx.capturing)
         manager_source=p.with_name('__init__.py')
         manager=next(n for n in ast.parse(manager_source.read_text()).body
-                     if isinstance(n,ast.ClassDef) and n.name=='SplitDraftGraphSet')
+                     if isinstance(n,ast.ClassDef) and n.name=='DraftGraphRunner')
         exec(compile(ast.Module(body=[manager],type_ignores=[]),str(manager_source),'exec'),ns)
-        bank_set=ns['SplitDraftGraphSet'](worker)
+        bank_set=ns['DraftGraphRunner'](worker)
         for count in range(1,5):
             d._dflash_num_context=6*count
             bank_set(batch_size=count)

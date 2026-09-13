@@ -25,7 +25,8 @@ vLLM-Ascend 环境负责；环境缺失应在部署阶段解决，不由补丁�
 2. 初始化前检查固定 donor 版本与相关私有 API 源码，再分别安装 compat_lcm 和 target_full。
 3. 原生 warmup 完成后，安装 draft graph、stable receipt cut、ordered replay、CPU QLI。
 4. 六个功能模块各自拥有 hook 和 `install`，不相互 import，不在 import 时安装；
-   worker 只选择组合与时机。`split_draft` 内部保留 `_graph.py` 与 `_metadata.py`。
+   worker 只选择组合与时机。`split_draft` 用 `DraftGraphRunner` 分流，metadata 整理直接内联在同文件，
+   仅单图捕获/replay 保留在 `_graph.py`。
 5. 继续原生服务；日志中每个 worker 输出 `strengthen-dsv4 rank=... READY patches=...`。
 
 不修改 donor 源文件或 installed packages，不添加 scheduler，不带入未采用的双槽

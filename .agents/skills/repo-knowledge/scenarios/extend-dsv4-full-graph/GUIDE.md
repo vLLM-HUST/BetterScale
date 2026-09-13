@@ -31,7 +31,8 @@ environment, not by adding dependencies to the donor runtime.
 
 The implementation now uses six closed patch directories: compat_lcm,
 target_full, ordered_replay, qli_cpu, split_draft, cross_step. Each owns install;
-worker alone composes them. split_draft owns _graph.py and _metadata.py. Old flat
+worker alone composes them. split_draft owns _graph.py; its metadata normalizer
+lives inline beside DraftGraphRunner in __init__.py. Old flat
 file paths in historical experiments refer to their original capsules, not
 current maintained code. Importing qli_cpu no longer mutates a donor method;
 ordered_replay owns its wrapper hook rather than borrowing target_full's installer.

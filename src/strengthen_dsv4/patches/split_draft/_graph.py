@@ -10,7 +10,7 @@ Draft metadata has a PRIVATE stable bank, never the target global RoPE bank.
 #   用户 vllm serve --worker-cls strengthen_dsv4.worker.Worker
 #   → Worker.compile_or_warm_up_model() 先完成 donor 原生 warmup
 #   → 调用 split_draft/__init__.py 的 install(worker)
-#   → drafter._runnable 被替换成 SplitDraftGraphSet
+#   → drafter._runnable 被替换成 DraftGraphRunner
 #   → 管理器直接选择 decode/query 缓存里的 ExactDraftGraph
 #   → 非普通 decode 由外层管理器先写真实长度的 context，再借本类 capture query。
 #
