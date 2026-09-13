@@ -226,3 +226,14 @@ run083's same-configuration endpoint control; DP throughput/quality remain open.
 Use8192 admission/8GiB KV for the retained TP performance envelope:192 admission
 fragmented the cohort, and3GiB KV fails native capacity validation at8192. See
 PINGPONG for the distinct oracle budgets and address-reservation failure boundary.
+
+Run101 subsequently closes the DP8 matched-cycle and retained32-item quality
+check, not end-to-end throughput or continuous supply. For residual TP waits,
+use `profile_tools/continuation.py` on098's eager-draft profile: target graph
+arrival is host-starved on rank5 while peers wait at the first ReduceScatter.
+That control intentionally had no split-draft graph. Do not rediscover target
+banking or blame collective bandwidth; compose the already-kept draft route,
+then independently qualify its expanded seat envelope. The new TP2 composition
+passes102; real TP8 composition was blocked at admission in103. Keep the
+existing tool's eager-draft selector closed to composed profiles until a distinct
+model-ID/occurrence association is provided.

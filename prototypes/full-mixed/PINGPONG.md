@@ -437,7 +437,7 @@ Fletcher correctly identified remaining target-entry ReduceScatter waits in098.
 occurrences, then requires identical provider collective identities across ranks;
 turnover name mismatches are preserved, not force-aligned. All11 full16-request
 candidate profile waves have rank5 last to the first ReduceScatter. Arrival skew
-is2.45–6.19ms, versus37–39us communication duration at the last arriver. Target
+is2.45–6.19ms, versus36–39us communication duration at the last arriver. Target
 prefix compute is about130us across ranks. Rank5's replay submission is late;
 it starts executing about60–75us after submission while other ranks had already
 queued it. This is launch starvation, not expensive ReduceScatter arithmetic.
@@ -451,3 +451,21 @@ milliseconds from unprofiled serving or assert Linux preemption without schedule
 evidence. The next bounded TP composition reuses split-draft with an explicit
 1–16-request envelope and a shared scratch pool, keeping DSA/DP admission closed
 until its different metadata semantics have an independent gate.
+
+Run102 passes the first composed TP2 dummy gate: both ranks have30 exact target
+output/KV checks and12 producer checks. Four fused-decode and four query-only
+banks per rank pass initial capture plus subsequent exact-ID/whole-KV checks,
+zero bank fallbacks. The query-only oracle starts after unchanged native context
+ingestion, as in the retained split implementation. All48 CPU tests pass,
+including the explicit16-request manager bound and shared pool identity. This
+CPU envelope check is NOT sixteen-request hardware qualification.
+
+Run103's planned real TP8 composition is rejected BEFORE launch: hw3 card6 is
+again at32060MiB with no listed process. Admission evidence is retained; no
+model loaded and no same-input composed performance result exists yet. Do not
+lower native memory/admission gates to push through unidentified occupancy.
+The production package and main remain unchanged. The next available8-card
+window should run103's settings in a fresh capsule (8192 admission,5GiB KV,
+strict HCCL and both target/draft oracles), then compare `metadata` vs `draft`
+with normal HCCL,8GiB KV and no numeric oracle. `--split-draft` is explicitly
+TP/DSACP-only in this producer runner; native DP/DSA needs a separate adapter gate.

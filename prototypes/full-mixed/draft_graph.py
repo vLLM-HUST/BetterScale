@@ -1,6 +1,7 @@
 """Exact-shape DSpark runtime-capture experiment, not general graph admission.
 
-One observed pure-verification shape per request count (1–4) is captured.
+One observed pure-verification shape per request count is captured (default1–4;
+explicit bounded producer composition can request up to16).
 Other shapes fall back; the bank cache cannot grow without bound.
 Draft metadata has a PRIVATE stable bank, never the target global RoPE bank.
 """
