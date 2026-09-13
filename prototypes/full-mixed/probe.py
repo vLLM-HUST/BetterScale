@@ -6,6 +6,8 @@ p.add_argument('--output',type=Path,required=True)
 p.add_argument('--mode',choices=['FULL','FULL_DECODE_ONLY','NONE'],default='FULL')
 p.add_argument('--tp',type=int,default=2)
 p.add_argument('--spec',action='store_true')
+p.add_argument('--n2',action='store_true')
+p.add_argument('--turnover',action='store_true')
 p.add_argument('--budget',type=int,default=256)
 p.add_argument('--rounds',type=int,default=1)
 p.add_argument('--real',action='store_true')
@@ -39,6 +41,9 @@ config=dict(model=os.environ.get('PROBE_MODEL','/data/shared_models/DeepSeek-V4-
  compilation_config=dict(cudagraph_mode=a.mode,cudagraph_capture_sizes=[24 if a.spec else 8,a.budget],max_cudagraph_capture_size=a.budget),
  additional_config=dict(ascend_compilation_config=dict(enable_npugraph_ex=True,enable_static_kernel=False),
  enable_cpu_binding=False,enable_dsa_cp=True,multistream_overlap_shared_expert=True))
+if a.n2:
+ assert a.spec and a.mode=='FULL' and not (a.draft_graph or a.cross_step_bounds or a.cross_step_study or a.policy_study)
+ config.update(async_scheduling=True,scheduler_cls='n2_scheduler.N2Scheduler')
 if a.spec and not a.real:
  from fixture import install_dummy_draft_config
  install_dummy_draft_config()
@@ -57,12 +62,13 @@ if a.kv_gib is not None:
 (a.output/'protocol.json').write_text(json.dumps(dict(
  patch=os.environ.get('FULL_MIXED_PATCH','1'),oracle=os.environ.get('FULL_MIXED_ORACLE','graph'),
  shadow=os.environ.get('FULL_MIXED_SHADOW','0'),hccl_deterministic=os.environ.get('HCCL_DETERMINISTIC'),
- devices=os.environ.get('ASCEND_RT_VISIBLE_DEVICES'),real_weights=a.real,rounds=a.rounds,
+ devices=os.environ.get('ASCEND_RT_VISIBLE_DEVICES'),n2=a.n2,real_weights=a.real,rounds=a.rounds,
  ordered_replay=a.ordered_replay,cpu_qli=a.cpu_qli,verify_qli=a.verify_qli,draft_graph=a.draft_graph,
  draft_shadow=os.environ.get('DRAFT_GRAPH_SHADOW','0'),policy_study=a.policy_study,decode_study=a.decode_study,replay_study=a.replay_study,profile=a.profile,profile_after=a.profile_after,output_tokens=a.output_tokens,requests=a.requests,cross_step_bounds=a.cross_step_bounds,cross_step_study=a.cross_step_study,warm_draft_banks=a.warm_draft_banks),indent=2))
 os.environ['FULL_MIXED_OUTPUT']=str(a.output)
 llm=LLM(**config)
 if os.environ.get('FULL_MIXED_SHADOW')=='1':llm.collective_rpc('enable_shadow')
+if a.n2:llm.collective_rpc('enable_n2')
 if a.cross_step_bounds:llm.collective_rpc("set_cross_step_bounds")
 if a.ordered_replay:llm.collective_rpc('set_ordered_replay',args=(True,))
 if a.draft_graph:llm.collective_rpc("enable_exact_draft_graph")
@@ -103,6 +109,11 @@ for phase_index,lengths in enumerate(cohorts):
  if a.replay_study or a.policy_study or a.cross_step_study:llm.collective_rpc('stop_decode_observation')
  (a.output/'partial.json').write_text(json.dumps(results,indent=2))
 if a.decode_study:llm.collective_rpc('stop_decode_observation')
+if a.turnover:
+ from turnover import run as run_turnover
+ llm.collective_rpc('start_decode_observation',args=(False,'turnover'))
+ run_turnover(llm,a.output,a.budget)
+ llm.collective_rpc('stop_decode_observation')
 if a.profile_after:
  llm.collective_rpc('start_decode_observation',args=(True,'profile'))
  llm.generate([dict(prompt_token_ids=[17+i]*64) for i in range(a.requests)],SamplingParams(temperature=0,max_tokens=16,ignore_eos=True,detokenize=False))

@@ -9,6 +9,11 @@ AscendDSACPMetadataBuilder.get_cudagraph_support = classmethod(
     lambda cls, vllm_config, kv_cache_spec: AttentionCGSupport.ALWAYS)
 
 class FullMixedProbeWorker:
+    def enable_n2(self):
+        from full_draft import install as install_draft
+        from cross_step import install as install_bounds
+        return dict(draft=install_draft(self), bounds=install_bounds(self, all_modes=True))
+
     def draft_bank_status(self):
         state = getattr(self, "_exact_draft_graph", None)
         return dict(rank=self.rank,banks={} if state is None else

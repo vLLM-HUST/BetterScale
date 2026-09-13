@@ -140,3 +140,14 @@ median offset. The helper now gates export at 50 us; eager-only native-task
 membership gives consistent candidate markers. This is a semantic restriction,
 not deletion of inconvenient residuals. Preserve the rejected fit and keep
 same-rank timing conclusions independent of distributed display alignment.
+
+## All-mode N+2 continuation
+
+Enter [`N2.md`](../../../../../prototypes/full-mixed/N2.md) for the native
+two-wave queue, deferred-free fence, mixed/turnover bounds and bounded all-mode
+draft banks. Run036 qualifies the dummy envelope, not real-weight service.
+Prefill padding exposed signed-zero differences; the oracle exception is
+confined to addressed BF16 rows, never entire heterogeneous pools. Exact
+prefill/decode counts can change while the pinned draft forward consumes only
+the prefill boolean; retain the actual tensor offsets and original reference
+metadata instead of generating a graph for every equivalent composition.

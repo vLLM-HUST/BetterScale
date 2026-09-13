@@ -1,0 +1,150 @@
+{
+  "dummy": {
+    "capsule": "hw3:/workspace/my-ascend-workspace/runs/strengthen-dsv4-full-mixed/tp8-n2-036-mode-contract",
+    "weights": "dummy four target layers, three draft layers",
+    "tp": 8,
+    "budget": 288,
+    "k": 5,
+    "oracle": "Target original exact metadata graph; draft unpadded eager, byte exact except signed zero in addressed BF16 rows",
+    "scheduler": {
+      "issued": 114,
+      "retired": 114,
+      "max_inflight": 2,
+      "pending": 0,
+      "scheduled_device_steps": 99,
+      "retired_device_steps": 99,
+      "deferred_frees": 0
+    },
+    "turnover": {
+      "elapsed": 6.706677563954145,
+      "steps": 33,
+      "completed": {
+        "new-prefill": 16,
+        "new-short": 16,
+        "long-decode": 64
+      }
+    },
+    "ranks": [
+      {
+        "rank": 0,
+        "target_checks": 96,
+        "mixed_checks": 11,
+        "prefill_checks": 13,
+        "decode_checks": 72,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 45,
+        "draft_signed_zero_words": 358288,
+        "draft_fallbacks": 0,
+        "exact_metadata_checks": 83,
+        "late_commits": 78
+      },
+      {
+        "rank": 1,
+        "target_checks": 96,
+        "mixed_checks": 11,
+        "prefill_checks": 13,
+        "decode_checks": 72,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 45,
+        "draft_signed_zero_words": 358288,
+        "draft_fallbacks": 0,
+        "exact_metadata_checks": 83,
+        "late_commits": 78
+      },
+      {
+        "rank": 2,
+        "target_checks": 96,
+        "mixed_checks": 11,
+        "prefill_checks": 13,
+        "decode_checks": 72,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 45,
+        "draft_signed_zero_words": 358288,
+        "draft_fallbacks": 0,
+        "exact_metadata_checks": 83,
+        "late_commits": 78
+      },
+      {
+        "rank": 3,
+        "target_checks": 96,
+        "mixed_checks": 11,
+        "prefill_checks": 13,
+        "decode_checks": 72,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 45,
+        "draft_signed_zero_words": 358288,
+        "draft_fallbacks": 0,
+        "exact_metadata_checks": 83,
+        "late_commits": 78
+      },
+      {
+        "rank": 4,
+        "target_checks": 96,
+        "mixed_checks": 11,
+        "prefill_checks": 13,
+        "decode_checks": 72,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 45,
+        "draft_signed_zero_words": 358288,
+        "draft_fallbacks": 0,
+        "exact_metadata_checks": 83,
+        "late_commits": 78
+      },
+      {
+        "rank": 5,
+        "target_checks": 96,
+        "mixed_checks": 11,
+        "prefill_checks": 13,
+        "decode_checks": 72,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 45,
+        "draft_signed_zero_words": 358288,
+        "draft_fallbacks": 0,
+        "exact_metadata_checks": 83,
+        "late_commits": 78
+      },
+      {
+        "rank": 6,
+        "target_checks": 96,
+        "mixed_checks": 11,
+        "prefill_checks": 13,
+        "decode_checks": 72,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 45,
+        "draft_signed_zero_words": 358288,
+        "draft_fallbacks": 0,
+        "exact_metadata_checks": 83,
+        "late_commits": 78
+      },
+      {
+        "rank": 7,
+        "target_checks": 96,
+        "mixed_checks": 11,
+        "prefill_checks": 13,
+        "decode_checks": 72,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 45,
+        "draft_signed_zero_words": 358288,
+        "draft_fallbacks": 0,
+        "exact_metadata_checks": 83,
+        "late_commits": 78
+      }
+    ]
+  }
+}

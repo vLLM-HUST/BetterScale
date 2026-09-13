@@ -1,6 +1,7 @@
 """Bounded DSV4 experiment: CPU authorization bounds, device exact progress.
 
-Not a second scheduler. Only stable pure K5 verification without DCP is admitted.
+Not a second scheduler. Default admission is stable pure K5 verification;
+all_modes is an explicit experimental extension for request turnover and mixed waves.
 The existing device correction and slot mapping remain authoritative. No early
 page recycling, new copy stream, or unproven pinned-buffer reuse is introduced.
 """
@@ -29,7 +30,8 @@ def stable_verification(runner, schedule, counts):
 
 
 class CrossStepBounds:
-    def __init__(self, worker):
+    def __init__(self, worker, all_modes=False):
+        self.all_modes = all_modes
         r = self.runner = worker.model_runner
         assert r.use_compress and r.use_async_spec_decode and not r.use_dcp
         assert r.vllm_config.model_config.hf_config.model_type == 'deepseek_v4'
@@ -57,12 +59,20 @@ class CrossStepBounds:
         r._correct_optimistic_seq_lens_cpu = self.correct_bounds
         r._build_attention_metadata = self.build_metadata
 
+    def authorized(self, schedule, counts):
+        if not self.all_modes:
+            return stable_verification(self.runner, schedule, counts)
+        ids = self.runner.input_batch.req_ids
+        return (1 <= len(ids) <= 4 and len(counts) == len(ids)
+                and all(int(n) > 0 for n in counts)
+                and set(schedule.num_scheduled_tokens) == set(ids))
+
     def update_states(self, schedule):
         assert self.pending is None, 'Unretired CPU bookkeeping callback'
         callback = self.update(schedule)
         r = self.runner
         counts = [schedule.num_scheduled_tokens.get(rid, 0) for rid in r.input_batch.req_ids]
-        if callback is None or not self.enabled or not stable_verification(r, schedule, counts):
+        if callback is None or not self.enabled or not self.authorized(schedule, counts):
             return callback
         def defer():
             assert self.pending is None
@@ -90,7 +100,7 @@ class CrossStepBounds:
     def prepare_inputs(self, schedule, counts):
         self.calls += 1
         self.skipped = False
-        self.admitted = self.enabled and stable_verification(self.runner, schedule, counts)
+        self.admitted = self.enabled and self.authorized(schedule, counts)
         return self.prepare(schedule, counts)
 
     def correct_bounds(self, n):
@@ -135,19 +145,20 @@ class CrossStepBounds:
         context.attn_metadata = self.build(*args, **kwargs)[0]
 
     def receipt(self):
-        result = dict(enabled=self.enabled,calls=self.calls,bypassed=self.bypassed,
+        result = dict(enabled=self.enabled,all_modes=self.all_modes,calls=self.calls,bypassed=self.bypassed,
                       exact_metadata_shadow_checks=self.reference_checks,late_commits=self.late_commits,rows=self.rows)
         self.path.write_text(json.dumps(result,indent=2))
         return result
 
 
-def install(worker, enabled=True):
+def install(worker, enabled=True, all_modes=False):
     torch.npu.synchronize()  # configuration transition, never a serving wave
     r = worker.model_runner
     state = getattr(r, '_cross_step_bounds', None)
     if state is None:
         if not enabled:
             return dict(enabled=False)
-        state = r._cross_step_bounds = CrossStepBounds(worker)
+        state = r._cross_step_bounds = CrossStepBounds(worker, all_modes=all_modes)
+    assert state.all_modes == all_modes
     state.enabled = enabled
     return state.receipt()

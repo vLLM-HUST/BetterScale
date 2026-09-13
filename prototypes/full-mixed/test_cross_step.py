@@ -76,4 +76,16 @@ class Contract(unittest.TestCase):
         r,s=fixture();r.use_dcp=True
         with self.assertRaises(AssertionError):self.make(r)
 
+    def test_all_modes_admits_mixed_and_turnover_but_not_missing_rows(self):
+        r,s=fixture()
+        with patch.dict('os.environ',{'FULL_MIXED_OUTPUT':tempfile.gettempdir()}):
+            state=CrossStepBounds(NS(model_runner=r,rank=0),all_modes=True)
+        s.scheduled_new_reqs=['b'];r.input_batch.prev_req_id_to_index={'a':1}
+        s.num_scheduled_tokens={'a':6,'b':64}
+        self.assertTrue(state.authorized(s,[6,64]))
+        self.assertFalse(state.authorized(s,[6,0]))
+        self.assertFalse(state.authorized(s,[6]))
+        s.num_scheduled_tokens['c']=1
+        self.assertFalse(state.authorized(s,[6,64]))
+
 if __name__=='__main__':unittest.main()

@@ -37,6 +37,17 @@ def persistent_layout(value):
     raise TypeError(f'Unreviewed persistent draft input: {type(value)}')
 
 
+def key_changes(old,new,path=()):
+    if old==new:return []
+    if isinstance(old,tuple) and isinstance(new,tuple) and len(old)==len(new):
+        result=[]
+        for i,(a,b) in enumerate(zip(old,new)):
+            result.extend(key_changes(a,b,path+(i,)))
+            if len(result)>=32:break
+        return result[:32]
+    return [dict(path=path,old=repr(old)[:500],new=repr(new)[:500])]
+
+
 def bank(value):
     if isinstance(value,torch.Tensor):return value.clone()
     if isinstance(value,RopeDataProxy):
@@ -63,22 +74,24 @@ def refresh(dst,src):
 
 
 class ExactDraftGraph:
-    def __init__(self,worker,original=None,request_count=4):
+    def __init__(self,worker,original=None,request_count=4,context_capacity=None,reference=None):
         self.worker=worker;self.drafter=worker.model_runner.drafter
         assert type(self.drafter).__name__=='AscendDSparkProposer'
         assert not self.drafter.use_cuda_graph
         self.original=original or self.drafter._runnable
         self.request_count=request_count
-        self.enabled=True;self.key=None;self.graph=None;self.replays=0;self.fallbacks=0;self.checks=0;self.capture_checked=False
+        self.context_capacity=context_capacity or 6*request_count
+        self.reference=reference or self.original
+        self.enabled=True;self.key=None;self.graph=None;self.replays=0;self.fallbacks=0;self.checks=0;self.capture_checked=False;self.signed_zero_words=0
         self.path=Path(os.environ['FULL_MIXED_OUTPUT'])/f'draft-graph-rank{worker.rank}-requests{request_count}.json'
 
     def receipt(self):
-        self.path.write_text(json.dumps(dict(captured=self.graph is not None,replays=self.replays,fallbacks=self.fallbacks,checks=self.checks,capture_checked=self.capture_checked,key=repr(self.key)),indent=2))
+        self.path.write_text(json.dumps(dict(captured=self.graph is not None,replays=self.replays,fallbacks=self.fallbacks,checks=self.checks,capture_checked=self.capture_checked,signed_zero_words=self.signed_zero_words,key=repr(self.key)),indent=2))
 
     def __call__(self,**kwargs):
         if not self.enabled:return self.original(**kwargs)
         ctx=get_forward_context();d=self.drafter
-        eligible=(kwargs['batch_size']==self.request_count and d._dflash_num_context==6*self.request_count
+        eligible=(kwargs['batch_size']==self.request_count and d._dflash_num_context==self.context_capacity
                   and not kwargs.get('is_prefill',False) and not ctx.capturing)
         if not eligible:
             self.fallbacks+=1;return self.original(**kwargs)
@@ -88,6 +101,9 @@ class ExactDraftGraph:
             '_context_slot_mapping_buffers','_dspark_seed_buffer','_dspark_draft_buffer'))
         key=(d._dflash_num_context,signature(current),state_inputs)
         if self.key is not None and key!=self.key:
+            if getattr(self,'strict_signature',False):
+                self.path.with_suffix('.signature.json').write_text(json.dumps(key_changes(self.key,key),indent=2))
+                raise AssertionError('FULL draft bank signature changed; see signature receipt')
             self.fallbacks+=1;return self.original(**kwargs)
         if self.key is None:
             self.key=key;self.buffers=bank(current)
@@ -132,12 +148,40 @@ class ExactDraftGraph:
         after=[x.clone() for x in pools]
         torch.npu.synchronize()
         for live,saved in zip(pools,before):live.copy_(saved)
-        expected=self.original(**kwargs)
+        expected=self.reference(**kwargs)
         torch.npu.synchronize()
         try:
             torch.testing.assert_close(observed,expected,rtol=0,atol=0)
-            for live,saved in zip(pools,after):
-                assert torch.equal(live,saved), 'Draft graph/eager KV pool bytes differ'
+            zero_rows={}
+            if getattr(self,'allow_addressed_signed_zero',False):
+                from draft_oracle import addressed_rows, equivalent
+                zero_rows=addressed_rows(self.drafter,self.request_count,self.context_capacity)
+            for index,(live,saved) in enumerate(zip(pools,after)):
+                if torch.equal(live,saved):continue
+                if zero_rows:
+                    zero_count=equivalent(live,saved,zero_rows.get(live.untyped_storage().data_ptr(),set()))
+                    if zero_count is not None:
+                        self.signed_zero_words+=zero_count
+                        continue
+                # Bound diagnostic allocation instead of materializing a mask
+                # for an entire multi-GiB pool. Preserve the first differing slab.
+                for start in range(0,live.numel(),1024*1024):
+                    lhs=live[start:start+1024*1024]
+                    rhs=saved[start:start+1024*1024]
+                    if torch.equal(lhs,rhs):continue
+                    a,b=lhs.cpu(),rhs.cpu()
+                    offset=int(torch.nonzero(a!=b)[0])
+                    begin=max(0,(offset//2)*2-16)
+                    detail=dict(pool=index,byte_offset=start+offset,
+                                requests=self.request_count,context_capacity=self.context_capacity,
+                                eager=a[begin:begin+64].tolist(),graph=b[begin:begin+64].tolist())
+                    for dst,src in zip(pools,before):dst.copy_(src)
+                    self.original(**kwargs)
+                    torch.npu.synchronize()
+                    detail['padded_eager_matches_graph']=all(torch.equal(dst,src) for dst,src in zip(pools,after))
+                    self.path.with_suffix('.failure.json').write_text(json.dumps(detail,indent=2))
+                    break
+                raise AssertionError('Draft graph/eager KV pool bytes differ')
         finally:
             for live,saved in zip(pools,after):live.copy_(saved)
             self.output.copy_(observed)
