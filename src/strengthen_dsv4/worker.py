@@ -1,4 +1,5 @@
 """The only public entry: vllm serve ... --worker-cls strengthen_dsv4.worker.Worker."""
+
 import logging
 
 from .compat import check_runtime
@@ -16,6 +17,7 @@ class Worker(NPUWorker):
         check_runtime()
         validate_worker_config(vllm_config)
         from .patches import compat_lcm, target_full
+
         compat_lcm.install()
         target_full.install()
         super().__init__(vllm_config, *args, **kwargs)
@@ -25,11 +27,12 @@ class Worker(NPUWorker):
     def compile_or_warm_up_model(self):
         result = super().compile_or_warm_up_model()
         from .patches import split_draft, cross_step, ordered_replay, qli_cpu
+
         # 每个模块自带实现与 install；worker 只选择组合与安装时机。
         # split_draft 自己拥有 graph/metadata，无需安装另一份 draft 补丁。
         split_draft.install(self)
         cross_step.install(self)
         ordered_replay.install(self)
         qli_cpu.install(self)
-        log.info('strengthen-dsv4 rank=%s READY patches=%s', self.rank, PATCH_IDS)
+        log.info("strengthen-dsv4 rank=%s READY patches=%s", self.rank, PATCH_IDS)
         return result

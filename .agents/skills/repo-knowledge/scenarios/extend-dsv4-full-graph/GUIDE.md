@@ -24,6 +24,11 @@ build output aside recoverably) removes it. Assert no console entry or cli.py in
 the wheel and resolve the installed worker class without depending on checkout
 PYTHONPATH. Native-base stubs cover packaging only, not accelerator execution.
 
+Maintain readable package code with `python -m black src/strengthen_dsv4`
+(default style, py312 target in pyproject.toml). Do not pack assignments or
+control-flow statements onto one line. Run the formatter in a development
+environment, not by adding dependencies to the donor runtime.
+
 The implementation now uses six closed patch directories: compat_lcm,
 target_full, ordered_replay, qli_cpu, split_draft, cross_step. Each owns install;
 worker alone composes them. split_draft owns _graph.py and _metadata.py. Old flat

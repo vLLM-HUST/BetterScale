@@ -18,3 +18,6 @@ strengthen_dsv4 = ["pins.json"]
 
 [tool.setuptools]
 license-files = ["licenses/Apache-2.0.txt", "THIRD_PARTY_NOTICES.md"]
+
+[tool.black]
+target-version = ["py312"]
