@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+export PYTHONPATH="$root/src${PYTHONPATH:+:$PYTHONPATH}"
+if [[ ${1:-} == serve ]]; then
+    cann_env=${STRENGTHEN_CANN_ENV:-/usr/local/Ascend/cann-9.0.1/set_env.sh}
+    if [[ ! -f "$cann_env" ]]; then
+        echo "Missing CANN environment: $cann_env" >&2; exit 1
+    fi
+    set +u; source "$cann_env"; set -u
+fi
+exec "${STRENGTHEN_PYTHON:-python3}" -m strengthen_dsv4.cli "$@"

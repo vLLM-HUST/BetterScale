@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="510" viewBox="0 0 1240 510">
+<style>text{font-family:'FandolHei','Noto Sans CJK SC','Microsoft YaHei',Arial,sans-serif;fill:#172b42}.h{font-size:23px;font-weight:700}.t{font-size:18px}.s{font-size:14px;fill:#53667c}.v{font-size:34px;font-weight:700}</style>
+<rect width="1240" height="510" rx="18" fill="#f8fafc"/>
+<text x="34" y="44" class="h">同等 query 工作量下，K5 周期逐步缩短</text>
+<text x="34" y="71" class="s">8×910B2 · TP8/EP · 4 个真实请求 × 6 queries · 无 profiler / 无 shadow · 跨 rank 中位数</text>
+<rect x="28" y="96" width="580" height="313" rx="14" fill="white" stroke="#dce4ec"/>
+<text x="48" y="131" class="t">① Native eager draft → private-bank FULL</text>
+<text x="48" y="160" class="s">同一引擎交替对照 · run026</text>
+<text x="48" y="207" class="t">原版</text><rect x="130" y="180" width="393.6" height="40" rx="5" fill="#98a9bb"/><text x="48" y="272" class="t">改进</text><rect x="130" y="245" width="310.4" height="40" rx="5" fill="#328b76"/>
+<text x="130" y="337" class="v">65.60 → 51.74 ms</text>
+<text x="48" y="383" class="s">另一轮 64.50 → 51.54 ms；缩短 20–21%</text>
+<rect x="630" y="96" width="580" height="313" rx="14" fill="white" stroke="#dce4ec"/>
+<text x="650" y="131" class="t">② 已优化路径 → CPU 收据依赖后移</text>
+<text x="650" y="160" class="s">同一引擎交替对照 · 所有 draft banks 预热 · run031</text>
+<text x="650" y="207" class="t">对照</text><rect x="732" y="180" width="312.3" height="40" rx="5" fill="#98a9bb"/><text x="650" y="272" class="t">改进</text><rect x="732" y="245" width="279.6" height="40" rx="5" fill="#328b76"/>
+<text x="732" y="337" class="v">52.05 → 46.60 ms</text>
+<text x="650" y="383" class="s">另外两轮 52.46 → 46.26、51.66 → 46.11；再缩短 10–12%</text>
+<text x="35" y="447" class="t">工程演进约 65 → 52 → 46 ms；跨实验约 30% 周期缩短，非直接端到端吞吐 A/B。</text>
+<text x="35" y="477" class="s">两项百分比不能相加；单独 ordered replay / CPU QLI 未证明巨大稳定收益。数值、配置与证据见 RESULTS.md。</text>
+</svg>

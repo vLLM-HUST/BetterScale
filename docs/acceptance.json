@@ -1,0 +1,76 @@
+{
+  "date": "2026-09-13",
+  "scope": "Shipped CLI -> native OpenAI HTTP server; retained 32 OpenCompass LongBench English retrieval inputs, not a full suite",
+  "cpu_tests": 22,
+  "environment": {
+    "host": "hw3",
+    "accelerators": "8 x Ascend 910B2/HCCS",
+    "parallel": "TP8/EP/DP1/PP1/DSACP",
+    "speculation": "DSpark K5",
+    "seats": 4,
+    "graph_budget": 4128,
+    "max_model_len": 15104,
+    "kv_gib_per_rank": 12
+  },
+  "profiles": {
+    "optimized": {
+      "capsule": "packaged-http-054",
+      "exit_code": 0,
+      "correct": 32,
+      "count": 32,
+      "score": 100.0,
+      "evaluator_commit": "60a28a727d3b7807eb3554928f3530d04c948452",
+      "streaming_completed": true,
+      "ready_ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "patches": [
+        "compat-lcm",
+        "target-full",
+        "ordered-replay",
+        "cpu-qli",
+        "private-draft-banks",
+        "split-draft-context",
+        "stable-receipt-cut"
+      ],
+      "min_full_length_concurrency": 4.772913816689466,
+      "released_devices": 8
+    },
+    "baseline": {
+      "capsule": "packaged-http-055-baseline",
+      "exit_code": 0,
+      "correct": 32,
+      "count": 32,
+      "score": 100.0,
+      "evaluator_commit": "60a28a727d3b7807eb3554928f3530d04c948452",
+      "streaming_completed": true,
+      "ready_ranks": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "patches": [
+        "compat-lcm"
+      ],
+      "min_full_length_concurrency": 4.772913816689466,
+      "released_devices": 8
+    }
+  },
+  "limitations": [
+    "No performance measurements claimed from this delivery gate.",
+    "Shutdown hooks may be bypassed by native API termination; bank receipts are checkpoints, not final totals.",
+    "Optimized054 preceded removal of unreachable all_modes branches; stable K5 execution was unchanged and final CPU tests passed."
+  ]
+}

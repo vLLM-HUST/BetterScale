@@ -1,0 +1,68 @@
+{
+  "versions": {
+    "vllm": "0.25.1",
+    "vllm-ascend": "0.25.1rc1",
+    "torch-npu": "2.10.0.post2"
+  },
+  "commits": {
+    "vllm": "752a3a504485790a2e8491cacbb35c137339ad34",
+    "vllm-ascend": "9bf964cb4b87c8cd0d6852c41a55b3c29711fa95"
+  },
+  "source_files": [
+    {
+      "distribution": "vllm",
+      "path": "vllm/config/compilation.py",
+      "sha256": "7eca27ee5ab9ae22fcc699e0d5b476b423fe0c379dfae0cbaa87ad7226889957"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/worker/worker_base.py",
+      "sha256": "7da44338c2645ebf03d23394e452b31a8e3da1011fd1b42fcfcccfe99551b3fe"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/worker/gpu_model_runner.py",
+      "sha256": "6c92ded8468f44d6df863a617ce588f132fa6df7031feecc0cc421702a41610e"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/worker/worker.py",
+      "sha256": "8a86068c0cbd24cbb9358c76017bf927783675b79dc1e2901f92bd67f3c7a92f"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/worker/model_runner_v1.py",
+      "sha256": "32955b3891fd237a56b41d6965a052c9182600346114a83816dfcc4ca4591040"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/attention/context_parallel/dsa_cp.py",
+      "sha256": "539ead1ceaf8f00954a3504c3a92b680b13908d50db7fce1f1d0a55c2eb3fd6e"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/compilation/acl_graph.py",
+      "sha256": "b13492d8f117f7c7bcf3721f849f273c7c3ea890ae4cd022640b8280af9538a2"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/spec_decode/dspark_proposer.py",
+      "sha256": "68352663cc494fa38a48346830fea7a3398d584a4293646f30f6160e7db796b5"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/spec_decode/dflash_proposer.py",
+      "sha256": "7178ea0d13dba82fb9d0f17b75a2cee58a1c3bcc52ca6f4ca90cedad46ecce80"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/spec_decode/llm_base_proposer.py",
+      "sha256": "2747f13941fc3743c4b1e985a5c0f12e27da2155d60c4cf04bcf32129bd8f54b"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/models/deepseek_v4_dspark.py",
+      "sha256": "12b4758a01df81f6a5a0d98af411f5296dd4cc39f71fda045bd485f600438746"
+    }
+  ]
+}
