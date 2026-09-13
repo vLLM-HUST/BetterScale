@@ -81,11 +81,15 @@ class PackagedObserver:
 
     def donor_receipt(self):
         import torch
+        from vllm.v1.core.kv_cache_utils import get_kv_cache_capacity
 
         r = self.model_runner
         producer, metadata = r._async_decode
+        tokens, concurrency = get_kv_cache_capacity(r.vllm_config, r.kv_cache_config)
         return dict(
             rank=r.vllm_config.parallel_config.data_parallel_rank,
+            kv_capacity_tokens=tokens,
+            max_length_concurrency=concurrency,
             allocated=torch.npu.memory_allocated(),
             reserved=torch.npu.memory_reserved(),
             peak=torch.npu.max_memory_allocated(),

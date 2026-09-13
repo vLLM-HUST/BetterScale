@@ -144,6 +144,19 @@ def rank_main(args,dp_rank,barrier):
     time.sleep(1)  # upstream offline-DP drain convention
 
 
+def rank_entry(args, rank, barrier):
+    try:
+        rank_main(args, rank, barrier)
+    except BaseException:
+        # A failed quality contract may leave the native LLM destructor waiting
+        # for EP peers. Notify the parent BEFORE teardown can hide the failure;
+        # launch.py owns final process-tree reclamation.
+        import traceback
+        traceback.print_exc()
+        barrier.abort()
+        raise
+
+
 def main(args):
     assert args.spec, "This bounded DP comparison is a K5 study"
     assert not any((args.n2,args.ordered_replay,args.cpu_qli,args.draft_graph,args.cross_step_bounds))
@@ -152,13 +165,13 @@ def main(args):
         and (args.dp_full or args.tp > 1) and not args.real)
     args.output.mkdir(parents=True,exist_ok=True)
     ctx=mp.get_context('spawn');barrier=ctx.Barrier(args.donor_dp)
-    processes=[ctx.Process(target=rank_main,args=(args,i,barrier),name=f'donor-dp-client-{i}') for i in range(args.donor_dp)]
+    processes=[ctx.Process(target=rank_entry,args=(args,i,barrier),name=f'donor-dp-client-{i}') for i in range(args.donor_dp)]
     for process in processes:process.start()
     while any(p.is_alive() for p in processes):
         failed=[p for p in processes if p.exitcode not in (None,0)]
-        if failed:
+        if failed or barrier.broken:
             barrier.abort()
-            raise RuntimeError(f'DP client failed: {[(p.name,p.exitcode) for p in failed]}')
+            raise RuntimeError(f'DP client failed or aborted barrier: {[(p.name,p.exitcode) for p in failed]}')
         for p in processes:p.join(timeout=.2)
     assert all(p.exitcode==0 for p in processes)
     if args.quality_requests:

@@ -122,3 +122,14 @@ and the unhelpful worker-retirement extension. Run122 exercises the actual
 package through an external numerical-oracle subclass; it is not accepted yet.
 Final sampler output remains native per-invocation allocation retained through
 D2H, not a falsely claimed captured whole-wave two-slot egress implementation.
+
+
+122 completes all480 same-state checks through the packaged Worker, max target
+outputdiff0 and exact full-KV bytes. Wheel cdaa6cf runs123's two occupied decode
+windows at50.075/52.156ms cycles and1.248/1.939ms draft-to-target intervals.
+The final quality gate was NOT completed: extracted observer omitted the native
+max_length_concurrency field required by quality.run_dp. Stopped only the owned
+launcher, retained both timing windows, and fixed the observation contract (no
+product runtime change). A CPU consumer-contract test now protects that field;
+client exceptions abort the shared barrier before native teardown can conceal
+failure from the parent.124 repeats wheel quality/performance with that repair.
