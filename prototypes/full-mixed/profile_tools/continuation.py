@@ -1,13 +1,13 @@
-"""Audit target graph arrivals in the retained DSV4/eager-draft profile.
+"""Audit target graph arrivals in the retained single-compute-stream profile.
 
-Match FULL calls to graph occurrences by execution order, never nearest time.
-The >1000-compute-task model selector is specific to these full DSV4 graphs;
-assert the observed FULL count and one target replay API per selected call.
+Link each FULL CPU call's replay API to its native MODEL_EXECUTE task by exact
+connectionId. The next MODEL_EXECUTE on that stream bounds the graph envelope;
+require one captured compute model within it. No size heuristic, timestamp-
+nearest matching or assumption that draft runs eager is used.
 Clock transforms are the existing display-only candidates, not calibration.
 """
 import argparse
 from bisect import bisect_left
-from collections import Counter
 import json
 from pathlib import Path
 import sqlite3
@@ -24,39 +24,44 @@ for rank in range(8):
     full=[i for i,m in enumerate(modes) if m['mode']=='FULL']
     # (start,end,stream,task,model,name,connection), using real compute tasks.
     tasks=c.execute('select t.startNs,t.endNs,t.streamId,t.taskId,t.modelId,n.value,t.connectionId from TASK t join COMPUTE_TASK_INFO i using(globalTaskId) join STRING_IDS n on n.id=i.name order by t.startNs').fetchall()
-    count=Counter(x[4] for x in tasks if x[4]!=4294967295)
-    target_models={k for k,v in count.items() if v>1000};first={}
-    for x in tasks:
-        if x[4] in target_models:first.setdefault(x[4],x[2:4])
-    starts=[x for x in tasks if x[4] in target_models and x[2:4]==first[x[4]]]
-    assert len(starts)==len(full),(rank,len(starts),len(full),target_models)
     functions=c.execute("select cast(a.startNs as integer),cast(a.endNs as integer),n.value from PYTORCH_API a join STRING_IDS n on n.id=a.name where n.value like 'strengthen::%' order by cast(a.startNs as integer)").fetchall()
     forward=[x for x in functions if x[2]=='strengthen::target_forward']
     draft=[x for x in functions if x[2]=='strengthen::draft_forward']
     assert len(forward)==len(modes)==len(draft)
     apis=c.execute("select a.startNs,a.endNs,n.value,a.connectionId from CANN_API a join STRING_IDS n on n.id=a.name where n.value in ('aclmdlRIExecuteAsync','aclrtSynchronizeEvent') order by a.startNs").fetchall()
+    launches=c.execute("select t.startNs,t.connectionId,t.streamId from TASK t join STRING_IDS n on n.id=t.taskType where n.value='MODEL_EXECUTE' order by t.startNs").fetchall()
+    occurrences=[]
+    for wave in full:
+        calls=[x for x in apis if x[2]=='aclmdlRIExecuteAsync' and forward[wave][0]<=x[0]<forward[wave][1]]
+        assert len(calls)==1,(rank,wave,calls)
+        call=calls[0]
+        linked=[x for x in launches if x[1]==call[3]]
+        assert len(linked)==1,(rank,wave,call,linked)
+        launch=linked[0]
+        limit=next((x[0] for x in launches if x[2]==launch[2] and x[0]>launch[0]),max(x[1] for x in tasks)+1)
+        body=[x for x in tasks if x[4]!=4294967295 and launch[0]<=x[0]<limit]
+        assert body and len({x[4] for x in body})==1,(rank,wave,{x[4] for x in body})
+        assert max(x[1] for x in body)<=limit,(rank,wave,'overlapping graph execution')
+        occurrences.append((wave,body,call,launch))
     comm=c.execute("select o.startNs,o.endNs,n.value,ty.value,o.count,g.value,o.opId from COMMUNICATION_OP o join STRING_IDS n on n.id=o.opName join STRING_IDS ty on ty.id=o.opType join STRING_IDS g on g.id=o.groupName where ty.value like '%reduceScatter%' order by o.startNs").fetchall()
     comm_models={}
     for op,model in c.execute('select distinct i.opId,t.modelId from COMMUNICATION_TASK_INFO i join TASK t using(globalTaskId)'):
         comm_models.setdefault(op,set()).add(model)
     ended=sorted(tasks,key=lambda x:x[1]);ends=[x[1] for x in ended]
-    if origin is None:origin=starts[0][0]
+    if origin is None:origin=occurrences[0][1][0][0]
     def aligned(t):
         if rank==0:return (t-origin)/1e6
         m=models[rank]
         return ((t-m['reference_source_ns'])*m['scale']+(m['reference_target_ns']-origin))/1e6
     records=[]
-    for ordinal,(wave,start) in enumerate(zip(full,starts)):
-        limit=starts[ordinal+1][0] if ordinal+1<len(starts) else max(x[1] for x in tasks)+1
-        body=[x for x in tasks if x[4]==start[4] and start[0]<=x[0]<limit]
+    for wave,body,call,launch in occurrences:
+        start=body[0]
         end=max(x[1] for x in body)
         rs=next(x for x in comm if start[0]<=x[0]<end and comm_models[x[6]]=={start[4]})
-        calls=[x for x in apis if x[2]=='aclmdlRIExecuteAsync' and forward[wave][0]<=x[0]<forward[wave][1]]
-        assert len(calls)==1,(rank,wave,calls)
-        call=calls[0]
         previous=ended[max(0,bisect_left(ends,start[0])-8):bisect_left(ends,start[0])]
         sync=[x for x in apis if x[2]=='aclrtSynchronizeEvent' and forward[wave-1][0]<=x[0]<call[0]]
         records.append(dict(wave=wave,requests=modes[wave]['actual_requests'],tokens=modes[wave]['actual_tokens'],model=start[4],
+            launch_connection=launch[1],launch_stream=launch[2],
             graph_start_ms=aligned(start[0]),graph_end_ms=aligned(end),replay_host_start_ms=aligned(call[0]),replay_host_end_ms=aligned(call[1]),
             replay_to_graph_ms=(start[0]-call[1])/1e6,
             first_rs=dict(name=rs[2],type=rs[3],count=rs[4],group=rs[5],start_ms=aligned(rs[0]),end_ms=aligned(rs[1])),

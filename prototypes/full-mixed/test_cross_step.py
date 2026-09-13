@@ -104,4 +104,17 @@ class Contract(unittest.TestCase):
         s.num_scheduled_tokens['c']=1
         self.assertFalse(state.authorized(s,[6,64]))
 
+    def test_whole_worker_tail_owns_deferred_receipt(self):
+        r,s=fixture();events=[];pending=[]
+        r._update_states=lambda schedule:lambda:events.append('receipt')
+        r._model_forward=lambda **kwargs:events.append('target')
+        state=self.make(r);state.admitted=True
+        r._decode_shadow=NS(active=object())
+        def accept(callback):pending.append(callback);return True
+        r._worker_submission=NS(defer=accept)
+        r._update_states(s)();r._model_forward()
+        self.assertEqual(events,['target']);self.assertIsNone(state.pending)
+        events.append('sample-draft');pending.pop()()
+        self.assertEqual(events,['target','sample-draft','receipt'])
+
 if __name__=='__main__':unittest.main()

@@ -110,6 +110,12 @@ class CrossStepBounds:
                 with record_function("strengthen::retire_input_dma"):
                     event.synchronize()
             callback, self.pending = self.pending, None
+            worker_submission = getattr(self.runner, '_worker_submission', None)
+            if (self.admitted and producer is not None and producer.active is not None
+                    and worker_submission is not None and worker_submission.defer(callback)):
+                # Its immutable prior-count receipt survives the following
+                # sampler/draft publication. Retire after the full wave queues.
+                return result
             with record_function("strengthen::late_receipt"):
                 callback()
             self.late_commits += 1

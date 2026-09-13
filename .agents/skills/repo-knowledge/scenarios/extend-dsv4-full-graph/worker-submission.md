@@ -89,3 +89,35 @@ before previous device work drains, with generation/KV/input/output lifetime
 gates intact. Two metadata banks or a two-entry engine queue alone are not that
 evidence. Main, packaged defaults and runtime behavior are unchanged by this
 audit.
+
+## First executable worker cut
+
+`--worker-continuous` now composes the producer, captured target metadata and
+kept split-draft with `prototypes/full-mixed/worker_submission.py`. This is an
+opt-in TP/DSACP prototype, not a new scheduler or a second compute stream.
+Same-stream order already enforces numerical target/sampler/draft dependencies;
+do not insert redundant waits merely to draw an event edge.
+
+The cross-step callback can now be handed to the worker instead of run inside
+target forward. The worker first queues sampling, draft and native async output,
+records the compute tail, then applies the prior CPU correction. Two pinned
+count-receipt slots plus per-publication events keep that old receipt distinct
+from the new counts. The old callback reads its captured count receipt, not the
+runner's now-current one. Exact GPU progress and KV are NOT double-buffered.
+Special sampling/prefill/turnover keep native earlier retirement; command
+reentrancy, a changed request map or a failure poisons the invocation instead
+of continuing with a possibly wrong generation.
+
+Run104 closes real TP8 split-draft composition: all eight ranks pass48 exact
+target/full-KV checks and12 producer/sampler checks; all96 retained draft-bank
+receipts have an initial exact check and no fallback. Reserved57.264GiB includes
+the oracle snapshots and is not a serving-memory result.
+
+Run106 closes the first worker-cut TP2 dummy gate:57 completed wave submissions,
+22 whole-wave-deferred corrections on each rank,30 exact target/full-KV checks,
+12 producer checks and16 checked draft banks total. The two count buffers cost
+64 pinned bytes per rank, no additional numerical State. Run105 failed before
+model initialization because a remote-only dummy-config path was used locally;
+106 used the local checkpoint config with dummy loading. Both leases released.
+All54 CPU tests pass. Real TP8 worker qualification and matched performance are
+still separate gates; the implementation must not yet be called gap-free.

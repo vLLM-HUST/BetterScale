@@ -7,6 +7,11 @@ import torch
 
 
 class DonorDPWorker:
+    def enable_worker_continuous(self):
+        from worker_submission import WorkerSubmission
+        self._worker_submission=WorkerSubmission(self)
+        return {'scope':'whole-wave-submit-before-host-retirement'}
+
     def enable_producer_draft(self):
         from split_draft import SplitDraftGraphSet
         r=self.model_runner;p=r.vllm_config.parallel_config
@@ -39,16 +44,17 @@ class DonorDPWorker:
         return pair.receipt()
 
     def set_pingpong_policy(self, policy):
-        assert policy in ('native', 'cut', 'sources', 'pair', 'producer', 'metadata', 'draft')
+        assert policy in ('native', 'cut', 'sources', 'pair', 'producer', 'metadata', 'draft', 'worker')
         torch.npu.synchronize()
         r=self.model_runner;pair=r.model._decode_pair;slots=r._host_source_slots
         assert pair.reference_catalog
-        pair.policy='native' if policy=='native' else 'pair' if policy in ('pair','producer','metadata','draft') else 'ordered'
-        r.synchronize_input_prep=slots.scope if policy in ('sources','pair','producer','metadata','draft') else slots.original_scope
+        pair.policy='native' if policy=='native' else 'pair' if policy in ('pair','producer','metadata','draft','worker') else 'ordered'
+        r.synchronize_input_prep=slots.scope if policy in ('sources','pair','producer','metadata','draft','worker') else slots.original_scope
         r._cross_step_bounds.enabled=policy!='native'
-        if hasattr(self,'_decode_shadow'):self._decode_shadow.enabled=policy in ('producer','metadata','draft')
-        if hasattr(self,'_decode_metadata'):self._decode_metadata.enabled=policy in ('metadata','draft')
-        if hasattr(self,'_exact_draft_graph'):self._exact_draft_graph.enabled=policy=='draft'
+        if hasattr(self,'_decode_shadow'):self._decode_shadow.enabled=policy in ('producer','metadata','draft','worker')
+        if hasattr(self,'_decode_metadata'):self._decode_metadata.enabled=policy in ('metadata','draft','worker')
+        if hasattr(self,'_exact_draft_graph'):self._exact_draft_graph.enabled=policy in ('draft','worker')
+        if hasattr(self,'_worker_submission'):self._worker_submission.enabled=policy=='worker'
         if r.vllm_config.parallel_config.tensor_parallel_size > 1:
             from qli_cpu import configure
             configure(self,policy!='native',False)
@@ -125,7 +131,8 @@ class DonorDPWorker:
         r=self.model_runner;p=r.vllm_config.parallel_config
         draft=self._exact_draft_graph.receipt() if hasattr(self,'_exact_draft_graph') else None
         tokens,concurrency=get_kv_cache_capacity(r.vllm_config,r.kv_cache_config)
-        return dict(split_draft=draft,decode_shadow=(self._decode_shadow.receipt() if hasattr(self,'_decode_shadow') else None),
+        return dict(worker_submission=(self._worker_submission.receipt() if hasattr(self,'_worker_submission') else None),
+                    split_draft=draft,decode_shadow=(self._decode_shadow.receipt() if hasattr(self,'_decode_shadow') else None),
                     decode_metadata=(self._decode_metadata.receipt() if hasattr(self,'_decode_metadata') else None),
                     cross_step=(r._cross_step_bounds.receipt() if '_cross_step_bounds' in r.__dict__ else None),
                     host_source_slots=(r._host_source_slots.receipt() if '_host_source_slots' in r.__dict__ else None),

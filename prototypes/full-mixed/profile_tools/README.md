@@ -98,17 +98,20 @@ first-event normalization per rank). It supports within-rank
 inspection, NOT cross-rank lateness comparisons. Do not keep trying filters
 until a visually pleasing alignment appears.
 
-For the DSV4/eager-draft continuation studies, `continuation.py WINDOW` links
-observed FULL forward order to graph compute-task occurrences and checks the
-counts. It attributes the first ReduceScatter only to that target graph's model,
+For continuation studies, `continuation.py WINDOW` links each FULL forward's
+replay API to a native `MODEL_EXECUTE` task by exact connectionId. The next
+launch on that same compute stream bounds its graph envelope; exactly one
+captured compute model must occur within it. It attributes the first
+ReduceScatter only to that target graph's model,
 requires matching provider name/type/group/count for cross-rank comparisons,
 and preserves turnover name mismatches without inventing timestamp-nearest
 matches. Source `COMMUNICATION_TASK_INFO.opId` can link multiple replay instances;
 OP membership alone is not a particular physical occurrence. Keep occurrence
 bounds and use the existing clock transform (reference-target plus scaled delta;
-`offset_ns` is descriptive, not an extra additive term). The >1000-task target
-model selector is specific to these full-model profiles with eager draft; do
-NOT apply it unchanged once draft graphs are also enabled.
+`offset_ns` is descriptive, not an extra additive term). This replaces the old
+>1000-task heuristic, which could confuse captured draft with target. The exact
+launch link reproduces all retained run098 metadata target observations and
+can distinguish composed target/draft graphs without a size-based selector.
 
 `worker_submission.py WINDOW --first-wave 3 --last-wave 13` separately audits
 CPU issue phases in run098. It uses enclosing target/sample/draft ranges and

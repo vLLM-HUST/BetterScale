@@ -21,6 +21,7 @@ p.add_argument('--pingpong-study',action='store_true')
 p.add_argument('--spec',action='store_true')
 p.add_argument('--n2',action='store_true')
 p.add_argument('--split-draft',action='store_true')
+p.add_argument('--worker-continuous',action='store_true')
 p.add_argument('--quality-requests',type=Path)
 p.add_argument('--turnover',action='store_true')
 p.add_argument('--observe-cohorts',action='store_true')
@@ -44,6 +45,7 @@ p.add_argument('--ordered-replay',action='store_true')
 p.add_argument('--decode-study',action='store_true')
 p.add_argument('--profile',action='store_true')
 a=p.parse_args()
+assert not a.worker_continuous or a.donor_dp, 'worker protocol uses the native donor runner'
 if a.donor_dp:
  import sys
  os.execv(sys.executable,[sys.executable,'-m','donor_dp',json.dumps(vars(a),default=str)])

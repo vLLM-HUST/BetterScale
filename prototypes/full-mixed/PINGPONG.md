@@ -5,6 +5,13 @@ scheduler, prefill route, release pins, State ownership and eager/kept draft
 choice. No N+2 scheduler rewrite. Experimental branch only; deployment defaults
 remain unchanged.
 
+Worker follow-up: real TP8 target+split-draft composition passes run104. The
+opt-in `--worker-continuous` cut queues the complete wave before retiring the
+prior CPU correction, with generation-local count receipts. TP2 dummy passes
+run106; full TP8 worker/performance gates remain open. See the focused worker
+note linked below rather than treating the earlier eager-draft profile as the
+current composition's performance evidence.
+
 ## Current checkpoint (September13, runs097–101)
 
 - Real TP8 and DP8 pass exact producer/sampler, target output and full-KV
