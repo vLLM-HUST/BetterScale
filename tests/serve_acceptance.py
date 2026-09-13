@@ -1,14 +1,12 @@
-"""Exercise the shipped HTTP entry with retained OpenCompass tokenized inputs.
+"""Exercise a user-supplied native vLLM HTTP command with retained OpenCompass tokenized inputs.
 
 Run under the repository's shared-host NPU lease/admission supervisor. This
 script owns only its child server; it never installs packages or edits donors.
 """
 import argparse
 import json
-import os
 from pathlib import Path
 import subprocess
-import sys
 import time
 import urllib.error
 import urllib.request
@@ -17,11 +15,11 @@ import urllib.request
 def main(args):
     args.output.mkdir(parents=True,exist_ok=True)
     engine=args.output/'engine';engine.mkdir(exist_ok=True)
-    artifacts=args.output/'service'
-    env=dict(os.environ,STRENGTHEN_PYTHON=sys.executable)
-    entry=args.package/'bin/strengthen-dsv4'
-    command=[str(entry),'serve','--model',args.model,'--profile',args.profile,
-             '--artifacts',str(artifacts),'--port',str(args.port),'--host','127.0.0.1']
+    # The harness records an experiment; the installed worker does not own the
+    # environment, command, files or service parameters. Activate donor first.
+    command=args.command
+    if command and command[0]=='--':command=command[1:]
+    if not command:raise ValueError('Pass the full native vllm serve command after --')
     base=f'http://127.0.0.1:{args.port}'
     def post(payload):
         request=urllib.request.Request(base+'/v1/completions',data=json.dumps(payload).encode(),
@@ -29,7 +27,7 @@ def main(args):
         with urllib.request.urlopen(request,timeout=180) as response:
             return json.load(response)
     log=(args.output/'server.log').open('w')
-    server=subprocess.Popen(command,env=env,stdout=log,stderr=subprocess.STDOUT)
+    server=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT)
     try:
         deadline=time.monotonic()+660
         while True:
@@ -41,9 +39,6 @@ def main(args):
             except (urllib.error.URLError,TimeoutError):pass
             if time.monotonic()>deadline:raise TimeoutError('HTTP readiness exceeded660 seconds')
             time.sleep(3)
-        ready=[json.loads(p.read_text()) for p in sorted(artifacts.glob('ready-rank*.json'))]
-        assert len(ready)==8 and {r['rank'] for r in ready}==set(range(8))
-        assert all(r['profile']==args.profile and r['max_length_concurrency']>=4 for r in ready)
         requests=json.loads(args.requests.read_text())
         assert len(requests)==32
         (engine/'quality-inputs.json').write_text(json.dumps(requests))
@@ -52,7 +47,7 @@ def main(args):
             group=requests[start:start+4]
             assert len({r['max_new_tokens'] for r in group})==1
             assert len({r['eos_token_id'] for r in group})==1
-            reply=post(dict(model='dsv4',prompt=[r['prompt_token_ids'] for r in group],temperature=0,
+            reply=post(dict(model=args.served_model_name,prompt=[r['prompt_token_ids'] for r in group],temperature=0,
                 max_tokens=group[0]['max_new_tokens'],stop_token_ids=[group[0]['eos_token_id']],
                 ignore_eos=False,return_token_ids=True))
             choices=sorted(reply['choices'],key=lambda c:c['index'])
@@ -64,7 +59,7 @@ def main(args):
             (engine/'quality-partial.json').write_text(json.dumps(results,indent=2))
             print(f'HTTP quality completed {len(results)}/32',flush=True)
         # Exercise streaming through the same public endpoint, not a private RPC.
-        req=urllib.request.Request(base+'/v1/completions',data=json.dumps(dict(model='dsv4',
+        req=urllib.request.Request(base+'/v1/completions',data=json.dumps(dict(model=args.served_model_name,
             prompt=[17]*64,temperature=0,max_tokens=16,ignore_eos=True,stream=True)).encode(),
             headers={'Content-Type':'application/json'})
         with urllib.request.urlopen(req,timeout=120) as response:
@@ -73,7 +68,7 @@ def main(args):
         (engine/'quality-result.json').write_text(json.dumps(dict(status='COMPLETED_UNSCORED',
             scope='Shipped HTTP entry: retained32 OpenCompass LongBench English retrieval items',
             elapsed_seconds=time.monotonic()-started,requests=results,streaming_completed=True,
-            receipts=ready),indent=2))
+            command=command),indent=2))
     finally:
         if server.poll() is None:
             server.terminate()
@@ -84,8 +79,9 @@ def main(args):
 
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser();p.add_argument('--package',type=Path,required=True)
+    p=argparse.ArgumentParser()
     p.add_argument('--output',type=Path,required=True);p.add_argument('--requests',type=Path,required=True)
-    p.add_argument('--model',required=True);p.add_argument('--port',type=int,default=30880)
-    p.add_argument('--profile',choices=['baseline','optimized'],default='optimized')
+    p.add_argument('--port',type=int,default=30880)
+    p.add_argument('--served-model-name',default='dsv4')
+    p.add_argument('command',nargs=argparse.REMAINDER)
     main(p.parse_args())

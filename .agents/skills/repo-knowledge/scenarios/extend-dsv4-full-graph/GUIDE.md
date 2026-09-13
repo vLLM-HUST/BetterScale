@@ -2,19 +2,32 @@
 
 ## Maintained serving entry
 
-For deployment and reporting, start from `bin/strengthen-dsv4`,
-`docs/RUNBOOK.zh-CN.md` and `patches/README.md`, not the historical prototype
-launchers below. The kept implementation is `src/strengthen_dsv4/patches`;
-the native worker subclass installs it during initialization/warmup without
-post-start activation RPC. `baseline` retains only the TP8/K5 LCM repair.
-The launcher rejects incompatible private API sources and unqualified layouts.
-`docs/acceptance.json` records the shipped HTTP-entry acceptance envelope.
+For deployment and reporting, start from `docs/RUNBOOK.zh-CN.md` and
+`patches/README.md`, not historical launchers. Install the package into the user's
+existing donor environment; the only public entry is native
+`vllm serve ... --worker-cls strengthen_dsv4.worker.Worker`. The worker installs
+the kept hooks before construction and after native warmup. No custom CLI,
+CANN/LD_LIBRARY_PATH/HCCL/allocator setup, private profile, required artifact
+folder or post-start activation RPC remains. Receipts in old capsules are
+historical; the shipped worker now logs READY and performs no file writes.
 
-Two deployment traps were observed: Ascend's explicit `worker_cls` survives
-platform config updates (only `auto` is substituted), whereas a worker extension
-cannot override colliding lifecycle methods. Native API server termination may
-also bypass `Worker.shutdown`; bank files are checkpoint receipts, not guaranteed
-final counters. Verify process/device release independently.
+The launcher removal does not expand the qualified configuration envelope or
+prove fresh NPU quality/performance. `config.py` validates native options without
+mutating them; the four-full-context KV-capacity gate is removed, not the graph
+shape/parallelism guards. `docs/acceptance.json` is the OLD CLI's HTTP acceptance,
+not the new entry's hardware result. CPU lifecycle tests verify hook order,
+native configuration/environment preservation, and no artifact-directory writes.
+Build/install the wheel in a disposable environment; do not upgrade donor deps.
+Check wheel contents, not only the source tree: setuptools reused a stale
+`build/lib/strengthen_dsv4/cli.py` after source deletion. A clean build (move old
+build output aside recoverably) removes it. Assert no console entry or cli.py in
+the wheel and resolve the installed worker class without depending on checkout
+PYTHONPATH. Native-base stubs cover packaging only, not accelerator execution.
+
+Ascend preserves explicit worker_cls (only `auto` is substituted). Removing this
+worker also removes its K5/TP8 LCM repair, so a native rollback must use a known
+working donor command, not promise an identical-config unpatched A/B. Historical
+prototype controls remain separate from the sole packaged integration entry.
 
 ## Historical investigation and experiments
 

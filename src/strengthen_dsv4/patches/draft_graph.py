@@ -6,13 +6,12 @@ Draft metadata has a PRIVATE stable bank, never the target global RoPE bank.
 """
 # 阅读入口：这是「把 draft 计算主体变成 graph」的机制，不是双槽连续调度器。
 # 已维护服务的实际调用链（相邻文件可以顺着读）：
-#   config.engine_options() 选择 strengthen_dsv4.worker.Worker
+#   用户 vllm serve --worker-cls strengthen_dsv4.worker.Worker
 #   → Worker.compile_or_warm_up_model() 先完成 donor 原生 warmup
-#   → optimized 才调用 split_draft.install(worker)
+#   → 调用 split_draft.install(worker)
 #   → drafter._runnable 被替换成 SplitDraftGraphSet
 #   → 普通 K5 decode 分流到本文件 DraftGraphSet → ExactDraftGraph
 #   → 非普通 decode 由 split_draft 先写真实长度的 context，再借本类 capture query。
-# 因此底部 install() 不是当前服务入口；它是仅安装 fused decode 版本的入口。
 #
 # 拦截位置是 donor 已准备好输入和 forward context 之后的 _runnable 调用。
 # 原生入口见 pinned vllm_ascend/spec_decode/llm_base_proposer.py：
@@ -22,17 +21,14 @@ Draft metadata has a PRIVATE stable bank, never the target global RoPE bank.
 #
 # 生效范围由 config.validate_worker_config 再收窄为：DSV4 Flash W8A8、
 # TP8/DP1/PP1+EP、DSACP、K5、最多四席位、原生 scheduler 等已验收配置。
-# 本文件不改 target、权重、KV 分布、拒绝验证或请求调度；baseline 不安装它。
+# 本文件不改 target、权重、KV 分布、拒绝验证或请求调度；不选此 worker 就不安装它。
 # 普通 decode 每个请求数只有一个 exact-shape graph，不是每个桶双 graph 交替。
 # 代价是各 graph 的 metadata 副本、输出/临时存储及首次 capture；不是零成本。
 # run026 同等四请求 K5 周期约65→52ms，证据见 prototypes/full-mixed/DECODE.md；
 # 不能把该周期收益当成稳定端到端吞吐，或转移给后来未采用的连续提交方案。
 import copy
 import dataclasses
-import json
-import os
 from enum import Enum
-from pathlib import Path
 import torch
 from vllm.forward_context import get_forward_context
 from vllm_ascend.attention.context_parallel.dsa_cp import RopeDataProxy
@@ -123,10 +119,6 @@ class ExactDraftGraph:
         self.context_capacity=context_capacity or 6*request_count
         self.reference=reference or self.original
         self.enabled=True;self.key=None;self.graph=None;self.replays=0;self.fallbacks=0;self.checks=0;self.capture_checked=False;self.signed_zero_words=0
-        self.path=Path(os.environ['STRENGTHEN_DSV4_ARTIFACTS'])/f'draft-graph-rank{worker.rank}-requests{request_count}.json'
-
-    def receipt(self):
-        self.path.write_text(json.dumps(dict(captured=self.graph is not None,replays=self.replays,fallbacks=self.fallbacks,checks=self.checks,capture_checked=self.capture_checked,signed_zero_words=self.signed_zero_words,reference=getattr(self,'reference_kind','original'),key=repr(self.key)),indent=2))
 
     def __call__(self,**kwargs):
         if not self.enabled:return self.original(**kwargs)
@@ -150,8 +142,7 @@ class ExactDraftGraph:
         # 因为其输入和 context hook 已转换，不能静默改走另一种程序，故显式报错。
         if self.key is not None and key!=self.key:
             if getattr(self,'strict_signature',False):
-                self.path.with_suffix('.signature.json').write_text(json.dumps(key_changes(self.key,key),indent=2))
-                raise AssertionError('FULL draft bank signature changed; see signature receipt')
+                raise AssertionError(f'FULL draft bank signature changed: {key_changes(self.key,key)}')
             self.fallbacks+=1;return self.original(**kwargs)
         # 第一次遇到这个已准入形状才捕获，不在每波重新 capture。
         # 这里的全设备 synchronize 是首次初始化成本，不是稳态每次 replay 的 fence。
@@ -174,14 +165,13 @@ class ExactDraftGraph:
                 graph.replay()
                 return self.output
             capture()
-            self.receipt();return self.output
+            return self.output
         # 稳态热路径：检查契约 → 刷新固定 metadata → replay。
         # output 是 graph 保留的缓冲，会被后续 replay 复用；这里没有复制输出、
         # 并发调用保护或跨 stream 消费协议，仍须遵守 donor 的原生消费/复用顺序。
         refresh(self.buffers,current)
         self.graph.replay()
         self.replays+=1
-        if self.replays==1 or self.checks:self.receipt()
         return self.output
 
 
@@ -206,30 +196,3 @@ class DraftGraphSet:
         if count not in self.entries:
             self.entries[count]=ExactDraftGraph(self.worker,self.original,count)
         return self.entries[count](**kwargs)
-
-    def receipt(self):
-        entries=[]
-        for count,g in sorted(self.entries.items()):
-            g.receipt()
-            entries.append(dict(requests=count,captured=g.graph is not None,replays=g.replays,
-                                fallbacks=g.fallbacks,checks=g.checks,capture_checked=g.capture_checked))
-        path=Path(os.environ['STRENGTHEN_DSV4_ARTIFACTS'])/f'draft-graph-rank{self.worker.rank}.json'
-        path.write_text(json.dumps(dict(enabled=self.enabled,entries=entries,
-            replays=sum(g.replays for g in self.entries.values()),
-            fallbacks=self.fallbacks+sum(g.fallbacks for g in self.entries.values())),indent=2))
-
-
-# 独立安装 fused-decode 版本：只改此 worker 的 drafter 实例，不改 donor 文件。
-# 当前 optimized 服务使用 split_draft.install；不要把这两个 install 叠加调用。
-# enabled 开关不构成在线热切换的公开契约，部署 profile 切换仍要求重启 worker。
-def install(worker, enabled=True):
-    torch.npu.synchronize()
-    if hasattr(worker,"_exact_draft_graph"):
-        worker._exact_draft_graph.enabled=enabled
-        worker._exact_draft_graph.receipt()
-        return dict(rank=worker.rank,draft_graph=enabled)
-    if not enabled:return dict(rank=worker.rank,draft_graph=False)
-    experiment=DraftGraphSet(worker)
-    worker.model_runner.drafter._runnable=experiment
-    worker._exact_draft_graph=experiment
-    return dict(rank=worker.rank,policy='bounded-K5-one-exact-shape-per-request-count')

@@ -18,9 +18,13 @@ against `src/strengthen_dsv4/pins.json` before model loading.
 | stable-receipt-cut | `cross_step.py` | Runner input/state/forward hooks | After native warmup, stable K5 only |028/029 state;031 isolated timing |
 
 All paths in the code column are beneath `src/strengthen_dsv4/patches/`.
-`bin/strengthen-dsv4 serve --profile optimized` selects the kept combination.
-`--profile baseline` selects only compat-lcm with native target decode FULL and
-eager DSpark. Restart to switch profiles; do not hot-unpatch live graph objects.
+Install the package in the existing donor environment, then add
+`--worker-cls strengthen_dsv4.worker.Worker` to the native `vllm serve` command.
+Selecting this class installs the kept combination. There is no custom CLI,
+private baseline/optimized profile, artifact requirement or environment rewrite.
+Restart with your original native worker/command to roll back; do not hot-unpatch
+live graph objects. The pinned K5/TP8 SP alignment issue can also affect an
+unpatched baseline, so removing the worker is not a same-config A/B guarantee.
 
 No `git apply` step is required: unchanged gitlinks stay the baseline. The source
 manifest's digests bind specific private APIs, not a blanket binary reproducibility

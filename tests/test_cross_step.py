@@ -30,7 +30,7 @@ def fixture():
 
 class Contract(unittest.TestCase):
     def make(self,r):
-        with patch.dict('os.environ',{'STRENGTHEN_DSV4_ARTIFACTS':tempfile.gettempdir()}):
+        with patch('pathlib.Path.write_text',side_effect=AssertionError('No production receipts')):
             return CrossStepBounds(NS(model_runner=r,rank=0))
 
     def test_stable_only(self):

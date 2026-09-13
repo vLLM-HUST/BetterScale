@@ -1,79 +1,38 @@
-"""Native worker lifecycle integration, selected explicitly with --worker-cls."""
-import json
+"""The only public entry: vllm serve ... --worker-cls strengthen_dsv4.worker.Worker."""
 import logging
-import os
-from pathlib import Path
 
 from .compat import check_runtime
 from .config import PATCH_IDS, validate_worker_config
 from vllm_ascend.worker.worker import NPUWorker
 
-log=logging.getLogger(__name__)
+log = logging.getLogger(__name__)
 
 
 class Worker(NPUWorker):
+    # 选择本类即启用补丁；不用私有 profile、环境变量或服务启动器。
+    # 先检查 pinned 私有 API 与配置，再安装初始化前必须生效的 target hooks。
+    # 不替用户修改 CANN、动态库路径、HCCL、allocator、端口或 KV 预算。
     def __init__(self, vllm_config, *args, **kwargs):
-        self.strengthen_compat=check_runtime()
-        policy=validate_worker_config(vllm_config)
-        self.strengthen_profile=policy['profile']
-        self.strengthen_artifacts=Path(policy['artifacts'])
-        self.strengthen_artifacts.mkdir(parents=True,exist_ok=True)
-        os.environ['STRENGTHEN_DSV4_ARTIFACTS']=str(self.strengthen_artifacts)
+        check_runtime()
+        validate_worker_config(vllm_config)
         from .patches.target import install
-        install(self.strengthen_profile=='optimized')
-        super().__init__(vllm_config,*args,**kwargs)
+        install(True)
+        super().__init__(vllm_config, *args, **kwargs)
 
-    # Draft graph 的安装入口：原生模型、KV、输入缓冲与 warmup 先照常完成，
-    # 再在每个 worker 实例替换 drafter 的 callable。不是修改 site-packages，
-    # 也不是依赖服务启动后的激活 RPC。baseline 不进入下面的 optimized 分支。
+    # 原生模型、KV、输入缓冲和 warmup 完成后，只在当前 worker 安装执行补丁。
+    # 不依赖激活 RPC，不复制整个 KV 池，也不在生产路径写实验收据。
     def compile_or_warm_up_model(self):
-        result=super().compile_or_warm_up_model()
-        if self.strengthen_profile=='optimized':
-            from .patches.split_draft import install as split
-            from .patches.cross_step import install as cut
-            from .patches.ordered_replay import configure as order
-            from .patches.qli_cpu import configure as qli
-            # split 安装的是组合管理器：普通 K5 → draft_graph 的 fused 小图；
-            # prefill/mixed → 原生真实长度 context 写入 + 小 query 图。
-            # cut/order/qli 是另外三个补丁边界，不应统称为 draft graph 的实现，
-            # 更不是后来试验的 ping-pong 或完整 N+2 worker 提交协议。
-            # 此处只安装路由；各 draft entry 在首次遇到合法形状时才 lazy capture。
-            split(self); cut(self); order(self,True); qli(self,True,False)
-        receipt=self.strengthen_status()
-        if receipt['max_length_concurrency'] < 4:
-            raise RuntimeError('KV budget cannot admit four full-length requests; increase --kv-gib')
-        self._write_strengthen_status('ready',receipt)
-        log.info('strengthen-dsv4 rank=%s profile=%s READY patches=%s',
-                 self.rank,self.strengthen_profile,receipt['patches'])
+        result = super().compile_or_warm_up_model()
+        from .patches.split_draft import install as split
+        from .patches.cross_step import install as cut
+        from .patches.ordered_replay import configure as order
+        from .patches.qli_cpu import configure as qli
+        # split 分流：普通 K5 → fused 小图；其他波次 → 原生 context + query 图。
+        # cut/order/qli 是独立补丁，不是双槽或完整 N+2 提交协议。
+        # 此处安装路由，各 draft entry 首次遇到合法形状时才 lazy capture。
+        split(self)
+        cut(self)
+        order(self, True)
+        qli(self, True, False)
+        log.info('strengthen-dsv4 rank=%s READY patches=%s', self.rank, PATCH_IDS)
         return result
-
-    def strengthen_status(self):
-        import torch
-        from vllm.v1.core.kv_cache_utils import get_kv_cache_capacity
-        r=self.model_runner
-        tokens,concurrency=get_kv_cache_capacity(r.vllm_config,r.kv_cache_config)
-        result=dict(rank=self.rank,profile=self.strengthen_profile,
-            patches=list(PATCH_IDS if self.strengthen_profile=='optimized' else ('compat-lcm',)),
-            compatibility=self.strengthen_compat,kv_capacity_tokens=tokens,
-            max_length_concurrency=concurrency,allocated=torch.npu.memory_allocated(),
-            reserved=torch.npu.memory_reserved(),peak=torch.npu.max_memory_allocated())
-        if hasattr(self,'_exact_draft_graph'):
-            result['draft']=self._exact_draft_graph.receipt()
-        if hasattr(r,'_cross_step_bounds'):
-            result['cross_step']=r._cross_step_bounds.receipt()
-        return result
-
-    def _write_strengthen_status(self,phase,result):
-        path=self.strengthen_artifacts/f'{phase}-rank{self.rank}.json'
-        temporary=path.with_suffix('.tmp')
-        temporary.write_text(json.dumps(result,indent=2))
-        temporary.replace(path)
-
-    def shutdown(self):
-        try:
-            if getattr(self,'model_runner',None) is not None and hasattr(self.model_runner,'kv_cache_config'):
-                self._write_strengthen_status('shutdown',self.strengthen_status())
-        except Exception:
-            log.exception('Unable to save strengthen-dsv4 shutdown receipt')
-        finally:
-            super().shutdown()

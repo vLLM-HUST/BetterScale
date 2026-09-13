@@ -57,20 +57,33 @@ prototype tree. They use vLLM's explicit `worker_cls` lifecycle and normal OpenA
 server. No donor source files are modified, upgraded or rebuilt on startup.
 
 ```sh
-export STRENGTHEN_PYTHON=/path/to/pinned-donor-env/bin/python
-./bin/strengthen-dsv4 check
-./bin/strengthen-dsv4 plan --model /models/DeepSeek-V4-Flash
-./bin/strengthen-dsv4 serve --model /models/DeepSeek-V4-Flash \
-  --profile optimized --artifacts runs/serve-optimized-001
+# In your existing vLLM-Ascend environment (no donor dependencies are upgraded):
+python -m pip install --no-deps --no-build-isolation .
+
+# Keep your native serving arguments; add only the worker class:
+vllm serve /models/DeepSeek-V4-Flash <your-native-vllm-arguments> \
+  --worker-cls strengthen_dsv4.worker.Worker
 ```
 
-Use a fresh process and `--profile baseline` to roll back to native target decode
-FULL + eager DSpark (retaining only the K5/TP8 LCM startup fix). Current qualified
-entry: TP8/EP/DSACP/K5, four seats,4128 budget, max length15104,12GiB KV/rank.
-The launcher fails closed on unsupported private API sources or configurations.
-It is a bounded serving integration, not certification of arbitrary production
-traffic, concurrency or parallel layouts. Acquire the shared-host NPU lease and
-perform admission before accelerator work.
+`Worker` is the **only public integration entry**. There is no `strengthen-dsv4`
+CLI, environment setup, automatic plugin discovery, private profile or mandatory
+artifact directory. The package does not select Python/CANN, set HCCL/allocator
+variables, repair library paths, or change service/KV settings. Start with a
+working donor environment. Installation needs existing setuptools>=68; the wheel
+also works with `pip install --no-deps /path/to/strengthen_dsv4-0.2.0-py3-none-any.whl`.
+
+Current admission remains bounded: TP8/EP/DSACP/K5, four seats,4128 token budget,
+max length<=15104, target FULL, native scheduler, prefix caching off. This entry
+change does not qualify arbitrary layouts or shapes. KV budget, bind address and
+other native settings belong to the user; there is no patch-imposed minimum of
+four *full-length* resident requests. See the runbook for the complete native
+example and source-compatibility boundary.
+
+To remove the patch, stop the service and return to your original native worker
+and command. Do not hot-unpatch a live process. Some pinned K5/TP8+SP combinations
+need the patch's LCM fix even to start; removing it is not necessarily a runnable
+same-configuration baseline. The historical isolated controls remain evidence,
+not a second production entry. Shared hosts still require lease/admission.
 
 - [Technical report, with mechanism diagrams (中文)](docs/REPORT.zh-CN.md)
 - [Self-contained printable HTML report](docs/REPORT.zh-CN.html) (download and open locally)

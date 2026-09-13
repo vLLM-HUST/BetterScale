@@ -5,9 +5,6 @@ all_modes is rejected rather than silently enabling the discarded experiment.
 The existing device correction and slot mapping remain authoritative. No early
 page recycling, new copy stream, or unproven pinned-buffer reuse is introduced.
 """
-import json
-import os
-from pathlib import Path
 import torch
 from torch.profiler import record_function
 
@@ -39,7 +36,6 @@ class CrossStepBounds:
         assert r.vllm_config.model_config.hf_config.model_type == 'deepseek_v4'
         assert r.num_spec_tokens == 5 and not r.need_accepted_tokens
         assert not r.supports_mm_inputs and not r.enable_prompt_embeds
-        self.path = Path(os.environ['STRENGTHEN_DSV4_ARTIFACTS']) / f'cross-step-rank{worker.rank}.json'
         assert all(type(group.get_metadata_builder()).__name__ == "AscendDSACPMetadataBuilder"
                    for groups in r.attn_groups for group in groups)
         self.update = r._update_states
@@ -145,7 +141,6 @@ class CrossStepBounds:
     def receipt(self):
         result = dict(enabled=self.enabled,all_modes=self.all_modes,calls=self.calls,bypassed=self.bypassed,full_forwards=self.full_forwards,
                       exact_metadata_shadow_checks=self.reference_checks,late_commits=self.late_commits,rows=self.rows)
-        self.path.write_text(json.dumps(result,indent=2))
         return result
 
 

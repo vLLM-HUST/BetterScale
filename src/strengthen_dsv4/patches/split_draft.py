@@ -4,9 +4,6 @@ Keep the already-qualified fused small-context K5 route for normal decoding.
 The split route uses the current stream for context writes and query reads.
 """
 from contextlib import contextmanager
-from pathlib import Path
-import json
-import os
 import torch
 from torch.profiler import record_function
 from vllm.forward_context import get_forward_context
@@ -77,7 +74,6 @@ class SplitDraftGraphSet(DraftGraphSet):
                     entry.query_only = True
                     entry.strict_signature = True
                     entry.reference_kind = 'native-query-after-native-unpadded-context'
-                    entry.path = Path(os.environ['STRENGTHEN_DSV4_ARTIFACTS']) / f'split-draft-rank{self.worker.rank}-requests{count}-{mode}-{int(prefill)}.json'
                     self.entries[key] = entry
                 output = self.entries[key](**kwargs)
                 assert self.entries[key].fallbacks == 0
@@ -85,21 +81,7 @@ class SplitDraftGraphSet(DraftGraphSet):
         finally:
             ctx.attn_metadata = original_metadata
 
-    def receipt(self):
-        self.decode.receipt()
-        entries = []
-        for key, entry in self.entries.items():
-            entry.receipt()
-            entries.append(dict(key=key,captured=entry.graph is not None,replays=entry.replays,
-                                checks=entry.checks,capture_checked=entry.capture_checked,fallbacks=entry.fallbacks))
-        result = dict(context_calls=self.context_calls,context_rows=self.context_rows,
-                      context_max=self.context_max,context_padding=0,query_banks=entries)
-        path = Path(os.environ['STRENGTHEN_DSV4_ARTIFACTS']) / f'split-draft-rank{self.worker.rank}.json'
-        path.write_text(json.dumps(result,indent=2))
-        return result
-
-
-# worker.compile_or_warm_up_model() 的 optimized 分支调用这里。
+# worker.compile_or_warm_up_model() 调用这里。
 # 保存原 _runnable 后再替换实例属性；原生上游调用点不变，动态派发到管理器。
 # 影响的是本 worker 的 DSpark proposal 主体，调度、target 与拒绝验证仍走原生链路。
 def install(worker):

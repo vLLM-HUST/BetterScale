@@ -64,14 +64,13 @@ class Protocol(unittest.TestCase):
         box['output']=torch.zeros(1)
         d._runnable=lambda **kw:box['output']
         worker=NS(rank=0,model_runner=NS(drafter=d,vllm_config=NS(scheduler_config=NS(max_num_seqs=4))))
-        with patch.dict(os.environ,{'STRENGTHEN_DSV4_ARTIFACTS':'/tmp','DRAFT_GRAPH_SHADOW':'0'}):
-            graph=ns['ExactDraftGraph'](worker);graph.receipt=lambda:None
+        with patch('pathlib.Path.write_text',side_effect=AssertionError('No production receipts')):
+            graph=ns['ExactDraftGraph'](worker)
             out=graph(batch_size=4)
         self.assertEqual(out.item(),7)
         self.assertEqual(graph.graph.executions,1)
         self.assertFalse(ctx.capturing)
-        ns['ExactDraftGraph'].receipt=lambda self:None
-        with patch.dict(os.environ,{'STRENGTHEN_DSV4_ARTIFACTS':'/tmp','DRAFT_GRAPH_SHADOW':'0'}):
+        with patch('pathlib.Path.write_text',side_effect=AssertionError('No production receipts')):
             bank_set=ns['DraftGraphSet'](worker)
             for count in range(1,5):
                 d._dflash_num_context=6*count
