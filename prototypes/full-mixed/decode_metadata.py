@@ -36,6 +36,7 @@ class DecodeMetadata:
         self.r = r = producer.r
         self.native = r._build_attention_metadata
         self.enabled = True
+        self.pool = torch.npu.graph_pool_handle()
         self.entries = {}
         self.replays = 0
         r._build_attention_metadata = self.build
@@ -68,7 +69,7 @@ class DecodeMetadata:
                 with DeviceOnly():
                     self.native(*args, **kwargs)
                 torch.npu.synchronize()
-                with torch.npu.graph(graph), DeviceOnly():
+                with torch.npu.graph(graph, pool=self.pool), DeviceOnly():
                     output = self.native(*args, **kwargs)
             finally:
                 r.optimistic_seq_lens_cpu.copy_(upper)

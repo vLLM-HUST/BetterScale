@@ -27,8 +27,8 @@ def geometry(n):
 
 
 class Slot:
-    def __init__(self,r,n,ingress):
-        self.n=n;self.r=r;self.ingress=ingress
+    def __init__(self,r,n,ingress,pool):
+        self.n=n;self.r=r;self.ingress=ingress;self.pool=pool
         self.host={};self.device={}
         def field(name,example):
             self.host[name]=torch.empty_like(example,device='cpu',pin_memory=True)
@@ -99,7 +99,7 @@ class Slot:
             torch.npu.synchronize() # one-time shape admission, never steady replay
             before=r.num_computed_tokens.clone()
             self.graph=torch.npu.NPUGraph()
-            with torch.npu.graph(self.graph):self.output=self.derive()
+            with torch.npu.graph(self.graph,pool=self.pool):self.output=self.derive()
             r.num_computed_tokens.copy_(before)
         self.graph.replay()
         self.consumed=torch.npu.Event();self.consumed.record()
@@ -123,6 +123,10 @@ class DecodeShadow:
         assert r.use_async_spec_decode and not r.use_dcp and not r.lora_config
         self.native=r._cross_step_bounds.prepare
         self.ingress=torch.npu.Stream(device=r.device)
+        # All preparation graphs are serialized; their returned tensors stay
+        # alive in Slot.output. Share scratch instead of creating a private
+        # expandable-segment reservation for every request count/bank.
+        self.pool=torch.npu.graph_pool_handle()
         r._decode_shadow=self
         self.enabled=True;self.slots={};self.active=None;self.sequence=0;self.checks=[];self.verify=verify
         p=r.vllm_config.parallel_config
@@ -152,7 +156,7 @@ class DecodeShadow:
         r.req_indices.np[:n*6]=rows;r.num_scheduled_tokens.np[:n]=counts
         r.num_decode_draft_tokens.np[:n]=5;r.num_decode_draft_tokens.np[n:]=-1
         key=(n,self.sequence%2)
-        if key not in self.slots:self.slots[key]=Slot(r,n,self.ingress)
+        if key not in self.slots:self.slots[key]=Slot(r,n,self.ingress,self.pool)
         slot=self.slots[key];slot.project();self.active=slot
         checking=self.verify and len(self.checks)<12
         fields=device_fields(r,n)

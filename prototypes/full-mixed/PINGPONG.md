@@ -305,3 +305,32 @@ to the entrusted decode path instead of repeating unrelated long-prefill cohorts
 The same-engine producer study separates native, previous receipt cut, endpoint
 pair, explicit input producer, and captured metadata; optional profiles are
 collected in separate warmed native/candidate cohorts, never timed as throughput.
+
+Run094 closes real TP8 strict-HCCL qualification:8 ranks ×48 target/KV checks
+(all output differences0, full KV bytes exact) and8×12 producer/sampler checks.
+It uses192-token admission and3GiB KV/rank; it is NOT throughput evidence.
+
+Run095 did NOT complete the performance study. It failed with207001 in
+`AclrtReserveMemAddress` during the second metadata warmup (native shared-expert
+quant allocation). Shape-specific preparation and metadata captures each created
+private pools; multiplying expandable-segment address reservations is the current
+suspect, not a proven KV capacity failure. The next implementation shares ONE
+scratch pool per program across serialized shapes/banks, retaining all returned
+tensors; preparation and metadata have separate pools. Policy-boundary receipts
+now retain graph counts and allocated/reserved HBM to observe growth.
+
+There is also a measurement-design correction:192-token admission fragmented
+prefill and the16-request cohort, leaving no qualifying11-forward full-occupancy
+window. Do not turn its cohort times into a speedup/slowdown claim. Restore the
+previous run083's8192-token admission budget for TP steady-decode measurements;
+the actual measured target remains96 rows/16 requests. The failed run's receipts
+are retained locally with `FAILED_NOT_THROUGHPUT_EVIDENCE`, not forged completion.
+
+Run096 stops at native KV-capacity validation before serving/capture qualification:
+at8192 admission/16384 context the pinned hybrid cache requires4.59GiB even for
+one max-length request, so the previous3GiB oracle budget is invalid. This is a
+separate admission constraint, NOT a recurrence of207001 and not a shared-pool
+result. Run097 uses5GiB: run094 measured43.82GiB resident/49.72GiB shadow peak at
+3GiB KV; the extra2GiB KV plus two extra2GiB snapshots predicts about55.72GiB peak.
+The performance control retains its previously qualified8GiB KV budget without
+oracle snapshots. Do not reuse a small-prefill KV minimum after changing admission.

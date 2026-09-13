@@ -41,6 +41,14 @@ class DonorDPWorker:
         if r.vllm_config.parallel_config.tensor_parallel_size > 1:
             from qli_cpu import configure
             configure(self,policy!='native',False)
+        history=getattr(self,'_policy_memory',[])
+        history.append(dict(policy=policy,allocated=torch.npu.memory_allocated(),
+                            reserved=torch.npu.memory_reserved(),
+                            preparation_banks=len(self._decode_shadow.slots) if hasattr(self,'_decode_shadow') else 0,
+                            metadata_graphs=len(self._decode_metadata.entries) if hasattr(self,'_decode_metadata') else 0))
+        self._policy_memory=history
+        rank=r.vllm_config.parallel_config.data_parallel_rank*r.vllm_config.parallel_config.tensor_parallel_size+self.rank
+        (Path(os.environ['DONOR_DP_OUTPUT'])/f'policy-memory-rank{rank}.json').write_text(json.dumps(history,indent=2))
         return {'policy':policy}
 
     def enable_pingpong_shadow(self):
