@@ -122,7 +122,8 @@ def graph_call(self, *args, **kwargs):
         key = str(ctx.batch_descriptor)
         counts[key] = counts.get(key, 0) + 1
         runner = self.__dict__.get('_dp_full_shadow_runner')
-        if runner is not None and len(runner._dp_full_checks) < 40:
+        if runner is not None and (len(runner._dp_full_checks) < 40
+                                   or (ctx.batch_descriptor.num_tokens > 12 and counts[key] <= 4)):
             from dp_full_shadow import check
             return check(self, runner, original_call, args, kwargs)
     return original_call(self, *args, **kwargs)

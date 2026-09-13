@@ -59,6 +59,20 @@ def install(worker):
     return dict(rank=runner._dp_full_rank, shadow='original-native-split')
 
 
+def reference_metadata(mode, runner, args, kwargs, prepared):
+    from dp_full import native_reference, original_metadata
+    assert mode in ('native', 'unified', 'padded')
+    if mode == 'unified':
+        # Dummy runs clear the SOURCE slot map after DSA copies it. Rebuilding
+        # would change writes rather than reproduce the captured invocation.
+        return prepared
+    token = native_reference.set(mode)
+    try:
+        return original_metadata(runner, *args, **kwargs)[0]
+    finally:
+        native_reference.reset(token)
+
+
 def check(wrapper, runner, replay_call, args, kwargs):
     from dp_full import native_reference, original_metadata
     ctx = get_forward_context()
@@ -85,12 +99,7 @@ def check(wrapper, runner, replay_call, args, kwargs):
                reference=os.environ.get('DP_FULL_REFERENCE', 'native'))
     try:
         mode = os.environ.get('DP_FULL_REFERENCE', 'native')
-        assert mode in ('native', 'unified', 'padded')
-        token = native_reference.set(False if mode == 'unified' else mode)
-        try:
-            reference, _ = original_metadata(runner, *metadata_args, **metadata_kwargs)
-        finally:
-            native_reference.reset(token)
+        reference = reference_metadata(mode, runner, metadata_args, metadata_kwargs, old_metadata)
         ctx.attn_metadata = reference
         ctx.cudagraph_runtime_mode = CUDAGraphMode.NONE
         refmeta = next(iter(reference.values()))
@@ -145,7 +154,8 @@ def check(wrapper, runner, replay_call, args, kwargs):
     finally:
         # Native reference changes shared metadata buffers; re-establish the
         # candidate's values before returning control to native sampling/draft.
-        original_metadata(runner, *metadata_args, **metadata_kwargs)
+        if os.environ.get('DP_FULL_REFERENCE', 'native') != 'unified':
+            original_metadata(runner, *metadata_args, **metadata_kwargs)
         ctx.attn_metadata, ctx.cudagraph_runtime_mode = old_metadata, old_mode
         for target, source in zip(state, after):
             target.copy_(source)

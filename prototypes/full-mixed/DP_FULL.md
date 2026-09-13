@@ -32,7 +32,7 @@ extra padded attention work, not assumed to produce universal speedups.
 
 ## Evidence so far (September13)
 
-- CPU32 tests pass, including exact normalization/padding hooks, restoration on
+- CPU33 tests pass, including exact normalization/padding hooks, restoration on
   exceptions, unchanged native oracle entry, and all32 quality-input DP shards.
 - Local run058: four-layer SWA/SWA/C4/C128 dummy, TP1, K5, FULL6–516;
   40 same-state checks against the **unified eager program** pass with exact
@@ -46,17 +46,30 @@ extra padded attention work, not assumed to produce universal speedups.
 - Run062 with current large-bucket prefill math: first pure-prefill comparison
   is output/KV-byte exact against original native; mixed70-query step has output
   difference3.81e-6 and fails strict KV bytes. This boundary remains recorded.
-- DP2 run060 (earlier all-decode version):10/11 exact checks per rank before
-  rank1 finds signed-zero differences in SWA; valid output remains exact.
-  The oracle now reuses the established exception only for addressed BF16 SWA
-  rows; every other byte remains strict. It never reinterprets a whole aliased
-  pool as BF16. Signed-zero passes are explicitly not called byte-identical.
+- DP2 run060 and DP8 run063 initially failed on idle/dummy ranks. Source
+  exposed an oracle error: native `_dummy_run` builds DSA's copied slot map,
+  then clears the *source* slot map. Rebuilding metadata between replay and
+  eager changed which writes were enabled. The same-program oracle now consumes
+  the exact prepared metadata on both sides without rebuilding. Original-native
+  comparisons still deliberately rebuild their distinct program. These failed
+  runs are not correctness or performance acceptance.
+- The reusable signed-zero exception is restricted to addressed BF16 SWA rows;
+  every other byte remains strict. Signed-zero passes are explicitly not called
+  byte-identical. Never reinterpret a whole aliased pool as BF16.
 - hw3 native real run057 was interrupted after startup failed on device5's
   suddenly reduced available memory. Follow-up059 admission caught53GB HBM /
   69% compute on that card despite an empty process listing. No timing claim;
   owned workers released, foreign/hidden activity untouched.
 
-DP8 replay/state, full-checkpoint quality, same-budget unprofiled performance,
+- Run064 (corrected oracle, current prefill/decode bucket programs): all eight
+  ranks finish the dummy workload;40 exact same-program checks/rank, valid
+  output difference0, all KV pools byte-identical, no signed-zero exceptions.
+  These checks cover up to134 valid rows;1026 is captured/replayed later in the
+  run but the initial40-check cap misses its state checks. The oracle now also
+  checks the first four calls of each larger bucket, even after the small-wave
+  cap, so native32-wave drain cannot consume all verification coverage.
+
+Large-bucket DP8 state checks, full-checkpoint quality, same-budget unprofiled performance,
 and the new bounded eight-rank timeline are **not yet accepted**.
 
 ## Reuse

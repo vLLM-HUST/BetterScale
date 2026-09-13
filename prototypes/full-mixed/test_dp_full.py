@@ -2,6 +2,7 @@
 import ast
 from contextvars import ContextVar
 from copy import copy
+from unittest.mock import patch
 from pathlib import Path
 from types import SimpleNamespace as NS
 import unittest
@@ -63,6 +64,30 @@ class DPFullContract(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'fixture'):
             self.ns['build'](worker, 0, NS(num_input_tokens=12))
         self.assertFalse(self.ns['unified_build'].get())
+
+
+class DPShadowMetadataContract(unittest.TestCase):
+    def test_prepared_dummy_inputs_are_not_rebuilt(self):
+        path=source.with_name('dp_full_shadow.py')
+        node=next(n for n in ast.parse(path.read_text()).body
+                  if isinstance(n,ast.FunctionDef) and n.name=='reference_metadata')
+        scope={}
+        exec(compile(ast.Module(body=[node],type_ignores=[]),str(path),'exec'),scope)
+        calls=[]; flag=ContextVar('reference',default=False)
+        def rebuild(runner, **kwargs):
+            calls.append((flag.get(),kwargs))
+            if kwargs.get('fail'): raise ValueError('fixture')
+            return ({'native':True},None)
+        with patch.dict('sys.modules',dp_full=NS(native_reference=flag,original_metadata=rebuild)):
+            prepared={'slot_mapping':'pre-clear-copy'}
+            f=scope['reference_metadata']
+            self.assertIs(f('unified',None,(),{},prepared),prepared)
+            self.assertEqual(calls,[])
+            self.assertEqual(f('native',None,(),{'tokens':12},prepared),{'native':True})
+            self.assertEqual(calls,[('native',{'tokens':12})])
+            self.assertFalse(flag.get())
+            with self.assertRaises(ValueError): f('padded',None,(),{'fail':True},prepared)
+            self.assertFalse(flag.get())
 
 
 if __name__ == '__main__': unittest.main()

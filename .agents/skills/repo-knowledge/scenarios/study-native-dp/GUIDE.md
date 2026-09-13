@@ -38,3 +38,12 @@ queries onto decode also changes prefill norm/quant arithmetic under the default
 attention overlap path. Keep replay-vs-unified, original-native, and quality
 claims separate. Large buckets retain prefill arithmetic in the current probe;
 DP8 performance remains an experiment, not an accepted speedup.
+
+DP dummy shadow caveat: native `_dummy_run` builds DSA's copied slot mapping,
+then clears the source mapping. Rebuilding metadata between replay and an eager
+same-program reference therefore changes writes and produces false failures on
+idle ranks. Use the exact prepared metadata for that oracle. A distinct native-
+split reference still needs deliberate rebuilding; do not conflate its arithmetic
+with the unified program. Run064 passes40 exact output/KV checks on all eight
+ranks after this correction. Keep first-large-bucket checks independent of the
+initial counter: DP's32-step drain can consume a fixed early-only check budget.

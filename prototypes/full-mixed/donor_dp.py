@@ -67,13 +67,8 @@ def rank_main(args,dp_rank,barrier):
                     outputs=[list(x.outputs[0].token_ids) for x in result],profile=profile)
         rows.append(record);(args.output/f'dp{dp_rank}-results.json').write_text(json.dumps(rows,indent=2))
         barrier.wait(timeout=120)
-    if args.quality_requests:
-        assert args.real and args.donor_dp == 8 and args.tp == 1 and not args.dp_shadow
-        from quality import run_dp
-        run_dp(llm,args.output,args.quality_requests,dp_rank,args.donor_dp,barrier)
-    else:
-        wave('warmup',[64]*local_seats,16,observe=False)
-    if args.real and not args.quality_requests:
+    wave('warmup',[64]*local_seats,16,observe=False)
+    if args.real:
         for repeat in range(2):
             wave(f'decode{repeat}',[128]*local_seats,128)
             wave(f'prefill{repeat}',[4096]*(8//args.donor_dp),16)
@@ -84,6 +79,10 @@ def rank_main(args,dp_rank,barrier):
     if args.profile_after:
         wave('profiledecode',[128]*local_seats,64,profile=True)
         wave('profileskew',[8192 if dp_rank*(8//args.donor_dp)+i==0 else 256 for i in range(8//args.donor_dp)],32,profile=True)
+    if args.quality_requests:
+        assert args.real and args.donor_dp == 8 and args.tp == 1 and not args.dp_shadow
+        from quality import run_dp
+        run_dp(llm,args.output,args.quality_requests,dp_rank,args.donor_dp,barrier)
     receipt=llm.collective_rpc('donor_receipt')
     (args.output/f'dp{dp_rank}-receipt.json').write_text(json.dumps(receipt,indent=2))
     barrier.wait(timeout=120)

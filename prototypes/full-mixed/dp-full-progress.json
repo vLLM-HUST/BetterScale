@@ -1,0 +1,143 @@
+{
+  "tp1-unified": [
+    {
+      "rank": 0,
+      "checks": 40,
+      "max_valid": 508,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    }
+  ],
+  "dp2-before-oracle-fix": [
+    {
+      "rank": 0,
+      "checks": 11,
+      "max_valid": 70,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 1,
+      "checks": 10,
+      "max_valid": 70,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    }
+  ],
+  "dp8-before-oracle-fix": [
+    {
+      "rank": 0,
+      "checks": 11,
+      "max_valid": 70,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 1,
+      "checks": 10,
+      "max_valid": 70,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 2,
+      "checks": 11,
+      "max_valid": 70,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 3,
+      "checks": 10,
+      "max_valid": 70,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 4,
+      "checks": 11,
+      "max_valid": 70,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 5,
+      "checks": 10,
+      "max_valid": 70,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 6,
+      "checks": 11,
+      "max_valid": 70,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 7,
+      "checks": 10,
+      "max_valid": 70,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    }
+  ],
+  "dp8-corrected-oracle-small-buckets": [
+    {
+      "rank": 0,
+      "checks": 40,
+      "max_valid": 134,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 1,
+      "checks": 40,
+      "max_valid": 134,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 2,
+      "checks": 40,
+      "max_valid": 134,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 3,
+      "checks": 40,
+      "max_valid": 134,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 4,
+      "checks": 40,
+      "max_valid": 134,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 5,
+      "checks": 40,
+      "max_valid": 134,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 6,
+      "checks": 40,
+      "max_valid": 134,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    },
+    {
+      "rank": 7,
+      "checks": 40,
+      "max_valid": 134,
+      "max_output_diff": 0.0,
+      "all_byte_equal": true
+    }
+  ]
+}
