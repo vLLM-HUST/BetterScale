@@ -76,8 +76,13 @@ def _build_fixed_capacity(self, *args, **kwargs):
 _fixed_build = _build_target
 
 
-def install():
+def install(*, native_dsa=False):
     """Install before runner construction/capture; importing alone changes nothing."""
+    if native_dsa:
+        from . import _dp
+
+        _dp.install()
+        return
     global _installed
     if _installed:
         return

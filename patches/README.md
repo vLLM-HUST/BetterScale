@@ -8,25 +8,26 @@ fully public plugin API for all these hooks. Private API compatibility is checke
 against `src/strengthen_dsv4/pins.json` before model loading.
 
 Each directory is a closed feature module with its own `install` entry. Small
-modules keep their implementation in `__init__.py`; only split-draft has private
-helpers. No sibling patch imports or automatic import-time hook installation.
-These are six Python packages in one wheel, not six separately versioned products.
+modules keep their implementation in `__init__.py`; larger ownership protocols keep private helpers inside their own directory. No sibling patch imports or automatic import-time hook installation.
+These are seven feature packages in one wheel, not separately versioned products.
 Worker owns composition and lifecycle; independent source ownership is not a
 claim that arbitrary patch combinations have been hardware-qualified.
 
 | Module | Owned native boundary | Install phase | Mechanism evidence |
 |---|---|---|---|
 | `compat_lcm/` | joint K5/TP capture alignment only | Before runner construction | runs007/009/012 |
-| `target_full/` | DSACP support/build/RoPE and FIA request padding | Before runner construction/capture | runs012/045 |
+| `target_full/` | DSACP or TP1 DSA support/build and FIA request padding | Before runner construction/capture | runs012/045 |
 | `ordered_replay/` | ACLGraphWrapper hook and same-stream admission | After native warmup | policy026/031 |
 | `qli_cpu/` | DSACP QLI metadata builder | After native warmup | shadow029 |
 | `split_draft/` | DSpark runnable, private graph banks and context/query split | After warmup; lazy capture |022/045/046/049 |
 | `cross_step/` | Runner input/state/forward receipt placement | After native warmup |028/029/031 |
 
+| `async_decode/` | DP8 pinned source slots, target banks, device input/metadata producer | Before capture + after warmup | DP8 prototype120/121; packaged acceptance separate |
+
 Each directory's README explains scope, original-code interception, prerequisites
 and tests. `split_draft/_graph.py` belongs solely to that module; its small metadata
 normalizer is inline beside `DraftGraphRunner` in `split_draft/__init__.py`.
-The reported seven mechanism IDs still include both draft-bank and split-context
+The TP combination’s seven mechanism IDs still include both draft-bank and split-context
 improvements; they deliberately map to one cohesive split_draft implementation.
 
 All paths in the code column are beneath `src/strengthen_dsv4/patches/`.

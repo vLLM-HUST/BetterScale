@@ -24,17 +24,17 @@ vLLM-Ascend 环境负责；环境缺失应在部署阶段解决，不由补丁�
 1. vLLM 按 `--worker-cls` 创建我们的 `NPUWorker` 子类。
 2. 初始化前检查固定 donor 版本与相关私有 API 源码，再分别安装 compat_lcm 和 target_full。
 3. 原生 warmup 完成后，安装 draft graph、stable receipt cut、ordered replay、CPU QLI。
-4. 六个功能模块各自拥有 hook 和 `install`，不相互 import，不在 import 时安装；
+4. 功能模块各自拥有 hook 和 `install`，不相互 import，不在 import 时安装；
    worker 只选择组合与时机。`split_draft` 用 `DraftGraphRunner` 分流，metadata 整理直接内联在同文件，
    仅单图捕获/replay 保留在 `_graph.py`。
 5. 继续原生服务；日志中每个 worker 输出 `strengthen-dsv4 rank=... READY patches=...`。
 
-不修改 donor 源文件或 installed packages，不添加 scheduler，不带入未采用的双槽
-连续提交方案。graph 仍在首次遇到合法 shape 时捕获，首次 capture 不等于 warm replay。
+不修改 donor 源文件或 installed packages，不添加 scheduler，不带入未采用的全波次 worker-retirement 扩展。DP8 的稳定 decode 双槽 producer
+是另行验收的较小组合，见下节。graph 仍在首次遇到合法 shape 时捕获，首次 capture 不等于 warm replay。
 
 ## 当前支持范围，不是参数预设
 
-入口简化不扩大已验证范围。配置检查只读，不覆写用户选项。当前仍要求：
+配置检查只读，不覆写用户选项。原有 TP 路线仍要求：
 
 - 固定 pins：vLLM0.25.1、vLLM-Ascend0.25.1rc1、torch-npu2.10.0.post2；
   相关私有 API 的源码必须匹配 `pins.json`。版本一致不保证源码一致。
@@ -45,7 +45,7 @@ vLLM-Ascend 环境负责；环境缺失应在部署阶段解决，不由补丁�
 
 四席位和预算仍是当前实现/验收边界，不是本次新增的通用能力承诺。
 KV 大小完全采用用户原生设置；不再强制能同时容纳四条满长请求，是否足够由
-原生引擎及用户负载决定。更大席位、DP 或其他 graph 配置需要单独验收。
+原生引擎及用户负载决定。更大席位或其他 graph 配置需要单独验收；DP8 的单独范围见下节。
 
 下面只是旧验收配置的**原生参数示例**，不是包里硬编码的启动预设。
 环境变量继续采用你自己的、已能运行 donor 的配置：
@@ -92,3 +92,32 @@ curl --fail http://127.0.0.1:8000/health
 `docs/acceptance.json` 记录的是旧 CLI 的32题 HTTP 验收，保留其原始身份；
 不能把它叫作新版入口重新跑过的真权重结果。本轮入口改造的 CPU/安装验证与
 历史 graph/KV/模型质量证据分开报告，既不抹去旧结果，也不新增性能收益声明。
+
+
+## DP8 稳定 decode continuation（独立于 TP8 组合）
+
+同一个 `strengthen_dsv4.worker.Worker` 根据用户给出的并行配置选择模块，不增加
+CLI、私有环境变量或启动后的激活 RPC。DP8 路线是 TP1 native DSA + EP8，
+每 rank 两席位（全局16）、本地配置 token 预算1026、context上限16384、K5、
+FULL target、prefix caching关闭；DSACP必须关闭，DSpark仍使用原生 eager。
+不把 TP-only 的 split-draft 偷塞进 DP，也不恢复无稳定收益的 worker-retirement。
+
+在你原本能正常启动的 DP8 donor 环境中，以下是本轮验收形状的原生参数示例：
+
+```bash
+vllm serve /models/DeepSeek-V4-Flash \
+  --worker-cls strengthen_dsv4.worker.Worker \
+  --tensor-parallel-size 1 --data-parallel-size 8 --enable-expert-parallel \
+  --quantization ascend --dtype bfloat16 \
+  --max-num-seqs 2 --max-num-batched-tokens 1026 --max-model-len 16384 \
+  --kv-cache-memory-bytes 8589934592 --no-enable-prefix-caching \
+  --speculative-config '{"method":"dspark","num_speculative_tokens":5,"enforce_eager":true}' \
+  --compilation-config '{"cudagraph_mode":"FULL","cudagraph_capture_sizes":[6,12,132,264,516,1026],"max_cudagraph_capture_size":1026}' \
+  --additional-config '{"enable_dsa_cp":false,"multistream_overlap_shared_expert":true,"ascend_compilation_config":{"enable_npugraph_ex":true,"enable_static_kernel":false}}'
+```
+
+KV预算由用户管理，8GiB是测试配置，不是补丁自行保留的份额。
+输入/输出所有权、hook位置、fallback和证据口径见
+[`async_decode/README.md`](../src/strengthen_dsv4/patches/async_decode/README.md)。
+离线原生 LLM/Worker 验收不等于重新做过 DP HTTP 流量验收；服务路由与 admission
+仍由原生 vLLM 决定，不能把 matched-cycle 收益直接写成在线吞吐收益。

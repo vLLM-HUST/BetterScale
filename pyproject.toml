@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "strengthen-dsv4"
-version = "0.2.1"
+version = "0.3.0"
 description = "Pinned, opt-in DSV4 graph patch bundle for vLLM-Ascend"
 requires-python = ">=3.12"
 dependencies = []

@@ -10,11 +10,11 @@ import torch
 from torch.profiler import record_function
 
 
-def stable_verification(runner, schedule, counts):
+def stable_verification(runner, schedule, counts, max_requests=4):
     ids = tuple(runner.input_batch.req_ids)
     previous = runner.input_batch.prev_req_id_to_index
     return (
-        1 <= len(ids) <= 4
+        1 <= len(ids) <= max_requests
         and len(counts) == len(ids)
         and all(int(n) == 6 for n in counts)
         and previous == {rid: i for i, rid in enumerate(ids)}
@@ -34,17 +34,23 @@ def stable_verification(runner, schedule, counts):
 
 
 class CrossStepBounds:
-    def __init__(self, worker, all_modes=False):
+    def __init__(self, worker, all_modes=False, *, native_dsa=False, max_requests=4):
         if all_modes:
             raise ValueError("All-mode N+2 is not part of the kept patch bundle")
         self.all_modes = False
+        self.max_requests = max_requests
         r = self.runner = worker.model_runner
         assert r.use_compress and r.use_async_spec_decode and not r.use_dcp
         assert r.vllm_config.model_config.hf_config.model_type == "deepseek_v4"
         assert r.num_spec_tokens == 5 and not r.need_accepted_tokens
         assert not r.supports_mm_inputs and not r.enable_prompt_embeds
         assert all(
-            type(group.get_metadata_builder()).__name__ == "AscendDSACPMetadataBuilder"
+            type(group.get_metadata_builder()).__name__
+            == (
+                "AscendDSAMetadataBuilder"
+                if native_dsa
+                else "AscendDSACPMetadataBuilder"
+            )
             for groups in r.attn_groups
             for group in groups
         )
@@ -69,7 +75,7 @@ class CrossStepBounds:
         r._build_attention_metadata = self.build_metadata
 
     def authorized(self, schedule, counts):
-        return stable_verification(self.runner, schedule, counts)
+        return stable_verification(self.runner, schedule, counts, self.max_requests)
 
     def update_states(self, schedule):
         assert self.pending is None, "Unretired CPU bookkeeping callback"
@@ -99,10 +105,18 @@ class CrossStepBounds:
             # CPU state tensors may still be H2D sources: retire input-prep DMA
             # before allowing the callback to mutate them. Never substitute a
             # device wait for ownership of pinned host memory.
-            event = self.runner.prepare_inputs_event
-            assert event is not None
-            with record_function("strengthen::retire_input_dma"):
-                event.synchronize()
+            producer = getattr(self.runner, "_decode_shadow", None)
+            if not (
+                self.admitted and producer is not None and producer.active is not None
+            ):
+                event = self.runner.prepare_inputs_event
+                assert event is not None
+                with record_function("strengthen::retire_input_dma"):
+                    event.synchronize()
+            # With the explicit producer, the callback's mutable CPU budget
+            # has already been copied into owned pinned storage. Only this
+            # current-input DMA fence becomes unnecessary. The callback still
+            # waits for the OLD receipt before correcting CPU bookkeeping.
             callback, self.pending = self.pending, None
             with record_function("strengthen::late_receipt"):
                 callback()
@@ -174,14 +188,19 @@ class CrossStepBounds:
         return result
 
 
-def install(worker, enabled=True, all_modes=False):
+def install(worker, enabled=True, all_modes=False, *, native_dsa=False, max_requests=4):
     torch.npu.synchronize()  # configuration transition, never a serving wave
     r = worker.model_runner
     state = getattr(r, "_cross_step_bounds", None)
     if state is None:
         if not enabled:
             return dict(enabled=False)
-        state = r._cross_step_bounds = CrossStepBounds(worker, all_modes=all_modes)
+        state = r._cross_step_bounds = CrossStepBounds(
+            worker,
+            all_modes=all_modes,
+            native_dsa=native_dsa,
+            max_requests=max_requests,
+        )
     assert state.all_modes == all_modes
     state.enabled = enabled
     return state.receipt()

@@ -172,3 +172,12 @@ Prefill、mixed、请求增减 / 换序等不满足准入的波次保留原有�
 安装并统一检查配置。安装时全 device synchronize 一次，不是逐波次同步。
 源码 / hook 独立不代表任意组合都已验收；更换组合应停服重启，不在活跃 graph
 上热卸载。这里没有重新授权旧实验文档中的历史启动选项。
+
+### 与 DP8 显式 producer 组合
+
+Worker 可以为 native DSA builder 显式选择 `native_dsa=True, max_requests=2`。
+稳定性条件仍是同一请求槽位和完整 K5，并未放开到 mixed/turnover。
+如果当前波次通过 admission 且 producer 已经快照 CPU 授权预算，回调不再会
+写坏本次 H2D 源，因此可省去**当前输入**的 preparation fence。
+回调内部等待**上一波收据**的语义不变。没有 producer 或回退到原生准备时，
+原来的输入 DMA fence 仍执行。输入银行不能代替输出收据，也不是跳过 acceptance。

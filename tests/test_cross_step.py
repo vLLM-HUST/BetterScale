@@ -80,3 +80,34 @@ class Contract(unittest.TestCase):
         r,s=fixture()
         with self.assertRaisesRegex(ValueError,'not part of the kept'):
             CrossStepBounds(NS(model_runner=r,rank=0),all_modes=True)
+
+
+class ProducerReceiptContract(unittest.TestCase):
+    def test_owned_budget_removes_only_current_dma_fence(self):
+        for admitted, active in ((True, object()), (True, None), (False, object())):
+            r, schedule = fixture()
+            events = []
+            r._model_forward = lambda: events.append("target-enqueued")
+            r._update_states = lambda _: lambda: events.append("old-receipt")
+            r.prepare_inputs_event = NS(synchronize=lambda: events.append("current-dma"))
+            r._decode_shadow = NS(active=active)
+            state = CrossStepBounds(NS(model_runner=r))
+            state.update_states(schedule)()
+            state.admitted = admitted
+            state.model_forward()
+            expected = ["target-enqueued"]
+            if not (admitted and active is not None):
+                expected.append("current-dma")
+            expected.append("old-receipt")
+            self.assertEqual(events, expected)
+            self.assertIsNone(state.pending)
+
+    def test_native_dsa_is_explicit_and_seat_limit_is_not_global(self):
+        r, schedule = fixture()
+        Builder = type("AscendDSAMetadataBuilder", (), {})
+        r.attn_groups = [[NS(get_metadata_builder=lambda: Builder())]]
+        with self.assertRaises(AssertionError):
+            CrossStepBounds(NS(model_runner=r))
+        state = CrossStepBounds(NS(model_runner=r), native_dsa=True, max_requests=2)
+        self.assertTrue(state.authorized(schedule, [6, 6]))
+        self.assertFalse(stable_verification(r, schedule, [6, 6], max_requests=1))

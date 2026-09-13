@@ -3,7 +3,7 @@
 import logging
 
 from .compat import check_runtime
-from .config import PATCH_IDS, validate_worker_config
+from .config import PATCH_IDS, DP_PATCH_IDS, validate_worker_config
 from vllm_ascend.worker.worker import NPUWorker
 
 log = logging.getLogger(__name__)
@@ -19,20 +19,37 @@ class Worker(NPUWorker):
         from .patches import compat_lcm, target_full
 
         compat_lcm.install()
-        target_full.install()
+        self._native_dp = vllm_config.parallel_config.tensor_parallel_size == 1
+        if self._native_dp:
+            from .patches import async_decode
+
+            target_full.install(native_dsa=True)
+            async_decode.install_capture()
+        else:
+            target_full.install()
         super().__init__(vllm_config, *args, **kwargs)
 
     # 原生模型、KV、输入缓冲和 warmup 完成后，只在当前 worker 安装执行补丁。
     # 不依赖激活 RPC，不复制整个 KV 池，也不在生产路径写实验收据。
     def compile_or_warm_up_model(self):
         result = super().compile_or_warm_up_model()
-        from .patches import split_draft, cross_step, ordered_replay, qli_cpu
+        from .patches import cross_step
 
-        # 每个模块自带实现与 install；worker 只选择组合与安装时机。
-        # split_draft 自己拥有 graph/metadata，无需安装另一份 draft 补丁。
-        split_draft.install(self)
-        cross_step.install(self)
-        ordered_replay.install(self)
-        qli_cpu.install(self)
-        log.info("strengthen-dsv4 rank=%s READY patches=%s", self.rank, PATCH_IDS)
+        if self._native_dp:
+            # Native TP1 DSA / DP8 keeps the eager DSpark path measured here.
+            # Do not silently compose the TP-only split-draft patch with it.
+            from .patches import async_decode
+
+            cross_step.install(self, native_dsa=True, max_requests=2)
+            async_decode.install(self)
+            patches = DP_PATCH_IDS
+        else:
+            from .patches import split_draft, ordered_replay, qli_cpu
+
+            split_draft.install(self)
+            cross_step.install(self)
+            ordered_replay.install(self)
+            qli_cpu.install(self)
+            patches = PATCH_IDS
+        log.info("strengthen-dsv4 rank=%s READY patches=%s", self.rank, patches)
         return result
