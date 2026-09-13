@@ -86,7 +86,7 @@ class ExactDraftGraph:
         self.path=Path(os.environ['FULL_MIXED_OUTPUT'])/f'draft-graph-rank{worker.rank}-requests{request_count}.json'
 
     def receipt(self):
-        self.path.write_text(json.dumps(dict(captured=self.graph is not None,replays=self.replays,fallbacks=self.fallbacks,checks=self.checks,capture_checked=self.capture_checked,signed_zero_words=self.signed_zero_words,key=repr(self.key)),indent=2))
+        self.path.write_text(json.dumps(dict(captured=self.graph is not None,replays=self.replays,fallbacks=self.fallbacks,checks=self.checks,capture_checked=self.capture_checked,signed_zero_words=self.signed_zero_words,reference=getattr(self,'reference_kind','original'),key=repr(self.key)),indent=2))
 
     def __call__(self,**kwargs):
         if not self.enabled:return self.original(**kwargs)
@@ -151,6 +151,11 @@ class ExactDraftGraph:
         expected=self.reference(**kwargs)
         torch.npu.synchronize()
         try:
+            if not torch.equal(observed,expected) and getattr(self,'allow_addressed_signed_zero',False):
+                from draft_oracle import diagnose_output
+                detail=diagnose_output(self,kwargs,observed,expected.clone(),pools,before,after)
+                self.path.with_suffix('.output-failure.json').write_text(json.dumps(detail,indent=2))
+                raise AssertionError('Draft output differs; diagnostic re-executions saved')
             torch.testing.assert_close(observed,expected,rtol=0,atol=0)
             zero_rows={}
             if getattr(self,'allow_addressed_signed_zero',False):

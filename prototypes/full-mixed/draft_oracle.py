@@ -7,6 +7,22 @@ remain byte-identical. This permits no nonzero numerical tolerance.
 import torch
 
 
+def verify_rejection(rank):
+    """Exercise the actual Ascend K5 kernel with arbitrary wrong proposals."""
+    from vllm_ascend.ops.triton.reject_sample import rejection_greedy_sample_with_triton
+    target = torch.tensor([11,12,13,14,15,21,22,23,24,25], device='npu', dtype=torch.int32)
+    draft = target.clone()
+    draft[6] = 999  # Second request must stop at the first mismatch.
+    output = torch.full((2,6), -1, device='npu', dtype=torch.int32)
+    rejection_greedy_sample_with_triton(output, [5,5],
+        torch.tensor([5,10], device='npu', dtype=torch.int32), draft, target,
+        torch.tensor([[16],[26]], device='npu', dtype=torch.int32), None, 5, 1, 2)
+    actual = output.cpu().tolist()
+    assert actual == [[11,12,13,14,15,16],[21,22,-1,-1,-1,-1]], actual
+    return dict(rank=rank, kernel='Ascend rejection_greedy_sample_with_triton',
+                accepted='target tokens only; first mismatch terminates proposal')
+
+
 def addressed_rows(drafter, count, capacity):
     result = {}
     for index, layer in enumerate(drafter.model.model.layers.values()):
@@ -64,3 +80,48 @@ def equivalent(live, saved, rows):
             return None
         count += admitted
     return count
+
+
+def diagnose_output(entry, kwargs, observed, expected, pools, before, after):
+    """Failure-only controlled re-executions, never a relaxed acceptance gate."""
+    d = entry.drafter
+    result = dict(graph_tokens=observed.cpu().tolist(),
+                  eager_tokens=expected.cpu().tolist(),
+                  capacity=entry.context_capacity, requests=entry.request_count)
+    addressed = addressed_rows(d, entry.request_count, entry.context_capacity)
+    rows = []
+    for index, (live, saved) in enumerate(zip(pools, after)):
+        ranges = sorted(addressed.get(live.untyped_storage().data_ptr(), ()))
+        if not ranges:
+            continue
+        a = torch.cat([live[start:start+length].view(torch.bfloat16) for start,length in ranges]).float()
+        b = torch.cat([saved[start:start+length].view(torch.bfloat16) for start,length in ranges]).float()
+        rows.append(dict(pool=index, addressed_values=a.numel(), unequal=int((a!=b).sum()),
+                         max_diff=float((a-b).abs().max()), max_abs=float(a.abs().max())))
+    result['addressed_kv_differences'] = rows
+
+    def reset():
+        for dst, src in zip(pools, before):
+            dst.copy_(src)
+    reset()
+    repeated = entry.reference(**kwargs).clone()
+    torch.npu.synchronize()
+    result['repeated_unpadded_tokens'] = repeated.cpu().tolist()
+    reset()
+    padded = entry.original(**kwargs).clone()
+    torch.npu.synchronize()
+    result['padded_eager_tokens'] = padded.cpu().tolist()
+    result['padded_eager_kv_matches_graph'] = all(torch.equal(a,b) for a,b in zip(pools,after))
+    manager = getattr(entry.reference, '__self__', None)
+    if manager is not None and hasattr(manager, 'actual_context'):
+        result['actual_context'] = manager.actual_context
+        reset()
+        capacity = d._dflash_num_context
+        try:
+            d._dflash_num_context = manager.actual_context
+            unpadded = entry.original(**kwargs).clone()
+            torch.npu.synchronize()
+            result['canonical_unpadded_tokens'] = unpadded.cpu().tolist()
+        finally:
+            d._dflash_num_context = capacity
+    return result

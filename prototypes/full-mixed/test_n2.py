@@ -84,7 +84,8 @@ class N2Contracts(unittest.TestCase):
 
     def test_cancelled_identity_cannot_alias_late_output(self):
         scheduler = self.scheduler()
-        request = NS(request_id='a', resumable=False)
+        request = NS(request_id='a', resumable=False, use_structured_output=False,
+                     sampling_params=NS(temperature=0))
         scheduler.add_request(request)
         first = scheduler.schedule(['a'])
         second = scheduler.schedule(['a'])
@@ -96,6 +97,10 @@ class N2Contracts(unittest.TestCase):
             scheduler.add_request(request)
         scheduler.update_from_output(second, None)
         scheduler.add_request(request)
+        request = NS(request_id='b', resumable=False, use_structured_output=False,
+                     sampling_params=NS(temperature=1))
+        with self.assertRaisesRegex(AssertionError, 'greedy-only'):
+            scheduler.add_request(request)
 
     def test_native_deferred_free_waits_for_last_device_wave(self):
         path = Path(__file__).resolve().parents[2] / 'upstream/vllm/vllm/v1/core/sched/scheduler.py'
@@ -141,7 +146,8 @@ class N2Contracts(unittest.TestCase):
                _context_slot_mapping_buffers=[torch.ones(32, dtype=torch.int64)])
         d._runnable = lambda **kw: seen.append(d._dflash_num_context)
         worker = NS(rank=0, model_runner=NS(drafter=d,
-                    vllm_config=NS(scheduler_config=NS(max_num_batched_tokens=32))))
+                    vllm_config=NS(scheduler_config=NS(max_num_batched_tokens=32),
+                                   speculative_config=NS(rejection_sample_method='standard'))))
         manager = cls(worker)
         manager(batch_size=2, inputs_embeds=None, is_prefill=True)
         self.assertEqual(seen, [32, 7])
@@ -150,6 +156,11 @@ class N2Contracts(unittest.TestCase):
         self.assertTrue((d._context_slot_mapping_buffers[0][7:] == -1).all())
         self.assertTrue((d._dflash_hidden_states[:7] == 1).all())
         self.assertTrue((d._dflash_hidden_states[7:] == 0).all())
+        manager.reference_kind = 'padded'
+        seen.clear()
+        manager(batch_size=2, inputs_embeds=None, is_prefill=True)
+        self.assertEqual(seen, [32, 32])
+        self.assertEqual(d._dflash_num_context, 7)
 
 
 if __name__ == '__main__':

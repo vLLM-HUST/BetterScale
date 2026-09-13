@@ -30,6 +30,8 @@ class N2Scheduler(AsyncScheduler):
         # Streaming sessions have separate semantics; keep this prototype's
         # identity contract narrow rather than aliasing an old receipt.
         assert not request.resumable, 'streaming-input sessions not yet qualified'
+        assert not request.use_structured_output, 'structured output not yet qualified'
+        assert request.sampling_params is not None and request.sampling_params.temperature == 0, 'greedy-only qualification'
         rid = request.request_id
         assert rid not in self.requests, 'duplicate live request ID'
         assert not any(rid in ids for _, ids in self.frames), 'request ID still in flight'

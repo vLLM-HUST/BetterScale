@@ -151,3 +151,11 @@ confined to addressed BF16 rows, never entire heterogeneous pools. Exact
 prefill/decode counts can change while the pinned draft forward consumes only
 the prefill boolean; retain the actual tensor offsets and original reference
 metadata instead of generating a graph for every equivalent composition.
+
+Runs039/040 additionally qualify real weights at budgets288/4128 against the
+explicit **padded** draft program, with byte-identical graph/eager KV and IDs.
+Run038 preserves why that is NOT original unpadded-draft equivalence: a few
+BF16 differences amplify downstream and change proposals. Keep target/state
+correctness separate from proposal quality; the unchanged greedy rejection
+kernel verifies every published token, while acceptance changes still belong
+in the work/throughput account. Do not silently switch oracle meaning.

@@ -8,6 +8,7 @@ p.add_argument('--tp',type=int,default=2)
 p.add_argument('--spec',action='store_true')
 p.add_argument('--n2',action='store_true')
 p.add_argument('--turnover',action='store_true')
+p.add_argument('--observe-cohorts',action='store_true')
 p.add_argument('--budget',type=int,default=256)
 p.add_argument('--rounds',type=int,default=1)
 p.add_argument('--real',action='store_true')
@@ -62,13 +63,16 @@ if a.kv_gib is not None:
 (a.output/'protocol.json').write_text(json.dumps(dict(
  patch=os.environ.get('FULL_MIXED_PATCH','1'),oracle=os.environ.get('FULL_MIXED_ORACLE','graph'),
  shadow=os.environ.get('FULL_MIXED_SHADOW','0'),hccl_deterministic=os.environ.get('HCCL_DETERMINISTIC'),
- devices=os.environ.get('ASCEND_RT_VISIBLE_DEVICES'),n2=a.n2,real_weights=a.real,rounds=a.rounds,
+ devices=os.environ.get('ASCEND_RT_VISIBLE_DEVICES'),n2=a.n2,observe_cohorts=a.observe_cohorts,turnover=a.turnover,real_weights=a.real,rounds=a.rounds,
  ordered_replay=a.ordered_replay,cpu_qli=a.cpu_qli,verify_qli=a.verify_qli,draft_graph=a.draft_graph,
- draft_shadow=os.environ.get('DRAFT_GRAPH_SHADOW','0'),policy_study=a.policy_study,decode_study=a.decode_study,replay_study=a.replay_study,profile=a.profile,profile_after=a.profile_after,output_tokens=a.output_tokens,requests=a.requests,cross_step_bounds=a.cross_step_bounds,cross_step_study=a.cross_step_study,warm_draft_banks=a.warm_draft_banks),indent=2))
+ draft_reference=os.environ.get('FULL_DRAFT_REFERENCE','unpadded'),draft_shadow=os.environ.get('DRAFT_GRAPH_SHADOW','0'),policy_study=a.policy_study,decode_study=a.decode_study,replay_study=a.replay_study,profile=a.profile,profile_after=a.profile_after,output_tokens=a.output_tokens,requests=a.requests,cross_step_bounds=a.cross_step_bounds,cross_step_study=a.cross_step_study,warm_draft_banks=a.warm_draft_banks),indent=2))
 os.environ['FULL_MIXED_OUTPUT']=str(a.output)
 llm=LLM(**config)
 if os.environ.get('FULL_MIXED_SHADOW')=='1':llm.collective_rpc('enable_shadow')
-if a.n2:llm.collective_rpc('enable_n2')
+if a.n2:
+ llm.collective_rpc('enable_n2')
+ if os.environ.get('DRAFT_GRAPH_SHADOW')=='1':
+  (a.output/'verifier-contract.json').write_text(json.dumps(llm.collective_rpc('verify_draft_rejection'),indent=2))
 if a.cross_step_bounds:llm.collective_rpc("set_cross_step_bounds")
 if a.ordered_replay:llm.collective_rpc('set_ordered_replay',args=(True,))
 if a.draft_graph:llm.collective_rpc("enable_exact_draft_graph")
@@ -81,12 +85,14 @@ if a.warm_draft_banks:
  banks=llm.collective_rpc("draft_bank_status")
  assert all(x['banks']=={str(n):True for n in range(1,5)} for x in banks), banks
  (a.output/'draft-bank-warmup.json').write_text(json.dumps(dict(seconds=time.monotonic()-started,ranks=banks),indent=2))
+assert not a.observe_cohorts or not (a.decode_study or a.replay_study or a.policy_study or a.cross_step_study)
 results=[]
 if a.decode_study or a.replay_study or a.policy_study or a.cross_step_study:
  llm.generate([dict(prompt_token_ids=[17]*64)]*a.requests,SamplingParams(temperature=0,max_tokens=8,ignore_eos=True,detokenize=False))
  if not (a.replay_study or a.policy_study or a.cross_step_study):llm.collective_rpc('start_decode_observation',args=(a.profile,))
 cohorts = ([[64]*a.requests]*a.rounds if (a.decode_study or a.replay_study or a.policy_study or a.cross_step_study) else ([[64,64,64,64],[129,17],[7,128,33],[256,23,5,9],[513,257,17],[1025],[a.budget+17,19]] * a.rounds))
 for phase_index,lengths in enumerate(cohorts):
+ if a.observe_cohorts:llm.collective_rpc('start_decode_observation',args=(False,f'cohort{phase_index}'))
  if a.cross_step_study:
   assert not (a.policy_study or a.replay_study or a.decode_study)
   assert a.ordered_replay and a.cpu_qli and a.draft_graph
@@ -104,9 +110,9 @@ for phase_index,lengths in enumerate(cohorts):
   llm.collective_rpc("set_ordered_replay",args=(bool(phase_index%2),))
   llm.collective_rpc("start_decode_observation",args=(False,f"phase{phase_index}"))
  prompts=[dict(prompt_token_ids=[17+i]*n) for i,n in enumerate(lengths)]
- t=time.monotonic();out=llm.generate(prompts,SamplingParams(temperature=0,max_tokens=a.output_tokens if (a.decode_study or a.replay_study or a.policy_study or a.cross_step_study) else 8,ignore_eos=True,detokenize=False))
+ t=time.monotonic();out=llm.generate(prompts,SamplingParams(temperature=0,max_tokens=a.output_tokens if (a.decode_study or a.replay_study or a.policy_study or a.cross_step_study or a.observe_cohorts) else 8,ignore_eos=True,detokenize=False))
  results.append(dict(phase=phase_index,policy=(phase_index%3 if a.policy_study else bool(phase_index%2) if (a.replay_study or a.cross_step_study) else None),lengths=lengths,elapsed=time.monotonic()-t,outputs=[x.outputs[0].token_ids for x in out]))
- if a.replay_study or a.policy_study or a.cross_step_study:llm.collective_rpc('stop_decode_observation')
+ if a.replay_study or a.policy_study or a.cross_step_study or a.observe_cohorts:llm.collective_rpc('stop_decode_observation')
  (a.output/'partial.json').write_text(json.dumps(results,indent=2))
 if a.decode_study:llm.collective_rpc('stop_decode_observation')
 if a.turnover:
@@ -116,7 +122,8 @@ if a.turnover:
  llm.collective_rpc('stop_decode_observation')
 if a.profile_after:
  llm.collective_rpc('start_decode_observation',args=(True,'profile'))
- llm.generate([dict(prompt_token_ids=[17+i]*64) for i in range(a.requests)],SamplingParams(temperature=0,max_tokens=16,ignore_eos=True,detokenize=False))
+ profile_lengths=([a.budget+17,19,64,129] if a.n2 else [64]*a.requests)
+ llm.generate([dict(prompt_token_ids=[17+i]*n) for i,n in enumerate(profile_lengths)],SamplingParams(temperature=0,max_tokens=16,ignore_eos=True,detokenize=False))
  llm.collective_rpc('stop_decode_observation')
 receipts=llm.collective_rpc('graph_receipt')
 (a.output/'result.json').write_text(json.dumps(dict(status='COMPLETED_NOT_NUMERICALLY_QUALIFIED',results=results,receipts=receipts),indent=2))

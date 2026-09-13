@@ -146,5 +146,367 @@
         "late_commits": 78
       }
     ]
+  },
+  "real_288_padded_program": {
+    "capsule": "hw3:/workspace/my-ascend-workspace/runs/strengthen-dsv4-full-mixed/tp8-n2-039-real-padded-program",
+    "real": true,
+    "budget": 288,
+    "tp": 8,
+    "draft_reference": "padded",
+    "scheduler": {
+      "issued": 83,
+      "retired": 83,
+      "max_inflight": 2,
+      "pending": 0,
+      "scheduled_device_steps": 74,
+      "retired_device_steps": 74,
+      "deferred_frees": 0,
+      "deferred_requests": 18,
+      "peak_deferred_frees": 3
+    },
+    "turnover": {
+      "elapsed": 23.31732751999516,
+      "steps": 28,
+      "completed": {
+        "new-short": 16,
+        "new-prefill": 16,
+        "long-decode": 64
+      }
+    },
+    "ranks": [
+      {
+        "rank": 0,
+        "target_checks": 74,
+        "mixed_checks": 8,
+        "prefill_checks": 13,
+        "decode_checks": 53,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 42,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 61,
+        "full_forwards": 74,
+        "late_commits": 53
+      },
+      {
+        "rank": 1,
+        "target_checks": 74,
+        "mixed_checks": 8,
+        "prefill_checks": 13,
+        "decode_checks": 53,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 42,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 61,
+        "full_forwards": 74,
+        "late_commits": 53
+      },
+      {
+        "rank": 2,
+        "target_checks": 74,
+        "mixed_checks": 8,
+        "prefill_checks": 13,
+        "decode_checks": 53,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 42,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 61,
+        "full_forwards": 74,
+        "late_commits": 53
+      },
+      {
+        "rank": 3,
+        "target_checks": 74,
+        "mixed_checks": 8,
+        "prefill_checks": 13,
+        "decode_checks": 53,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 42,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 61,
+        "full_forwards": 74,
+        "late_commits": 53
+      },
+      {
+        "rank": 4,
+        "target_checks": 74,
+        "mixed_checks": 8,
+        "prefill_checks": 13,
+        "decode_checks": 53,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 42,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 61,
+        "full_forwards": 74,
+        "late_commits": 53
+      },
+      {
+        "rank": 5,
+        "target_checks": 74,
+        "mixed_checks": 8,
+        "prefill_checks": 13,
+        "decode_checks": 53,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 42,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 61,
+        "full_forwards": 74,
+        "late_commits": 53
+      },
+      {
+        "rank": 6,
+        "target_checks": 74,
+        "mixed_checks": 8,
+        "prefill_checks": 13,
+        "decode_checks": 53,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 42,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 61,
+        "full_forwards": 74,
+        "late_commits": 53
+      },
+      {
+        "rank": 7,
+        "target_checks": 74,
+        "mixed_checks": 8,
+        "prefill_checks": 13,
+        "decode_checks": 53,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 42,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 61,
+        "full_forwards": 74,
+        "late_commits": 53
+      }
+    ]
+  },
+  "real_4128_padded_program": {
+    "capsule": "hw3:/workspace/my-ascend-workspace/runs/strengthen-dsv4-full-mixed/tp8-n2-040-real-4k-shadow",
+    "real": true,
+    "budget": 4128,
+    "tp": 8,
+    "draft_reference": "padded",
+    "scheduler": {
+      "issued": 78,
+      "retired": 78,
+      "max_inflight": 2,
+      "pending": 0,
+      "scheduled_device_steps": 67,
+      "retired_device_steps": 67,
+      "deferred_frees": 0,
+      "deferred_requests": 18,
+      "peak_deferred_frees": 3
+    },
+    "turnover": {
+      "elapsed": 26.12043604394421,
+      "steps": 25,
+      "completed": {
+        "new-prefill": 16,
+        "new-short": 16,
+        "long-decode": 64
+      }
+    },
+    "ranks": [
+      {
+        "rank": 0,
+        "target_checks": 67,
+        "mixed_checks": 6,
+        "prefill_checks": 9,
+        "decode_checks": 52,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 38,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 58,
+        "full_forwards": 67,
+        "late_commits": 50
+      },
+      {
+        "rank": 1,
+        "target_checks": 67,
+        "mixed_checks": 6,
+        "prefill_checks": 9,
+        "decode_checks": 52,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 38,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 58,
+        "full_forwards": 67,
+        "late_commits": 50
+      },
+      {
+        "rank": 2,
+        "target_checks": 67,
+        "mixed_checks": 6,
+        "prefill_checks": 9,
+        "decode_checks": 52,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 38,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 58,
+        "full_forwards": 67,
+        "late_commits": 50
+      },
+      {
+        "rank": 3,
+        "target_checks": 67,
+        "mixed_checks": 6,
+        "prefill_checks": 9,
+        "decode_checks": 52,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 38,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 58,
+        "full_forwards": 67,
+        "late_commits": 50
+      },
+      {
+        "rank": 4,
+        "target_checks": 67,
+        "mixed_checks": 6,
+        "prefill_checks": 9,
+        "decode_checks": 52,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 38,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 58,
+        "full_forwards": 67,
+        "late_commits": 50
+      },
+      {
+        "rank": 5,
+        "target_checks": 67,
+        "mixed_checks": 6,
+        "prefill_checks": 9,
+        "decode_checks": 52,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 38,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 58,
+        "full_forwards": 67,
+        "late_commits": 50
+      },
+      {
+        "rank": 6,
+        "target_checks": 67,
+        "mixed_checks": 6,
+        "prefill_checks": 9,
+        "decode_checks": 52,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 38,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 58,
+        "full_forwards": 67,
+        "late_commits": 50
+      },
+      {
+        "rank": 7,
+        "target_checks": 67,
+        "mixed_checks": 6,
+        "prefill_checks": 9,
+        "decode_checks": 52,
+        "target_max_diff": 0.0,
+        "draft_banks": 8,
+        "draft_first_checks": 8,
+        "draft_replay_checks": 38,
+        "draft_signed_zero_words": 0,
+        "draft_fallbacks": 0,
+        "draft_references": [
+          "padded"
+        ],
+        "exact_metadata_checks": 58,
+        "full_forwards": 67,
+        "late_commits": 50
+      }
+    ]
   }
 }

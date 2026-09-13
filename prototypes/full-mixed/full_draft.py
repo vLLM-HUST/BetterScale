@@ -32,17 +32,20 @@ class FullDraftGraphSet(DraftGraphSet):
     def __init__(self, worker):
         super().__init__(worker)
         assert self.drafter.parallel_drafting
+        assert worker.model_runner.vllm_config.speculative_config.rejection_sample_method == 'standard'
         self.capacity = worker.model_runner.vllm_config.scheduler_config.max_num_batched_tokens
         self.actual_context = None
         self.original_metadata = None
+        self.reference_kind = os.environ.get('FULL_DRAFT_REFERENCE', 'unpadded')
+        assert self.reference_kind in ('unpadded', 'padded')
 
     def reference(self, **kwargs):
-        """Compare against real context length, never padded vs padded."""
+        """Select an explicit oracle; never silently change the baseline."""
         d = self.drafter
         capacity = d._dflash_num_context
         ctx = get_forward_context()
         metadata = ctx.attn_metadata
-        d._dflash_num_context = self.actual_context
+        d._dflash_num_context = self.actual_context if self.reference_kind == 'unpadded' else capacity
         ctx.attn_metadata = self.original_metadata
         try:
             return self.original(**kwargs)
@@ -86,7 +89,8 @@ class FullDraftGraphSet(DraftGraphSet):
                 entry = ExactDraftGraph(self.worker, self.original, count,
                                         capacity, self.reference)
                 entry.strict_signature = True
-                entry.allow_addressed_signed_zero = True
+                entry.reference_kind = self.reference_kind
+                entry.allow_addressed_signed_zero = self.reference_kind == 'unpadded'
                 entry.path = Path(os.environ['FULL_MIXED_OUTPUT']) / (
                     f'full-draft-rank{self.worker.rank}-requests{count}-context{capacity}-{mode}-{int(prefill)}.json')
                 self.entries[key] = entry

@@ -44,6 +44,7 @@ class CrossStepBounds:
         self.forward = r._model_forward
         self.pending = None
         self.late_commits = 0
+        self.full_forwards = 0
         self.prepare = r._prepare_inputs
         self.correct = r._correct_optimistic_seq_lens_cpu
         self.build = r._build_attention_metadata
@@ -80,6 +81,11 @@ class CrossStepBounds:
         return defer
 
     def model_forward(self, *args, **kwargs):
+        if self.all_modes:
+            from vllm.forward_context import get_forward_context
+            from vllm.config import CUDAGraphMode
+            assert get_forward_context().cudagraph_runtime_mode == CUDAGraphMode.FULL, 'N+2 target fell out of FULL'
+            self.full_forwards += 1
         with record_function("strengthen::enqueue_forward"):
             result = self.forward(*args, **kwargs)
         if self.pending is not None:
@@ -145,7 +151,7 @@ class CrossStepBounds:
         context.attn_metadata = self.build(*args, **kwargs)[0]
 
     def receipt(self):
-        result = dict(enabled=self.enabled,all_modes=self.all_modes,calls=self.calls,bypassed=self.bypassed,
+        result = dict(enabled=self.enabled,all_modes=self.all_modes,calls=self.calls,bypassed=self.bypassed,full_forwards=self.full_forwards,
                       exact_metadata_shadow_checks=self.reference_checks,late_commits=self.late_commits,rows=self.rows)
         self.path.write_text(json.dumps(result,indent=2))
         return result

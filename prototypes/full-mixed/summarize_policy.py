@@ -1,14 +1,14 @@
 """Compare equal-work four-seat K5 verification intervals, not cohort luck."""
 import argparse,json,statistics
 from pathlib import Path
-p=argparse.ArgumentParser();p.add_argument('engine',type=Path);p.add_argument('--output',type=Path,required=True);a=p.parse_args()
+p=argparse.ArgumentParser();p.add_argument('engine',type=Path);p.add_argument('--output',type=Path,required=True);p.add_argument('--prefix',default='phase');a=p.parse_args()
 result=json.loads((a.engine/'result.json').read_text());phases=[]
 for index,cohort in enumerate(result['results']):
  ranks=[]
  for rank in range(8):
-  path=a.engine/f'phase{index}-timing-rank{rank}.json'
+  path=a.engine/f'{a.prefix}{index}-timing-rank{rank}.json'
   if not path.exists():continue
-  es=json.loads(path.read_text());ws=json.loads((a.engine/f'phase{index}-waves-rank{rank}.json').read_text())
+  es=json.loads(path.read_text());ws=json.loads((a.engine/f'{a.prefix}{index}-waves-rank{rank}.json').read_text())
   positive=[x for x in ws if x['total'] and x['total']>0]
   target=[x for x in es if x['label']=='strengthen::target_forward']
   draft=[x for x in es if x['label']=='strengthen::draft_forward']

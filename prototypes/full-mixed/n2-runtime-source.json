@@ -1,0 +1,42 @@
+{
+  "host": "hw3",
+  "method": "direct byte comparison of touched native contract sources",
+  "files": [
+    {
+      "file": "vllm/v1/core/sched/async_scheduler.py",
+      "matches_pin": true
+    },
+    {
+      "file": "vllm/v1/core/sched/scheduler.py",
+      "matches_pin": true
+    },
+    {
+      "file": "vllm/v1/engine/core.py",
+      "matches_pin": true
+    },
+    {
+      "file": "vllm_ascend/attention/context_parallel/dsa_cp.py",
+      "matches_pin": true
+    },
+    {
+      "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+      "matches_pin": true
+    },
+    {
+      "file": "vllm_ascend/ops/triton/reject_sample.py",
+      "matches_pin": true
+    },
+    {
+      "file": "vllm_ascend/spec_decode/dflash_proposer.py",
+      "matches_pin": true
+    },
+    {
+      "file": "vllm_ascend/spec_decode/dspark_proposer.py",
+      "matches_pin": true
+    },
+    {
+      "file": "vllm_ascend/spec_decode/llm_base_proposer.py",
+      "matches_pin": true
+    }
+  ]
+}
