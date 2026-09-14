@@ -1,5 +1,40 @@
 # Study native donor DP+EP
 
+## Prefix/cache investigation: September14 source boundary
+
+Before diagnosing missing SWA or enabling APC, inspect Ascend's
+`patch/platform/patch_kv_cache_utils.py` and `patch_kv_cache_coordinator.py`,
+not just native vLLM. At the pinned Ascend `9bf964cb` / vLLM `752a3a50`,
+Ascend separates C4/C128 cache groups by compression ratio and replaces the
+hybrid coordinator. Reading native grouping alone incorrectly suggests one
+mixed-compression group. The coordinator converts compressed physical pages
+back to logical token lengths.
+
+Observed source: the v0.25.1 branch disables partial hash hits and returns
+`lcm_block_size` as the common hit alignment. Physical block128 makes C128's
+logical page span16384; C4 spans512. The SWA write-retention boundary is also
+set to that LCM. Native KV manager searches at most prompt_length-1 tokens.
+Thus the current TP maxlen15104 / DP16384 release envelope cannot obtain a
+positive16K common local prefix hit merely by removing BetterScale's APC guard.
+This is a source-derived limitation, not a measured cache-hit experiment.
+Do not lower only the coordinator alignment: compressed-page hashing,
+partial-page ownership/writes, and SWA/compressor/draft resume must agree.
+Changing physical block size is a separate native-supported candidate to
+evaluate, not proof of fine-grained reuse.
+
+SWA specs, skipped-block recycling and admission caps DO exist. The SWA peak
+bound includes sliding_window-1 plus the wave token budget (capped at maxlen),
+rounded to pages with a safety page. Large prefill budgets can therefore hurt
+capacity without SWA having been converted to full attention. Confirm the
+actual hybrid-manager setting and installed layout before assigning blame.
+
+As of main e584936 (0.3.2 namespace release), APC remains disallowed by the
+package's qualification guard. Fletcher wants it supported in a subsequent
+release; this investigation has not qualified that behavior or changed defaults.
+For the separate eager-config/draft-graph question, read split_draft/README.md:
+native generic draft graph exists, pinned DSpark forces it off, TP installs our
+runner after warmup, DP does not install that runner.
+
 Enter here for native DP/TP launch, cache ownership, skew and profile comparison,
 not implementation of our graph patches. Read
 [`DONOR_DP.md`](../../../../../prototypes/full-mixed/DONOR_DP.md) for the measured
