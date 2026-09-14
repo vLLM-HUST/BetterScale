@@ -531,3 +531,18 @@ dummy completion cannot replace them. Fletcher restricted these mechanism
 experiments to dummy, so do not silently resume repeated checkpoint loading.
 Public Worker and PyPI remain unchanged. Package integration/release and prefix
 cache qualification remain pending, not implied by the near-full dummy gate.
+
+After189, the physical-fit implementation is mechanically separated into
+`tp_physical_worker.TPPhysicalWorker`; it imports/installs NO dummy weight hook.
+`TPPreflightWorker` is now a thin dummy-only entry: reject non-dummy config before
+installing the fixture hook or invoking native initialization. Physical worker
+method ASTs match the189 predecessor apart from relocating that dummy assertion;
+retirement tests and two entry-order tests pass (9 CPU tests total). This is
+source ownership cleanup, not a new NPU result or public package integration.
+
+A real-weight quality closure is prepared locally, NOT submitted:
+`runs/auto-kv-tp-quality-prepared-20260914/PREPARED.json`. It retains the qualified
+experimental split_draft, uses TPPhysicalWorker without dummy code, and carries
+the original32 quality inputs. Long60-single and eight8K turnover precede quality.
+There is deliberately no run.sh/admission watcher. Await Fletcher's answer on
+one final real-weight quality load before selecting a host or starting it.

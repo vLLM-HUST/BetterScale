@@ -8,7 +8,7 @@ import unittest
 
 class DraftRetirement(unittest.TestCase):
     def test_restore_native_runnable_without_retaining_packets(self):
-        path = Path(__file__).with_name("tp_preflight_worker.py")
+        path = Path(__file__).with_name("tp_physical_worker.py")
         cls = next(
             n for n in ast.parse(path.read_text()).body if isinstance(n, ast.ClassDef)
         )
@@ -52,6 +52,40 @@ class DraftRetirement(unittest.TestCase):
         self.assertEqual(manager.query_graphs, {})
         ns["retire_trial_program"](worker)
         self.assertEqual(observed, [True])
+
+
+class DummyEntry(unittest.TestCase):
+    def entry(self, events):
+        path = Path(__file__).with_name("tp_preflight_worker.py")
+        cls = next(
+            n for n in ast.parse(path.read_text()).body if isinstance(n, ast.ClassDef)
+        )
+
+        class Physical:
+            def __init__(self, config, *args, **kwargs):
+                events.append(("native_init", config, args, kwargs))
+
+        ns = dict(
+            TPPhysicalWorker=Physical,
+            install_dummy_layout=lambda: events.append("dummy_hook"),
+        )
+        exec(compile(ast.Module(body=[cls], type_ignores=[]), str(path), "exec"), ns)
+        return ns["TPPreflightWorker"]
+
+    def test_real_load_rejected_before_hook_or_native_init(self):
+        events = []
+        entry = self.entry(events)
+        with self.assertRaises(AssertionError):
+            entry(NS(load_config=NS(load_format="auto")))
+        self.assertEqual(events, [])
+
+    def test_dummy_hook_precedes_native_initialization(self):
+        events = []
+        config = NS(load_config=NS(load_format="dummy"))
+        self.entry(events)(config, "worker", rank=3)
+        self.assertEqual(
+            events, ["dummy_hook", ("native_init", config, ("worker",), {"rank": 3})]
+        )
 
 
 if __name__ == "__main__":
