@@ -431,3 +431,29 @@ September7 donor environment and model config path`/data/shared/models/...`;
 `--load-format dummy` remains explicit. Local source capsule is
 `runs/auto-kv-draft-dummy-roomy-hw3-20260914/`. Do not compare cross-host timing
 as evidence of the code change; this is a correctness/lifecycle gate.
+
+Run185 exits0: all three dummy cohorts complete (decode11.924s,
+prefill6.827s, turnover13.090s). All8 ranks prepare4 decode+8 query entries;
+allocator reserved growth remains6MiB/rank. Rank0 records689 submitted steps
+and ZERO resumed-request steps. Therefore ordinary one-pool execution is proven
+for this fixture, NOT the3GiB preemption path, automatic sizing, or model quality.
+Exact compact receipt:`docs/evidence/auto-kv-run185.json`; full source/results
+are recovered locally in the hw3 capsule. Supervisor reclaimed the8 cards.
+
+`TPPreflightWorker` now composes this complete program into the experimental
+physical fit: prewarm groups before native profiling; capture target and all
+finite draft entries against trial State in one pool; retain only retired graph
+handles, restore native proposer/bindings, release trial State; account for draft
+free-memory delta alongside target capture; final native capture + draft warmup
+then clear scratch KV contents before request admission. Public Worker unchanged.
+The extra preflight hooks leave the existing DP path unchanged. Seven CPU tests
+pass, including native proposer restoration and draft graph-handle-only retention.
+Final State clearing preserves addresses; its actual native behavior still needs
+this next dummy gate, not a source-only assertion.
+
+Run186 removes the diagnostic fixed-byte option entirely and exercises the
+init-only percentage-gate removal plus complete TP preflight. It remains dummy,
+TP8,15104 horizon,4 seats,4128 budget,K5,ONE pool. Remote capsule
+`/workspace/my-ascend-workspace/runs/tp-continuation-20260914/auto-kv-tp-complete`,
+output`result186/`, managed SSH session59717. Local closure:
+`runs/auto-kv-tp-complete-hw3-20260914/`. No quality/release claim yet.

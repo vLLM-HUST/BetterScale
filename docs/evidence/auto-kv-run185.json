@@ -1,0 +1,93 @@
+{
+  "run": 185,
+  "status": "PASS_DUMMY_NONPREEMPTED_ONLY",
+  "scope": "hw3 TP8 dummy; ONE global pool; all HCCL groups primed before target capture; per-entry native eager before draft capture; diagnostic6GiB KV",
+  "warmup": [
+    {
+      "rank": 0,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -35311616,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 1,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -35414016,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 2,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -36954112,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 3,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -36077568,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 4,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -35983360,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 5,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -36237312,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 6,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -36200448,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 7,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -36323328,
+      "decode_entries": 4,
+      "query_entries": 8
+    }
+  ],
+  "cohorts": [
+    {
+      "label": "0-decode",
+      "elapsed_s": 11.924016842036508
+    },
+    {
+      "label": "0-prefill",
+      "elapsed_s": 6.827215765952133
+    },
+    {
+      "label": "0-turnover",
+      "elapsed_s": 13.089523833012208
+    }
+  ],
+  "submission_steps": 689,
+  "resumed_steps": 0,
+  "limitations": [
+    "No model quality claim from dummy",
+    "3GiB preemption/resume failure remains open",
+    "Cross-host timing is not a causal performance comparison",
+    "Fixed6GiB is diagnostic only, not automatic sizing"
+  ]
+}

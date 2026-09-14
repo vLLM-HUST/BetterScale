@@ -81,6 +81,12 @@ class PreflightWorker(MemoryWorker):
         self.requested_memory = self.init_snapshot.free_memory
         return device
 
+    def capture_trial_program(self):
+        return self.model_runner.capture_model()
+
+    def retire_trial_program(self):
+        pass
+
     def determine_available_memory(self):
         assert self.cache_config.kv_cache_memory_bytes is None
         # Budget only memory actually available to this worker at startup.
@@ -136,10 +142,11 @@ class PreflightWorker(MemoryWorker):
                 "trial_before_capture",
                 trial_kv_bytes=sum(t.size for t in trial.kv_cache_tensors),
             )
-            graph_bytes = runner.capture_model()
+            graph_bytes = self.capture_trial_program()
             assert graph_bytes > 0
             self.snapshot("trial_after_capture", trial_graph_bytes=graph_bytes)
         finally:
+            self.retire_trial_program()
             clear_trial_graphs(wrappers, self._preflight_retired_graphs)
             for wrapper, pool in zip(wrappers, original_pools):
                 wrapper.graph_pool = pool
