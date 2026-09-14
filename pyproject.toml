@@ -1,11 +1,16 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "strengthen-dsv4"
+name = "vllm-betterscale"
 version = "0.3.0"
-description = "Pinned, opt-in DSV4 graph patch bundle for vLLM-Ascend"
+description = "Modular graph and replay optimizations for vLLM Ascend"
+readme = "docs/PYPI.md"
+license = "Apache-2.0"
+license-files = ["licenses/Apache-2.0.txt", "THIRD_PARTY_NOTICES.md"]
+authors = [{name = "Fletcher Tian"}]
+classifiers = ["Development Status :: 4 - Beta", "Programming Language :: Python :: 3.12", "Operating System :: POSIX :: Linux"]
 requires-python = ">=3.12"
 dependencies = []
 
@@ -16,8 +21,12 @@ where = ["src"]
 strengthen_dsv4 = ["pins.json"]
 "*" = ["README.md"]
 
+[project.urls]
+Homepage = "https://vllm-hust.sage.org.ai/betterscale.html"
+Documentation = "https://vllm-hust.sage.org.ai/betterscale.html#integration"
+
 [tool.setuptools]
-license-files = ["licenses/Apache-2.0.txt", "THIRD_PARTY_NOTICES.md"]
+include-package-data = false
 
 [tool.black]
 target-version = ["py312"]

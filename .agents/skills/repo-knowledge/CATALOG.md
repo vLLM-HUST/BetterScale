@@ -21,3 +21,7 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 - **Study native donor DP+EP, skew and cache ownership:** read
   [study-native-dp](scenarios/study-native-dp/GUIDE.md) before launching native
   offline DP or interpreting its eight-rank profiles and capacity receipts.
+
+- **Build or publish BetterScale's Python distribution:** read
+  [release-python-package](scenarios/release-python-package/GUIDE.md) before
+  packaging, installing the public alias, or publishing to PyPI.

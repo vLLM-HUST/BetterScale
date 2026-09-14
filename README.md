@@ -4,11 +4,19 @@ Less host waiting. More device execution.
 Modular graph, replay and metadata-preparation optimizations for vLLM Ascend.
 
 Formerly **strengthen-dsv4**. The project is now named **BetterScale**; the validated
-Python package and Worker entry retain `strengthen_dsv4` for compatibility.
+implementation retains `strengthen_dsv4` for compatibility; the public entry
+`betterscale.worker.Worker` names the same class. The PyPI distribution is
+`vllm-betterscale`.
 
 Incremental DeepSeek V4 serving improvements on vLLM + vLLM-Ascend.
 Keep the mature engine. Measure each change. Keep improvements that survive
 correctness, memory and service-quality comparisons.
+
+## Install and start
+
+See [public package instructions](docs/PYPI.md) for the version-pinned install and
+complete native TP8 / DP8 launch examples. This release changes packaging and naming,
+not the qualified engine execution path.
 
 ## Pinned upstreams
 

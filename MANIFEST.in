@@ -1,0 +1,11 @@
+include pyproject.toml README.md THIRD_PARTY_NOTICES.md
+include docs/PYPI.md
+recursive-include licenses *.txt
+recursive-include src *.py *.json *.md
+prune tests
+prune prototypes
+prune runs
+prune upstream
+prune evidence
+prune .agents
+global-exclude __pycache__ *.py[cod]

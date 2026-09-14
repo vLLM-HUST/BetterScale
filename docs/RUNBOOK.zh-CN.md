@@ -5,14 +5,17 @@
 在**已经准备好的 vLLM-Ascend 环境**中安装本包，给原来的启动命令加一个参数：
 
 ```bash
-python -m pip install --no-deps --no-build-isolation /path/to/strengthen-dsv4
+python -m pip install --no-deps vllm-betterscale==0.3.0
 vllm serve /models/DeepSeek-V4-Flash <原有的原生参数> \
-  --worker-cls strengthen_dsv4.worker.Worker
+  --worker-cls betterscale.worker.Worker
 ```
 
 `<原有的原生参数>` 是说明占位符，不是 shell 中直接执行的文本。
-已有 wheel 时直接 `python -m pip install --no-deps /path/to/strengthen_dsv4-0.2.1-py3-none-any.whl`。
-源码安装需要已有 setuptools>=68；包没有 donor 依赖安装/升级动作。
+`betterscale.worker.Worker` 与旧 `strengthen_dsv4.worker.Worker` 是同一个类，
+没有额外包装或执行路径。若安装过旧 `strengthen-dsv4` 发行包，先停服卸载旧包，
+避免两个发行包共同拥有同一份实现文件。
+已有 wheel 时直接 `python -m pip install --no-deps /path/to/vllm_betterscale-0.3.0-py3-none-any.whl`。
+源码安装需要已有 setuptools>=77.0.3；包没有 donor 依赖安装/升级动作。
 
 **没有另一套 serve/check/plan CLI，没有私有 profile，没有必须配置的目录。**
 包不会 source CANN、寻找 Python、修改 `LD_LIBRARY_PATH`、设置 HCCL/allocator
@@ -52,7 +55,7 @@ KV 大小完全采用用户原生设置；不再强制能同时容纳四条满�
 
 ```bash
 vllm serve /models/DeepSeek-V4-Flash \
-  --worker-cls strengthen_dsv4.worker.Worker \
+  --worker-cls betterscale.worker.Worker \
   --tensor-parallel-size 8 --enable-expert-parallel \
   --quantization ascend --dtype bfloat16 \
   --max-num-seqs 4 --max-num-batched-tokens 4128 --max-model-len 15104 \
@@ -106,7 +109,7 @@ FULL target、prefix caching关闭；DSACP必须关闭，DSpark仍使用原生 e
 
 ```bash
 vllm serve /models/DeepSeek-V4-Flash \
-  --worker-cls strengthen_dsv4.worker.Worker \
+  --worker-cls betterscale.worker.Worker \
   --tensor-parallel-size 1 --data-parallel-size 8 --enable-expert-parallel \
   --quantization ascend --dtype bfloat16 \
   --max-num-seqs 2 --max-num-batched-tokens 1026 --max-model-len 16384 \
