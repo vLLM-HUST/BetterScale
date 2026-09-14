@@ -50,8 +50,8 @@ Compressor state 也有自己的窗口、页大小和 dtype。
 |---|---|---|
 | 发布长度过窄 | guard 固定15K/16K上限 | 更长长度下 block table、attention/QLI bounds、draft metadata、graph 内存与输出是否成立 |
 | APC 未开放 | 命令与 guard 均关闭 | 命中后的 target、compressor、SWA、draft 状态是否正确续跑 |
-| APC 粒度过粗 | pinned Ascend coordinator 按逻辑页LCM对齐；block128的 C128产生16K边界 | 减小物理页或支持部分页时，hash、状态检查点与共享页写入如何一致 |
-| 当前范围内 APC 无有效命中空间 | KV manager至多查 prompt_length-1；当前上限不超过16K | 不能只开开关；必须同时扩大可用范围或细化命中粒度，并实测非零复用 |
+| APC 粒度过粗 | pinned Ascend coordinator 按逻辑页LCM对齐；实机公开命令默认block32，对应4K；旧实验block128对应16K | 减小物理页或支持部分页时，hash、状态检查点与共享页写入如何一致 |
+| 公开命令与历史实验页大小不同 | run168实机census确认公开命令未指定block-size时使用32；先前按128推断当前完全无法命中是错误的 | 固定并记录实际specs；4K公共边界在当前长度范围内有命中空间，需解除guard后验证 |
 | DP draft 未图化 | DP没安装TP split_draft，DSpark强制 use_cuda_graph=False | DP专属 metadata、EP协调、上下文写入与 query图的正确性/收益 |
 | 容量与活跃席位未分开验收 | 当前只准入TP4、DP每rank2 | 实际分组占页、回收、峰值、驻留量与QoS下的活跃并发分别是多少 |
 
@@ -63,3 +63,34 @@ SWA specs、旧页回收和 admission cap 已存在，不能先把容量问题�
 关闭原生 drafter 捕获，不代表安装TP补丁后实际还全部 eager；详见 split_draft README。
 
 本次仅记录边界与缺口，未修改发布 guard、启动默认值或既有成绩。
+
+更正：本说明初稿沿用了历史实验block128。2026-09-14 run168实际模型
+注册的specs显示当前公开命令默认block32；4K/16K命中边界取决于这个配置。
+此前“当前发布长度范围内没有任何有效命中空间”的推断撤回。
+
+## 实际注册布局的8GiB账（已对齐原生日志）
+
+run168导出了真实170份cache specs：46份SWA、21份C4 attention、21份
+C4 indexer、两类各21份C4 compressor state、20份C128 attention和20份
+C128 compressor state。物理block32，SWA窗口128，波次预算1026。
+`capacity_census.py`把原始specs重新送入同一版原生分组/池函数；16K下得到
+179,972，与run163日志精确一致。见`docs/evidence/kv-capacity-20260914.json`。
+
+8GiB预算实际形成9304个公共pool blocks，每个物理块910,720字节，实际
+backing共8,473,338,880字节；另有116,595,712字节未进入backing（池布局预算
+与实际发出的tensor尺寸不同，并非全部都是尾部整页舍入）。
+
+| 请求长度 | 各组峰值页合计对应的物理池占用 | 原生等效token指标 |
+|---|---:|---:|
+|16K|0.740GiB|179,972|
+|64K|1.075GiB|491,335|
+|128K|1.523GiB|690,149|
+|256K|2.419GiB|865,503|
+|512K|4.210GiB|991,458|
+|1Mi|7.793GiB|1,069,262|
+
+这是每请求各组SWA/compressor峰值加compressed history的规格页需求估计，
+包含该波次状态预留，不包含权重或graph/非graph工作区。各组峰值不一定
+同时发生；不同请求也不必同时处于prefill。日志的等效并发使用另一种按
+spec字节加权的算法，与直接公共池页预算还有小差异，不能作为实际活跃数。
+**这些不是长请求实测通过的数字，也不是吞吐/服务质量承诺；实际准入还要核对投机lookahead、安全页与分配/回收时点。**

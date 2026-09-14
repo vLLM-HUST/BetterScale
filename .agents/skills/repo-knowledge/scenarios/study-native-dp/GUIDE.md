@@ -14,16 +14,15 @@ mixed-compression group. The coordinator converts compressed physical pages
 back to logical token lengths.
 
 Observed source: the v0.25.1 branch disables partial hash hits and returns
-`lcm_block_size` as the common hit alignment. Physical block128 makes C128's
-logical page span16384; C4 spans512. The SWA write-retention boundary is also
-set to that LCM. Native KV manager searches at most prompt_length-1 tokens.
-Thus the current TP maxlen15104 / DP16384 release envelope cannot obtain a
-positive16K common local prefix hit merely by removing BetterScale's APC guard.
-This is a source-derived limitation, not a measured cache-hit experiment.
-Do not lower only the coordinator alignment: compressed-page hashing,
-partial-page ownership/writes, and SWA/compressor/draft resume must agree.
-Changing physical block size is a separate native-supported candidate to
-evaluate, not proof of fine-grained reuse.
+`lcm_block_size` as common hit alignment. Physical block128 implies16K;
+physical block32 implies4K. **Run168's real model census shows the public native
+command (no explicit block-size) uses32**, unlike earlier benchmark scripts
+with explicit128. The initial inference that public15K/16K horizons could not
+hit any prefix was wrong and is retracted. Native KV manager searches at most
+prompt_length-1; a4K boundary CAN hit inside this envelope once APC is enabled.
+Do not infer actual specs from an older command or treat group block units as
+uncompressed tokens. Do not lower only coordinator alignment: compressed hash,
+partial-page ownership/writes and SWA/compressor/draft resume must agree.
 
 SWA specs, skipped-block recycling and admission caps DO exist. The SWA peak
 bound includes sliding_window-1 plus the wave token budget (capped at maxlen),

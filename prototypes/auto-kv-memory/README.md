@@ -71,3 +71,19 @@ separate transient graph capture from persistent replay and eager fallback
 lifetimes before designing a minimal automatic budget hook. Do not directly
 reuse the CUDA-only temporary graph estimator. Long-context validation must
 include real attention/indexer bounds rather than just a larger cache table.
+
+Run168 advances the protocol: disposable target capture succeeds; after retirement
+only~328KiB allocated growth remains. The initial cleanup retained GraphParams
+singletons, so final native KV/backend initialization rejected a second set with
+`Graph parameters have already been set!`. V2 explicitly retires the drained
+singletons as well as catalogs; its CPU test protects ordering and idempotence.
+Run169 is the corresponding NPU gate, not yet an accepted result here.
+
+**Correction to the initial capacity inference:** the public command has no
+explicit block-size, so the real170-spec census uses block32 (C4 state2,C128
+state8), not historical benchmark block128. Common APC alignment is4K, not16K.
+`capacity_census.py` now consumes that actual census and reproduces run163's
+179972 exactly. Its public compact result is `docs/evidence/kv-capacity-20260914.json`.
+At8GiB, single-request common-pool peak demand is4.210GiB at512K and7.793GiB at1Mi;
+this is a KV ledger, not successful long-context execution. The original
+constructed-layout results above remain a rejected starting inference.

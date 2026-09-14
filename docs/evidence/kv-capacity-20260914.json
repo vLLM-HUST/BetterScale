@@ -1,0 +1,248 @@
+{
+  "scope": "Re-run pinned native pool math from a REAL worker's CACHE_SPEC_CENSUS.\n\nCPU only. Report physical allocation and common-pool page demand separately\nfrom vLLM's length-weighted equivalent-token metric. This is sizing evidence,\nnot a proof that a long-context graph or workload executes successfully.\n",
+  "device": "npu:2",
+  "requested_bytes": 8589934592,
+  "allocated_pool_bytes": 8473338880,
+  "unallocated_budget_bytes": 116595712,
+  "pool_blocks": 9304,
+  "physical_bytes_per_pool_block": 910720,
+  "wave_budget": 1026,
+  "groups": [
+    {
+      "layers": 42,
+      "examples": [
+        "model.layers.2.self_attn.indexer.k_cache",
+        "model.layers.2.self_attn.attn"
+      ],
+      "spec_kinds": [
+        {
+          "type": "AscendMLAAttentionSpec",
+          "block": 32,
+          "ratio": 4,
+          "window": null,
+          "head": 128,
+          "dtype": "torch.int8",
+          "page_bytes": 4160,
+          "count": 21
+        },
+        {
+          "type": "AscendMLAAttentionSpec",
+          "block": 32,
+          "ratio": 4,
+          "window": null,
+          "head": 512,
+          "dtype": "torch.bfloat16",
+          "page_bytes": 32768,
+          "count": 21
+        }
+      ]
+    },
+    {
+      "layers": 20,
+      "examples": [
+        "model.layers.3.self_attn.attn",
+        "model.layers.5.self_attn.attn"
+      ],
+      "spec_kinds": [
+        {
+          "type": "AscendMLAAttentionSpec",
+          "block": 32,
+          "ratio": 128,
+          "window": null,
+          "head": 512,
+          "dtype": "torch.bfloat16",
+          "page_bytes": 32768,
+          "count": 20
+        }
+      ]
+    },
+    {
+      "layers": 23,
+      "examples": [
+        "model.layers.0.self_attn.swa_cache",
+        "model.layers.2.self_attn.swa_cache"
+      ],
+      "spec_kinds": [
+        {
+          "type": "AscendSlidingWindowMLASpec",
+          "block": 32,
+          "ratio": 1,
+          "window": 128,
+          "head": 512,
+          "dtype": "torch.bfloat16",
+          "page_bytes": 32768,
+          "count": 23
+        }
+      ]
+    },
+    {
+      "layers": 23,
+      "examples": [
+        "model.layers.1.self_attn.swa_cache",
+        "model.layers.3.self_attn.swa_cache"
+      ],
+      "spec_kinds": [
+        {
+          "type": "AscendSlidingWindowMLASpec",
+          "block": 32,
+          "ratio": 1,
+          "window": 128,
+          "head": 512,
+          "dtype": "torch.bfloat16",
+          "page_bytes": 32768,
+          "count": 23
+        }
+      ]
+    },
+    {
+      "layers": 42,
+      "examples": [
+        "model.layers.2.self_attn.compressor.state_cache",
+        "model.layers.2.self_attn.indexer.compressor.state_cache"
+      ],
+      "spec_kinds": [
+        {
+          "type": "AscendSlidingWindowMLASpec",
+          "block": 2,
+          "ratio": 1,
+          "window": 8,
+          "head": 2048,
+          "dtype": "torch.float32",
+          "page_bytes": 32768,
+          "count": 21
+        },
+        {
+          "type": "AscendSlidingWindowMLASpec",
+          "block": 2,
+          "ratio": 1,
+          "window": 8,
+          "head": 512,
+          "dtype": "torch.float32",
+          "page_bytes": 4160,
+          "count": 21
+        }
+      ]
+    },
+    {
+      "layers": 20,
+      "examples": [
+        "model.layers.3.self_attn.compressor.state_cache",
+        "model.layers.5.self_attn.compressor.state_cache"
+      ],
+      "spec_kinds": [
+        {
+          "type": "AscendSlidingWindowMLASpec",
+          "block": 8,
+          "ratio": 1,
+          "window": 128,
+          "head": 1024,
+          "dtype": "torch.float32",
+          "page_bytes": 32768,
+          "count": 20
+        }
+      ]
+    }
+  ],
+  "horizons": [
+    {
+      "length": 16384,
+      "group_peak_pages": [
+        128,
+        4,
+        38,
+        38,
+        518,
+        146
+      ],
+      "common_pool_peak_bytes": 794147840,
+      "common_pool_peak_page_fit": 10.668577981651376,
+      "native_equivalent_tokens": 179972,
+      "native_equivalent_concurrency": 10.984651711924439
+    },
+    {
+      "length": 65536,
+      "group_peak_pages": [
+        512,
+        16,
+        38,
+        38,
+        518,
+        146
+      ],
+      "common_pool_peak_bytes": 1154792960,
+      "common_pool_peak_page_fit": 7.336750788643533,
+      "native_equivalent_tokens": 491335,
+      "native_equivalent_concurrency": 7.497179693795326
+    },
+    {
+      "length": 131072,
+      "group_peak_pages": [
+        1024,
+        32,
+        38,
+        38,
+        518,
+        146
+      ],
+      "common_pool_peak_bytes": 1635653120,
+      "common_pool_peak_page_fit": 5.179844097995546,
+      "native_equivalent_tokens": 690149,
+      "native_equivalent_concurrency": 5.265421618562535
+    },
+    {
+      "length": 262144,
+      "group_peak_pages": [
+        2048,
+        64,
+        38,
+        38,
+        518,
+        146
+      ],
+      "common_pool_peak_bytes": 2597373440,
+      "common_pool_peak_page_fit": 3.261921458625526,
+      "native_equivalent_tokens": 865503,
+      "native_equivalent_concurrency": 3.3016323633782823
+    },
+    {
+      "length": 524288,
+      "group_peak_pages": [
+        4096,
+        128,
+        38,
+        38,
+        518,
+        146
+      ],
+      "common_pool_peak_bytes": 4520814080,
+      "common_pool_peak_page_fit": 1.8740934730056407,
+      "native_equivalent_tokens": 991458,
+      "native_equivalent_concurrency": 1.8910569105691057
+    },
+    {
+      "length": 1048576,
+      "group_peak_pages": [
+        8192,
+        256,
+        38,
+        38,
+        518,
+        146
+      ],
+      "common_pool_peak_bytes": 8367695360,
+      "common_pool_peak_page_fit": 1.012516325642142,
+      "native_equivalent_tokens": 1069262,
+      "native_equivalent_concurrency": 1.019728189390618
+    }
+  ],
+  "evidence": {
+    "source": "real CACHE_SPEC_CENSUS from run168 before trial capture",
+    "ascend": "9bf964cb4b87c8cd0d6852c41a55b3c29711fa95",
+    "vllm": "752a3a504485790a2e8491cacbb35c137339ad34",
+    "native_16k_cross_check": {
+      "expected_run163_equivalent_tokens": 179972,
+      "actual": 179972
+    },
+    "limits": "KV page-demand estimates only; long-context execution and non-KV graph peak not validated by this calculation"
+  }
+}
