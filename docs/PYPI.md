@@ -14,7 +14,7 @@ patches; it does not replace the serving engine or configure your environment.
 Use your **existing, working Ascend serving environment**, with Python 3.12+:
 
 ```bash
-python -m pip install --no-deps vllm-betterscale==0.3.2
+python -m pip install --no-deps vllm-betterscale==0.4.0
 ```
 
 The package deliberately does not install or upgrade vLLM, vLLM-Ascend, torch-npu,
@@ -43,16 +43,16 @@ controls before exposing the service outside the host.
 
 ### TP8 + EP, DSpark K5
 
-Four active requests; token budget 4128; context up to 15104. DSACP is enabled,
+Four active requests; token budget 4128; context up to 524288. DSACP is enabled,
 DCP/PCP remain 1, and prefix caching is disabled.
 
 ```bash
 vllm serve /models/DeepSeek-V4-Flash \
   --worker-cls betterscale.worker.Worker \
   --tensor-parallel-size 8 --enable-expert-parallel \
-  --quantization ascend --dtype bfloat16 \
-  --max-num-seqs 4 --max-num-batched-tokens 4128 --max-model-len 15104 \
-  --kv-cache-memory-bytes 12884901888 --no-enable-prefix-caching \
+  --quantization ascend --dtype bfloat16 --async-scheduling \
+  --max-num-seqs 4 --max-num-batched-tokens 4128 --max-model-len 524288 \
+  --no-enable-prefix-caching \
   --speculative-config '{"method":"dspark","num_speculative_tokens":5,"enforce_eager":true}' \
   --compilation-config '{"cudagraph_mode":"FULL","cudagraph_capture_sizes":[24,4128],"max_cudagraph_capture_size":4128}' \
   --additional-config '{"enable_dsa_cp":true,"multistream_overlap_shared_expert":true,"ascend_compilation_config":{"enable_npugraph_ex":true,"enable_static_kernel":false}}' \
@@ -62,23 +62,23 @@ vllm serve /models/DeepSeek-V4-Flash \
 ### TP1 / DP8 / EP8, DSpark K5
 
 Two active requests per rank (16 total); local token budget 1026; context up to
-16384. DSACP is disabled; target is FULL and draft remains native eager.
+524288. DSACP is disabled; target is FULL and draft remains native eager.
 
 ```bash
 vllm serve /models/DeepSeek-V4-Flash \
   --worker-cls betterscale.worker.Worker \
   --tensor-parallel-size 1 --data-parallel-size 8 --enable-expert-parallel \
-  --quantization ascend --dtype bfloat16 \
-  --max-num-seqs 2 --max-num-batched-tokens 1026 --max-model-len 16384 \
-  --kv-cache-memory-bytes 8589934592 --no-enable-prefix-caching \
+  --quantization ascend --dtype bfloat16 --async-scheduling \
+  --max-num-seqs 2 --max-num-batched-tokens 1026 --max-model-len 524288 \
+  --no-enable-prefix-caching \
   --speculative-config '{"method":"dspark","num_speculative_tokens":5,"enforce_eager":true}' \
   --compilation-config '{"cudagraph_mode":"FULL","cudagraph_capture_sizes":[6,12,132,264,516,1026],"max_cudagraph_capture_size":1026}' \
   --additional-config '{"enable_dsa_cp":false,"multistream_overlap_shared_expert":true,"ascend_compilation_config":{"enable_npugraph_ex":true,"enable_static_kernel":false}}' \
   --host 127.0.0.1 --port 8000 --served-model-name dsv4
 ```
 
-The 12 GiB / 8 GiB KV budgets above are tested examples, not memory reserved by the
-package. Use your native KV budget appropriate to the workload and available HBM.
+The examples use automatic physical KV sizing. An explicitly supplied manual
+byte budget remains available; see the capacity boundary below.
 In 0.3.1, DP prepares its finite producer/metadata graph catalog before READY:
 4 producer banks and 6 metadata entries per rank for the two-seat K5 configuration.
 Unknown runtime metadata shapes fall back to native preparation instead of capturing
@@ -113,3 +113,29 @@ The distribution contains Python source and upstream compatibility pins, not mod
 weights, datasets, CANN or donor binaries. It adapts Apache-2.0 upstream execution
 paths; third-party notices and the license are included. Source is available in the package and the
 [public development repository](https://github.com/vLLM-HUST/BetterScale).
+## Physical KV sizing and context capacity
+
+Without `--kv-cache-memory-bytes`, BetterScale measures the resident target/draft
+program in a shared graph pool and budgets actual free memory minus model,
+non-graph/profile costs and **1 GiB/rank safety headroom**. It does not use the
+native 90% fraction as its automatic ceiling. An explicit manual byte budget
+still selects the native manual path. Do not run uncoordinated services on the
+same cards: this is startup sizing, not dynamic memory arbitration.
+
+Both supported layouts admit contexts up to **524,288 tokens**, including output.
+This is a per-request ceiling, not a promise that every active seat can hold a
+full-length context simultaneously. Native KV admission still queues requests.
+
+- TP8: real-weight automatic KV **about 14.94 GiB/rank**, with about **0.97 GiB/rank**
+  free after startup. The new startup composition passes all 32 retained retrieval
+  questions. Dummy capacity gates complete a 448Ki-token input and reach **96.84%**
+  KV occupancy under long-request pressure; at most three long requests run together.
+- DP8: the retained real-weight physical-sizing gate assigns **about 7.9 GiB/rank**;
+  eight 60K-input requests and a separate single 448Ki-input request complete.
+  Long-history saturation and preemption recovery are not established by those runs.
+
+Do not compare native “KV token capacity” across different context ceilings as
+if it were a fixed-size token heap. Hybrid SWA/compressed-state accounting depends
+on the horizon and prefill wave budget. APC remains disabled in this release.
+The 3GiB diagnostic preemption failure is not claimed fixed.
+

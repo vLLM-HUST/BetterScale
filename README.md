@@ -96,14 +96,15 @@ vllm serve /models/DeepSeek-V4-Flash <your-native-vllm-arguments> \
 `Worker` is the **only public integration entry**. There is no `BetterScale`
 CLI, environment setup, automatic plugin discovery, private profile or mandatory
 artifact directory. The package does not select Python/CANN, set HCCL/allocator
-variables, repair library paths, or change service/KV settings. Start with a
+variables, repair library paths, or change network settings. Without an explicit
+KV byte budget, it sizes KV from actual execution residency and physical headroom. Start with a
 working donor environment. A source install with --no-build-isolation needs existing setuptools>=77.0.3.
-Prefer the published wheel: `pip install --no-deps vllm-betterscale==0.3.2`.
+Prefer the published wheel: `pip install --no-deps vllm-betterscale==0.4.0`.
 
 The original TP admission remains bounded: TP8/EP/DSACP/K5, four seats,4128 token budget,
-max length<=15104, target FULL, native scheduler, prefix caching off. This entry
-change does not qualify arbitrary layouts or shapes. KV budget, bind address and
-other native settings belong to the user; there is no patch-imposed minimum of
+max length<=524288, target FULL, native scheduler, prefix caching off. This entry
+change does not qualify arbitrary layouts or shapes. Manual KV bytes and bind
+address remain native settings; there is no patch-imposed minimum of
 four *full-length* resident requests. See the runbook for the complete native
 example and source-compatibility boundary.
 
@@ -115,6 +116,7 @@ not a second production entry. Shared hosts still require lease/admission.
 
 - [Technical report, with mechanism diagrams (中文)](docs/REPORT.zh-CN.md)
 - [Self-contained printable HTML report](docs/REPORT.zh-CN.html) (download and open locally)
+- [Physical KV and context capacity (中文)](docs/CAPACITY-0.4.zh-CN.md)
 - [Launch, checks and rollback (中文)](docs/RUNBOOK.zh-CN.md)
 - [Patch inventory and native integration points](patches/README.md)
 - [Exact TP8 results and comparator definitions](RESULTS.md)
@@ -137,12 +139,13 @@ The SVG figures are editable vector sources under `docs/figures/`.
 ### DP8 stable decode continuation
 
 The same Worker also has a separately gated TP1/DP8/EP8 path: two seats per
-rank,1026 local token budget,context<=16384,FULL target,DSpark K5 with native
+rank,1026 local token budget,context<=524288,FULL target,DSpark K5 with native
 eager draft,DSACP off,prefix caching off. It combines native DSA FULL target
 with owned input slots and captured device preparation/metadata. It does **not**
-change the kept TP8 combination or enable the rejected all-mode worker extension.
+enable the rejected all-mode worker extension. Automatic physical KV sizing is
+shared with the TP entry; only TP installs the finite split-draft catalog.
 See [the ownership protocol](src/betterscale/patches/async_decode/README.md)
-and [native launch parameters](docs/RUNBOOK.zh-CN.md#dp8-稳定-decode-continuation独立于-tp8-组合).
+and [native launch parameters](docs/RUNBOOK.zh-CN.md).
 Prototype matched-cycle evidence and the packaged-worker acceptance are reported
 separately; a faster step is not by itself an end-to-end throughput claim.
 

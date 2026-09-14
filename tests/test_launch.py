@@ -49,6 +49,21 @@ class LaunchContract(unittest.TestCase):
         c=config();c.speculative_config.num_speculative_tokens=3
         with self.assertRaises(ValueError):validate_worker_config(c)
 
+    def test_context_ceiling_is_independent_of_active_seats(self):
+        for dp in (False, True):
+            c = config()
+            if dp:
+                c.parallel_config.tensor_parallel_size = 1
+                c.parallel_config.data_parallel_size = 8
+                c.scheduler_config.max_num_seqs = 2
+                c.scheduler_config.max_num_batched_tokens = 1026
+                c.additional_config["enable_dsa_cp"] = False
+            c.model_config.max_model_len = 524288
+            validate_worker_config(c)
+            c.model_config.max_model_len += 1
+            with self.assertRaisesRegex(ValueError, "context"):
+                validate_worker_config(c)
+
     def test_fail_closed_on_changed_private_api(self):
         with tempfile.TemporaryDirectory() as folder:
             root=Path(folder);source=root/'worker.py';source.write_bytes(b'qualified')
