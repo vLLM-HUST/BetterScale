@@ -1,0 +1,91 @@
+{
+  "source_commit": "307ac45",
+  "run": "170-hw3-dp8-physical-preflight-v3",
+  "scope": "DP8 TP1 K5 FULL, 16K max length, two seats/rank; not long-context saturation",
+  "phases": {
+    "physical_budget_after_trial_release": {
+      "ranks": 8,
+      "ranges_bytes": {
+        "free": [
+          10356969472,
+          10365493248
+        ],
+        "total": [
+          65452113920,
+          65452113920
+        ],
+        "allocated": [
+          53171354112,
+          53171354112
+        ],
+        "reserved": [
+          54284779520,
+          54284779520
+        ],
+        "peak_allocated": [
+          54789347840,
+          54789347840
+        ],
+        "peak_reserved": [
+          55673094144,
+          55673094144
+        ],
+        "kv_budget": [
+          8474636288,
+          8483536896
+        ],
+        "measured_target_graph": [
+          1442541568,
+          1448337408
+        ],
+        "persistent_growth": [
+          329216,
+          329216
+        ],
+        "safety": [
+          1073741824,
+          1073741824
+        ]
+      }
+    },
+    "after_capture_and_patch_warmup": {
+      "ranks": 8,
+      "ranges_bytes": {
+        "free": [
+          1805742080,
+          1819643904
+        ],
+        "total": [
+          65452113920,
+          65452113920
+        ],
+        "allocated": [
+          61547375104,
+          61556438016
+        ],
+        "reserved": [
+          62599987200,
+          62599987200
+        ],
+        "peak_allocated": [
+          62180530176,
+          62189593088
+        ],
+        "peak_reserved": [
+          63562579968,
+          63562579968
+        ],
+        "graph": [
+          368758784,
+          392318976
+        ]
+      }
+    }
+  },
+  "exit_code": 0,
+  "quality": {
+    "questions": 32,
+    "correct": 32,
+    "evaluator": "60a28a727d3b7807eb3554928f3530d04c948452"
+  }
+}

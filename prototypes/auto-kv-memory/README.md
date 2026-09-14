@@ -144,3 +144,18 @@ Frozen source/launch closure is sibling`auto-kv-v3/`; launcher PID2579909 at
 submission (revalidate live identity, not this historical number, before waiting
 or cancellation). It owns the home lease and bounded idle-card admission.
 Control remains run166; no percentage-default or long-context guard has changed.
+
+Run170 completed exit0: all three HTTP cohorts and32/32 pinned OpenCompass
+retrieval pass. V3 budgets~7.9GiB KV/rank with1GiB explicit safety; after final
+capture/free~1.69GiB, allocated~57.33GiB/reserved58.30GiB. Shared trial graph
+handles leave only~329KiB allocated growth, while preserving communication
+resource lifetime. Final capture reports only~0.35GiB *incremental* growth because
+it reuses the trial pool; do NOT replace the full preflight reserve with this
+incremental number. Compact exact eight-rank ranges:`docs/evidence/auto-kv-run170.json`.
+Full locally recovered receipts:`runs/auto-kv-v3-20260914/result170/`.
+
+The next gate is a separately scoped longer-context fixture (first64K, then
+capacity occupancy), with an explicit experimental guard extension rather than
+silently lifting public qualification. TP automatic sizing, actual long-history
+runtime peaks, and the LiveInfer HBM8GiB/500K reconciliation remain open. Neither
+the package's released allocator nor its public max-length guard changed here.
