@@ -1,0 +1,93 @@
+{
+  "run": 187,
+  "status": "PASS_DUMMY_TP_64K",
+  "scope": "TP8 dummy single-pool complete automatic fit;64K horizon;4 active seats;chunk budget4128; synthetic prompts128 generated tokens each",
+  "cohorts": [
+    {
+      "label": "0-long32-single",
+      "elapsed_s": 6.096749685937539,
+      "requests": 1
+    },
+    {
+      "label": "0-long60-single",
+      "elapsed_s": 8.145910581108183,
+      "requests": 1
+    },
+    {
+      "label": "0-long60-eight",
+      "elapsed_s": 43.851608045981266,
+      "requests": 8
+    }
+  ],
+  "after_long_cohorts": [
+    {
+      "rank": 4,
+      "free": 1005412352,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342451712,
+      "draft_replays": 516,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 6,
+      "free": 1005125632,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342451712,
+      "draft_replays": 516,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 1,
+      "free": 998060032,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342451712,
+      "draft_replays": 516,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 0,
+      "free": 1002770432,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342451712,
+      "draft_replays": 516,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 2,
+      "free": 1004392448,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342451712,
+      "draft_replays": 516,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 5,
+      "free": 1004814336,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342451712,
+      "draft_replays": 516,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 3,
+      "free": 1005613056,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342451712,
+      "draft_replays": 516,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 7,
+      "free": 1007325184,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342451712,
+      "draft_replays": 516,
+      "draft_fallbacks": 0
+    }
+  ],
+  "limitations": [
+    "Not model quality or real-weight throughput",
+    "Observed peak KV usage44.5%, not saturation",
+    "No preemption observed"
+  ]
+}

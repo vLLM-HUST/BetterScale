@@ -474,3 +474,25 @@ receipts; it no longer loses unfinished long-cohort samples on timeout.
 Remote closure`/workspace/my-ascend-workspace/runs/tp-continuation-20260914/auto-kv-tp-long64`,
 output`result187/`, managed SSH session5433. Local source/result home:
 `runs/auto-kv-tp-long64-hw3-20260914/`. The launch retains a1500s owned bound.
+
+Run187 exits0: dummy32K single6.097s,60K single8.146s,eight60K43.852s.
+After all cohorts every rank records516 ordinary draft replays, zero fallbacks;
+peak allocated above READY326.587MiB/rank. Observed KV peak44.5%, max4 running,
+zero preemptions; this is not saturation. Exact receipt:`docs/evidence/auto-kv-run187.json`.
+The per-rank draft count is368 decode+148 query replays. Full receipts recovered.
+
+The CPU census is now also evaluated for TP wave4128: at3GiB, actual common pool
+is3,177,502,080bytes and the conservative16K group-page peak is2.546GiB (fit1.162),
+64K peak2.882GiB (fit1.026),512K peak6.017GiB. These bounds alone do NOT prove the
+root of the3GiB runtime stall: lookahead, simultaneous in-flight allocations and
+recycling timing remain outside that summed per-request estimate. Do not claim
+that3GiB cannot fit8K solely from this calculation. Source/artifacts are in the
+local187 capsule (`tp-census.json`, `tp3g-capacity.json`).
+
+Run188 advances the private TP horizon to512K and offers one448Ki input then
+four128Ki inputs,128 output tokens each, with the same dummy automatic one-pool
+program and durable metrics/quiescent memory RPC. It is NOT full saturation,
+original agent load or model quality. The fixed execution bound is still1500s.
+Remote closure`/workspace/my-ascend-workspace/runs/tp-continuation-20260914/auto-kv-tp-long512`,
+output`result188/`, managed SSH session18041. Local closure:
+`runs/auto-kv-tp-long512-hw3-20260914/`.

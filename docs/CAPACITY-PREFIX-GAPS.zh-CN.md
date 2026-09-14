@@ -110,3 +110,8 @@ spec字节加权的算法，与直接公共池页预算还有小差异，不能�
   该边界仍未关闭，不能用不发生抢占的成功运行代替。
 
 这些进展没有改变发布版Worker、长度guard或安装启动命令。
+
+后续run187还通过了TP8的64K dummy长历史门槛：单32K、单60K及八请求60K
+输入均完成，运行期额外allocator峰值约327MiB/rank，所有rank的draft
+fallback为0。观测KV峰值44.5%、最多4个活跃请求、无抢占；不是饱和容量
+或真实权重吞吐成绩。详见`docs/evidence/auto-kv-run187.json`。
