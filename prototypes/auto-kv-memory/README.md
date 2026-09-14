@@ -378,3 +378,20 @@ real collective paths outside the pool instead of guessing an unrelated group
 or substituting two arenas. Native target already has per-bucket graph warmups.
 Capsule`runs/auto-kv-draft-dummy-primed-local-20260914/`, output`result181/`,
 managed session2172. Until this gate passes, runtime correctness is still open.
+
+Run181 completes all96 eager-prime/prepare observations and short decode/prefill
+(12.400s/7.055s), but turnover still does not finish; a worker exits without an
+initial allocation/SDMA diagnostic in the application log. Do not call this a
+successful buffer repair. Per-small-draft priming after target capture does not
+establish that ALL communication buffers were initialized BEFORE the first graph.
+Its simultaneous faulthandler outputs interleaved; retain future stacks per rank.
+
+`communication_prewarm.py` closes that earlier boundary: before native profiling
+or target capture, enumerate only the engine's existing HCCL process groups,
+exercise AllReduce/AllGather/ReduceScatter/AllToAll at1 row and the admitted wave
+budget, synchronize outside any capture, then allow native memory profiling.
+No new group and no second graph pool. This is a deliberately bounded TP8 probe;
+final production coverage should follow actual route ownership, not perpetuate
+unnecessary collective work. Run182 adds this to181 and writes separate per-rank
+stack logs. Dummy-only local capsule`runs/auto-kv-draft-dummy-groups-local-20260914/`,
+output`result182/`, managed session23667. Public runtime unchanged.
