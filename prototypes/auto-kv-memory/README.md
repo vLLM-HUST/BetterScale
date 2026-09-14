@@ -342,3 +342,20 @@ initialization and before generic post-load setup; no checkpoint reads or
 forward changes. Run179 uses this hook, corrected metadata and ONE global pool,
 local capsule`runs/auto-kv-draft-dummy-layout-local-20260914/`, output`result179/`,
 managed session57941. It is a mechanism gate, never a quality result.
+
+Run179 confirms the dummy layout repair on all8 target+draft models and completes
+all12 startup entries/rank. Dummy decode and prefill cohorts complete12.331s and
+7.161s. Turnover fails with HCCL AIV AllGather SDMA address error507011,
+size4227072bytes (=516×4096×BF16), `isOpbase:1`; initial reported error is at
+async output-event synchronization, not an allocation OOM. Later worker deaths
+are downstream. Native scheduler input dumps can be HUGE single lines: truncate
+individual lines before extracting errors; never print entire dump-input records.
+All cards reclaimed, exit1. This is not a passing shared-pool serving result.
+
+Before another full-model iteration, `shared_pool_collective_probe.py` isolates
+ONE shared pool with retained target/draft-sized graph handles and graph-local
+intermediates, interleaving exact replay checks with eager AllGathers at
+516/514/512/1 rows. No model or checkpoint, two local devices3/4 under admission.
+Capsule`runs/auto-kv-shared-eager-20260914/`, managed session24432 at submission.
+This tests a communication-lifetime hypothesis; failure/success cannot by itself
+establish that model intermediate liveness is correct.
