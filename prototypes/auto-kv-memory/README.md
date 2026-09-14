@@ -1,5 +1,11 @@
 # Native automatic KV budget / FULL graph accounting
 
+**Current Fletcher constraints (September14):** do mechanism/layout/capture
+experiments with dummy weights, not repeated real-checkpoint loads. Final target
+and draft MUST use one shared graph pool; a second arena is not an acceptable
+solution. Subsequent NPU work uses local cards, not hw3. Repair the bounded dummy
+loader gap rather than bypassing it with real weights.
+
 First measure the existing path, without changing the allocator. `memory_worker.py`
 subclasses the released Worker only to record synchronized startup memory snapshots:
 pre-profile, post-profile, after real KV allocation/before capture, and after all
@@ -322,3 +328,17 @@ All shapes, real weights and diagnostic3GiB KV remain the same. Probe-only
 faulthandler dumps after90s of serving retain Python stacks if turnover stalls.
 Local capsule`runs/auto-kv-draft-isolated-local-20260914/`, output`result178/`,
 managed session82685 at submission. Public split_draft remains unchanged.
+
+Run178 was cancelled at Fletcher's steering during weight loading, exit-15;
+all local cards reclaimed. No independent-pool execution result was obtained.
+Do not resume its watcher or promote a second pool.
+
+The native dummy gap is identified in `ops/linear.py::
+AscendColumnParallelLinear.weight_loader`: real loading reshapes wo_a from
+[local_groups*o_lora_rank,input] into[local_groups,input,o_lora_rank]. Native
+DummyModelLoader initializes parameters without calling this loader.
+`dummy_weights.py` applies exactly that BF16 layout conversion after dummy
+initialization and before generic post-load setup; no checkpoint reads or
+forward changes. Run179 uses this hook, corrected metadata and ONE global pool,
+local capsule`runs/auto-kv-draft-dummy-layout-local-20260914/`, output`result179/`,
+managed session57941. It is a mechanism gate, never a quality result.
