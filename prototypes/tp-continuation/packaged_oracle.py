@@ -43,6 +43,14 @@ class AcceptanceWorker(Worker):
         result = super().compile_or_warm_up_model()
         r = self.model_runner
         r.model._decode_pair.shadow_runner = r
+        if os.environ.get("DISABLE_METADATA_CAPTURE") == "1":
+            r._build_attention_metadata = r._async_decode[1].native
+        if os.environ.get("AUDIT_TP_METADATA") == "1":
+            from metadata_audit import install
+
+            install(self)
+        if os.environ.get("SKIP_PREPARATION_ORACLE") == "1":
+            return result
         producer, _ = r._async_decode
         producer.checks = []
         producer.path = (

@@ -58,3 +58,18 @@ No result is claimed until hardware acceptance is complete.
   Do not confuse that fixture failure with the real-weight continuation failure.
   `126` also exposed a test Worker constructor keyword mismatch, corrected in
   `127`. These are diagnostic attempts, not accepted target checks.
+
+- `129` explicit live copies and `131` native metadata still failed the same
+  strict TP oracle. Neither observation supports blaming recorded copies or
+  metadata capture. The temporary live-copy production bridge is withdrawn.
+- `132` adds the missing negative control: **native graph versus itself**, with
+  the same KV/side-state restoration, also failed every checked TP step. This
+  means the earlier oracle failures do not by themselves establish a candidate
+  regression. Its diagnostic driver commits only the first native output/State.
+- Recovered prior TP receipt:
+  `/workspace/strengthen-dsv4-pingpong/runs/104-tp8-composed-shadow/engine/dp0-protocol.json`.
+  That qualification explicitly used `HCCL_DETERMINISTIC=strict` (48 exact target
+  comparisons/rank). The current runs used normal HCCL; DP's prior exact success
+  in normal mode does not establish the TP reproducibility envelope. Next repeat
+  the causal matrix in strict mode before deciding whether any state is missing.
+  **Do not relax the comparison tolerance to paper over a failed native control.**

@@ -70,17 +70,13 @@ class DecodePair:
                             destination.copy_(origin, non_blocking=True)
                         return runnable(*args, **kwargs)
 
-                    # The TP bridge is qualified independently from DP's
-                    # captured ingress; retain explicit pre-replay publication.
-                    w.runnable = runnable if packet.native_views else copied_forward
+                    w.runnable = copied_forward
                     output = original_call(w, *a, **k)
                     w.runnable = runnable
                     assert self.catalogs[bank][key].aclgraph is not None
                 return output
             bank = self.sequence % 2
             packet = self.packets[bank][key]
-            if packet.native_views:
-                packet.refresh(source)
             # The recorded D2D publication reads native State-derived inputs
             # on the compute stream, into this bank's private target packet.
             a, k, ctx.attn_metadata = packet.tree

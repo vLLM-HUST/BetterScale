@@ -113,6 +113,9 @@ def rank_main(args, dp_rank, barrier):
         if not args.real:
             assert args.packaged_oracle and args.tp == 8
             config["worker_cls"] = "packaged_oracle.DummyAcceptanceWorker"
+        if os.environ.get("TP_DIAGNOSTIC_MATRIX") == "1":
+            assert args.real and args.tp == 8
+            config["worker_cls"] = "matrix_oracle.MatrixWorker"
         config["worker_extension_cls"] = "packaged_observer.PackagedObserver"
     if args.spec:
         config["speculative_config"] = dict(
@@ -216,7 +219,11 @@ def rank_main(args, dp_rank, barrier):
         barrier.wait(timeout=120)
 
     wave("warmup", [64] * local_seats, 16, observe=False)
-    if args.pingpong_study:
+    if os.environ.get("TP_DIAGNOSTIC_MATRIX") == "1":
+        for policy in ("packet", "producer", "metadata"):
+            llm.collective_rpc("set_matrix_mode", args=(policy,))
+            wave("matrix-" + policy, [128] * local_seats, 64)
+    elif args.pingpong_study:
         assert (
             args.real
             and args.pingpong_continuous

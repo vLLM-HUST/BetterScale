@@ -85,13 +85,6 @@ class CallPacket:
         self._bind(self.tree, source, copies, seen=set())
         return [(d, s) for d, s in copies.values() if d.device.type != "cpu"]
 
-    def refresh(self, source):
-        """Publish a live packet before replay, preserving all storage aliases."""
-        copies = {}
-        self._bind(self.tree, source, copies, seen=set())
-        for destination, origin in copies.values():
-            destination.copy_(origin, non_blocking=True)
-
     def _bind(self, dst, src, copies, path=(), seen=None):
         # Metadata are a DAG shared across model layers, not a tree. Validate
         # each actual source/destination pair once without hiding alias splits.
