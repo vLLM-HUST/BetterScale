@@ -1,0 +1,37 @@
+{
+  "release": "0.4.0",
+  "package_source_commit": "80a75b5",
+  "cpu_tests": 60,
+  "pinned_private_source_files": 15,
+  "official_artifacts_match": true,
+  "clean_official_install_and_displayed_commands": "pass",
+  "real_weight_quality": {
+    "run": 190,
+    "passed": 32,
+    "total": 32,
+    "scope": "retained original LongBench retrieval, not whole OpenCompass"
+  },
+  "integrated_public_worker_dummy": {
+    "run": 192,
+    "result": "pass",
+    "scope": "actual public class with fixture-only dummy loader; no alternate Worker implementation"
+  },
+  "tp_capacity_pressure": {
+    "run": 189,
+    "weights": "dummy",
+    "peak_kv_percent": 96.8401059,
+    "running_long_requests_max": 3,
+    "complete_448Ki_prefixes_simultaneously_resident": "not established"
+  },
+  "limitations": [
+    "APC remains off",
+    "prior small-budget preemption recovery failure remains unresolved",
+    "heavy DP pressure timed out; not a pass"
+  ],
+  "post_npu_changes": [
+    "native logging namespace and startup capacity record",
+    "pin manifest extends to three additional native KV files",
+    "documentation"
+  ],
+  "website_commit": "9b537f6"
+}

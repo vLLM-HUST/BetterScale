@@ -93,3 +93,20 @@ and require their frozen versions; do not mass-rewrite old evidence or real path
 Published0.3.2 from `963f1c2` on2026-09-14. Both official PyPI artifacts directly
 match audited builds. A0.3.1-to0.3.2 install confirms the old namespace is removed
 and native Worker/pins load; no NPU rerun. Local receipt: `runs/release-0.3.2/`.
+
+## Physical capacity: 0.4.0
+
+Published/tagged from package source `80a75b5`; both official artifacts match the audited builds.
+`docs/evidence/release-0.4.0.json` distinguishes real quality190, actual public-entry dummy192
+and dummy capacity189. No extra real-weight load was needed for logging/pin/documentation-only
+changes. The public Worker uses one target/draft pool, physical free-memory accounting and a
+1GiB safety reserve; separate DP auxiliary metadata/producer lifetimes are unchanged.
+
+Do not use sitecustomize to install a dummy loader: run191 polluted native CPU-info subprocess
+stdout and failed before KV qualification. The corrected Worker-import-time fixture passed192;
+neither dummy admission nor fixture is shipped. Native INFO records need the `vllm.` logger
+namespace, not a new root namespace; absence of custom logs is not absence of native startup.
+
+Capacity ceilings and bytes are documented in `docs/CAPACITY-0.4.zh-CN.md`. Keep96.84% labeled
+TP dummy, keep DP timeout and the unrepaired small-budget preemption boundary explicit, and
+never relabel historical throughput numbers as fresh0.4 benchmark results.
