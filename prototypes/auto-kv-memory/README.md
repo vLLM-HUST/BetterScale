@@ -177,3 +177,17 @@ free1.682–1.691GiB after final capture. Exact ranges and cohort times are in
 `runs/auto-kv-long64-20260914/result171/`. This qualifies the tested history
 execution, not a full-KV saturation, actual maximum resident count or SLO claim.
 All jobs through171 have exited; no background admission watcher remains.
+
+TP physical sizing gate submitted on hw3 as`172-hw3-tp8-physical-preflight`
+(source closure`auto-kv-tp/`, launcher PID2602090 at submission). It uses V3,
+original qualified TP4 seats/4128 wave/15104 context, FlashComm1 and split draft;
+no fixed KV bytes or utilization override. This keeps TP composition independent
+of longer-context guard changes.
+
+Historical comparison remains unresolved: the source-owned c76436ec census at
+`runs/liveinfer-online/20260907-capacity-c76436ec/` reports old full-HBM geometry,
+including11.82GB per512K/query256 resident, and explicitly rejects equating it
+with the later mapped implementation. The September8 HBM factor8 profile-v5
+used only2GiB State, one64K resident per owner, not the requested8GiB/500K case.
+Do not silently substitute either for Fletcher's later observation. Asked for
+its approximate task/date while independent TP/capacity work continues.
