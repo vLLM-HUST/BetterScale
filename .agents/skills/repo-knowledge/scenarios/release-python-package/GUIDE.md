@@ -42,3 +42,19 @@ The official PyPI wheel was downloaded, directly compared byte-for-byte with the
 built artifact and installed into a clean Python 3.12 environment with --no-deps.
 The clean install also verified alias identity and readable pins. No new NPU run
 was performed for the alias-only packaging change.
+
+## Public repository
+
+Fletcher authorized opening `vLLM-HUST/BetterScale` on 2026-09-14. Before the
+visibility change, six published branch/tag refs were inspected (553 unique
+historical blobs, 3.95 MB). The offline secret scan's 48 entropy findings were
+reviewed as 42 commit/digest values and six local artifact paths; no configured
+PyPI credential, private key or credential-bearing URL was found. No GitHub
+release assets, Actions artifacts, issues, wiki or discussions needed separate
+publication treatment. This is a bounded pre-publication audit, not a guarantee
+about future commits. Untracked local worktrees were not published.
+
+GitHub now recognizes the root Apache-2.0 LICENSE (same text as the packaged
+license). Public visibility and anonymous repository/license downloads were
+verified. Do not restore private-repository notices in the website or install
+instructions; keep immutable PyPI 0.3.0 artifacts and their measurement identity.
