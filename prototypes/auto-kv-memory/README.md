@@ -258,3 +258,14 @@ A separate live sample during the interrupted cohort showed one running request
 per rank, KV~49%, zero preemptions. Do not call this16 simultaneously resident or
 an observed saturation peak; check horizon-dependent admission on the next local
 fixture, and size its time bound from the226s single-request observation.
+
+Local run175 prepares a bounded TP draft-envelope prototype with3GiB manual KV
+as an observation control, NOT a replacement release policy. Frozen closure
+`runs/auto-kv-draft-local-20260914/`, output`result175/`, launcher PID1061737 at
+submission, normal local home lease/admission. `draft_warmup.py` calls native
+DSpark `_propose` before request admission using scratch State, counts4..1,
+context widths6/17/1. Its table/metadata signatures and later real replay require
+qualification; bytecode compilation is not a numerical gate. The private copy
+of ExactDraftGraph captures into the platform shared pool. Public split_draft
+is unchanged. Once this fixture works, trial/final state retirement and all
+catalog reservations must join the physical sizing protocol.
