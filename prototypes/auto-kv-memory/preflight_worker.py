@@ -64,10 +64,26 @@ def clear_trial_graphs(wrappers, retained_graphs=None):
 
 
 class PreflightWorker(MemoryWorker):
+    def _init_device(self):
+        if self.cache_config.kv_cache_memory_bytes is not None:
+            return super()._init_device()
+        # The pinned native init uses this fraction ONLY to reject startup if
+        # free < total*fraction. Disable that provisional rejection locally;
+        # the actual free snapshot, model loading and positive physical-budget
+        # check decide feasibility. Restore the user's config even on failure.
+        # This is not a public zero-utilization setting or a zero-byte budget.
+        fraction = self.cache_config.gpu_memory_utilization
+        self.cache_config.gpu_memory_utilization = 0.0
+        try:
+            device = super()._init_device()
+        finally:
+            self.cache_config.gpu_memory_utilization = fraction
+        self.requested_memory = self.init_snapshot.free_memory
+        return device
+
     def determine_available_memory(self):
         assert self.cache_config.kv_cache_memory_bytes is None
-        # Native initialization's clean-device guard is retained. Only the budget
-        # calculation stops using total_memory * gpu_memory_utilization.
+        # Budget only memory actually available to this worker at startup.
         self.requested_memory = self.init_snapshot.free_memory
         super().determine_available_memory()
         runner = self.model_runner

@@ -269,3 +269,20 @@ qualification; bytecode compilation is not a numerical gate. The private copy
 of ExactDraftGraph captures into the platform shared pool. Public split_draft
 is unchanged. Once this fixture works, trial/final state retirement and all
 catalog reservations must join the physical sizing protocol.
+
+The current experimental PreflightWorker also removes native initialization's
+fractional free-memory rejection for automatic mode: temporarily neutralize the
+pinned init-only fraction gate, restore the user's CacheConfig in finally, then
+use init_snapshot.free_memory as the requested byte amount. Native model loading
+and positive physical-budget checks still decide feasibility. Manual-byte mode
+keeps native initialization unchanged. Three CPU tests cover auto/free-byte
+selection, exception restoration and manual preservation. This is not in the
+already-frozen run175 (manual observation control), nor retroactively qualified
+by runs170/171/174; the next automatic native gate must exercise it.
+
+Local run175's first detached-shell submission did not survive and never
+created an output directory. It was verified absent before starting the same
+unlaunched fixture under the tool-managed foreground session (17179), current
+launcher PID1062200 at that observation. That handle entered admission and
+subsequently started its owned service; use actual process/output state for waits,
+not the historical absent PID1061737.
