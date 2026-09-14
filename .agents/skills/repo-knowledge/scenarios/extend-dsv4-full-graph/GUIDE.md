@@ -279,3 +279,11 @@ The probe explicitly enables internal format; otherwise format_cast can warn and
 silently leave ND. Keep selected-device admission and source/destination roles in
 the capsule, including rejected windows. Do not compare different hosts as if
 only the communication policy changed.
+
+For **captured local DMA rather than HCCL**, enter
+`prototypes/graph-dma/README.md`. The single-card ACL H2D/D2H/local-D2D fixture
+uses explicitly pinned host storage and distinguishes fixed-address content
+updates from capture task-group parameter updates. Its sustained GEMM overlap
+results differ materially from HCCL/AIV; do not transfer backend conclusions.
+The first24-case run passes; task-update support and multi-layer consumer/slot
+lifetimes are separate gates, not implied by that throughput microbenchmark.
