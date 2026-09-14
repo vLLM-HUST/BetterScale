@@ -180,6 +180,8 @@ class WorkerLifecycle(unittest.TestCase):
                 module.install_capture = lambda _name=name: calls.append(
                     _name + "-capture"
                 )
+            if name == "split_draft":
+                module.prepare = lambda worker: calls.append("split_draft-prepare")
             modules[module.__name__] = module
             setattr(package, name, module)
         c = config()
@@ -216,6 +218,7 @@ class WorkerLifecycle(unittest.TestCase):
                 "ordered_replay",
                 "qli_cpu",
                 "async_decode",
+                "split_draft-prepare",
                 "ready",
             ],
         )

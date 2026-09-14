@@ -57,6 +57,7 @@ class Worker(NPUWorker):
             ordered_replay.install(self)
             qli_cpu.install(self)
             async_decode.install(self)
+            split_draft.prepare(self)
             patches = PATCH_IDS
         log.info("strengthen-dsv4 rank=%s READY patches=%s", self.rank, patches)
         return result

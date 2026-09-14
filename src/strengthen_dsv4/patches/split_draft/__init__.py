@@ -73,6 +73,10 @@ class DraftGraphRunner:
         assert worker.model_runner.vllm_config.scheduler_config.max_num_seqs == 4
         assert self.drafter.parallel_drafting
         self.enabled = True
+        self.preparing = False
+        # Native compute serializes these mutually exclusive programs. Keep
+        # inputs/outputs owned, but do not reserve a scratch pool per shape.
+        self.pool = torch.npu.graph_pool_handle()
         self.decode_graphs = {}
         self.query_graphs = {}
         self.context_calls = self.context_rows = 0
@@ -91,10 +95,22 @@ class DraftGraphRunner:
         if actual == 6 * count and not prefill and not kwargs.get("is_prefill", False):
             # 外层已检查请求数、context 行数和模式；每个请求数只留一个 entry。
             if count not in self.decode_graphs:
+                if not self.preparing:
+                    return self.original(**kwargs)
                 self.decode_graphs[count] = ExactDraftGraph(
-                    self.worker, self.original, count
+                    self.worker, self.original, count, pool=self.pool
                 )
             return self.decode_graphs[count](**kwargs)
+
+        modes = {
+            (m.attn_state.name, bool(m.num_prefills))
+            for m in ctx.attn_metadata.values()
+        }
+        assert len(modes) == 1
+        mode, prefill = modes.pop()
+        key = (count, mode, prefill)
+        if key not in self.query_graphs and not self.preparing:
+            return self.original(**kwargs)
 
         # Exactly the unpadded native operation, before ANY query graph capture.
         # No H2D round-trip or host fence is required between these same-stream ops.
@@ -115,26 +131,20 @@ class DraftGraphRunner:
             kwargs["multi_steps_attn_metadata"] = graph_metadata(
                 kwargs["multi_steps_attn_metadata"]
             )
-        modes = {
-            (m.attn_state.name, bool(m.num_prefills))
-            for m in ctx.attn_metadata.values()
-        }
-        assert len(modes) == 1
-        mode, prefill = modes.pop()
-        key = (count, mode, prefill)
         try:
             # 原生 _run_merged_draft 内仍会调用 context hook：在此作用域临时
             # 将其变成 no-op，避免写两遍；query_body 的 finally 保证异常也恢复。
             # 数学 query/Markov 逻辑仍由原生 callable 执行，不是自写第二个 drafter。
             with query_body(d), record_function("strengthen::draft_query_graph"):
                 if key not in self.query_graphs:
-                    entry = ExactDraftGraph(self.worker, self.original, count)
+                    entry = ExactDraftGraph(
+                        self.worker, self.original, count, pool=self.pool
+                    )
                     entry.query_only = True
                     entry.strict_signature = True
                     entry.reference_kind = "native-query-after-native-unpadded-context"
                     self.query_graphs[key] = entry
                 output = self.query_graphs[key](**kwargs)
-                assert self.query_graphs[key].fallbacks == 0
                 return output
         finally:
             ctx.attn_metadata = original_metadata
@@ -150,3 +160,10 @@ def install(worker):
     worker.model_runner.drafter._runnable = runner
     worker._exact_draft_graph = runner
     return dict(rank=worker.rank, policy="native-context-plus-query-graph")
+
+
+def prepare(worker):
+    """Worker calls after all metadata hooks, before advertising READY."""
+    from ._warmup import prepare as prepare_graphs
+
+    prepare_graphs(worker)

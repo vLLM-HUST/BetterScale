@@ -1,6 +1,6 @@
-"""Exact-shape DSpark private runtime-capture banks; not general graph admission.
+"""Exact-shape DSpark private startup-capture banks; not general graph admission.
 
-One observed pure-verification shape per request count (1–4) is captured.
+One prepared pure-verification shape per request count (1–4) is captured.
 Other shapes fall back; the bank cache cannot grow without bound.
 Draft metadata has a PRIVATE stable bank, never the target global RoPE bank.
 """
@@ -152,6 +152,7 @@ class ExactDraftGraph:
         request_count=4,
         context_capacity=None,
         reference=None,
+        pool=None,
     ):
         self.worker = worker
         self.drafter = worker.model_runner.drafter
@@ -165,6 +166,8 @@ class ExactDraftGraph:
         self.context_capacity = context_capacity or 6 * request_count
         self.reference = reference or self.original
         self.enabled = True
+        self.allow_capture = True
+        self.pool = pool
         self.key = None
         self.graph = None
         self.replays = 0
@@ -211,18 +214,22 @@ class ExactDraftGraph:
             signature(current),
             state_inputs,
         )
-        # 普通 decode 对不匹配的签名回退；split entry 设置 strict_signature，
-        # 因为其输入和 context hook 已转换，不能静默改走另一种程序，故显式报错。
+        # 普通 decode 对不匹配的签名回退；split entry 在启动准备时严格验签。
+        # READY 后若签名不匹配，仍在外层 query_body 作用域执行原生 query，
+        # 不重复 context 写入，也不临时捕获另一个程序。
         if self.key is not None and key != self.key:
-            if getattr(self, "strict_signature", False):
+            if getattr(self, "strict_signature", False) and self.allow_capture:
                 raise AssertionError(
                     f"FULL draft bank signature changed: {key_changes(self.key,key)}"
                 )
             self.fallbacks += 1
             return self.original(**kwargs)
-        # 第一次遇到这个已准入形状才捕获，不在每波重新 capture。
-        # 这里的全设备 synchronize 是首次初始化成本，不是稳态每次 replay 的 fence。
+        # 仅启动准备允许捕获。READY 后 allow_capture=False；缺少图便回退。
+        # 全设备 synchronize 属于 READY 之前，不让首批请求承担初始化成本。
         if self.key is None:
+            if not self.allow_capture:
+                self.fallbacks += 1
+                return self.original(**kwargs)
             self.key = key
             self.buffers = bank(current)
 
@@ -236,7 +243,7 @@ class ExactDraftGraph:
                 was_capturing = ctx.capturing
                 ctx.capturing = True
                 try:
-                    with torch.npu.graph(graph):
+                    with torch.npu.graph(graph, pool=self.pool):
                         self.output = self.original(**self.buffers[0])
                 finally:
                     ctx.attn_metadata = old

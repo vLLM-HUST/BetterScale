@@ -73,6 +73,7 @@ def preserve_inputs(r):
         torch.npu.synchronize()
 
 
+@torch.inference_mode()
 def prepare(producer, metadata):
     from vllm.config import CUDAGraphMode
 

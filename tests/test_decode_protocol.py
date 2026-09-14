@@ -86,12 +86,17 @@ class Protocol(unittest.TestCase):
                 box["output"].fill_(7)
 
         @contextlib.contextmanager
-        def capture(graph):
+        def capture(graph, pool=None):
             yield
 
         fake = NS(
             Tensor=torch.Tensor,
-            npu=NS(synchronize=lambda: None, NPUGraph=Graph, graph=capture),
+            npu=NS(
+                synchronize=lambda: None,
+                NPUGraph=Graph,
+                graph=capture,
+                graph_pool_handle=lambda: "shared-draft-pool",
+            ),
         )
 
         @dataclasses.dataclass
@@ -139,11 +144,22 @@ class Protocol(unittest.TestCase):
             "pathlib.Path.write_text",
             side_effect=AssertionError("No production receipts"),
         ):
+            unprepared = ns["ExactDraftGraph"](worker)
+            unprepared.allow_capture = False
+            self.assertIs(unprepared(batch_size=4), box["output"])
+            self.assertIsNone(unprepared.graph)
+            self.assertIsNone(unprepared.key)
             graph = ns["ExactDraftGraph"](worker)
             out = graph(batch_size=4)
         self.assertEqual(out.item(), 7)
         self.assertEqual(graph.graph.executions, 1)
         self.assertFalse(ctx.capturing)
+        graph.allow_capture = False
+        ctx.attn_metadata["q"].num_prefills = 1
+        graph(batch_size=4)
+        self.assertEqual(graph.fallbacks, 1)
+        self.assertEqual(graph.graph.executions, 1)
+        ctx.attn_metadata["q"].num_prefills = 0
         manager_source = p.with_name("__init__.py")
         manager = next(
             n
@@ -157,6 +173,7 @@ class Protocol(unittest.TestCase):
             ns,
         )
         bank_set = ns["DraftGraphRunner"](worker)
+        bank_set.preparing = True
         for count in range(1, 5):
             d._dflash_num_context = 6 * count
             bank_set(batch_size=count)

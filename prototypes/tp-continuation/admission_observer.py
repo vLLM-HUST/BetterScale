@@ -20,11 +20,29 @@ class AdmissionWorker(Worker):
             / f"admission-rank{rank}.jsonl"
         )
         seen, carriers, skipped = set(), {}, set()
+        initial_slots = len(producer.slots)
+        initial_entries = len(metadata.entries)
+        draft = getattr(self, "_exact_draft_graph", None)
+        path.write_text(
+            json.dumps(
+                dict(
+                    phase="before_READY_return",
+                    producer_banks=initial_slots,
+                    metadata_entries=initial_entries,
+                    shapes=sorted({key[:3] for key in metadata.entries}),
+                    draft_decode=len(draft.decode_graphs) if draft else 0,
+                    draft_query=len(draft.query_graphs) if draft else 0,
+                )
+            )
+            + "\n"
+        )
 
         def build(*args, **kwargs):
             before = len(metadata.entries)
             started = time.monotonic()
             output = original(*args, **kwargs)
+            assert len(metadata.entries) == initial_entries, "Online metadata capture"
+            assert len(producer.slots) == initial_slots, "Online producer admission"
             n = kwargs.get("num_reqs", 0)
             nt = kwargs.get("num_tokens_padded") or kwargs.get("num_tokens", 0)
             skip_key = (n, kwargs.get("num_reqs_padded"), nt)
@@ -69,4 +87,13 @@ class AdmissionWorker(Worker):
             return output
 
         r._build_attention_metadata = build
+        # Qualification only: a missed online graph must fail visibly instead
+        # of hiding behind benchmark warmup. No additional device fence.
+        if draft is not None:
+            import torch
+
+            def online_graph_forbidden(*args, **kwargs):
+                raise AssertionError("NPUGraph constructed after worker READY")
+
+            torch.npu.NPUGraph = online_graph_forbidden
         return result

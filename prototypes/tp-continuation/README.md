@@ -97,3 +97,18 @@ are restored, and no model forward/KV write is part of this auxiliary warmup.
 Run137 checks the new TP startup route with strict HCCL/native-self controls.
 The old split-draft first-use capture remains a separately identified startup
 gap; do not claim the whole worker is prewarmed until that gap is handled too.
+
+
+- `137`: startup exposed a missing inference-mode scope (native buffers include
+  inference tensors). Fixed the startup scope, not their storage ownership.
+- `138`: TP8 startup producer8/metadata8, strict-HCCL matrix packet96/producer88/
+  metadata88 all exact against native, including every native-self control and
+  complete KV backing. No serving-time auxiliary capture remains.
+- `139`: DP8 starts with producer4/metadata6 on every rank; the online observer
+  forbids entry growth. All nine HTTP cohorts finish and original32 retrieval
+  questions score32/32. Cold decode17.03s (135) becomes8.50s, but the three-repeat
+  service comparison still does not establish a stable all-cohort throughput win.
+  Preserve the control133 and candidate135/139 data, rather than dropping the
+  first repeat or attributing every difference to captured metadata.
+- `140`: next TP candidate also prepares split-draft4+8 before READY and forbids
+  any subsequent NPUGraph construction in the external service observer. Pending.

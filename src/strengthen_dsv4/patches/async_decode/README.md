@@ -90,9 +90,8 @@ prefill 补齐时，也走原生大桶回退。shape key 仍包含 native CPU ca
 避免交替输入槽引用错误的 CPU metadata。prefill、turnover 以及 DP dummy drain
 不继承上一波的稳定 decode admission。
 
-**当前分支的启动期改造仍在硬件验收，以下旧结果不自动覆盖它。** 这里只描述
-async_decode 两种辅助图；split_draft 的历史首用捕获是另一个待收口的入口，
-不能据此声称整套 Worker 已无任何在线捕获。
+**当前分支的启动期改造仍在硬件验收，以下旧结果不自动覆盖它。** split_draft 的历史首用捕获也已改成独立启动准备；
+该改动仍需 TP8 联验，不能把 async_decode 的通过当成它也已通过。
 
 2026-09-13 原型同机 run120：DP8、16 个全局请求、K5，每 rank 两个请求与
 12 个实际 target queries，FULL target、原生 eager draft。两次对照中，

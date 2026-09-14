@@ -193,3 +193,27 @@ The bounded `prototypes/tp-continuation/matrix_oracle.py` uses one engine for th
 three stage ablations and always publishes the FIRST native output/State. Its
 candidate failures are diagnostic observations, never accepted service output
 or performance data. Its manifest and full source are retained per capsule.
+
+## Graph preparation belongs before READY, not in an HTTP warmup cohort
+
+The initial producer/metadata prototype lazily captured on first request-count,
+DP padding and host-carrier combinations. Fletcher explicitly rejected carrying
+that admission cost into service. Enumerate the **actual small target capture
+catalog** and both CPU carriers before READY; large global padding with a local
+K5 batch is not permission to create more metadata graphs. Online missing shapes
+must fall back, not capture. Do not discard early HTTP repeats to conceal this.
+
+The startup boundary needs `torch.inference_mode()`: run137 failed while updating
+native inference tensors outside that scope. The corrected immutable
+`package-startup-v2` (same run root above) passes strict TP138 with producer8 /
+metadata8 and all272 matrix checks exact, including native-self/full-KV controls.
+DP139 begins with producer4/metadata6 on each rank; its external observer forbids
+entry growth after startup, all9 HTTP cohorts finish and original32 retrieval
+items score32/32. Its service times still overlap the control and do not establish
+a stable all-cohort E2E throughput gain. Keep initialization cost, matched-step
+cost, and service throughput as distinct claims.
+
+Split-draft had a SEPARATE first-use capture site; fixing async_decode alone
+cannot establish a completely prewarmed worker. Its startup change is under
+independent TP qualification; enter the patch README and current task note rather
+than treating TP138 or DP139 as validation of that later change.
