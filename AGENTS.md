@@ -2,7 +2,7 @@
 
 Read `.agents/skills/repo-knowledge/SKILL.md` before repository work.
 
-This is Fletcher and Lumi's private, incremental donor optimization repository.
+This is Fletcher and Lumi's open-source, incremental donor optimization repository.
 Do not delegate work to other agents. Keep release pins explicit; do not silently
 upgrade either upstream. Do not change installed runtimes during source analysis.
 

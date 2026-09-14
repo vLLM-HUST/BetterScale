@@ -113,5 +113,5 @@ configurations and boundaries.
 
 The distribution contains Python source and upstream compatibility pins, not model
 weights, datasets, CANN or donor binaries. It adapts Apache-2.0 upstream execution
-paths; third-party notices and the license are included. Source included in the
-package is public even while the development repository remains private.
+paths; third-party notices and the license are included. Source is available in the package and the
+[public development repository](https://github.com/vLLM-HUST/BetterScale).
