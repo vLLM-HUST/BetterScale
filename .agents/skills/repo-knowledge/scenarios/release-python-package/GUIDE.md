@@ -24,9 +24,21 @@ uninstall donor packages or upgrade their dependencies.
   These are packaging checks, not new NPU correctness or performance evidence.
 - Publishing requires Fletcher's authority. Credentials stay opaque in a mode600
   `.pypirc`; validate the official PyPI endpoint before upload. Never print token
-  values or include them in commands/logs. Record the source commit, upload only
+  values or include them in commands/logs. With Twine, use --repository pypi after
+  validating the configured endpoint: supplying --repository-url instead bypasses
+  .pypirc credentials (observed as Credential not found, before any upload).
+  Record the source commit, upload only
   the two audited artifacts, then download from official PyPI and compare to the
   local wheel before claiming availability. PyPI versions are immutable.
 - Only after publication, update the website's normal MOD quickstart and detail
   integration section. Development repository visibility and PyPI source visibility
   are separate: do not advertise private GitHub source as publicly reachable.
+
+## First public release
+
+`vllm-betterscale==0.3.0` was published on 2026-09-14 from `d992b5f`.
+Both wheel and sdist passed strict metadata/archive checks; 51 CPU tests passed.
+The official PyPI wheel was downloaded, directly compared byte-for-byte with the
+built artifact and installed into a clean Python 3.12 environment with --no-deps.
+The clean install also verified alias identity and readable pins. No new NPU run
+was performed for the alias-only packaging change.
