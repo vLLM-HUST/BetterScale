@@ -225,3 +225,9 @@ margin or TP adoption of the DP-only passing estimate.
 DP pressure run174 is now submitted (PID2612955 at submission), using the already
 passing DP path plus the loopback-only observation RPC described above. TP draft
 closure can be investigated independently while its long-history workload runs.
+
+Fletcher's14:16 steering: the LiveInfer8GiB/~500K recollection is approximate;
+do not spend further work locating the old artifact. Treat it as motivation,
+not an exact baseline. Continue the actual TP/DP capacity ledger and validation.
+Run174's single448Ki-input/128-output request has completed226.420s; the16-request
+pressure cohort remains live at this observation. This is not yet its result.
