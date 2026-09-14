@@ -1,5 +1,8 @@
 # Study native donor DP+EP
 
+For the active percentage-free automatic KV sizing goal, first read
+`prototypes/auto-kv-memory/README.md` and its run165/166 accounting results.
+
 ## Prefix/cache investigation: September14 source boundary
 
 Before diagnosing missing SWA or enabling APC, inspect Ascend's

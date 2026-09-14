@@ -40,3 +40,34 @@ Completion requires automatic startup and request execution, explicit accounting
 of graph/preparation/draft pools and non-graph peaks, safe runtime headroom, then
 actual cache occupancy under longer/concurrent requests. Only then update public
 launch defaults; do not relabel existing fixed-budget E2E numbers as auto-budget.
+
+## Active goal after Fletcher's September14 steering
+
+Do not promote0.96 as a replacement default. The target is physical usable memory
+minus measured execution residency/peak and explicit safety headroom, not another
+fixed percentage. Remove the artificial15K/16K admission ceiling after validating
+longer metadata/graph shapes. Reconcile the LiveInfer8GiB≈500K observation with
+HBM versus mapped storage and per-request fixed-state overhead.
+
+Run165 completed native automatic0.9 DP8 startup and a short HTTP completion:
+KV4.505–4.506GiB/rank, eager-profile activation0.648GiB, post-capture allocated
+53.994–53.995GiB/reserved55.000–55.020GiB/device-free5.079–5.107GiB. Run166
+completed the0.96 accounting control: KV~8.16GiB/rank, post-capture free~1.50GiB,
+three HTTP cohorts and all32 retrieval questions (pinned OpenCompass scorer100%).
+Neither establishes long-context capacity or percentage-free production sizing.
+No TP0.96 run was submitted. Both completed jobs have exited.
+
+`runs/auto-kv-20260914/cache_math.py` reconstructs the DSV4 cache specs and calls
+actual pinned Ascend grouping/pool functions on CPU. Its initial8GiB layout gives
+174812 equivalent tokens at16K,482394 at64K,986645 at512K and1066457 at1Mi.
+These are **constructed-layout projections**; the16K result differs from live
+run163's179972, so validate actual layer names/specs/DSpark grouping before treating
+those as real-engine capacities. The calculation includes per-request C4
+compressor peak131 pages and C128 compressor38 pages at wave1026; it is not a
+fixed bytes/token model. Preserve the discrepancy, not a calibrated guessed count.
+
+Next evidence: capture the live group/spec census and allocator pool totals;
+separate transient graph capture from persistent replay and eager fallback
+lifetimes before designing a minimal automatic budget hook. Do not directly
+reuse the CUDA-only temporary graph estimator. Long-context validation must
+include real attention/indexer bounds rather than just a larger cache table.
