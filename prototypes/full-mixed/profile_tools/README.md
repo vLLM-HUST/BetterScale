@@ -97,3 +97,9 @@ export without a collective clock model, explicitly named `unaligned` (native
 first-event normalization per rank). It supports within-rank
 inspection, NOT cross-rank lateness comparisons. Do not keep trying filters
 until a visually pleasing alignment appears.
+
+The same tools support smaller native DP/EP windows without inventing a second
+exporter: `parse.py --devices 0,2` checks actual physical identities in rank
+order; `analyze.py --ranks 2` and `align.py --ranks 2 --name NAME --export`
+retain the original clock gates and archive contracts. Defaults remain eight
+ranks on devices0–7. Never rewrite RANK_DEVICE_MAP to fit an assumed layout.

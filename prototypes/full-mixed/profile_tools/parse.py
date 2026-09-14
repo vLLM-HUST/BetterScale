@@ -9,7 +9,10 @@ import sys
 p=argparse.ArgumentParser()
 p.add_argument('root',type=Path,help='Window containing profile/rankN_*')
 p.add_argument('--jobs',type=int,choices=(1,2,4),default=2)
+p.add_argument('--devices', default='0,1,2,3,4,5,6,7', help='Physical device IDs in rank order')
 a=p.parse_args();root=a.root.resolve()
+devices=[int(x) for x in a.devices.split(',')]
+assert len(devices)==len(set(devices)) and devices
 code='from torch_npu.profiler.profiler import analyse; import sys; analyse(sys.argv[1],max_process_number=1,export_type="db")'
 
 
@@ -26,9 +29,9 @@ def parse(rank):
     files=list(output.glob('ascend_pytorch_profiler_*.db'))
     assert len(files)==1 and files[0].name==f'ascend_pytorch_profiler_{rank}.db',files
     with sqlite3.connect(files[0]) as c:
-        assert c.execute('select * from RANK_DEVICE_MAP').fetchall()==[(rank,rank)]
+        assert c.execute('select * from RANK_DEVICE_MAP').fetchall()==[(rank,devices[rank])]
     print('parsed rank',rank,flush=True)
 
 
 with ThreadPoolExecutor(max_workers=a.jobs) as pool:
-    list(pool.map(parse,range(8)))
+    list(pool.map(parse,range(len(devices))))

@@ -19,6 +19,7 @@ from vllm.distributed.utils import (
     stateless_init_torch_distributed_process_group,
 )
 from early_protocol import Proposal, agree, propose
+from early_rpc import execute_with_budget
 
 
 def receipt(role, rank, **values):
@@ -118,7 +119,7 @@ class EarlyExecutor(MultiprocExecutor):
             return super().execute_model(scheduler_output, non_block=non_block)
         budget = self._agree(scheduler_output)
         return self.collective_rpc(
-            "execute_model",
+            execute_with_budget,
             args=(scheduler_output,),
             kwargs={"early_budget": budget},
             unique_reply_rank=self.output_rank,

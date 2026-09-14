@@ -146,3 +146,63 @@ on pair0,2. No result is qualified merely by model selection or startup.
 This isolates the distributed scheduling protocol. It does not qualify
 DeepSeek acceptance/shadow metadata, prove removal of an eight-rank tail, or
 promise that plain-decode benefits match a speculative workload.
+
+### Qwen native wrapper and budget oracle
+
+Run003 failed before model execution because native `WorkerWrapperBase` owns
+`execute_model(SchedulerOutput)` with a fixed signature: a keyword added to the
+underlying Worker cannot pass through it. `early_rpc.execute_with_budget` uses
+native MP's callable RPC seam, preserves the wrapper's `_apply_mm_cache` before
+calling the Worker, and passes the same immutable decision. No installed donor
+file is edited. The CPU seam test asserts cache-before-model and object identity.
+
+Run004 (same local pair0,2, real BF16 weights) completed all three synthetic
+HTTP cohorts. Every admitted wave matched the unchanged native coordination
+oracle:656 checks on each rank. Host receipts show median0.783ms agreement,
+12.407ms lead to worker entry and17.437ms lead to host forward. These are NOT
+device bubble savings, throughput qualification or target/KV numerical checks.
+The oracle deliberately executes the extra native exchange; do not time it as
+an optimization. All18 protocol/wrapper CPU tests pass.
+
+Optional `EARLY_BUDGET_PROFILE=EXISTING_ARTIFACT_DIRECTORY` installs the same
+post-warmup observer in both Qwen workers:8 waiting forwards,1 warmup,16 active.
+It records native CPU/NPU data without worker-side parsing, then stops; later
+forward wrappers stay intact. Profiled cohorts are diagnostic, not throughput
+controls. Parse offline with the existing `full-mixed/profile_tools` helpers.
+
+### Two-rank timelines and current performance boundary
+
+Runs005(native MP) /006(early budget) captured the same local pair0,2, two
+requests/rank, ordinary FULL decode, real Qwen weights. Native profiler output
+was parsed offline in separate processes and analyzed with TraceLoom37323af.
+Both compressed aligned exports are under each capsule's
+`engine/analysis/qwen-dp2-*-aligned.json.gz` (about4.8MB each).
+The short pure-FULL window had fewer than20 eager-only markers;005's failed
+attempt is retained in `005-align.log`. Unique all-provider collective
+identities pass the unchanged50us holdout gate: P95 native0.420us,
+candidate0.826us. These are candidate display alignments, not physical clocks.
+
+`inspect_profile.py` uses first/final captured norm identities on the model
+stream and discards incomplete cycles. Do NOT use the first observed norm:
+profiling can begin halfway through the preceding replay, producing a false
+~12ms body gap. Here capture task IDs18 and1778 bound complete bodies on both
+ranks. Fifteen complete same-rank cycles give:
+
+| Profiled median | Native rank0 / rank1 | Candidate rank0 / rank1 |
+|---|---:|---:|
+| Transformer body |17.263 /17.258ms|17.246 /17.170ms|
+| Start-to-start cadence |18.731 /18.798ms|19.104 /19.053ms|
+| Between transformer bodies |1.461 /1.477ms|1.820 /1.828ms|
+| No observed compute/comm coverage between bodies |0.720 /0.742ms|1.089 /1.079ms|
+
+The body gap includes logits/sampling/metadata, not just idle time. The native
+Qwen ordinary-decode workload does NOT reproduce DeepSeek's ~10ms gap. This
+profile shows no improvement; candidate host receipts also add diagnostic cost.
+Do not infer eight-rank speculative behavior from the small model.
+
+Run007 attempted three-repeat, receipt/oracle/profiler-disabled candidate
+throughput. Foreign occupancy appeared on a selected device after admission;
+the supervisor stopped only its owned process group. `foreign.txt` and
+`release.txt` retain the evidence.007 is rejected, not a performance result.
+No subsequent baseline was launched into that occupied window. Uninstrumented
+paired throughput and DeepSeek speculative validation remain unqualified.

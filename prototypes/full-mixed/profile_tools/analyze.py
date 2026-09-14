@@ -6,10 +6,11 @@ import argparse
 p=argparse.ArgumentParser();p.add_argument('root',type=Path)
 p.add_argument('--jobs',type=int,choices=range(1,9),default=1)
 p.add_argument('--resume',action='store_true')
+p.add_argument('--ranks',type=int,choices=range(2,9),default=8)
 a=p.parse_args();root=a.root.resolve();(root/'analysis').mkdir(exist_ok=True)
 exe=Path('/workspace/my-ascend-workspace/.tools/traceloom-37323af/build/traceloom')
 manifest=[]
-for rank in range(8):
+for rank in range(a.ranks):
  paths=list((root/'profile').glob(f'rank{rank}_*/ASCEND_PROFILER_OUTPUT/ascend_pytorch_profiler_{rank}.db'))
  assert len(paths)==1
  source=paths[0];c=sqlite3.connect(source)

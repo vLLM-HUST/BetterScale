@@ -270,3 +270,13 @@ The probe explicitly enables internal format; otherwise format_cast can warn and
 silently leave ND. Keep selected-device admission and source/destination roles in
 the capsule, including rejected windows. Do not compare different hosts as if
 only the communication policy changed.
+
+For scarce-card early-DP-budget qualification use the Qwen route in
+`prototypes/dp-early-budget/README.md`: local shared Qwen3-30B-A3B supports
+TP1/DP2/EP2, no DeepSeek patches or speculation. The native wrapper owns a fixed
+execute_model signature; preserve its cache handling through callable MP RPC,
+not an extra keyword through WorkerWrapperBase. Run004 checks656 budgets/rank
+against native exchange. Runs005/006 give aligned compressed two-rank timelines
+but no speedup and no reproduction of the DeepSeek10ms gap.007 throughput was
+invalidated by foreign occupancy. Use complete captured task identities for
+body boundaries: the first observed norm may be a partial preceding replay.
