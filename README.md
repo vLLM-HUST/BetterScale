@@ -1,6 +1,7 @@
 # BetterScale
 
-Modular execution optimizations for vLLM Ascend. Keep the engine; improve the execution.
+Less host waiting. More device execution.
+Modular graph, replay and metadata-preparation optimizations for vLLM Ascend.
 
 Formerly **strengthen-dsv4**. The project is now named **BetterScale**; the validated
 Python package and Worker entry retain `strengthen_dsv4` for compatibility. The
