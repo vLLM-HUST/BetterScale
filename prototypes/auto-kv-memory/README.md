@@ -191,3 +191,15 @@ with the later mapped implementation. The September8 HBM factor8 profile-v5
 used only2GiB State, one64K resident per owner, not the requested8GiB/500K case.
 Do not silently substitute either for Fletcher's later observation. Asked for
 its approximate task/date while independent TP/capacity work continues.
+
+`runtime_memory_worker.py` adds a probe-only native collective-RPC method: reset
+allocator peaks after final warmup, sample synchronized memory after a drained
+cohort. It does not synchronize or instrument the hot forward path. Native
+`VLLM_SERVER_DEV_MODE=1` RPC is enabled only for the loopback-bound private probe,
+never the public release command. Driver free is an endpoint sample, not a
+continuous minimum; allocator peak is retained since READY. Prepared (not yet
+submitted) pressure capsule`runs/auto-kv-pressure-20260914/` extends only its DP
+guard to512K and offers one448Ki prompt, then16 such prompts, then16×4K turnover.
+It polls native KV/running/preemption metrics during cohorts and requests per-rank
+memory receipts afterwards. This should distinguish physical occupancy/admission
+from the native equivalent-token log; it is not original agent or accuracy load.

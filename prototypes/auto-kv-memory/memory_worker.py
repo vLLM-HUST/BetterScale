@@ -12,6 +12,7 @@ class MemoryWorker(Worker):
         record = dict(
             phase=phase,
             rank=self.rank,
+            device=str(self.device),
             free=free,
             total=total,
             allocated=torch.npu.memory_allocated(),
@@ -21,6 +22,7 @@ class MemoryWorker(Worker):
         )
         record.update(extra)
         print("CAPACITY_OBSERVATION " + json.dumps(record), flush=True)
+        return record
 
     def determine_available_memory(self):
         self.snapshot("before_profile")
