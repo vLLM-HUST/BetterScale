@@ -95,3 +95,8 @@ reuse credits remain necessary. A graph has no pointer-argument interface merely
 because its payload can change. No in-flight mutation or direction/topology
 update is qualified. All local experiment processes have exited and the leases
 were released. No8-card or hw3 job was launched by this prototype.
+
+For the four-way historical TP/DP target prefill/decode window census, read
+[TIMELINE-WINDOWS.zh-CN.md](TIMELINE-WINDOWS.zh-CN.md). `timeline_windows.py`
+subtracts existing task overlaps and preserves rank/phase scope; the22GB/s
+conversion is a planning estimate, not measured free8-card bandwidth.
