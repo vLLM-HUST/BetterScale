@@ -17,6 +17,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--update", action="store_true")
+    parser.add_argument("--update-kind", choices=("h2d", "d2h", "d2d"), default="h2d")
     args = parser.parse_args()
     args.out.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(2)
@@ -83,17 +84,23 @@ def main():
         h1, h2, hout = host(size, 17), host(size, 43), host(size, 0)
         d1 = torch.zeros(size, dtype=torch.uint8, device="npu")
         d2 = torch.zeros_like(d1)
+        alternate = torch.full_like(d1, 43)
         torch.npu.synchronize()
         group = C.c_void_p()
 
         def body():
-            if args.update:
-                call("aclmdlRICaptureTaskGrpBegin", dma.npu_stream)
-            copy(d1.data_ptr(), h1, size, 1)
-            if args.update:
-                call("aclmdlRICaptureTaskGrpEnd", dma.npu_stream, C.byref(group))
-            copy(d2.data_ptr(), d1.data_ptr(), size, 3)
-            copy(hout, d2.data_ptr(), size, 2)
+            operations = [
+                ("h2d", d1.data_ptr(), h1, 1),
+                ("d2d", d2.data_ptr(), d1.data_ptr(), 3),
+                ("d2h", hout, d2.data_ptr(), 2),
+            ]
+            for label, dst, src, direction in operations:
+                marked = args.update and label == args.update_kind
+                if marked:
+                    call("aclmdlRICaptureTaskGrpBegin", dma.npu_stream)
+                copy(dst, src, size, direction)
+                if marked:
+                    call("aclmdlRICaptureTaskGrpEnd", dma.npu_stream, C.byref(group))
 
         g = capture(body, dma)
         for value in (17, 29, 61):
@@ -106,7 +113,12 @@ def main():
         if args.update:
             # Quiescent update, not a claim of safe update during replay.
             call("aclmdlRICaptureTaskUpdateBegin", dma.npu_stream, group)
-            copy(d1.data_ptr(), h2, size // 2, 1)
+            target, source, direction = {
+                "h2d": (d1.data_ptr(), h2, 1),
+                "d2d": (d2.data_ptr(), alternate.data_ptr(), 3),
+                "d2h": (hout, alternate.data_ptr(), 2),
+            }[args.update_kind]
+            copy(target, source, size // 2, direction)
             call("aclmdlRICaptureTaskUpdateEnd", dma.npu_stream)
             dma.synchronize()
             replay(g, dma)

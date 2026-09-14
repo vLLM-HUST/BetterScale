@@ -1,0 +1,34 @@
+{
+  "device": "910B2",
+  "cann": "9.0.1",
+  "ordinary_copy_capture": "pass, all three directions",
+  "task_group_update": [
+    {
+      "direction": "h2d",
+      "result": "unsupported during initial marked capture",
+      "first_api": "aclrtMemcpyAsync",
+      "first_error": 507009,
+      "detail": "task not supported",
+      "capture_end_error": 507903,
+      "update_reached": false
+    },
+    {
+      "direction": "d2h",
+      "result": "unsupported during initial marked capture",
+      "first_api": "aclrtMemcpyAsync",
+      "first_error": 507009,
+      "detail": "task not supported",
+      "capture_end_error": 507903,
+      "update_reached": false
+    },
+    {
+      "direction": "d2d_local",
+      "result": "unsupported during initial marked capture",
+      "first_api": "aclrtMemcpyAsync",
+      "first_error": 507009,
+      "detail": "task not supported",
+      "capture_end_error": 507903,
+      "update_reached": false
+    }
+  ]
+}

@@ -74,3 +74,24 @@ The tested full-block host transfers are about22–24GB/s. This contrasts with
 prior HCCL/AIV proxy interference, but it is not an equal-bytes backend A/B or
 proof of a particular hardware execution engine. Source/destination locality,
 physical engines and NUMA behavior require separate characterization.
+
+## Task-group update boundary on this installed runtime
+
+Three independent processes tested H2D, D2H and local D2D as the marked task.
+All reject `aclrtMemcpyAsync` *during initial capture inside the task group*,
+with507009 / `task not supported`; capture end subsequently reports507903
+(capture invalidated). No update/replay was reached. Ordinary capture of those
+same directions passed above. Consequently this experiment does NOT support
+using this task-group API to make memcpy source/destination/length dynamic on
+910B2/CANN9.0.1. It does not prove every newer runtime or alternative API lacks
+that capability. Artifacts: `runs/graph-dma-local-20260914/update/` (H2D) and
+`update-directions/{d2h,d2d}.log`. The directions wrapper exits0 after recording
+both child exit1 statuses; that wrapper status is NOT an update success.
+
+For the currently demonstrated route, retain fixed pinned-host/device buffers,
+change their contents only after retirement, and use separately captured fixed
+slots/buckets if different addresses or sizes are needed. Consumer events and
+reuse credits remain necessary. A graph has no pointer-argument interface merely
+because its payload can change. No in-flight mutation or direction/topology
+update is qualified. All local experiment processes have exited and the leases
+were released. No8-card or hw3 job was launched by this prototype.
