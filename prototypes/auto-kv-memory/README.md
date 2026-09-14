@@ -231,3 +231,9 @@ do not spend further work locating the old artifact. Treat it as motivation,
 not an exact baseline. Continue the actual TP/DP capacity ledger and validation.
 Run174's single448Ki-input/128-output request has completed226.420s; the16-request
 pressure cohort remains live at this observation. This is not yet its result.
+
+Fletcher's latest host steering during run174: finish this hw3 wave and release;
+do not queue further hw3 NPU work because another colleague needs it. Subsequent
+eight-card qualification should use the local machine and `/root/tp8.lock` with
+fresh admission. At this point run174 is the only owned live NPU job; no later
+hw3 watcher is authorized or queued.
