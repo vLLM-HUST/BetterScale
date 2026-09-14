@@ -3,7 +3,8 @@
 **Current Fletcher constraints (September14):** do mechanism/layout/capture
 experiments with dummy weights, not repeated real-checkpoint loads. Final target
 and draft MUST use one shared graph pool; a second arena is not an acceptable
-solution. Subsequent NPU work uses local cards, not hw3. Repair the bounded dummy
+solution. Prefer local cards; Fletcher’s latest steering permits hw3 when local is busy.
+Repair the bounded dummy
 loader gap rather than bypassing it with real weights.
 
 First measure the existing path, without changing the allocator. `memory_worker.py`
@@ -418,3 +419,15 @@ owned descendants; foreign work remains. No graph/performance result. Run184
 is the identical prepared fixture requeued for a NEW idle local window under
 the home lease, result184 in the same capsule, session10089. No hw3 work.
 Do not repeatedly reload after another collision without a changed window.
+
+Latest Fletcher steering permits hw3 when local is occupied. Run184's local
+admission watcher was cancelled before any child launch (KeyboardInterrupt
+inside admission sleep, exit130), so no duplicate job remains. Fresh hw3 check
+showed eight idle cards. The same dummy/one-pool/prewarmed6GiB diagnostic and
+per-rank submission receipts are submitted there as185, remote closure
+`/workspace/my-ascend-workspace/runs/tp-continuation-20260914/auto-kv-draft-dummy-roomy`,
+output`result185/`, managed SSH session59131. Runtime uses the existing pinned
+September7 donor environment and model config path`/data/shared/models/...`;
+`--load-format dummy` remains explicit. Local source capsule is
+`runs/auto-kv-draft-dummy-roomy-hw3-20260914/`. Do not compare cross-host timing
+as evidence of the code change; this is a correctness/lifecycle gate.
