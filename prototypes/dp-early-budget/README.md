@@ -99,3 +99,16 @@ window; use a NEW capsule name, starting with the short full-model gate, then
 same-host MP control/profile. Scripts and immutable candidate closure are on
 hw3 under `runs/tp-continuation-20260914/early-budget-v1` and
 `run-hw3-early-budget.sh`; do not treat any of143–145 as NPU qualification.
+
+### Local resume, September14 ~06:53 UTC
+
+Fletcher reported the local eight-card window available. New capsule
+`146-local-dp8-early-budget-smoke` passed the home-lock and final eight-card
+health/process/HBM admission, then began HTTP server initialization. Before
+model qualification, foreign processes appeared on devices0/2/4/6; the existing
+supervisor stopped only its owned process group and released the lease.
+`admission.txt`, `foreign.txt`, `release.txt` and `146-launch.log` preserve the
+transition under the local `runs/tp-continuation-20260914/` root. No numerical,
+throughput or early-budget device result was obtained;146 must not be counted
+as a passing hardware gate. This was post-admission contention, unlike142's
+pre-launch rejection. Do not relaunch while those foreign workers remain.
