@@ -26,7 +26,13 @@ class Worker(NPUWorker):
             target_full.install(native_dsa=True)
             async_decode.install_capture()
         else:
+            from .patches import ordered_replay, async_decode
+
             target_full.install()
+            # Keep ordered large-prefill fallback underneath decode banks.
+            # Both hooks precede capture; warmup must not overwrite them.
+            ordered_replay.install_capture()
+            async_decode.install_capture()
         super().__init__(vllm_config, *args, **kwargs)
 
     # 原生模型、KV、输入缓冲和 warmup 完成后，只在当前 worker 安装执行补丁。
@@ -44,12 +50,13 @@ class Worker(NPUWorker):
             async_decode.install(self)
             patches = DP_PATCH_IDS
         else:
-            from .patches import split_draft, ordered_replay, qli_cpu
+            from .patches import split_draft, ordered_replay, qli_cpu, async_decode
 
             split_draft.install(self)
             cross_step.install(self)
             ordered_replay.install(self)
             qli_cpu.install(self)
+            async_decode.install(self)
             patches = PATCH_IDS
         log.info("strengthen-dsv4 rank=%s READY patches=%s", self.rank, patches)
         return result

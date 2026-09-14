@@ -63,6 +63,9 @@ class Installation(unittest.TestCase):
                 logger=NS(info_once=lambda *a: None),
                 _EXTRA_CTX=NS(is_draft_model=False),
             ),
+            "vllm_ascend.ascend_forward_context": dict(
+                _EXTRA_CTX=NS(is_draft_model=False),
+            ),
         }
         modules = {}
         for name, values in exports.items():
@@ -215,3 +218,43 @@ class Installation(unittest.TestCase):
         builder = self.Builder()
         builder.compressor_ratio = 1
         self.assertEqual(builder._build_qli_metadata(None, None, None, 0), "native-qli")
+
+    def test_tp_bank_wrapper_survives_ordered_worker_admission(self):
+        ordered = self.load("ordered_replay")
+        bank = self.load("async_decode")
+        # Importing target early must not freeze the wrong native fallback.
+        from importlib import import_module
+
+        target = import_module(bank.__name__ + "._target")
+        ordered.install_capture()
+        bank.install_capture()
+        self.assertIs(target.original_call, ordered._ordered_call)
+        model = self.Wrapper()
+        model.runtime_mode = "FULL"
+        model.is_debugging_mode = False
+        model.concrete_aclgraph_entries = {
+            self.context.batch_descriptor: NS(
+                aclgraph=NS(replay=lambda: None), output="prefill-output"
+            )
+        }
+        config = NS(
+            scheduler_config=NS(max_num_seqs=4),
+            model_config=NS(hf_config=NS(model_type="deepseek_v4")),
+        )
+        model.vllm_config = config
+        worker = NS(
+            rank=0, model_runner=NS(model=model, use_compress=True, vllm_config=config)
+        )
+        ordered.install(worker)
+        self.assertIs(self.Wrapper.__call__, target.call)
+
+        # A large prefill still dispatches through the original ordered path.
+        class Bucket:
+            num_tokens = 4128
+
+        key = Bucket()
+        model.concrete_aclgraph_entries[key] = model.concrete_aclgraph_entries.pop(
+            "bucket"
+        )
+        self.context.batch_descriptor = key
+        self.assertEqual(model(), "prefill-output")

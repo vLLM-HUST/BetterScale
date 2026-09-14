@@ -19,18 +19,27 @@ from vllm_ascend.compilation.acl_graph import ACLGraphWrapper
 _installed = False
 
 
+def install_capture():
+    """Install the fallback before another wrapper composes around it.
+
+    Until worker admission, capture and unmarked wrappers keep native fences.
+    Later install(worker) must not overwrite the installed decode-bank wrapper.
+    """
+    global _installed
+    if not _installed:
+        ACLGraphWrapper.__call__ = _ordered_call
+        _installed = True
+
+
 def install(worker):
     """Own both the wrapper hook and this worker's same-stream admission."""
-    global _installed
     runner = worker.model_runner
     assert isinstance(runner.model, ACLGraphWrapper)
     assert runner.use_compress, "Only the pinned DSV4 compressed-attention path"
     assert runner.vllm_config.model_config.hf_config.model_type == "deepseek_v4"
     torch.npu.synchronize()  # explicit phase transition, never per replay
     runner.model._ordered_replay_stream = torch.npu.current_stream().npu_stream
-    if not _installed:
-        ACLGraphWrapper.__call__ = _ordered_call
-        _installed = True
+    install_capture()
     return dict(rank=worker.rank, ordered_replay=True)
 
 

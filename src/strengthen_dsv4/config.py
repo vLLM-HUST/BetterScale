@@ -13,6 +13,10 @@ PATCH_IDS = (
     "private-draft-banks",
     "split-draft-context",
     "stable-receipt-cut",
+    "dual-target-banks",
+    "owned-ingress",
+    "device-preparation",
+    "device-metadata",
 )
 
 

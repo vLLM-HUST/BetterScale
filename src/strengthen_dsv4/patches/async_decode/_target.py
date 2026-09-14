@@ -12,7 +12,7 @@ from vllm_ascend.ascend_forward_context import _EXTRA_CTX
 from vllm_ascend.compilation.acl_graph import ACLGraphWrapper
 from ._packet import CallPacket
 
-original_call = ACLGraphWrapper.__call__
+original_call = None  # Bind on install, not on an incidental module import.
 
 
 class DecodePair:
@@ -120,7 +120,8 @@ _installed = False
 
 def install():
     """Before native startup capture; import alone leaves the donor untouched."""
-    global _installed
+    global _installed, original_call
     if not _installed:
+        original_call = ACLGraphWrapper.__call__
         ACLGraphWrapper.__call__ = call
         _installed = True
