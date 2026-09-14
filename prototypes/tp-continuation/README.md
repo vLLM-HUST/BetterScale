@@ -69,7 +69,14 @@ No result is claimed until hardware acceptance is complete.
 - Recovered prior TP receipt:
   `/workspace/strengthen-dsv4-pingpong/runs/104-tp8-composed-shadow/engine/dp0-protocol.json`.
   That qualification explicitly used `HCCL_DETERMINISTIC=strict` (48 exact target
-  comparisons/rank). The current runs used normal HCCL; DP's prior exact success
-  in normal mode does not establish the TP reproducibility envelope. Next repeat
+  comparisons/rank). The current runs used normal HCCL. Rechecking DP121/122 confirms those exact
+  oracles ALSO used strict HCCL; DP124's normal-mode result was quality/performance,
+  not exact replay equivalence. Do not conflate their envelopes. Next repeat
   the causal matrix in strict mode before deciding whether any state is missing.
   **Do not relax the comparison tolerance to paper over a failed native control.**
+
+- `134` repeats the matrix with strict HCCL and the ORIGINAL recorded-copy
+  package: packet96, producer88, metadata88 comparisons all have **zero output
+  difference and byte-exact KV**; every native self-control also passes. The
+  temporary copy/metadata suspicions are not supported. No runtime tolerance
+  or production communication setting was changed to make the test pass.

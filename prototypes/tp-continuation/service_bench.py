@@ -137,6 +137,56 @@ def main(args):
                             json.dumps(rows, indent=2)
                         )
                         print(tag, round(elapsed, 3), "seconds", flush=True)
+            if args.quality_requests:
+                quality_rows = json.loads(args.quality_requests.read_text())
+                assert len(quality_rows) == 32
+                (args.output / "quality-inputs.json").write_text(
+                    json.dumps(quality_rows)
+                )
+
+                def quality(row):
+                    request = urllib.request.Request(
+                        base + "/v1/completions",
+                        data=json.dumps(
+                            dict(
+                                model="dsv4",
+                                prompt=row["prompt_token_ids"],
+                                temperature=0,
+                                max_tokens=row["max_new_tokens"],
+                                stop_token_ids=[row["eos_token_id"]],
+                                return_token_ids=True,
+                            )
+                        ).encode(),
+                        headers={"Content-Type": "application/json"},
+                    )
+                    with urllib.request.urlopen(request, timeout=240) as response:
+                        reply = json.load(response)
+                    assert len(reply["choices"]) == 1
+                    choice = reply["choices"][0]
+                    assert reply["usage"]["prompt_tokens"] == len(
+                        row["prompt_token_ids"]
+                    )
+                    assert len(choice["token_ids"]) <= row["max_new_tokens"]
+                    return dict(
+                        request_id=row["request_id"],
+                        prompt_tokens=len(row["prompt_token_ids"]),
+                        token_ids=choice["token_ids"],
+                        finish_reason=choice["finish_reason"],
+                        stop_reason=choice.get("stop_reason"),
+                    )
+
+                with ThreadPoolExecutor(max_workers=args.seats) as clients:
+                    results = list(clients.map(quality, quality_rows))
+                (args.output / "quality-result.json").write_text(
+                    json.dumps(
+                        dict(
+                            status="COMPLETED_UNSCORED",
+                            scope="Public HTTP; retained32 OpenCompass English retrieval",
+                            requests=results,
+                        ),
+                        indent=2,
+                    )
+                )
             (args.output / "complete.json").write_text(
                 json.dumps(dict(status="PASS", cohorts=len(rows)))
             )
@@ -156,5 +206,6 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=30880)
     parser.add_argument("--seats", type=int, choices=(4, 16), required=True)
     parser.add_argument("--repeats", type=int, default=3)
+    parser.add_argument("--quality-requests", type=Path)
     parser.add_argument("command", nargs=argparse.REMAINDER)
     main(parser.parse_args())

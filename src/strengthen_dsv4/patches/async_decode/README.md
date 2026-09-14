@@ -1,9 +1,10 @@
 # 让稳定 decode 的下一步，不再等 CPU 重做输入与 attention metadata
 
-这个补丁针对 **TP1 × DP8/EP8、每个 rank 两个活跃请求、DSpark K5**。
+这个补丁支持两条独立准入的 K5 路线：**TP1 × DP8/EP8、每 rank 两个活跃请求**，
+以及 **TP8/EP/DSACP、四个全局活跃请求**。
 原生 scheduler 仍逐步发任务，原生 sampler 仍验证输出；它不是另一个调度器，
 也不把未知的 acceptance 当成已知。prefill、请求入场/离场、槽位重排及不完整
-K5 查询仍走原生准备路径。TP8 的既有补丁组合不变。
+K5 查询仍走原生准备路径。TP 保留原来的 split-draft，不把大 prefill 填进 draft 图。
 
 ## 原来的空档在哪里
 
@@ -24,12 +25,16 @@ CPU sequence length 只作保守的 tiling 上界，不能代替 device 实际�
 
 ## 嵌入原调用链的位置
 
-初始化时，`Worker` 先安装 `target_full` 的 TP1 DSA 分支，再调用
+初始化时，`Worker` 先安装对应的 `target_full` 分支，再调用
 `install_capture()`。它包装原生 `ACLGraphWrapper.__call__`，为小 target
 bucket 各捕获两份拥有私有输入 packet 的 graph。大 prefill 和 draft 不经过
 这个双槽适配器；两份 target graph 复用原生 graph pool，不复制权重或 KV。
 
-原生 warmup 完成后，`Worker` 先装 `cross_step`，再调用这里的 `install(worker)`：
+TP 还先安装 `ordered_replay` 的调用入口，再让双槽包装它；warmup 后只准入
+其 stream，不覆盖已装好的双槽入口。这样大 prefill 继续走原有 ordered replay。
+
+原生 warmup 完成后，`Worker` 先装 `cross_step`（TP 也保留 split-draft、CPU QLI），
+再调用这里的 `install(worker)`：
 
 1. `_host.py` 接管 `runner.synchronize_input_prep`：native CPU 输入源变成两槽，
    Python 进入下一槽之前，只等待**该槽上次 H2D 读取结束**，不是等待相邻整步。
@@ -84,11 +89,11 @@ CPU carrier 身份，避免交替输入槽引用错误的 CPU metadata。prefill
 59.09→50.00 ms**；draft→下一 target 的 device-event 区间为
 **9.42→1.24 ms、9.49→1.23 ms**。这一区间包含实际工作，不全是硬件 idle。
 
-原型 run121 的八 rank 同状态检验全部通过，每 rank 48 次 target/整份 KV
+在 `HCCL_DETERMINISTIC=strict` 下，原型 run121 的八 rank 同状态检验全部通过，每 rank 48 次 target/整份 KV
 对照及 12 次精确 preparation 对照；run120 的 32 道原始长输入 OpenCompass
 LongBench retrieval 题全部通过。这是有限质量集，不是完整 OpenCompass。
 
-**包内接入已单独验收。** run122 通过外部 oracle 子类完成同样的 384 次
+**包内接入已单独验收。** run122 同样在 strict HCCL 下，通过外部 oracle 子类完成同样的 384 次
  target/整份 KV 与 96 次 preparation 对照；run124 从 wheel 加载实际
 `strengthen_dsv4.worker.Worker`，无需激活 RPC，32/32 检索题通过。
 该轮两次 matched cycle 为 **50.74 / 49.88 ms**，draft→target 为

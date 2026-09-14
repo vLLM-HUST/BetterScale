@@ -167,3 +167,29 @@ markers require the existing unrestricted unique eager identity route; unchanged
 50us holdout gate passes at~1–4us. In matched profile waves3–12, native/candidate
 first-RS arrival spread medians are0.178/0.144ms. Main gain is earlier input and
 metadata preparation, not an8ms reduction of collective skew.
+
+
+## Exact replay qualification must establish native reproducibility first
+
+For strict target/full-KV equality use the original qualification setting
+`HCCL_DETERMINISTIC=strict`, and FIRST run native-versus-native with restored
+inputs/State. Performance and HTTP quality use normal HCCL and are distinct gates.
+Both DP121/122 and old TP104 exact oracles used strict HCCL; DP124's normal-mode
+quality/performance does not imply normal-mode bitwise replay equivalence.
+
+September14 on hw3, TP8/four seats/K5/FULL24+4128/maxlen15104/KV3GiB:
+normal-HCCL132 native self-check failed every checked wave, as did packet,
+producer and metadata comparisons. Strict-HCCL134 passes native self-check AND
+all packet96/producer88/metadata88 candidate checks, max output difference0,
+full KV bytes equal. Source and capsules are under
+`runs/tp-continuation-20260914/` (hw3: prefix
+`/workspace/my-ascend-workspace/`; local: `/workspace/strengthen-dsv4/`).
+This setting-dependent observation does not locate the responsible reduction
+kernel or prove all normal-mode drift harmless. Preserve ordinary quality gates.
+Do not debug metadata/copy ownership or relax numerical tolerances on the basis
+of an oracle whose unchanged-native control itself fails.
+
+The bounded `prototypes/tp-continuation/matrix_oracle.py` uses one engine for the
+three stage ablations and always publishes the FIRST native output/State. Its
+candidate failures are diagnostic observations, never accepted service output
+or performance data. Its manifest and full source are retained per capsule.
