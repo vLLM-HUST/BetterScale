@@ -159,3 +159,12 @@ capacity occupancy), with an explicit experimental guard extension rather than
 silently lifting public qualification. TP automatic sizing, actual long-history
 runtime peaks, and the LiveInfer HBM8GiB/500K reconciliation remain open. Neither
 the package's released allocator nor its public max-length guard changed here.
+
+Next long-history gate submitted as hw3`171-hw3-dp8-physical-long64`, frozen
+sibling`auto-kv-long64/` (launcher PID2590963 at submission). Only this private
+capsule extends DP max-model-len to65536; production guard remains16K. Workload:
+single32768-token prompt, single61440-token prompt, then eight61440-token prompts,
+128 generated tokens each, followed by the same32 retrieval questions. Synthetic
+repeated-token prompts exercise cache/history execution, NOT long-context quality
+or the maximum admission/SLO concurrency. It retains the run170 physical budget
+and shared-graph-lifetime protocol, all other launch settings unchanged.
