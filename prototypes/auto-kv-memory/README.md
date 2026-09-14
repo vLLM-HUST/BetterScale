@@ -237,3 +237,24 @@ do not queue further hw3 NPU work because another colleague needs it. Subsequent
 eight-card qualification should use the local machine and `/root/tp8.lock` with
 fresh admission. At this point run174 is the only owned live NPU job; no later
 hw3 watcher is authorized or queued.
+
+Run174 ended at its owned1500-second supervisor deadline, not a model-OOM
+conclusion and not a completed16-request result. Single448Ki+128 completed;
+the subsequent pressure cohort did not complete before the bound. After cleanup
+all8 hw3 cards reported healthy/idle (~3.4GiB driver baseline), owned launcher
+and checked worker PIDs absent. No hw3 watcher remains.
+
+The single long request's quiescent RPC ran on all8 workers (server observations
+include device identity); the public RPC JSON returned only one engine's result.
+Use all8 logged baseline/after rows, not an assumption that results[] covers DP8.
+Exact runtime peak/residency observations: `docs/evidence/auto-kv-run174.json`.
+The final32-question quality and turnover stages were NOT reached.
+
+The first pressure harness lost in-memory second-cohort metric/partial-completion
+samples on timeout. `pressure_monitor.py` now line-flushes both streams as they
+arrive; its CPU tests preserve partial receipts across interruption and retain
+original request-error propagation. Future bounded capacity runs must use it.
+A separate live sample during the interrupted cohort showed one running request
+per rank, KV~49%, zero preemptions. Do not call this16 simultaneously resident or
+an observed saturation peak; check horizon-dependent admission on the next local
+fixture, and size its time bound from the226s single-request observation.

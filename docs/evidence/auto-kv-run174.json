@@ -1,0 +1,217 @@
+{
+  "run": "174-hw3-dp8-physical-pressure",
+  "terminal": "1500-second owned supervisor timeout; not full-cohort success",
+  "completed_cohort": {
+    "input_tokens": 458752,
+    "output_tokens": 128,
+    "requests": 1,
+    "elapsed_s": 226.420292716939
+  },
+  "offered_pressure_requests": 16,
+  "pressure_cohort_complete": false,
+  "long_context_quality_claim": false,
+  "runtime_observations": [
+    {
+      "device": "npu:5",
+      "after": {
+        "phase": "0-history448-single",
+        "rank": 0,
+        "device": "npu:5",
+        "free": 1499607040,
+        "total": 65452113920,
+        "allocated": 61566354432,
+        "reserved": 62906171392,
+        "peak_allocated": 61793950208,
+        "peak_reserved": 62906171392
+      },
+      "baseline": {
+        "phase": "execution_baseline",
+        "rank": 0,
+        "device": "npu:5",
+        "free": 1770516480,
+        "total": 65452113920,
+        "allocated": 61566353408,
+        "reserved": 62648221696,
+        "peak_allocated": 62179724800,
+        "peak_reserved": 63585648640
+      }
+    },
+    {
+      "device": "npu:1",
+      "after": {
+        "phase": "0-history448-single",
+        "rank": 0,
+        "device": "npu:1",
+        "free": 1487360000,
+        "total": 65452113920,
+        "allocated": 61557291520,
+        "reserved": 62906171392,
+        "peak_allocated": 61784887296,
+        "peak_reserved": 62906171392
+      },
+      "baseline": {
+        "phase": "execution_baseline",
+        "rank": 0,
+        "device": "npu:1",
+        "free": 1783742464,
+        "total": 65452113920,
+        "allocated": 61557290496,
+        "reserved": 62627250176,
+        "peak_allocated": 62170661888,
+        "peak_reserved": 63564677120
+      }
+    },
+    {
+      "device": "npu:7",
+      "after": {
+        "phase": "0-history448-single",
+        "rank": 0,
+        "device": "npu:7",
+        "free": 1498456064,
+        "total": 65452113920,
+        "allocated": 61570891264,
+        "reserved": 62906171392,
+        "peak_allocated": 61798487040,
+        "peak_reserved": 62906171392
+      },
+      "baseline": {
+        "phase": "execution_baseline",
+        "rank": 0,
+        "device": "npu:7",
+        "free": 1770053632,
+        "total": 65452113920,
+        "allocated": 61570890240,
+        "reserved": 62648221696,
+        "peak_allocated": 62184261632,
+        "peak_reserved": 63585648640
+      }
+    },
+    {
+      "device": "npu:4",
+      "after": {
+        "phase": "0-history448-single",
+        "rank": 0,
+        "device": "npu:4",
+        "free": 1500540928,
+        "total": 65452113920,
+        "allocated": 61566354432,
+        "reserved": 62906171392,
+        "peak_allocated": 61791292416,
+        "peak_reserved": 62906171392
+      },
+      "baseline": {
+        "phase": "execution_baseline",
+        "rank": 0,
+        "device": "npu:4",
+        "free": 1769000960,
+        "total": 65452113920,
+        "allocated": 61566353408,
+        "reserved": 62648221696,
+        "peak_allocated": 62179724800,
+        "peak_reserved": 63585648640
+      }
+    },
+    {
+      "device": "npu:0",
+      "after": {
+        "phase": "0-history448-single",
+        "rank": 0,
+        "device": "npu:0",
+        "free": 1494245376,
+        "total": 65452113920,
+        "allocated": 61563638784,
+        "reserved": 62906171392,
+        "peak_allocated": 61788576768,
+        "peak_reserved": 62906171392
+      },
+      "baseline": {
+        "phase": "execution_baseline",
+        "rank": 0,
+        "device": "npu:0",
+        "free": 1790107648,
+        "total": 65452113920,
+        "allocated": 61563637760,
+        "reserved": 62627250176,
+        "peak_allocated": 62177009152,
+        "peak_reserved": 63564677120
+      }
+    },
+    {
+      "device": "npu:3",
+      "after": {
+        "phase": "0-history448-single",
+        "rank": 0,
+        "device": "npu:3",
+        "free": 1495744512,
+        "total": 65452113920,
+        "allocated": 61565449216,
+        "reserved": 62906171392,
+        "peak_allocated": 61788573696,
+        "peak_reserved": 62906171392
+      },
+      "baseline": {
+        "phase": "execution_baseline",
+        "rank": 0,
+        "device": "npu:3",
+        "free": 1770270720,
+        "total": 65452113920,
+        "allocated": 61565448192,
+        "reserved": 62648221696,
+        "peak_allocated": 62178819584,
+        "peak_reserved": 63585648640
+      }
+    },
+    {
+      "device": "npu:2",
+      "after": {
+        "phase": "0-history448-single",
+        "rank": 0,
+        "device": "npu:2",
+        "free": 1496248320,
+        "total": 65452113920,
+        "allocated": 61564544000,
+        "reserved": 62906171392,
+        "peak_allocated": 61792139776,
+        "peak_reserved": 62906171392
+      },
+      "baseline": {
+        "phase": "execution_baseline",
+        "rank": 0,
+        "device": "npu:2",
+        "free": 1790349312,
+        "total": 65452113920,
+        "allocated": 61564542976,
+        "reserved": 62627250176,
+        "peak_allocated": 62177914368,
+        "peak_reserved": 63564677120
+      }
+    },
+    {
+      "device": "npu:6",
+      "after": {
+        "phase": "0-history448-single",
+        "rank": 0,
+        "device": "npu:6",
+        "free": 1457324032,
+        "total": 65452113920,
+        "allocated": 61567270400,
+        "reserved": 62929240064,
+        "peak_allocated": 61819558400,
+        "peak_reserved": 62929240064
+      },
+      "baseline": {
+        "phase": "execution_baseline",
+        "rank": 0,
+        "device": "npu:6",
+        "free": 1769193472,
+        "total": 65452113920,
+        "allocated": 61567269376,
+        "reserved": 62648221696,
+        "peak_allocated": 62180640768,
+        "peak_reserved": 63585648640
+      }
+    }
+  ],
+  "measurement_gap": "Pressure and completed responses were held in memory until entire cohort completion; absent for timed-out cohort. Fixed by pressure_monitor.py incremental JSONL.",
+  "live_metric_observation_scope": "One separate live endpoint sample: one running request/rank, KV about49%, zero preemptions; not a peak or simultaneous16 proof."
+}
