@@ -75,7 +75,7 @@ def prepare(worker):
                     if width == 6
                     else AscendAttentionState.ChunkedPrefill
                 ),
-                is_prefilling=torch.full((n,), width > 6, device=d.device),
+                is_prefilling=torch.full((n,), width > 6, device="cpu"),
             )
             # DSV4 consumes the three configured auxiliary target hidden lanes.
             hidden = torch.zeros(

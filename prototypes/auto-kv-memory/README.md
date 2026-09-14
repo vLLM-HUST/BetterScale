@@ -286,3 +286,14 @@ unlaunched fixture under the tool-managed foreground session (17179), current
 launcher PID1062200 at that observation. That handle entered admission and
 subsequently started its owned service; use actual process/output state for waits,
 not the historical absent PID1061737.
+
+Run175 reached target warmup with ample diagnostic free memory, then its first
+synthetic draft preparation failed before capture: the fixture put
+`is_prefilling` on NPU, whereas native `split_decodes_and_prefills` combines it
+with CPU query lengths. This is a fixture metadata-device mismatch, not OOM.
+`draft_warmup.py` now keeps that flag on CPU, matching native preparation.
+Run176 tests this correction locally with dummy weights and the same3GiB
+observation budget/shared draft pool. Its closure is
+`runs/auto-kv-draft-dummy-local-20260914/`, output`result176/`; launcher1076181
+was verified live after submission. Dummy results cannot qualify model quality.
+All subsequent jobs remain local; hw3 has been released with no queued watcher.
