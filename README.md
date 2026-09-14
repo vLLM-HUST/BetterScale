@@ -18,6 +18,17 @@ See [public package instructions](docs/PYPI.md) for the version-pinned install a
 complete native TP8 / DP8 launch examples. This release changes packaging and naming,
 not the qualified engine execution path.
 
+## End-to-end service evidence
+
+[September14 HTTP acceptance](docs/E2E-20260914.zh-CN.md) compares retained
+programs with native donor, not one incremental patch against another.
+On the bounded same-host workloads, TP8 release0.3.0 aggregate output throughput
+is +35.17%; the separately qualified DP8 startup variant is +39.63%.
+**That DP result is not the published package:** DP8 release0.3.0 is −6.11% in
+this matrix. All arms pass the retained32-question retrieval gate; decode
+latency tails do not improve universally. See all repeats, configuration and
+version boundaries before using these numbers.
+
 ## Pinned upstreams
 
 | Component | Release | Commit |

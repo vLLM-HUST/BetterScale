@@ -57,3 +57,17 @@ rank: reused torch-npu parser workers can leak rank singletons and label rank0
 as rank2. Use `profile_tools/parse.py` and validate RANK_DEVICE_MAP; never repair
 this by renaming DBs or mutating rank rows. Read that folder README for archive
 and bounded export instructions.
+
+For **native donor versus the retained package's HTTP E2E**, enter
+`prototypes/retained-e2e/README.md` and `docs/E2E-20260914.zh-CN.md`.
+Resolve arms from command AND program source before benchmarking: a capsule
+called `control` can be an optimized incremental control, not stock donor.
+Runs158–161 compare native/released DP8 and TP8;155 is a separately qualified
+startup-prepared DP program. Its22 runtime files match experimental81ecde3,
+not published0.3.0. Keep the published DP regression and cold-start behavior
+beside the positive TP and qualified-DP numbers; do not discard first repeats.
+All five arms pass32/32 retrieval, but latency tails are not universally better.
+Reusing those complete same-host capsules is preferable to another blind reload.
+The small native TP helper installs ONLY LCM startup compatibility. Preserve
+CANN's Python path when prefixing the experiment closure;157 failed import when
+its launcher replaced that path. The corrected bounded import check precedes158.

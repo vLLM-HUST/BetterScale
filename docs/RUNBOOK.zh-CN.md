@@ -80,6 +80,10 @@ vllm serve /models/DeepSeek-V4-Flash \
 
 ## 验证与历史证据
 
+新增的[同机HTTP端到端验收](E2E-20260914.zh-CN.md)区分原生、0.3.0发布版与
+未发布的已验收预热版。不要把预热版的DP收益当成安装0.3.0即可获得的收益；
+该修正尚未随本报告发布。以下旧验收材料保留原始身份。
+
 新版不创建 launch/bank/shutdown JSON，不要求写工作目录。运行日志用于确认安装，
 原生健康接口用于检查服务；进程退出和 NPU 检查用于确认资源释放。
 
@@ -122,5 +126,6 @@ vllm serve /models/DeepSeek-V4-Flash \
 KV预算由用户管理，8GiB是测试配置，不是补丁自行保留的份额。
 输入/输出所有权、hook位置、fallback和证据口径见
 [`async_decode/README.md`](../src/strengthen_dsv4/patches/async_decode/README.md)。
-离线原生 LLM/Worker 验收不等于重新做过 DP HTTP 流量验收；服务路由与 admission
+离线原生 LLM/Worker 的历史验收与新增HTTP验收分开报告；服务路由与 admission
 仍由原生 vLLM 决定，不能把 matched-cycle 收益直接写成在线吞吐收益。
+新增HTTP结果见上面的端到端报告，包含发布版DP未稳定兑现收益的边界。
