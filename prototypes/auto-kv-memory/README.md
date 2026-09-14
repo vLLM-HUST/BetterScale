@@ -87,3 +87,31 @@ state8), not historical benchmark block128. Common APC alignment is4K, not16K.
 At8GiB, single-request common-pool peak demand is4.210GiB at512K and7.793GiB at1Mi;
 this is a KV ledger, not successful long-context execution. The original
 constructed-layout results above remain a rejected starting inference.
+
+## Recapture lifecycle failure (September14, run169 and two-card isolation)
+
+Run169 V2 completes final capture and its short decode cohort, but large prefill
+fails with AllGather AIV SDMA error507011, input8404992bytes (=1026×4096×BF16).
+Post-capture free memory is about1.93GiB; this is not an observed allocation OOM.
+The temporary allocator must NOT be adopted merely because allocated growth is
+only~328KiB after trial retirement.
+
+`recapture_probe.py` isolates the lifecycle without model/KV/attention on local
+physical3/4, masked to logical0/1, installed torch-npu2.10.0.post2, CANN9.0.1,
+HCCL_OP_EXPANSION_MODE=AIV, buffer256MiB. It primes HCCL, captures1026/12/6-row
+BF164096-wide AllGathers into a disposable pool, retires it, allocates256MiB
+surrogate backing, recaptures, and replays small then large shapes.
+
+- `runs/auto-kv-recapture-20260914/job/`: exit1, same8404992-byte AllGather SDMA
+  address error during final replay. No vLLM/model dependencies.
+- `runs/auto-kv-recapture-retain-20260914/`: RETAIN_TRIAL=1 keeps old graphs AND
+  their input/output tensors alive. Both ranks pass all six exact checks and
+  exit0. This establishes a lifetime-sensitive failure, not which individual
+  resource is stale. Retaining everything is a diagnostic, not a budget solution.
+- `RETAIN_TRIAL=tensors` separates tensor backing from graph lifetime; record its
+  result before changing production cleanup. Launch uses the same selected-card
+  admission/lease and300-second owned timeout. Raw artifacts remain untracked.
+
+The fixture allocates communication inputs/outputs outside capture. A passing
+control does not prove real model graph-pool internals safe. Narrow the dependency
+before another expensive eight-rank model run or claiming an upstream root cause.
