@@ -27,10 +27,12 @@ class TrialCleanup(unittest.TestCase):
             {6: [object()]}, {6: object()}, {6: [object()]}, {6: [object()]}
         )
         pair = NS(
-            catalogs=[{6: object()}, {6: object()}],
+            catalogs=[{6: NS(aclgraph=object())}, {6: NS(aclgraph=object())}],
             packets=[{6: object()}, {6: object()}],
         )
-        wrapper = NS(concrete_aclgraph_entries={6: object()}, _decode_pair=pair)
+        wrapper = NS(
+            concrete_aclgraph_entries={6: NS(aclgraph=object())}, _decode_pair=pair
+        )
         observations = []
 
         def sync():
@@ -47,7 +49,11 @@ class TrialCleanup(unittest.TestCase):
             compile(ast.Module(body=[node], type_ignores=[]), str(path), "exec"),
             namespace,
         )
-        namespace["clear_trial_graphs"]([wrapper])
+        expected = [wrapper.concrete_aclgraph_entries[6].aclgraph]
+        expected.extend(c[6].aclgraph for c in pair.catalogs)
+        retained = []
+        namespace["clear_trial_graphs"]([wrapper], retained)
+        self.assertEqual(retained, expected)
         self.assertEqual(observations, [True])
         self.assertFalse(hasattr(wrapper, "_decode_pair"))
         self.assertEqual(pair.catalogs, [{}, {}])

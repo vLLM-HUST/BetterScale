@@ -44,9 +44,16 @@ def worker(rank, out):
         return catalog
 
     before = torch.npu.memory_allocated()
+    if os.environ.get("RETAIN_TRIAL") == "anchor":
+        anchor_pool = torch.npu.graph_pool_handle()
+        anchor = capture(anchor_pool)
+        anchor_graphs = [graph for graph, _, _ in anchor.values()]
+        del anchor
     trial_pool = torch.npu.graph_pool_handle()
     trial = capture(trial_pool)
     torch.npu.synchronize()
+    if os.environ.get("RETAIN_TRIAL") in ("graphs", "shared"):
+        retained_graphs = [graph for graph, _, _ in trial.values()]
     if os.environ.get("RETAIN_TRIAL") == "tensors":
         retained_tensors = [(x, y) for _, x, y in trial.values()]
     if os.environ.get("RETAIN_TRIAL") != "1":
@@ -56,7 +63,11 @@ def worker(rank, out):
     retired = torch.npu.memory_allocated()
     # New backing perturbs freed addresses, as real KV allocation does.
     backing = torch.zeros(256 * 1024 * 1024, dtype=torch.uint8, device=dev)
-    final_pool = torch.npu.graph_pool_handle()
+    final_pool = (
+        retained_graphs[0].pool()
+        if os.environ.get("RETAIN_TRIAL") == "shared"
+        else torch.npu.graph_pool_handle()
+    )
     catalog = capture(final_pool)
     checks = []
     for turn, rows in enumerate((6, 12, 6, 1026, 12, 1026)):

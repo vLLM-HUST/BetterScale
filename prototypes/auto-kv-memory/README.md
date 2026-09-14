@@ -115,3 +115,25 @@ surrogate backing, recaptures, and replays small then large shapes.
 The fixture allocates communication inputs/outputs outside capture. A passing
 control does not prove real model graph-pool internals safe. Narrow the dependency
 before another expensive eight-rank model run or claiming an upstream root cause.
+
+The next controls completed on the same admitted physical3/4 pair:
+`runs/auto-kv-recapture-tensors-20260914/` (keep external input/output tensors,
+release graph objects) still fails507011; `runs/auto-kv-recapture-graphs-20260914/`
+(keep graph objects, release external inputs/outputs) exits0 with six exact
+checks/rank. These separate external tensor lifetime from graph-held resources.
+They do not yet identify an internal HCCL allocation or prove an upstream bug.
+`RETAIN_TRIAL=anchor` tests whether a prior, communication-only retained catalog
+can protect later disposable captures; it is not integrated into the Worker.
+
+The prior anchor catalog does NOT protect a subsequently destroyed catalog:
+`runs/auto-kv-recapture-anchor-20260914/` fails507011 too. Do not describe the
+condition as only a first-capture problem. Keeping trial graph handles and using
+that same pool for final capture (`RETAIN_TRIAL=shared`) passes all six exact
+checks/rank, exit0 in `runs/auto-kv-recapture-shared-20260914/`.
+
+V3 `PreflightWorker` consequently keeps retired graph handles (never replayed),
+releases their old State/packets, and reuses the final shared pool instead of a
+disposable separate activation arena. CPU cleanup test covers handle retention
+and State/packet retirement. This is still an experimental hypothesis pending
+full-model allocated/reserved-memory and request validation; the raw two-rank
+fixture alone does not establish production safety or final graph peak.

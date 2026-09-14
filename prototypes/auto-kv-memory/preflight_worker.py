@@ -25,11 +25,25 @@ from memory_worker import MemoryWorker
 GiB = 1 << 30
 
 
-def clear_trial_graphs(wrappers):
+def clear_trial_graphs(wrappers, retained_graphs=None):
     # The trial contains target graphs only. Draft/producer graphs are installed
     # by Worker after final native warmup, not here.
     torch.npu.synchronize()
     for wrapper in wrappers:
+        # HCCL AIV recapture can still depend on graph-owned resources. Retain
+        # only graph handles, not old State/input/output packets. These handles
+        # must NEVER replay after the trial addresses have been retired.
+        if retained_graphs is not None:
+            catalogs = [wrapper.concrete_aclgraph_entries]
+            pair = wrapper.__dict__.get("_decode_pair")
+            if pair is not None:
+                catalogs.extend(pair.catalogs)
+            for catalog in catalogs:
+                for entry in catalog.values():
+                    if entry.aclgraph is not None and all(
+                        entry.aclgraph is not graph for graph in retained_graphs
+                    ):
+                        retained_graphs.append(entry.aclgraph)
         pair = wrapper.__dict__.pop("_decode_pair", None)
         if pair is not None:
             for catalog in pair.catalogs:
@@ -90,7 +104,11 @@ class PreflightWorker(MemoryWorker):
             for w in wrappers
         )
         original_pools = [w.graph_pool for w in wrappers]
-        trial_pool = current_platform.graph_pool_handle()
+        # Reuse the final pool: retaining graph handles must not reserve a
+        # separate full-model activation arena. No trial graph will replay.
+        assert original_pools and all(p == original_pools[0] for p in original_pools)
+        trial_pool = original_pools[0]
+        self._preflight_retired_graphs = []
         captured_before = compilation_counter.num_cudagraph_captured
         try:
             with set_current_vllm_config(self.vllm_config):
@@ -106,7 +124,7 @@ class PreflightWorker(MemoryWorker):
             assert graph_bytes > 0
             self.snapshot("trial_after_capture", trial_graph_bytes=graph_bytes)
         finally:
-            clear_trial_graphs(wrappers)
+            clear_trial_graphs(wrappers, self._preflight_retired_graphs)
             for wrapper, pool in zip(wrappers, original_pools):
                 wrapper.graph_pool = pool
             runner._cleanup_profiling_kv_cache()
