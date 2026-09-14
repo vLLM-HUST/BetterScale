@@ -457,3 +457,20 @@ TP8,15104 horizon,4 seats,4128 budget,K5,ONE pool. Remote capsule
 `/workspace/my-ascend-workspace/runs/tp-continuation-20260914/auto-kv-tp-complete`,
 output`result186/`, managed SSH session59717. Local closure:
 `runs/auto-kv-tp-complete-hw3-20260914/`. No quality/release claim yet.
+
+Run186 exits0: automatic TP KV14.954–14.962GiB/rank, final device free
+0.957–0.965GiB/rank,192 successful draft preparation observations (trial+final),
+129 final State views cleared/rank. All three dummy cohorts complete. Exact
+receipt:`docs/evidence/auto-kv-run186.json`. Seven CPU tests pass. This qualifies
+the dummy15104-horizon physical-fit composition, not output quality or pressure.
+
+Run187 extends only its private TP horizon to64K, keeps4 seats/4128 wave and
+no fixed byte budget, and tests32K single,60K single,eight60K requests. Dummy only.
+The worker resets runtime peaks after complete preparation/State clearing and
+exposes quiescent capacity_snapshot RPC with draft replay/fallback counts. The
+loopback-only native developer RPC is NOT a release feature. The harness now
+uses pressure_monitor.collect for durable per-cohort metric and partial-request
+receipts; it no longer loses unfinished long-cohort samples on timeout.
+Remote closure`/workspace/my-ascend-workspace/runs/tp-continuation-20260914/auto-kv-tp-long64`,
+output`result187/`, managed SSH session5433. Local source/result home:
+`runs/auto-kv-tp-long64-hw3-20260914/`. The launch retains a1500s owned bound.

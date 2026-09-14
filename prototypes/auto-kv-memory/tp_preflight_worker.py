@@ -98,7 +98,26 @@ class TPPreflightWorker(PreflightWorker):
             if hasattr(layer, "kv_cache"):
                 clear(layer.kv_cache)
         torch.npu.synchronize()
-        self.snapshot(
+        self._execution_baseline = self.snapshot(
             "complete_program_before_admission", state_views_cleared=len(seen)
         )
+        torch.npu.reset_peak_memory_stats()
         return result
+
+    def capacity_snapshot(self, phase="after_cohort"):
+        manager = self._exact_draft_graph
+        record = self.snapshot(
+            phase,
+            draft_catalog={
+                kind: [
+                    dict(key=str(key), replays=entry.replays, fallbacks=entry.fallbacks)
+                    for key, entry in catalog.items()
+                ]
+                for kind, catalog in (
+                    ("decode", manager.decode_graphs),
+                    ("query", manager.query_graphs),
+                )
+            },
+        )
+        record["baseline"] = self._execution_baseline
+        return record

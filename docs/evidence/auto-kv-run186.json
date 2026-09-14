@@ -1,0 +1,244 @@
+{
+  "run": 186,
+  "status": "PASS_DUMMY_COMPLETE_TP_AUTOMATIC",
+  "scope": "hw3 TP8 dummy;15104 horizon;4 seats;K5;single pool;no fixed KV bytes or fraction-based admission",
+  "budget": [
+    {
+      "phase": "physical_budget_after_trial_release",
+      "rank": 3,
+      "device": "npu:3",
+      "free": 17515945984,
+      "total": 65452113920,
+      "allocated": 44195916288,
+      "reserved": 44772098048,
+      "peak_allocated": 48306505216,
+      "peak_reserved": 48844767232,
+      "kv_budget": 16065336320,
+      "measured_target_graph": 862334976,
+      "persistent_growth": 752128,
+      "safety": 1073741824
+    },
+    {
+      "phase": "physical_budget_after_trial_release",
+      "rank": 0,
+      "device": "npu:0",
+      "free": 17515446272,
+      "total": 65452113920,
+      "allocated": 44195916288,
+      "reserved": 44772098048,
+      "peak_allocated": 48306505216,
+      "peak_reserved": 48844767232,
+      "kv_budget": 16065528832,
+      "measured_target_graph": 861466624,
+      "persistent_growth": 752128,
+      "safety": 1073741824
+    },
+    {
+      "phase": "physical_budget_after_trial_release",
+      "rank": 2,
+      "device": "npu:2",
+      "free": 17515544576,
+      "total": 65452113920,
+      "allocated": 44195916288,
+      "reserved": 44772098048,
+      "peak_allocated": 48306505216,
+      "peak_reserved": 48844767232,
+      "kv_budget": 16064730112,
+      "measured_target_graph": 862752768,
+      "persistent_growth": 752128,
+      "safety": 1073741824
+    },
+    {
+      "phase": "physical_budget_after_trial_release",
+      "rank": 6,
+      "device": "npu:6",
+      "free": 17512960000,
+      "total": 65452113920,
+      "allocated": 44195916288,
+      "reserved": 44772098048,
+      "peak_allocated": 48306505216,
+      "peak_reserved": 48844767232,
+      "kv_budget": 16062440448,
+      "measured_target_graph": 862240768,
+      "persistent_growth": 752128,
+      "safety": 1073741824
+    },
+    {
+      "phase": "physical_budget_after_trial_release",
+      "rank": 5,
+      "device": "npu:5",
+      "free": 17516105728,
+      "total": 65452113920,
+      "allocated": 44195916288,
+      "reserved": 44772098048,
+      "peak_allocated": 48306505216,
+      "peak_reserved": 48844767232,
+      "kv_budget": 16065332224,
+      "measured_target_graph": 861896704,
+      "persistent_growth": 752128,
+      "safety": 1073741824
+    },
+    {
+      "phase": "physical_budget_after_trial_release",
+      "rank": 7,
+      "device": "npu:7",
+      "free": 17515118592,
+      "total": 65452113920,
+      "allocated": 44195916288,
+      "reserved": 44772098048,
+      "peak_allocated": 48306505216,
+      "peak_reserved": 48844767232,
+      "kv_budget": 16064222208,
+      "measured_target_graph": 863096832,
+      "persistent_growth": 752128,
+      "safety": 1073741824
+    },
+    {
+      "phase": "physical_budget_after_trial_release",
+      "rank": 1,
+      "device": "npu:1",
+      "free": 17506775040,
+      "total": 65452113920,
+      "allocated": 44195916288,
+      "reserved": 44772098048,
+      "peak_allocated": 48306505216,
+      "peak_reserved": 48844767232,
+      "kv_budget": 16056321024,
+      "measured_target_graph": 863436800,
+      "persistent_growth": 752128,
+      "safety": 1073741824
+    },
+    {
+      "phase": "physical_budget_after_trial_release",
+      "rank": 4,
+      "device": "npu:4",
+      "free": 17515499520,
+      "total": 65452113920,
+      "allocated": 44195916288,
+      "reserved": 44772098048,
+      "peak_allocated": 48306505216,
+      "peak_reserved": 48844767232,
+      "kv_budget": 16065373184,
+      "measured_target_graph": 862121984,
+      "persistent_growth": 752128,
+      "safety": 1073741824
+    }
+  ],
+  "before_admission": [
+    {
+      "phase": "complete_program_before_admission",
+      "rank": 6,
+      "device": "npu:6",
+      "free": 1033420800,
+      "total": 65452113920,
+      "allocated": 59983237632,
+      "reserved": 61094232064,
+      "peak_allocated": 60553140224,
+      "peak_reserved": 61094232064,
+      "state_views_cleared": 129
+    },
+    {
+      "phase": "complete_program_before_admission",
+      "rank": 1,
+      "device": "npu:1",
+      "free": 1027510272,
+      "total": 65452113920,
+      "allocated": 59983237632,
+      "reserved": 61094232064,
+      "peak_allocated": 60553140224,
+      "peak_reserved": 61094232064,
+      "state_views_cleared": 129
+    },
+    {
+      "phase": "complete_program_before_admission",
+      "rank": 3,
+      "device": "npu:3",
+      "free": 1032224768,
+      "total": 65452113920,
+      "allocated": 59983237632,
+      "reserved": 61094232064,
+      "peak_allocated": 60553140224,
+      "peak_reserved": 61094232064,
+      "state_views_cleared": 129
+    },
+    {
+      "phase": "complete_program_before_admission",
+      "rank": 4,
+      "device": "npu:4",
+      "free": 1032302592,
+      "total": 65452113920,
+      "allocated": 59983237632,
+      "reserved": 61094232064,
+      "peak_allocated": 60553140224,
+      "peak_reserved": 61094232064,
+      "state_views_cleared": 129
+    },
+    {
+      "phase": "complete_program_before_admission",
+      "rank": 0,
+      "device": "npu:0",
+      "free": 1035952128,
+      "total": 65452113920,
+      "allocated": 59983237632,
+      "reserved": 61094232064,
+      "peak_allocated": 60553140224,
+      "peak_reserved": 61094232064,
+      "state_views_cleared": 129
+    },
+    {
+      "phase": "complete_program_before_admission",
+      "rank": 7,
+      "device": "npu:7",
+      "free": 1035649024,
+      "total": 65452113920,
+      "allocated": 59983237632,
+      "reserved": 61094232064,
+      "peak_allocated": 60553140224,
+      "peak_reserved": 61094232064,
+      "state_views_cleared": 129
+    },
+    {
+      "phase": "complete_program_before_admission",
+      "rank": 2,
+      "device": "npu:2",
+      "free": 1036402688,
+      "total": 65452113920,
+      "allocated": 59983237632,
+      "reserved": 61094232064,
+      "peak_allocated": 60553140224,
+      "peak_reserved": 61094232064,
+      "state_views_cleared": 129
+    },
+    {
+      "phase": "complete_program_before_admission",
+      "rank": 5,
+      "device": "npu:5",
+      "free": 1036083200,
+      "total": 65452113920,
+      "allocated": 59983237632,
+      "reserved": 61094232064,
+      "peak_allocated": 60553140224,
+      "peak_reserved": 61094232064,
+      "state_views_cleared": 129
+    }
+  ],
+  "cohorts": [
+    {
+      "label": "0-decode",
+      "elapsed_s": 11.357943567098118
+    },
+    {
+      "label": "0-prefill",
+      "elapsed_s": 6.664900906034745
+    },
+    {
+      "label": "0-turnover",
+      "elapsed_s": 12.64023334090598
+    }
+  ],
+  "limitations": [
+    "Dummy is not model quality",
+    "Longer horizons and cache-pressure/preemption remain unqualified",
+    "Automatic allocator is experimental, not public Worker default"
+  ]
+}
