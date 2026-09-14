@@ -80,3 +80,20 @@ No result is claimed until hardware acceptance is complete.
   difference and byte-exact KV**; every native self-control also passes. The
   temporary copy/metadata suspicions are not supported. No runtime tolerance
   or production communication setting was changed to make the test pass.
+
+
+## Startup preparation correction (September 14, in progress)
+
+Fletcher rejected charging first-seen metadata/producer graph capture to live
+requests. Runs133/135 are the retained cold-start HTTP control/candidate pair:
+the candidate is not a stable E2E win (its early cohorts are substantially
+slower). Runtime shape admission is a hypothesis for those stalls, not a proven
+causal attribution. Do not erase them by adding benchmark warmup requests.
+
+The next candidate constructs all finite producer banks and all metadata shapes
+from actually captured small target descriptors, for both host carriers, before
+Worker READY. Online cache misses now fall back without capture. Startup inputs
+are restored, and no model forward/KV write is part of this auxiliary warmup.
+Run137 checks the new TP startup route with strict HCCL/native-self controls.
+The old split-draft first-use capture remains a separately identified startup
+gap; do not claim the whole worker is prewarmed until that gap is handled too.

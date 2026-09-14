@@ -78,10 +78,21 @@ uncaptured sampler 每次分配的独立 Tensor，copy stream 等 compute，异�
 ## 成本、回退与证据边界
 
 辅助 preparation 与 metadata graph 各共享串行 scratch pool；host sources、
-返回的 live tensors 与 target packets 分别保留所有权。第一次遇到尚未捕获的
-有限请求/补齐形状仍需同步 capture，不能把它当稳态延迟。shape key 包含 native
-CPU carrier 身份，避免交替输入槽引用错误的 CPU metadata。prefill、turnover
-以及 DP dummy drain 不继承上一波的稳定 decode admission。
+返回的 live tensors 与 target packets 分别保留所有权。Worker 在 READY 之前，
+通过 `_warmup.prepare()` 遍历实际已捕获的 small target descriptors、允许的
+请求数与两份 CPU carrier，完成全部 producer／metadata 图准备。只运行输入和
+metadata 程序，不运行 target forward，也不复制或改写模型 KV；结束后恢复原生
+输入样本。启动耗时属于服务启动，不能转嫁到第一批请求再用热身测量掩盖。
+
+READY 之后，这两条路径只查询已准备的 entries；缺失形状明确走原生回退，
+不在线创建 Slot 或 capture。DP 某 rank 本地是 K5、全局却被其他 rank 的大
+prefill 补齐时，也走原生大桶回退。shape key 仍包含 native CPU carrier 身份，
+避免交替输入槽引用错误的 CPU metadata。prefill、turnover 以及 DP dummy drain
+不继承上一波的稳定 decode admission。
+
+**当前分支的启动期改造仍在硬件验收，以下旧结果不自动覆盖它。** 这里只描述
+async_decode 两种辅助图；split_draft 的历史首用捕获是另一个待收口的入口，
+不能据此声称整套 Worker 已无任何在线捕获。
 
 2026-09-13 原型同机 run120：DP8、16 个全局请求、K5，每 rank 两个请求与
 12 个实际 target queries，FULL target、原生 eager draft。两次对照中，

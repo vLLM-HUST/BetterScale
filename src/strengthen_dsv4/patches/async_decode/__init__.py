@@ -17,6 +17,7 @@ def install(worker):
     from . import _host
     from ._producer import DecodeProducer
     from ._metadata import DecodeMetadata
+    from ._warmup import prepare
 
     r = worker.model_runner
     if hasattr(r, "_async_decode"):
@@ -28,4 +29,5 @@ def install(worker):
     _host.install(worker)
     producer = DecodeProducer(worker)
     metadata = DecodeMetadata(producer)
+    prepare(producer, metadata)
     r._async_decode = (producer, metadata)
