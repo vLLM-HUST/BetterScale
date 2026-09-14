@@ -75,3 +75,8 @@ integration; preserve run155/158–161 identities and all rounds in the E2E repo
 Do not repeat hardware qualification merely because those identical DP programs
 are shipped under a new package version. Reopen it only for a changed behavior or
 a concrete unresolved risk, not to manufacture a fresh-looking measurement.
+
+Published as tag `v0.3.1` / `fbfa963` on 2026-09-14. Official PyPI wheel and
+sdist were anonymously downloaded and directly matched to both audited artifacts;
+the official wheel passed the clean-install alias/pin check. Evidence is retained
+under `runs/release-0.3.1/` (not tracked). No new NPU result is claimed.
