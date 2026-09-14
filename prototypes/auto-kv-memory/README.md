@@ -168,3 +168,12 @@ single32768-token prompt, single61440-token prompt, then eight61440-token prompt
 repeated-token prompts exercise cache/history execution, NOT long-context quality
 or the maximum admission/SLO concurrency. It retains the run170 physical budget
 and shared-graph-lifetime protocol, all other launch settings unchanged.
+
+Run171 exited0. Single32K input completes13.742s; single60K25.120s;
+eight60K inputs47.232s, each requesting128 output tokens. The follow-on32 retrieval
+questions remain32/32 correct. Physical KV budgets7.886–7.898GiB/rank; startup
+free1.682–1.691GiB after final capture. Exact ranges and cohort times are in
+`docs/evidence/auto-kv-run171.json`; full local receipts in
+`runs/auto-kv-long64-20260914/result171/`. This qualifies the tested history
+execution, not a full-KV saturation, actual maximum resident count or SLO claim.
+All jobs through171 have exited; no background admission watcher remains.

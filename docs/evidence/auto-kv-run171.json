@@ -1,0 +1,111 @@
+{
+  "source_commit": "307ac45 with capsule-only maxlen guard extended to65536",
+  "run": "171-hw3-dp8-physical-long64",
+  "scope": "DP8 TP1 K5 FULL, 64K max length, two seats/rank. Repeated synthetic token prompts, not long-context accuracy.",
+  "exit_code": 0,
+  "quality": {
+    "count": 32,
+    "correct": 32,
+    "evaluator": "60a28a727d3b7807eb3554928f3530d04c948452"
+  },
+  "phases": {
+    "physical_budget_after_trial_release": {
+      "ranks": 8,
+      "ranges_bytes": {
+        "free": [
+          10351902720,
+          10365104128
+        ],
+        "total": [
+          65452113920,
+          65452113920
+        ],
+        "allocated": [
+          53171627520,
+          53171627520
+        ],
+        "reserved": [
+          54284779520,
+          54284779520
+        ],
+        "peak_allocated": [
+          54789621248,
+          54789621248
+        ],
+        "peak_reserved": [
+          55673094144,
+          55673094144
+        ],
+        "kv_budget": [
+          8467383296,
+          8480564224
+        ],
+        "measured_target_graph": [
+          1445142528,
+          1450676224
+        ],
+        "persistent_growth": [
+          590336,
+          590336
+        ],
+        "safety": [
+          1073741824,
+          1073741824
+        ]
+      }
+    },
+    "after_capture_and_patch_warmup": {
+      "ranks": 8,
+      "ranges_bytes": {
+        "free": [
+          1805918208,
+          1815248896
+        ],
+        "total": [
+          65452113920,
+          65452113920
+        ],
+        "allocated": [
+          61542309888,
+          61555909632
+        ],
+        "reserved": [
+          62604181504,
+          62604181504
+        ],
+        "peak_allocated": [
+          62173551104,
+          62187150848
+        ],
+        "peak_reserved": [
+          63562579968,
+          63562579968
+        ],
+        "graph": [
+          369217536,
+          392380416
+        ]
+      }
+    }
+  },
+  "cohorts": [
+    {
+      "label": "0-long32-single",
+      "elapsed_s": 13.741799109033309,
+      "output_tps": 9.314646429073317,
+      "request_count": 1
+    },
+    {
+      "label": "0-long60-single",
+      "elapsed_s": 25.120251193991862,
+      "output_tps": 5.095490447588136,
+      "request_count": 1
+    },
+    {
+      "label": "0-long60-eight",
+      "elapsed_s": 47.231719851028174,
+      "output_tps": 21.680345395631594,
+      "request_count": 8
+    }
+  ]
+}
