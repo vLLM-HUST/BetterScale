@@ -359,3 +359,22 @@ intermediates, interleaving exact replay checks with eager AllGathers at
 Capsule`runs/auto-kv-shared-eager-20260914/`, managed session24432 at submission.
 This tests a communication-lifetime hypothesis; failure/success cannot by itself
 establish that model intermediate liveness is correct.
+
+The two-rank shared-pool/eager isolation passes105 exact checks/rank,
+peak reserved48MiB. It explicitly executes eager AllGather before each capture.
+Fletcher identified the missing invariant: materialize actual communication-group
+buffers before capture; communicator construction alone is insufficient. The
+model fixture's ExactDraftGraph instead banked metadata then captured directly.
+Do not mislabel the passing pre-primed microprobe as evidence against this cause.
+
+Run180 (unprimed lazy control) was cancelled before measurement, exit-15,
+all cards reclaimed. Run181 keeps dummy weights and ONE global pool, but before
+each startup draft capture runs `self.original(**self.buffers[0])` with the same
+banked forward metadata and `ctx.capturing == False`, synchronizes, discards the
+warm output, then captures. The native query_body suppression remains in force
+for query-only entries. A `_preparing_draft_graphs` assertion prevents this
+extra eager invocation from silently running on live requests. This initializes
+real collective paths outside the pool instead of guessing an unrelated group
+or substituting two arenas. Native target already has per-bucket graph warmups.
+Capsule`runs/auto-kv-draft-dummy-primed-local-20260914/`, output`result181/`,
+managed session2172. Until this gate passes, runtime correctness is still open.
