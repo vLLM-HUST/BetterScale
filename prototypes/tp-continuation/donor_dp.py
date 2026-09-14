@@ -83,9 +83,8 @@ def rank_main(args, dp_rank, barrier):
         ),
     )
     if args.packaged:
-        assert args.real and (
-            (args.donor_dp == 8 and args.tp == 1 and args.dp_full)
-            or (args.donor_dp == 1 and args.tp == 8)
+        assert (args.donor_dp == 8 and args.tp == 1 and args.dp_full) or (
+            args.donor_dp == 1 and args.tp == 8
         )
         assert not any(
             (
@@ -111,6 +110,9 @@ def rank_main(args, dp_rank, barrier):
         if os.environ.get("CONTINUATION_CONTROL") == "1":
             assert not args.packaged_oracle
             config["worker_cls"] = "control_worker.ControlWorker"
+        if not args.real:
+            assert args.packaged_oracle and args.tp == 8
+            config["worker_cls"] = "packaged_oracle.DummyAcceptanceWorker"
         config["worker_extension_cls"] = "packaged_observer.PackagedObserver"
     if args.spec:
         config["speculative_config"] = dict(

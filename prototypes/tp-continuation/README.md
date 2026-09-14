@@ -42,3 +42,19 @@ It is not stock donor. The delivered worker acquires no experiment selector.
 Local artifacts: `/workspace/strengthen-dsv4/runs/tp-continuation-20260914/`.
 Remote hw3 capsules: `/workspace/my-ascend-workspace/runs/tp-continuation-20260914/`.
 No result is claimed until hardware acceptance is complete.
+
+## Current qualification boundary
+
+- `125-tp8-packaged-shadow`: first four-request small-target comparison failed
+  substantially (roughly90% of final hidden elements outside the strict gate).
+  It is not accepted numerical drift; no performance claim or main promotion.
+- `128-tp8-real-source-audit`: all54 GPU publication sources on rank0 matched
+  their capture-time storage identity **and current bytes** before replay.
+  Therefore changing GPU source addresses does **not** explain that first failure.
+  Next isolate in-target recorded copies versus explicit pre-replay live
+  publication (including CPU packet fields), using the existing exact oracle.
+- Dummy audit did not reach the comparison: the pinned dummy loader leaves
+  o-projection weight layout incompatible with native transpose-batchmatmul.
+  Do not confuse that fixture failure with the real-weight continuation failure.
+  `126` also exposed a test Worker constructor keyword mismatch, corrected in
+  `127`. These are diagnostic attempts, not accepted target checks.

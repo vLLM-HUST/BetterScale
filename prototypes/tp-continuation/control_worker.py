@@ -11,7 +11,8 @@ from vllm_ascend.worker.worker import NPUWorker
 
 
 class ControlWorker(NPUWorker):
-    def __init__(self, config, *args, **kwargs):
+    def __init__(self, vllm_config, *args, **kwargs):
+        config = vllm_config
         check_runtime()
         validate_worker_config(config)
         from strengthen_dsv4.patches import compat_lcm, target_full
