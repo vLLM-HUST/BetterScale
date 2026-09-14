@@ -137,3 +137,10 @@ disposable separate activation arena. CPU cleanup test covers handle retention
 and State/packet retirement. This is still an experimental hypothesis pending
 full-model allocated/reserved-memory and request validation; the raw two-rank
 fixture alone does not establish production safety or final graph peak.
+
+V3 full-model gate is submitted on hw3 as
+`/workspace/my-ascend-workspace/runs/tp-continuation-20260914/170-hw3-dp8-physical-preflight-v3/`.
+Frozen source/launch closure is sibling`auto-kv-v3/`; launcher PID2579909 at
+submission (revalidate live identity, not this historical number, before waiting
+or cancellation). It owns the home lease and bounded idle-card admission.
+Control remains run166; no percentage-default or long-context guard has changed.
