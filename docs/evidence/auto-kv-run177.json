@@ -1,0 +1,86 @@
+{
+  "run": 177,
+  "status": "PARTIAL_THEN_TURNOVER_TIMEOUT",
+  "scope": "TP8 real weights, diagnostic 3GiB KV, target and draft share global pool; not automatic sizing or quality qualification",
+  "warmup": [
+    {
+      "rank": 0,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -39632896,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 1,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -39862272,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 2,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -40402944,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 3,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -39874560,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 4,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -39825408,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 5,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -39907328,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 6,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -39534592,
+      "decode_entries": 4,
+      "query_entries": 8
+    },
+    {
+      "rank": 7,
+      "allocated_delta": 5284864,
+      "reserved_delta": 6291456,
+      "driver_free_delta": -39596032,
+      "decode_entries": 4,
+      "query_entries": 8
+    }
+  ],
+  "completed_cohorts": [
+    {
+      "label": "0-decode",
+      "elapsed_s": 4.074897010927089
+    },
+    {
+      "label": "0-prefill",
+      "elapsed_s": 5.320010882918723
+    }
+  ],
+  "limitations": [
+    "Turnover HTTP timed out; quality not reached",
+    "Shared target/draft pool aliasing is a hypothesis, not an established cause",
+    "No observed initial allocation OOM"
+  ]
+}

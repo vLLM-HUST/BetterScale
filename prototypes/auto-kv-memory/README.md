@@ -306,3 +306,19 @@ repairing native dummy weight loading. After its supervisor released the local
 lease, run177 uses the already-loading real-weight closure from175 plus the
 CPU metadata correction. Local capsule:
 `runs/auto-kv-draft-real-v2-local-20260914/`, output`result177/`.
+
+Run177 prepares all12 entries/rank (4 decode,8 query); allocator reserved growth
+from first prepare-before to last prepare-after is6MiB/rank, allocated~5MiB.
+Short decode and four4K-prefill cohorts complete4.075s and5.320s. Turnover stalls
+(one running,six waiting in the last service metric) and the HTTP240s timeout
+ends the job, exit1; quality is not reached. All local cards were released.
+No first allocation OOM is recorded. This is NOT an accepted shared-pool protocol.
+Compact receipt:`docs/evidence/auto-kv-run177.json`.
+
+Run178 isolates draft arena from target: one dedicated pool shared among all
+12 draft graphs, rather than target's pool. Live producer outputs may constrain
+cross-program reuse; aliasing is a hypothesis, not the established177 cause.
+All shapes, real weights and diagnostic3GiB KV remain the same. Probe-only
+faulthandler dumps after90s of serving retain Python stacks if turnover stalls.
+Local capsule`runs/auto-kv-draft-isolated-local-20260914/`, output`result178/`,
+managed session82685 at submission. Public split_draft remains unchanged.
