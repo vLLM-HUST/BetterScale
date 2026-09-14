@@ -203,3 +203,25 @@ guard to512K and offers one448Ki prompt, then16 such prompts, then16×4K turnove
 It polls native KV/running/preemption metrics during cohorts and requests per-rank
 memory receipts afterwards. This should distinguish physical occupancy/admission
 from the native equivalent-token log; it is not original agent or accuracy load.
+
+Run172 failed during weight creation before any capacity observation: TP3 had
+only30.19GiB allocated,12.45MiB device-free. Release still showed36–38GiB on
+other cards with no visible PID. Classified as lost shared admission window,
+not KV sizing evidence. Retry173 waited for a fresh idle window; do not relaunch
+172 merely because its model process exited.
+
+Run173 reveals a REAL missing footprint: all8 workers reach READY, automatic KV
+~16.95GiB/rank, then first HTTP cohort triggers split_draft ExactDraftGraph's
+lazy runtime capture. TP3 requests210MiB in npu_hc_pre_v2 and gets allocator OOM;
+subsequent507011 collective errors follow that worker failure. Read the first
+allocation error, not the later communication cascade. This differs from the
+run169 AIV retirement fault. `ExactDraftGraph` currently captures without an
+explicit shared pool and install() creates empty catalogs, not ready graphs.
+The final native target snapshot does not include the eventual draft catalog.
+Required repair: prepare the admitted draft envelope before capacity publication
+and account for its live metadata/private pools; no arbitrary larger safety
+margin or TP adoption of the DP-only passing estimate.
+
+DP pressure run174 is now submitted (PID2612955 at submission), using the already
+passing DP path plus the loopback-only observation RPC described above. TP draft
+closure can be investigated independently while its long-history workload runs.
