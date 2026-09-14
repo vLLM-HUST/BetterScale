@@ -411,3 +411,10 @@ actual scheduled counts and resumed/new request counts. This is NOT a fixed-budg
 release fallback. If it passes, the pressured/preempted route remains unqualified;
 do not call6GiB proof that the3GiB stall is repaired. Local capsule
 `runs/auto-kv-draft-dummy-roomy-local-20260914/`, output`result183/`, session19546.
+
+Run183 loses its admitted window during dummy loading: foreign local PID21436
+appears on device6 (driver host PID325169). Supervisor aborts and reclaims only
+owned descendants; foreign work remains. No graph/performance result. Run184
+is the identical prepared fixture requeued for a NEW idle local window under
+the home lease, result184 in the same capsule, session10089. No hw3 work.
+Do not repeatedly reload after another collision without a changed window.
