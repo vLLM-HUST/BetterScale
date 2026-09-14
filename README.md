@@ -1,4 +1,10 @@
-# strengthen-dsv4
+# BetterScale
+
+Modular execution optimizations for vLLM Ascend. Keep the engine; improve the execution.
+
+Formerly **strengthen-dsv4**. The project is now named **BetterScale**; the validated
+Python package and Worker entry retain `strengthen_dsv4` for compatibility. The
+repository URL below remains the existing address until the GitHub rename is complete.
 
 Incremental DeepSeek V4 serving improvements on vLLM + vLLM-Ascend.
 Keep the mature engine. Measure each change. Keep improvements that survive
