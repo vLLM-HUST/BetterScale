@@ -16,7 +16,7 @@ Do not uninstall donor packages or upgrade their dependencies.
   prototypes, upstream checkouts, tests, credentials or profiles.
 - Use separate Python 3.12 packaging tools; unset inherited PYTHONPATH for them.
   A tools-only venv lacks torch/numpy: use the existing runtime Python for the CPU
-  test suite, without constructing NPU workers. The isolated alias test needs no
+  test suite, without constructing NPU workers. The isolated Worker-import test needs no
   donor. Do not install torch just to repair the packaging-tools environment.
 - Run strict Twine metadata checks, install the wheel with --no-deps outside the
   checkout, verify Worker is defined in betterscale.worker against a native-base
@@ -89,3 +89,7 @@ donor pins are byte-identical. The same55 CPU tests cover the new imports. Use
 clean wheel and0.3.1-to0.3.2 upgrade checks, not another eight-card experiment for
 this rename. Historical capsules/prototypes retain their original source identity
 and require their frozen versions; do not mass-rewrite old evidence or real paths.
+
+Published0.3.2 from `963f1c2` on2026-09-14. Both official PyPI artifacts directly
+match audited builds. A0.3.1-to0.3.2 install confirms the old namespace is removed
+and native Worker/pins load; no NPU rerun. Local receipt: `runs/release-0.3.2/`.
