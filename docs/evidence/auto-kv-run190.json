@@ -1,0 +1,37 @@
+{
+  "run": 190,
+  "status": "PASS_REAL_TP_QUALITY",
+  "scope": "Real DSV4 W8A8,TP8 K5,automatic shared-pool physical fit,512K configuration,4 seats,4128 wave",
+  "quality": {
+    "count": 32,
+    "correct": 32,
+    "score": 100.0,
+    "evaluator": "60a28a727d3b7807eb3554928f3530d04c948452"
+  },
+  "kv_budget_bytes_range": [
+    16040572928,
+    16049960960
+  ],
+  "ready_free_bytes_range": [
+    1036042240,
+    1045487616
+  ],
+  "cohorts": [
+    {
+      "label": "0-long60-single",
+      "elapsed_s": 6.111889144987799,
+      "requests": 1
+    },
+    {
+      "label": "0-turnover8K",
+      "elapsed_s": 8.155286598019302,
+      "requests": 8
+    }
+  ],
+  "limitations": [
+    "32-item LongBench retrieval subset, not full OpenCompass",
+    "60K input and8K turnover executed here;448Ki and96.84%pressure evidence is separate dummy188/189",
+    "Not a new native-baseline throughput comparison",
+    "Frozen prototype closure, not yet the packaged Worker"
+  ]
+}

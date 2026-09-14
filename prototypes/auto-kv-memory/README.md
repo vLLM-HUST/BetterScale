@@ -560,3 +560,20 @@ retroactively the run190 artifact. Worker composes the physical mixin and the
 closed split_draft startup implementation; no dummy code or developer RPC is
 carried into the package. Validate integration/packaging and update the public
 context guard/commands and website only with explicit evidence.
+
+Run190 exits0 with real weights: all32 original retrieval questions correct
+under the pinned evaluator; one60K input and eight8K turnover requests complete.
+Automatic TP KV14.939–14.948GiB/rank and READY free0.965–0.974GiB/rank.
+Exact receipt:`docs/evidence/auto-kv-run190.json`; full source/results and item
+scores retained under the local prepared-quality capsule. hw3 released normally.
+This is the complete prototype composition's real quality gate, not a new
+native-baseline throughput comparison or a full OpenCompass run.
+
+Run191 now checks the integrated **public Worker** code with dummy, on hw3:
+remote`auto-kv-package-dummy/result191`, managed SSH session30478. Local closure
+`runs/auto-kv-package-dummy-20260914/`. The external sitecustomize applies ONLY the
+native dummy wo_a loader repair; the private config copy admits dummy. Neither
+is in the package. No MemoryWorker, preflight subclass, RPC or probe startup
+implementation is used. Program is the source candidate at cfd311b plus512K
+context admission; one60K input then eight8K turnover. This is a changed entry/
+composition gate, not another checkpoint load or quality rerun.

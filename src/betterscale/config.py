@@ -6,6 +6,7 @@ KV budget, networking and environment remain the user's native vLLM settings.
 """
 
 PATCH_IDS = (
+    "physical-kv-budget",
     "compat-lcm",
     "target-full",
     "ordered-replay",
@@ -17,6 +18,7 @@ PATCH_IDS = (
 
 
 DP_PATCH_IDS = (
+    "physical-kv-budget",
     "compat-lcm",
     "target-full-dsa",
     "stable-receipt-cut",
@@ -55,7 +57,7 @@ def validate_worker_config(config):
         == (43, 4096, 256),
         "qualified seats/budget/context": (s.max_num_seqs, s.max_num_batched_tokens)
         == ((2, 1026) if native_dp else (4, 4128))
-        and m.max_model_len <= (16384 if native_dp else 15104),
+        and m.max_model_len <= 524288,
         "DSpark K5 with native eager drafter": spec is not None
         and spec.method == "dspark"
         and spec.num_speculative_tokens == 5
