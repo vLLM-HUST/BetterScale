@@ -32,6 +32,7 @@ import dataclasses
 from enum import Enum
 import torch
 from vllm.forward_context import get_forward_context
+from vllm.platforms import current_platform
 from vllm_ascend.attention.context_parallel.dsa_cp import RopeDataProxy
 
 
@@ -233,10 +234,27 @@ class ExactDraftGraph:
                 ctx.attn_metadata = self.buffers[1]
                 graph = torch.npu.NPUGraph()
                 torch.npu.synchronize()
+                # Startup-only: actual collective paths must allocate group
+                # buffers OUTSIDE graph capture, before borrowing the shared pool.
+                assert self.worker._preparing_draft_graphs
+                assert not ctx.capturing
+                try:
+                    warm_output = self.original(**self.buffers[0])
+                    torch.npu.synchronize()
+                    del warm_output
+                except BaseException:
+                    ctx.attn_metadata = old
+                    raise
+                print(
+                    f"DRAFT_EAGER_PRIMED rank={self.worker.rank} requests={self.request_count} query_only={query_only}",
+                    flush=True,
+                )
                 was_capturing = ctx.capturing
                 ctx.capturing = True
                 try:
-                    with torch.npu.graph(graph):
+                    with torch.npu.graph(
+                        graph, pool=current_platform.get_global_graph_pool()
+                    ):
                         self.output = self.original(**self.buffers[0])
                 finally:
                     ctx.attn_metadata = old

@@ -18,9 +18,9 @@ class Proxy:
 
 class Protocol(unittest.TestCase):
     def test_private_bank_updates_without_rebinding(self):
-        p = (
-            Path(__file__).resolve().parents[1] / "src/betterscale/patches"
-        ).joinpath("split_draft/_graph.py")
+        p = (Path(__file__).resolve().parents[1] / "src/betterscale/patches").joinpath(
+            "split_draft/_graph.py"
+        )
         fs = [
             x
             for x in ast.parse(p.read_text()).body
@@ -67,9 +67,9 @@ class Protocol(unittest.TestCase):
         import contextlib, json, os
         from unittest.mock import patch
 
-        p = (
-            Path(__file__).resolve().parents[1] / "src/betterscale/patches"
-        ).joinpath("split_draft/_graph.py")
+        p = (Path(__file__).resolve().parents[1] / "src/betterscale/patches").joinpath(
+            "split_draft/_graph.py"
+        )
         nodes = [
             x
             for x in ast.parse(p.read_text()).body
@@ -86,7 +86,8 @@ class Protocol(unittest.TestCase):
                 box["output"].fill_(7)
 
         @contextlib.contextmanager
-        def capture(graph):
+        def capture(graph, pool=None):
+            self.assertEqual(pool, "shared-pool")
             yield
 
         fake = NS(
@@ -109,6 +110,7 @@ class Protocol(unittest.TestCase):
             json=json,
             Path=Path,
             get_forward_context=lambda: ctx,
+            current_platform=NS(get_global_graph_pool=lambda: "shared-pool"),
         )
         exec(compile(ast.Module(body=nodes, type_ignores=[]), str(p), "exec"), ns)
         Drafter = type("AscendDSparkProposer", (), {})
@@ -131,6 +133,7 @@ class Protocol(unittest.TestCase):
         d._runnable = lambda **kw: box["output"]
         worker = NS(
             rank=0,
+            _preparing_draft_graphs=True,
             model_runner=NS(
                 drafter=d, vllm_config=NS(scheduler_config=NS(max_num_seqs=4))
             ),
@@ -174,9 +177,9 @@ class Protocol(unittest.TestCase):
         self.assertEqual(len(bank_set.decode_graphs), 4)
 
     def test_cpu_qli_uses_existing_mirrors_and_checks_them(self):
-        p = (
-            Path(__file__).resolve().parents[1] / "src/betterscale/patches"
-        ).joinpath("qli_cpu/__init__.py")
+        p = (Path(__file__).resolve().parents[1] / "src/betterscale/patches").joinpath(
+            "qli_cpu/__init__.py"
+        )
         f = next(
             x
             for x in ast.parse(p.read_text()).body
@@ -219,9 +222,9 @@ class Protocol(unittest.TestCase):
         self.assertEqual(ns["_cpu_qli_metadata"](builder, qsl, sl, ql, 2), "fallback")
 
     def test_only_admitted_stream_replays(self):
-        p = (
-            Path(__file__).resolve().parents[1] / "src/betterscale/patches"
-        ).joinpath("ordered_replay/__init__.py")
+        p = (Path(__file__).resolve().parents[1] / "src/betterscale/patches").joinpath(
+            "ordered_replay/__init__.py"
+        )
         f = next(
             x
             for x in ast.parse(p.read_text()).body
@@ -244,6 +247,7 @@ class Protocol(unittest.TestCase):
             native=native,
             CUDAGraphMode=NS(FULL="FULL", NONE="NONE"),
             get_forward_context=lambda: ctx,
+            current_platform=NS(get_global_graph_pool=lambda: "shared-pool"),
         )
         exec(compile(ast.Module(body=[f], type_ignores=[]), str(p), "exec"), ns)
         w = NS(
@@ -307,9 +311,7 @@ class Protocol(unittest.TestCase):
             if isinstance(n, ast.FunctionDef) and n.name == "__call__"
         )
         patched = ast.parse(
-            (
-                root / "src/betterscale/patches/ordered_replay/__init__.py"
-            ).read_text()
+            (root / "src/betterscale/patches/ordered_replay/__init__.py").read_text()
         )
         current = next(
             n

@@ -31,7 +31,8 @@ sys.modules[native.__name__] = native
 from betterscale.worker import Worker
 from betterscale.compat import pins
 assert Worker.__module__ == "betterscale.worker"
-assert Worker.__bases__ == (Native,)
+assert issubclass(Worker, Native)
+assert Worker.__bases__[-1] is Native
 print(json.dumps({'native_namespace': True, 'pins': bool(pins()['source_files'])}))
 """
         result = subprocess.run(

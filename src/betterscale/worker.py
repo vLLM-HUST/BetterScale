@@ -2,6 +2,7 @@
 
 import logging
 
+from .patches.auto_kv import PhysicalMemoryMixin
 from .compat import check_runtime
 from .config import PATCH_IDS, DP_PATCH_IDS, validate_worker_config
 from vllm_ascend.worker.worker import NPUWorker
@@ -9,10 +10,11 @@ from vllm_ascend.worker.worker import NPUWorker
 log = logging.getLogger(__name__)
 
 
-class Worker(NPUWorker):
+class Worker(PhysicalMemoryMixin, NPUWorker):
     # 选择本类即启用补丁；不用私有 profile、环境变量或服务启动器。
     # 先检查 pinned 私有 API 与配置，再安装初始化前必须生效的 target hooks。
-    # 不替用户修改 CANN、动态库路径、HCCL、allocator、端口或 KV 预算。
+    # 不替用户修改 CANN、动态库路径、HCCL、allocator 或端口。
+    # 未指定固定 KV 字节时，由 auto_kv 按实际物理余量定容。
     def __init__(self, vllm_config, *args, **kwargs):
         check_runtime()
         validate_worker_config(vllm_config)
@@ -28,6 +30,18 @@ class Worker(NPUWorker):
         else:
             target_full.install()
         super().__init__(vllm_config, *args, **kwargs)
+
+    # KV 定容只管理试捕获/回收；具体 draft 实现仍由 worker 组合，
+    # auto_kv 不导入另一个补丁包。试捕获与最终启动使用同一实现。
+    def install_draft_program(self):
+        from .patches import split_draft
+
+        split_draft.install(self)
+
+    def prepare_draft_program(self):
+        from .patches.split_draft._warmup import prepare
+
+        prepare(self)
 
     # 原生模型、KV、输入缓冲和 warmup 完成后，只在当前 worker 安装执行补丁。
     # 不依赖激活 RPC，不复制整个 KV 池，也不在生产路径写实验收据。
@@ -51,5 +65,6 @@ class Worker(NPUWorker):
             ordered_replay.install(self)
             qli_cpu.install(self)
             patches = PATCH_IDS
+        self.prepare_final_program()
         log.info("BetterScale rank=%s READY patches=%s", self.rank, patches)
         return result

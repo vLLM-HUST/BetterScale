@@ -546,3 +546,17 @@ experimental split_draft, uses TPPhysicalWorker without dummy code, and carries
 the original32 quality inputs. Long60-single and eight8K turnover precede quality.
 There is deliberately no run.sh/admission watcher. Await Fletcher's answer on
 one final real-weight quality load before selecting a host or starting it.
+
+Fletcher authorized the final real-weight quality gate at17:39 UTC and clarified
+that ordinary engineering follow-through should not require repeated approval.
+Run190 is submitted on freshly idle hw3 (local device6 busy), using the prepared
+real-only closure as remote`auto-kv-tp-quality/result190`, managed SSH session53449.
+No local watcher. It tests one60K input, eight8K turnover requests, then all32
+original quality questions at the private512K horizon and automatic shared-pool
+budget. All original inputs remain unchanged. Do not score until all32 finish.
+
+Package integration is now being prepared under `patches/auto_kv`; it is not
+retroactively the run190 artifact. Worker composes the physical mixin and the
+closed split_draft startup implementation; no dummy code or developer RPC is
+carried into the package. Validate integration/packaging and update the public
+context guard/commands and website only with explicit evidence.

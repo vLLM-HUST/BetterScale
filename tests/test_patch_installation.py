@@ -46,6 +46,9 @@ class Installation(unittest.TestCase):
             batch_descriptor="bucket", cudagraph_runtime_mode="FULL", capturing=False
         )
         exports = {
+            "vllm.platforms": dict(
+                current_platform=NS(get_global_graph_pool=lambda: "shared")
+            ),
             "vllm.config": dict(
                 CompilationConfig=CompilationConfig,
                 CUDAGraphMode=NS(FULL="FULL", NONE="NONE"),
@@ -142,8 +145,7 @@ class Installation(unittest.TestCase):
                 elif isinstance(node, ast.Import):
                     self.assertFalse(
                         any(
-                            n.name.startswith("betterscale.patches")
-                            for n in node.names
+                            n.name.startswith("betterscale.patches") for n in node.names
                         ),
                         str(source),
                     )
