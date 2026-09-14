@@ -395,3 +395,19 @@ final production coverage should follow actual route ownership, not perpetuate
 unnecessary collective work. Run182 adds this to181 and writes separate per-rank
 stack logs. Dummy-only local capsule`runs/auto-kv-draft-dummy-groups-local-20260914/`,
 output`result182/`, managed session23667. Public runtime unchanged.
+
+Run182 primes five existing groups/rank(0,1,3,69,71),96 draft entries, then
+completes dummy decode12.365s and prefill7.059s. Turnover again stalls on a resumed
+8K request; no initial allocation/SDMA error appears in the application log.
+Rank0's output thread waits at async_copy_ready_event.synchronize; worker main
+threads are already waiting for the next executor message. Initial unexpected
+worker death precedes the shutdown cascade. Prewarming is now explicit but this
+result does NOT establish the rest of the shared-pool or resume protocol.
+
+Run183 separates cache-pressure/resume from ordinary graph execution: identical
+dummy/one-pool/prewarmed program, diagnostic KV6GiB rather than3GiB, same request
+cohorts, plus CPU-only per-rank submission receipts (`step_observer.py`) recording
+actual scheduled counts and resumed/new request counts. This is NOT a fixed-budget
+release fallback. If it passes, the pressured/preempted route remains unqualified;
+do not call6GiB proof that the3GiB stall is repaired. Local capsule
+`runs/auto-kv-draft-dummy-roomy-local-20260914/`, output`result183/`, session19546.
