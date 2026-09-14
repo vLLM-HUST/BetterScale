@@ -14,7 +14,7 @@ patches; it does not replace the serving engine or configure your environment.
 Use your **existing, working Ascend serving environment**, with Python 3.12+:
 
 ```bash
-python -m pip install --no-deps vllm-betterscale==0.3.0
+python -m pip install --no-deps vllm-betterscale==0.3.1
 ```
 
 The package deliberately does not install or upgrade vLLM, vLLM-Ascend, torch-npu,
@@ -84,8 +84,11 @@ vllm serve /models/DeepSeek-V4-Flash \
 
 The 12 GiB / 8 GiB KV budgets above are tested examples, not memory reserved by the
 package. Use your native KV budget appropriate to the workload and available HBM.
-First encounters with some legal shapes may capture graphs; warmup is not a promise
-that every request shape has already been captured.
+In 0.3.1, DP prepares its finite producer/metadata graph catalog before READY:
+4 producer banks and 6 metadata entries per rank for the two-seat K5 configuration.
+Unknown runtime metadata shapes fall back to native preparation instead of capturing
+online. This changes startup preparation, not the model or KV contents. TP retains
+its existing path, including first-use capture of some draft shapes.
 
 ## Verify and roll back
 

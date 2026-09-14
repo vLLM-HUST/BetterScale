@@ -52,6 +52,30 @@ class DecodeMetadata:
         self.replays = 0
         r._build_attention_metadata = self.build
 
+    def capture(self, **kwargs):
+        """Startup only, with the same native fields/CPU carrier as serving."""
+        r = self.r
+        n = kwargs["num_reqs"]
+        key = (
+            n,
+            kwargs["num_reqs_padded"],
+            kwargs["num_tokens_padded"],
+            r.optimistic_seq_lens_cpu.data_ptr(),
+        )
+        assert key not in self.entries
+        upper = r.optimistic_seq_lens_cpu.clone()
+        graph = torch.npu.NPUGraph()
+        try:
+            r.optimistic_seq_lens_cpu[:n].fill_(r.max_model_len)
+            with DeviceOnly():
+                self.native(**kwargs)
+            torch.npu.synchronize()
+            with torch.npu.graph(graph, pool=self.pool), DeviceOnly():
+                output = self.native(**kwargs)
+        finally:
+            r.optimistic_seq_lens_cpu.copy_(upper)
+        self.entries[key] = graph, output
+
     def build(self, *args, **kwargs):
         r = self.r
         # The normal execute_model caller uses keywords. Dummy/capture and
@@ -67,6 +91,12 @@ class DecodeMetadata:
         n = kwargs["num_reqs"]
         nr = kwargs.get("num_reqs_padded") or n
         nt = kwargs.get("num_tokens_padded") or kwargs["num_tokens"]
+        # Local K5 does not imply a small GLOBAL DP wave: another rank can
+        # force prefill-sized collective padding. That target uses the native
+        # fallback, not DecodePair. Do not lazily capture every large metadata
+        # shape on the live serving critical path either.
+        if nt > r.max_num_reqs * 6:
+            return self.native(*args, **kwargs)
         assert kwargs["num_tokens"] == n * 6 and kwargs["max_query_len"] == 6
         assert kwargs["use_spec_decode"] and not r.cache_config.kv_sharing_fast_prefill
         assert not r.model_config.enable_return_routed_experts
@@ -75,21 +105,9 @@ class DecodeMetadata:
         key = (n, nr, nt, r.optimistic_seq_lens_cpu.data_ptr())
         r._cross_step_bounds.build_args = (args, kwargs)
         if key not in self.entries:
-            torch.npu.synchronize()  # bounded shape admission only
-            upper = r.optimistic_seq_lens_cpu.clone()
-            graph = torch.npu.NPUGraph()
-            try:
-                r.optimistic_seq_lens_cpu[:n].fill_(r.max_model_len)
-                # Warm native device operations, including direct Triton local
-                # metadata kernels, using real tensors (never FakeTensor).
-                with DeviceOnly():
-                    self.native(*args, **kwargs)
-                torch.npu.synchronize()
-                with torch.npu.graph(graph, pool=self.pool), DeviceOnly():
-                    output = self.native(*args, **kwargs)
-            finally:
-                r.optimistic_seq_lens_cpu.copy_(upper)
-            self.entries[key] = graph, output
+            # A new runtime shape is a fallback, never permission to stop the
+            # cluster and capture. Startup enumerates the supported envelope.
+            return self.native(*args, **kwargs)
         graph, output = self.entries[key]
         graph.replay()  # capture is not a committed first invocation
         self.replays += 1

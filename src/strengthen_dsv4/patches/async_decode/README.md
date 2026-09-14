@@ -73,10 +73,26 @@ uncaptured sampler 每次分配的独立 Tensor，copy stream 等 compute，异�
 ## 成本、回退与证据边界
 
 辅助 preparation 与 metadata graph 各共享串行 scratch pool；host sources、
-返回的 live tensors 与 target packets 分别保留所有权。第一次遇到尚未捕获的
-有限请求/补齐形状仍需同步 capture，不能把它当稳态延迟。shape key 包含 native
-CPU carrier 身份，避免交替输入槽引用错误的 CPU metadata。prefill、turnover
-以及 DP dummy drain 不继承上一波的稳定 decode admission。
+返回的 live tensors 与 target packets 分别保留所有权。
+
+**从0.3.1开始，DP的辅助graph在READY之前准备完成，不再让首批请求付capture成本。**
+`install(worker)` 调用 `_warmup.prepare()`，从原生已捕获的小target描述符枚举
+允许的请求数、padding和两份CPU carrier。两席位K5配置准备4个producer bank、
+6个metadata entry。较大形状先准备，复用各自的scratch pool。
+
+预热只运行输入派生与metadata程序，不运行模型forward，不复制或写入模型KV。
+它在inference mode下执行，结束时恢复两槽输入样本、device输入和原生host视图；
+若准备失败则启动失败，不能带着半套图宣告READY。启动成本仍属于服务启动，
+不是用额外HTTP请求把在线首用成本从成绩中抹掉。
+
+READY之后只查询既有目录；未准备形状走原生回退，不创建Slot或capture。
+例如本rank正在K5 decode，但另一rank的prefill让全局padding达到516，
+本rank仍使用原生大桶metadata路径，而不是临时捕获新辅助图。
+shape key含CPU carrier身份，交替两槽不能引用另一槽的CPU metadata。
+prefill、turnover及DP dummy drain不继承上一波的稳定decode admission。
+
+这一改动仅适用于DP组合。TP组合及其历史draft首次捕获行为保持不变；
+没有引入实验分支的TP双槽扩展、提前预算executor或额外调度协议。
 
 2026-09-13 原型同机 run120：DP8、16 个全局请求、K5，每 rank 两个请求与
 12 个实际 target queries，FULL target、原生 eager draft。两次对照中，

@@ -5,7 +5,7 @@
 在**已经准备好的 vLLM-Ascend 环境**中安装本包，给原来的启动命令加一个参数：
 
 ```bash
-python -m pip install --no-deps vllm-betterscale==0.3.0
+python -m pip install --no-deps vllm-betterscale==0.3.1
 vllm serve /models/DeepSeek-V4-Flash <原有的原生参数> \
   --worker-cls betterscale.worker.Worker
 ```
@@ -14,7 +14,7 @@ vllm serve /models/DeepSeek-V4-Flash <原有的原生参数> \
 `betterscale.worker.Worker` 与旧 `strengthen_dsv4.worker.Worker` 是同一个类，
 没有额外包装或执行路径。若安装过旧 `strengthen-dsv4` 发行包，先停服卸载旧包，
 避免两个发行包共同拥有同一份实现文件。
-已有 wheel 时直接 `python -m pip install --no-deps /path/to/vllm_betterscale-0.3.0-py3-none-any.whl`。
+已有 wheel 时直接 `python -m pip install --no-deps /path/to/vllm_betterscale-0.3.1-py3-none-any.whl`。
 源码安装需要已有 setuptools>=77.0.3；包没有 donor 依赖安装/升级动作。
 
 **没有另一套 serve/check/plan CLI，没有私有 profile，没有必须配置的目录。**

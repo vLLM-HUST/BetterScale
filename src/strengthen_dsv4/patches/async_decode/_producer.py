@@ -55,9 +55,12 @@ class Slot:
         for i, table in enumerate(r.input_batch.block_table.block_tables):
             field(f"blocks{i}", table.block_table.cpu[:n])
         self.constants = {k: v.to(r.device) for k, v in geometry(n).items()}
-        self.valid = torch.empty_like(r.valid_sampled_token_count_gpu[:n])
-        self.sampled = torch.empty_like(r.input_batch.prev_sampled_token_ids[:n, 0])
-        self.drafted = torch.empty_like(r._draft_token_ids[:n, :5])
+        # Owned destinations have known K5 geometry before any request exists.
+        # Native feedback may still be None at startup; replay copies its actual
+        # values here, rather than capturing the address of a first request.
+        self.valid = torch.ones(n, dtype=torch.int32, device=r.device)
+        self.sampled = torch.zeros(n, dtype=r.input_ids.gpu.dtype, device=r.device)
+        self.drafted = torch.zeros((n, 5), dtype=torch.int32, device=r.device)
         self.ready = None
         self.consumed = None
         self.graph = None
@@ -145,6 +148,25 @@ class Slot:
             logits = torch.nn.functional.pad(logits, (0, r.max_num_reqs * 6 - t))
         return logits, metadata, t
 
+    def capture(self):
+        """Startup only; the caller owns initialized exemplars and restoration."""
+        assert self.graph is None
+        for name, value in self.device.items():
+            value.zero_()
+        self.device["budget"].fill_(128)
+        self.device["accepted"].fill_(1)
+        self.device["previous_drafts"].fill_(5)
+        before = self.r.num_computed_tokens.clone()
+        try:
+            self.derive()  # compile/warm kernels outside graph capture
+            self.r.num_computed_tokens.copy_(before)
+            torch.npu.synchronize()
+            self.graph = torch.npu.NPUGraph()
+            with torch.npu.graph(self.graph, pool=self.pool):
+                self.output = self.derive()
+        finally:
+            self.r.num_computed_tokens.copy_(before)
+
     def replay(self):
         r = self.r
         n = self.n
@@ -154,13 +176,7 @@ class Slot:
         self.valid.copy_(r.valid_sampled_token_count_gpu[:n])
         self.sampled.copy_(r.input_batch.prev_sampled_token_ids[:n, 0])
         self.drafted.copy_(r._draft_token_ids[:n, :5])
-        if self.graph is None:
-            torch.npu.synchronize()  # one-time shape admission, never steady replay
-            before = r.num_computed_tokens.clone()
-            self.graph = torch.npu.NPUGraph()
-            with torch.npu.graph(self.graph, pool=self.pool):
-                self.output = self.derive()
-            r.num_computed_tokens.copy_(before)
+        assert self.graph is not None, "Producer shape was not prepared before READY"
         self.graph.replay()
         self.consumed = torch.npu.Event()
         self.consumed.record()
@@ -190,6 +206,9 @@ class DecodeProducer:
         n = r.input_batch.num_reqs
         self.active = None
         if not r._cross_step_bounds.authorized(schedule, counts):
+            return self.native(schedule, counts)
+        key = (n, self.sequence % 2)
+        if key not in self.slots:
             return self.native(schedule, counts)
         # Decline any special masked/partial query rather than approximating it.
         upper = r.input_batch.num_computed_tokens_cpu[:n] + counts
@@ -223,9 +242,6 @@ class DecodeProducer:
         r.num_scheduled_tokens.np[:n] = counts
         r.num_decode_draft_tokens.np[:n] = 5
         r.num_decode_draft_tokens.np[n:] = -1
-        key = (n, self.sequence % 2)
-        if key not in self.slots:
-            self.slots[key] = Slot(r, n, self.ingress, self.pool)
         slot = self.slots[key]
         slot.project()
         self.active = slot

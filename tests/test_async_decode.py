@@ -162,6 +162,106 @@ from strengthen_dsv4.patches.async_decode._metadata import DeviceOnly
 
 
 class TransferBoundary(unittest.TestCase):
+    def test_startup_restores_input_banks_even_on_capture_failure(self):
+        from unittest.mock import patch
+        from strengthen_dsv4.patches.async_decode._warmup import preserve_inputs
+
+        carrier = NS(cpu=torch.arange(4), gpu=torch.arange(4) + 10)
+        field = HostField(carrier, "cpu", "np")
+        original_cpu = carrier.cpu
+        runner = NS(
+            _host_source_slots=NS(fields=[field]),
+            _cross_step_bounds=NS(build_args="original"),
+            num_computed_tokens=torch.tensor([7]),
+            positions=torch.tensor([8]),
+            seq_lens=torch.tensor([9]),
+            attn_state="original",
+        )
+        with patch.object(torch, "npu", NS(synchronize=lambda: None), create=True):
+            with self.assertRaisesRegex(ValueError, "capture failed"):
+                with preserve_inputs(runner):
+                    field.select(1)
+                    carrier.cpu.zero_()
+                    carrier.gpu.zero_()
+                    runner.positions.zero_()
+                    runner.attn_state = "dummy"
+                    runner._cross_step_bounds.build_args = "dummy"
+                    raise ValueError("capture failed")
+        self.assertIs(carrier.cpu, original_cpu)
+        self.assertEqual(carrier.np.tolist(), [0, 1, 2, 3])
+        self.assertEqual(carrier.gpu.tolist(), [10, 11, 12, 13])
+        self.assertEqual(field.slots[1].tolist(), [0, 1, 2, 3])
+        self.assertEqual(runner.positions.tolist(), [8])
+        self.assertEqual(runner.attn_state, "original")
+        self.assertEqual(runner._cross_step_bounds.build_args, "original")
+
+    def test_missing_metadata_shape_never_captures_online(self):
+        from unittest.mock import Mock
+        from strengthen_dsv4.patches.async_decode._metadata import DecodeMetadata
+
+        metadata = DecodeMetadata.__new__(DecodeMetadata)
+        metadata.r = NS(
+            max_num_reqs=2,
+            _cross_step_bounds=NS(admitted=True),
+            cache_config=NS(kv_sharing_fast_prefill=False),
+            model_config=NS(enable_return_routed_experts=False),
+            optimistic_seq_lens_cpu=torch.zeros(2),
+        )
+        metadata.producer = NS(active=object())
+        metadata.entries = {}
+        metadata.capture = Mock(side_effect=AssertionError("online capture"))
+        metadata.native = Mock(return_value="native")
+        request = dict(
+            num_reqs=1,
+            num_reqs_padded=2,
+            num_tokens=6,
+            num_tokens_padded=12,
+            max_query_len=6,
+            use_spec_decode=True,
+        )
+        self.assertEqual(metadata.build(**request), "native")
+        metadata.capture.assert_not_called()
+        self.assertFalse(metadata.entries)
+
+    def test_startup_shapes_follow_captured_descriptors(self):
+        from strengthen_dsv4.patches.async_decode._warmup import shapes
+
+        @dataclass(frozen=True)
+        class Descriptor:
+            num_reqs: int
+            num_tokens: int
+
+        runner = NS(
+            max_num_reqs=2,
+            _cross_step_bounds=NS(max_requests=2),
+            model=NS(
+                _decode_pair=NS(
+                    packets=[
+                        {
+                            Descriptor(2, 6): object(),
+                            Descriptor(2, 12): object(),
+                            Descriptor(2, 516): object(),
+                        }
+                    ]
+                )
+            ),
+        )
+        self.assertEqual(shapes(runner), [(2, 2, 12), (1, 2, 12), (1, 2, 6)])
+
+    def test_local_decode_with_global_prefill_padding_stays_native(self):
+        from strengthen_dsv4.patches.async_decode._metadata import DecodeMetadata
+
+        metadata = DecodeMetadata.__new__(DecodeMetadata)
+        metadata.r = NS(max_num_reqs=2, _cross_step_bounds=NS(admitted=True))
+        metadata.producer = NS(active=object())
+        calls = []
+        metadata.native = lambda *a, **kw: calls.append((a, kw)) or "native"
+        request = dict(
+            num_reqs=2, num_reqs_padded=2, num_tokens=12, num_tokens_padded=516
+        )
+        self.assertEqual(metadata.build(**request), "native")
+        self.assertEqual(calls, [((), request)])
+
     def test_host_and_device_local_operations_are_allowed(self):
         with DeviceOnly("meta"):
             self.assertEqual((torch.ones(2) + 1).tolist(), [2, 2])

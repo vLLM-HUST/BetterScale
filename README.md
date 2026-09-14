@@ -99,7 +99,7 @@ CLI, environment setup, automatic plugin discovery, private profile or mandatory
 artifact directory. The package does not select Python/CANN, set HCCL/allocator
 variables, repair library paths, or change service/KV settings. Start with a
 working donor environment. A source install with --no-build-isolation needs existing setuptools>=77.0.3.
-Prefer the published wheel: `pip install --no-deps vllm-betterscale==0.3.0`.
+Prefer the published wheel: `pip install --no-deps vllm-betterscale==0.3.1`.
 
 The original TP admission remains bounded: TP8/EP/DSACP/K5, four seats,4128 token budget,
 max length<=15104, target FULL, native scheduler, prefix caching off. This entry
