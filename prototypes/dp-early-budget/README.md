@@ -206,3 +206,81 @@ the supervisor stopped only its owned process group. `foreign.txt` and
 `release.txt` retain the evidence.007 is rejected, not a performance result.
 No subsequent baseline was launched into that occupied window. Uninstrumented
 paired throughput and DeepSeek speculative validation remain unqualified.
+
+## DeepSeek DP8 E2E gate — completed, not adopted (September14)
+
+After Fletcher restored the hw3 window,154 completed the real W8A8/K5 service
+smoke plus native-budget oracle. All8 ranks checked the same23 admitted waves
+against the unchanged late exchange; all comparisons matched. There were408
+actual target/dummy budget ordinals in this diagnostic run:5.64% admitted.
+Median host agreement3.139ms, queue-entry lead33.214ms and forward lead40.401ms
+are host receipts, NOT saved device time. This qualifies budget agreement in the
+observed envelope, not a fresh tensor/KV shadow comparison of every invocation.
+
+151 had previously been rejected before model loading: native startup reported
+18.24GiB free despite an idle npu-smi admission. After Fletcher cleared the
+reported competing reservation,154 saw60.60GiB free with the same serving
+configuration. No memory gate was bypassed or KV budget reduced. Diagnostic152
+also records why a bare `torch.accelerator.get_memory_info` is not a substitute
+for the native Ascend-patched memory path in this runtime.153 was cancelled at
+Fletcher's pause; neither contributes performance evidence.
+
+### Matched configurations and evidence
+
+- hw3, TP1/DP8/EP8,16 HTTP requests /2 active seats per rank, K5, normal HCCL.
+- Native FULL target buckets6/12/132/264/516/1026; native eager DSpark;8GiB KV
+  per rank, maxlen16384, prefix cache disabled, same pinned model/runtime.
+- **155 control is the existing optimized packaged Worker with native MP.**
+  It is NOT an untouched vLLM release or the historical UniProc control.
+-156 changes only the executor/worker early-budget protocol. Same synthetic
+  HTTP inputs and output budgets; native generation/routing remain unforced.
+- Both finish nine cohorts (three repeats of occupied decode, balanced4K
+  prefill, and skew/turnover),192 measured requests and30,720 output tokens.
+- Both score32/32 on the retained original long-context retrieval questions,
+  using unmodified OpenCompass evaluator60a28a7. Not the entire OpenCompass suite.
+- Timing has no profiler, budget oracle or per-wave JSONL receipts. Loading,
+  warmup, the separately recorded HTTP prelude, and quality are excluded.
+  READY takes513.13s(control)/498.12s(candidate). After154 approached the old
+ 540s readiness bound, the v3 harness permits900s readiness /1500s total; model
+  code is unchanged. No performance-run resource collision or preemption.
+
+Local capsules under `/workspace/strengthen-dsv4/runs/tp-continuation-20260914/`:
+`154-hw3-dp8-early-budget-oracle`, `155-hw3-dp8-mp-control-e2e`,
+`156-hw3-dp8-early-budget-e2e`. Remote originals use the corresponding
+`/workspace/my-ascend-workspace/runs/tp-continuation-20260914/` root. Each retains
+its command, occupancy/exit/cleanup receipts and HTTP results;156 also has the
+complete v3 source closure. `early-budget-e2e-summary.json` is produced by the
+existing `tp-continuation/report_service.py`; quality scores retain every answer.
+
+### Results: no stable incremental service win
+
+All rates below are **output tokens/s**, including for the prefill workload.
+
+| Workload | Control three repeats | Candidate three repeats | Median change |
+|---|---|---|---:|
+| Occupied decode |592.98 /423.25 /588.23|535.87 /555.48 /573.95|−5.57%|
+| Balanced4K prefill |201.20 /169.88 /231.32|286.16 /183.52 /180.17|−8.79%|
+| Skew/turnover |458.66 /412.51 /492.02|442.94 /411.75 /506.27|−3.43%|
+
+Summed cohort wall time is81.821s(control) versus79.123s(candidate), giving
+375.45 versus388.26 output tokens/s, **+3.41%** for this aggregate. Do not hide
+that positive aggregate, but do not select it as a stable improvement either:
+all three workload medians worsen and the observed repeats overlap. This is one
+sequential process run per arm, not a statistical guarantee or agent-trace replay.
+
+Median of per-cohort TTFT P95, control→candidate: decode3.371→3.636s,
+prefill7.415→8.614s, turnover7.068→7.071s. Median per-cohort chunk-gap P99:
+0.079→0.167s,0.429→0.433s,0.425→0.460s respectively. Native draft counts vary
+(e.g. first decode820→823), and all counters are retained; do not relaunch a
+separate divergence inquiry or call this identical internal work.
+
+The154 admission fraction shows a limited coverage envelope: a single rank's
+turnover/decline preserves late native coordination for the whole group while
+still adding the early exchange. This is a mechanism-level limitation, not proof
+that it alone explains the timing differences. No new DeepSeek timeline was
+captured in155/156; Qwen profiles are not substituted for DeepSeek evidence.
+
+**Decision:** retain the prototype, passing gates and negative/variable service
+result; do not enable early budget in main's production Worker. The next design
+would need a reason to expand coverage or reduce coordination cost, not another
+blind rerun of the same workload. All owned hw3 processes and leases were released.

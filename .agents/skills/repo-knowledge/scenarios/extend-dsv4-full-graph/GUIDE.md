@@ -280,3 +280,10 @@ against native exchange. Runs005/006 give aligned compressed two-rank timelines
 but no speedup and no reproduction of the DeepSeek10ms gap.007 throughput was
 invalidated by foreign occupancy. Use complete captured task identities for
 body boundaries: the first observed norm may be a partial preceding replay.
+
+DeepSeek early-budget E2E is now recorded in that prototype README's completed
+DP8 gate:154 matches23 admitted native budgets/rank out of408 ordinals;
+155/156 same-MP controls both finish nine HTTP cohorts and32/32 retrieval quality.
+Aggregate throughput+3.41% conflicts with all workload medians worsening3.43–8.79%;
+there is no stable incremental service win. Do not promote this experimental
+executor into production or rerun identical tests hoping for a cleaner number.
