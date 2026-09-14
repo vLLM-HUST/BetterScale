@@ -4,8 +4,7 @@ Less host waiting. More device execution.
 Modular graph, replay and metadata-preparation optimizations for vLLM Ascend.
 
 Formerly **strengthen-dsv4**. The project is now named **BetterScale**; the validated
-Python package and Worker entry retain `strengthen_dsv4` for compatibility. The
-repository URL below remains the existing address until the GitHub rename is complete.
+Python package and Worker entry retain `strengthen_dsv4` for compatibility.
 
 Incremental DeepSeek V4 serving improvements on vLLM + vLLM-Ascend.
 Keep the mature engine. Measure each change. Keep improvements that survive
@@ -23,8 +22,8 @@ our previously installed donor packages byte-for-byte. The Ascend pin is a
 release candidate, not a stable release. Submodule gitlinks are authoritative.
 
 ```sh
-git clone --recurse-submodules git@github.com:vLLM-HUST/strengthen-dsv4.git
-cd strengthen-dsv4
+git clone --recurse-submodules git@github.com:vLLM-HUST/BetterScale.git
+cd BetterScale
 git submodule status
 ```
 
