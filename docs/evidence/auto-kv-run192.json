@@ -1,0 +1,25 @@
+{
+  "run": 192,
+  "status": "PASS_INTEGRATED_TP_ENTRY_DUMMY",
+  "worker": "betterscale.worker.Worker (direct alias, no subclass)",
+  "source": "cfd311b + 512K admission, frozen local capsule",
+  "cohorts": [
+    {
+      "label": "0-long60-single",
+      "elapsed_s": 8.148545963922516,
+      "requests": 1
+    },
+    {
+      "label": "0-turnover8K",
+      "elapsed_s": 15.25757017196156,
+      "requests": 8
+    }
+  ],
+  "draft_eager_primes": 192,
+  "limitations": [
+    "Test-only dummy layout repair at worker import; no sitecustomize",
+    "Dummy mechanism/startup entry gate; real quality is separate run190",
+    "INFO accounting/READY from original non-vllm logger did not appear; later logging-only correction tested on CPU",
+    "No preemption or throughput comparison claim"
+  ]
+}

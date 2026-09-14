@@ -598,3 +598,17 @@ Candidate0.4.0 is built but NOT uploaded.59 CPU tests, strict wheel/sdist metada
 clean Worker import and the website's two displayed command contracts pass.
 Implementation branch`lumi/physical-kv-release`; current main/public PyPI are
 unchanged. Website edits remain local until package qualification and publication.
+
+Run192 exits0: actual integrated Worker completes60K single and eight8K turnover;
+192 startup draft primes (trial+final across8 ranks). Results and source recovered;
+all8 cards released. `docs/evidence/auto-kv-run192.json` keeps the exact scope.
+The sitecustomize fixture is retired, not moved into the package.
+
+The native logging configuration exposes the `vllm` namespace, not ordinary
+root INFO:192 had zero visible package accounting/READY lines despite successful
+execution. The candidate now logs under `vllm.betterscale.*`, emits human-readable
+KV/graph/safety GiB and READY context/seats/free memory, and keeps intermediate
+snapshots at DEBUG. A CPU logger-routing regression covers this observed gap;
+no new NPU arithmetic or allocation protocol is introduced.60 CPU tests pass.
+Three native KV-spec/grouping files are added to the private-API pin manifest;
+all15 pins match the installed native runtime. No upstream upgrade.

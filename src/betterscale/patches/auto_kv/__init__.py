@@ -9,7 +9,7 @@ import dataclasses
 import gc
 import logging
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("vllm.betterscale.memory")
 
 GiB = 1 << 30
 
@@ -104,7 +104,27 @@ class PhysicalMemoryMixin:
             reserved=torch.npu.memory_reserved(),
             **extra,
         )
-        log.info("Physical KV accounting: %s", row)
+        if phase == "physical_budget_after_trial_release":
+            log.info(
+                "BetterScale physical KV rank=%s: budget=%.3f GiB, "
+                "complete graph=%.3f GiB, safety=%.3f GiB",
+                self.rank,
+                extra["kv_budget"] / GiB,
+                extra["measured_target_graph"] / GiB,
+                extra["safety"] / GiB,
+            )
+        elif phase == "ready_after_capture":
+            log.info(
+                "BetterScale ready rank=%s: free=%.3f GiB, reserved=%.3f GiB, "
+                "context ceiling=%s tokens, active seats=%s",
+                self.rank,
+                free / GiB,
+                row["reserved"] / GiB,
+                self.model_config.max_model_len,
+                self.vllm_config.scheduler_config.max_num_seqs,
+            )
+        else:
+            log.debug("Physical KV accounting: %s", row)
         return row
 
     def determine_available_memory(self):

@@ -138,4 +138,3 @@ Do not compare native “KV token capacity” across different context ceilings 
 if it were a fixed-size token heap. Hybrid SWA/compressed-state accounting depends
 on the horizon and prefill wave budget. APC remains disabled in this release.
 The 3GiB diagnostic preemption failure is not claimed fixed.
-

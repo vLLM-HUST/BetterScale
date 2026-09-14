@@ -89,6 +89,7 @@ class WorkerLifecycle(unittest.TestCase):
             def compile_or_warm_up_model(self):calls.append('native-capture');return 'native-times'
         class Memory:
             def prepare_final_program(self): calls.append('memory-ready')
+            def snapshot(self, phase): calls.append(phase)
         ns=dict(PhysicalMemoryMixin=Memory,__name__='betterscale.worker_test',__package__='betterscale',
             NPUWorker=Native,check_runtime=lambda:calls.append('compat'),
             validate_worker_config=validate_worker_config,PATCH_IDS=PATCH_IDS,DP_PATCH_IDS=DP_PATCH_IDS,
@@ -117,7 +118,7 @@ class WorkerLifecycle(unittest.TestCase):
         self.assertEqual(c,before)
         self.assertEqual(dict(os.environ),environment)
         self.assertEqual(calls,['compat','compat_lcm','target_full','native-init','native-capture',
-            'split_draft','cross_step','ordered_replay','qli_cpu','memory-ready','ready'])
+            'split_draft','cross_step','ordered_replay','qli_cpu','memory-ready','ready_after_capture','ready'])
 
     def test_bad_configuration_fails_before_native_initialization(self):
         calls=[];c=config();c.speculative_config.num_speculative_tokens=3
@@ -175,4 +176,4 @@ class DPLifecycle(WorkerLifecycle):
         self.assertEqual(calls, ["compat", ("compat_lcm", {}),
             ("target_full", {"native_dsa": True}), "capture-hook", "native-init", "native-capture",
             ("cross_step", {"native_dsa": True, "max_requests": 2}),
-            ("async_decode", {}), "memory-ready", "ready"])
+            ("async_decode", {}), "memory-ready", "ready_after_capture", "ready"])

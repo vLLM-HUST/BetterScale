@@ -7,7 +7,7 @@ from .compat import check_runtime
 from .config import PATCH_IDS, DP_PATCH_IDS, validate_worker_config
 from vllm_ascend.worker.worker import NPUWorker
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("vllm.betterscale.worker")
 
 
 class Worker(PhysicalMemoryMixin, NPUWorker):
@@ -66,5 +66,6 @@ class Worker(PhysicalMemoryMixin, NPUWorker):
             qli_cpu.install(self)
             patches = PATCH_IDS
         self.prepare_final_program()
+        self.snapshot("ready_after_capture")
         log.info("BetterScale rank=%s READY patches=%s", self.rank, patches)
         return result

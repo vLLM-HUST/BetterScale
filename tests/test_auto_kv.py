@@ -69,3 +69,34 @@ class InitialAdmission(unittest.TestCase):
         obj, seen = self.worker(manual=True)
         obj._init_device()
         self.assertEqual(seen, [0.9])
+
+
+class CapacityLogging(unittest.TestCase):
+    def test_budget_and_ready_use_native_logger_namespace(self):
+        from unittest.mock import patch
+        from betterscale.patches.auto_kv import PhysicalMemoryMixin
+
+        worker = PhysicalMemoryMixin()
+        worker.rank = 2
+        worker.model_config = NS(max_model_len=524288)
+        worker.vllm_config = NS(scheduler_config=NS(max_num_seqs=4))
+        npu = NS(
+            synchronize=lambda: None,
+            mem_get_info=lambda: (1 << 30, 64 << 30),
+            memory_allocated=lambda: 59 << 30,
+            memory_reserved=lambda: 60 << 30,
+        )
+        with patch.dict("sys.modules", {"torch": NS(npu=npu)}):
+            with self.assertLogs("vllm", level="INFO") as captured:
+                worker.snapshot(
+                    "physical_budget_after_trial_release",
+                    kv_budget=15 << 30,
+                    measured_target_graph=1 << 30,
+                    safety=1 << 30,
+                )
+                worker.snapshot("ready_after_capture")
+        self.assertIn("budget=15.000 GiB", captured.output[0])
+        self.assertIn("safety=1.000 GiB", captured.output[0])
+        self.assertIn(
+            "context ceiling=524288 tokens, active seats=4", captured.output[1]
+        )

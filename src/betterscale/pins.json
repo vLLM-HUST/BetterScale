@@ -68,6 +68,21 @@
       "distribution": "vllm-ascend",
       "path": "vllm_ascend/attention/dsa_v1.py",
       "sha256": "1c2bdc8fcb38db40c3d084114d0c02f329607ba4855ac4ed11983251d3f144aa"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/core/kv_cache_utils.py",
+      "sha256": "3ca561818019cef84c43c6d3839627145fd049f9479d40fc733ae142d6d71df3"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/kv_cache_interface.py",
+      "sha256": "28fb0bf520e7047ed20f9240fe884050bb8b3812f14fd3ed434dfc7526a73a7b"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/patch/platform/patch_kv_cache_utils.py",
+      "sha256": "8a51df701d0260eee75939f8076d513b121a40fb8e28062c3b795dbd994188b0"
     }
   ]
 }
