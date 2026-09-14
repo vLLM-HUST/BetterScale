@@ -8,7 +8,7 @@ import unittest
 
 class SplitDraftTests(unittest.TestCase):
     def test_context_hook_restored_after_success_and_failure(self):
-        path = (Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches').joinpath('split_draft/__init__.py')
+        path = (Path(__file__).resolve().parents[1]/'src/betterscale/patches').joinpath('split_draft/__init__.py')
         node = next(n for n in ast.parse(path.read_text()).body
                     if isinstance(n, ast.FunctionDef) and n.name == 'query_body')
         ns = dict(contextmanager=contextmanager)
@@ -29,7 +29,7 @@ class SplitDraftTests(unittest.TestCase):
 
     def test_one_manager_owns_decode_and_query_routes(self):
         from contextlib import nullcontext
-        path = Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches/split_draft/__init__.py'
+        path = Path(__file__).resolve().parents[1]/'src/betterscale/patches/split_draft/__init__.py'
         nodes = [n for n in ast.parse(path.read_text()).body
                  if isinstance(n, (ast.FunctionDef, ast.ClassDef))
                  and n.name in ('query_body', 'DraftGraphRunner')]

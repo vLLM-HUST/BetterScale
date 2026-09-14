@@ -2,7 +2,7 @@
 
 For the newer bounded **DP8 device preparation/metadata continuation**, enter
 [the fresh evidence and ownership boundary](liveinfer-continuation.md#fresh-bounded-dp8-continuation-september13)
-and `src/strengthen_dsv4/patches/async_decode/README.md`. Do not confuse it with
+and `src/betterscale/patches/async_decode/README.md`. Do not confuse it with
 the rejected all-mode worker-retirement extension or expand the TP8 claims.
 
 ## DP startup preparation (0.3.1)
@@ -19,7 +19,7 @@ run155 rather than repeating an expensive eight-card load for package identity.
 For deployment and reporting, start from `docs/RUNBOOK.zh-CN.md` and
 `patches/README.md`, not historical launchers. Install the package into the user's
 existing donor environment; the only public entry is native
-`vllm serve ... --worker-cls strengthen_dsv4.worker.Worker`. The worker installs
+`vllm serve ... --worker-cls betterscale.worker.Worker`. The worker installs
 the kept hooks before construction and after native warmup. No custom CLI,
 CANN/LD_LIBRARY_PATH/HCCL/allocator setup, private profile, required artifact
 folder or post-start activation RPC remains. Receipts in old capsules are
@@ -38,7 +38,7 @@ build output aside recoverably) removes it. Assert no console entry or cli.py in
 the wheel and resolve the installed worker class without depending on checkout
 PYTHONPATH. Native-base stubs cover packaging only, not accelerator execution.
 
-Maintain readable package code with `python -m black src/strengthen_dsv4`
+Maintain readable package code with `python -m black src/betterscale`
 (default style, py312 target in pyproject.toml). Do not pack assignments or
 control-flow statements onto one line. Run the formatter in a development
 environment, not by adding dependencies to the donor runtime.

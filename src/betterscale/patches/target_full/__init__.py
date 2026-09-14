@@ -13,7 +13,7 @@ from vllm_ascend.worker.model_runner_v1 import NPUModelRunner
 _original_build = AscendDSACPMetadataBuilder.build
 _original_rope = dsa_cp.get_cos_and_sin_dsa
 _original_pad = NPUModelRunner._pad_query_start_loc_for_fia
-_target_build = ContextVar("strengthen_target_build", default=False)
+_target_build = ContextVar("betterscale_target_build", default=False)
 _installed = False
 
 

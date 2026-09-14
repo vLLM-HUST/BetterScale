@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-betterscale"
-version = "0.3.1"
+version = "0.3.2"
 description = "Modular graph and replay optimizations for vLLM Ascend"
 readme = "docs/PYPI.md"
 license = "Apache-2.0"
@@ -18,7 +18,7 @@ dependencies = []
 where = ["src"]
 
 [tool.setuptools.package-data]
-strengthen_dsv4 = ["pins.json"]
+betterscale = ["pins.json"]
 "*" = ["README.md"]
 
 [project.urls]

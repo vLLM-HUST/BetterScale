@@ -42,7 +42,7 @@ backend 只声明支持 `UNIFORM_BATCH`，即它所支持的均匀 query 批次�
 用户继续使用原生 `vllm serve`，只指定我们的 worker 类：
 
 ```text
-vllm 创建 strengthen_dsv4.worker.Worker
+vllm 创建 betterscale.worker.Worker
   ├─ 检查 donor 版本、源码及配置
   ├─ target_full.install()：替换四处原生方法/函数
   └─ 原生 worker 初始化、模型加载、warmup / graph capture

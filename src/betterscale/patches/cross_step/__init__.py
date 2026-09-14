@@ -98,7 +98,7 @@ class CrossStepBounds:
         return defer
 
     def model_forward(self, *args, **kwargs):
-        with record_function("strengthen::enqueue_forward"):
+        with record_function("betterscale::enqueue_forward"):
             result = self.forward(*args, **kwargs)
         if self.pending is not None:
             # Enqueue the current model BEFORE waiting for the previous receipt.
@@ -111,14 +111,14 @@ class CrossStepBounds:
             ):
                 event = self.runner.prepare_inputs_event
                 assert event is not None
-                with record_function("strengthen::retire_input_dma"):
+                with record_function("betterscale::retire_input_dma"):
                     event.synchronize()
             # With the explicit producer, the callback's mutable CPU budget
             # has already been copied into owned pinned storage. Only this
             # current-input DMA fence becomes unnecessary. The callback still
             # waits for the OLD receipt before correcting CPU bookkeeping.
             callback, self.pending = self.pending, None
-            with record_function("strengthen::late_receipt"):
+            with record_function("betterscale::late_receipt"):
                 callback()
             self.late_commits += 1
         return result

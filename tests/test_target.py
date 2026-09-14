@@ -5,7 +5,7 @@ from types import SimpleNamespace as NS
 import unittest
 import numpy as np
 
-source=Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/patches/target_full/__init__.py'
+source=Path(__file__).resolve().parents[1]/'src/betterscale/patches/target_full/__init__.py'
 function=next(x for x in ast.parse(source.read_text()).body if isinstance(x,ast.FunctionDef) and x.name=='_pad_dsa_capacity')
 namespace={'CUDAGraphMode':NS(FULL='FULL'),'_original_pad':lambda *a: 'fallback'}
 exec(compile(ast.Module(body=[function],type_ignores=[]),str(source),'exec'),namespace)

@@ -1,7 +1,7 @@
 import unittest
 from dataclasses import dataclass
 import torch
-from strengthen_dsv4.patches.async_decode._packet import CallPacket
+from betterscale.patches.async_decode._packet import CallPacket
 
 
 def refresh(packet, source):
@@ -58,7 +58,7 @@ class PacketTests(unittest.TestCase):
 
 
 from types import SimpleNamespace as NS
-from strengthen_dsv4.patches.async_decode._host import HostField, HostSourceSlots
+from betterscale.patches.async_decode._host import HostField, HostSourceSlots
 
 
 class Event:
@@ -158,13 +158,13 @@ class SharedDAGTests(unittest.TestCase):
 
 import unittest
 import torch
-from strengthen_dsv4.patches.async_decode._metadata import DeviceOnly
+from betterscale.patches.async_decode._metadata import DeviceOnly
 
 
 class TransferBoundary(unittest.TestCase):
     def test_startup_restores_input_banks_even_on_capture_failure(self):
         from unittest.mock import patch
-        from strengthen_dsv4.patches.async_decode._warmup import preserve_inputs
+        from betterscale.patches.async_decode._warmup import preserve_inputs
 
         carrier = NS(cpu=torch.arange(4), gpu=torch.arange(4) + 10)
         field = HostField(carrier, "cpu", "np")
@@ -197,7 +197,7 @@ class TransferBoundary(unittest.TestCase):
 
     def test_missing_metadata_shape_never_captures_online(self):
         from unittest.mock import Mock
-        from strengthen_dsv4.patches.async_decode._metadata import DecodeMetadata
+        from betterscale.patches.async_decode._metadata import DecodeMetadata
 
         metadata = DecodeMetadata.__new__(DecodeMetadata)
         metadata.r = NS(
@@ -224,7 +224,7 @@ class TransferBoundary(unittest.TestCase):
         self.assertFalse(metadata.entries)
 
     def test_startup_shapes_follow_captured_descriptors(self):
-        from strengthen_dsv4.patches.async_decode._warmup import shapes
+        from betterscale.patches.async_decode._warmup import shapes
 
         @dataclass(frozen=True)
         class Descriptor:
@@ -249,7 +249,7 @@ class TransferBoundary(unittest.TestCase):
         self.assertEqual(shapes(runner), [(2, 2, 12), (1, 2, 12), (1, 2, 6)])
 
     def test_local_decode_with_global_prefill_padding_stays_native(self):
-        from strengthen_dsv4.patches.async_decode._metadata import DecodeMetadata
+        from betterscale.patches.async_decode._metadata import DecodeMetadata
 
         metadata = DecodeMetadata.__new__(DecodeMetadata)
         metadata.r = NS(max_num_reqs=2, _cross_step_bounds=NS(admitted=True))

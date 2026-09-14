@@ -72,5 +72,5 @@ def validate_worker_config(config):
     failed = [name for name, passed in checks.items() if not passed]
     if failed:
         raise ValueError(
-            "Outside the qualified strengthen-dsv4 envelope: " + "; ".join(failed)
+            "Outside the qualified BetterScale envelope: " + "; ".join(failed)
         )

@@ -1,11 +1,11 @@
 # Maintained patch bundle
 
-The kept implementation is now **`src/strengthen_dsv4/patches/`**, loaded by the
-explicit native `worker_cls` integration in `strengthen_dsv4.worker.Worker`.
+The kept implementation is now **`src/betterscale/patches/`**, loaded by the
+explicit native `worker_cls` integration in `betterscale.worker.Worker`.
 These are source-visible Python overrides, **not** patches silently applied to
 release submodules or `site-packages`, and not a claim that upstream exposes a
 fully public plugin API for all these hooks. Private API compatibility is checked
-against `src/strengthen_dsv4/pins.json` before model loading.
+against `src/betterscale/pins.json` before model loading.
 
 Each directory is a closed feature module with its own `install` entry. Small
 modules keep their implementation in `__init__.py`; larger ownership protocols keep private helpers inside their own directory. No sibling patch imports or automatic import-time hook installation.
@@ -30,9 +30,9 @@ normalizer is inline beside `DraftGraphRunner` in `split_draft/__init__.py`.
 The TP combination’s seven mechanism IDs still include both draft-bank and split-context
 improvements; they deliberately map to one cohesive split_draft implementation.
 
-All paths in the code column are beneath `src/strengthen_dsv4/patches/`.
+All paths in the code column are beneath `src/betterscale/patches/`.
 Install the package in the existing donor environment, then add
-`--worker-cls strengthen_dsv4.worker.Worker` to the native `vllm serve` command.
+`--worker-cls betterscale.worker.Worker` to the native `vllm serve` command.
 Selecting this class installs the kept combination. There is no custom CLI,
 private baseline/optimized profile, artifact requirement or environment rewrite.
 Restart with your original native worker/command to roll back; do not hot-unpatch

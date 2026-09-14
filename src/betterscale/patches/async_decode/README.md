@@ -106,7 +106,7 @@ LongBench retrieval 题全部通过。这是有限质量集，不是完整 OpenC
 
 **包内接入已单独验收。** run122 通过外部 oracle 子类完成同样的 384 次
  target/整份 KV 与 96 次 preparation 对照；run124 从 wheel 加载实际
-`strengthen_dsv4.worker.Worker`，无需激活 RPC，32/32 检索题通过。
+`betterscale.worker.Worker`，无需激活 RPC，32/32 检索题通过。
 该轮两次 matched cycle 为 **50.74 / 49.88 ms**，draft→target 为
 **1.24 / 1.23 ms**。包含长 prefill 质量题后的总预留为 **58.66–58.70 GiB/rank**，
 测量峰值 allocated **58.02 GiB/rank**，其中用户指定的 KV 预算为 8 GiB/rank。

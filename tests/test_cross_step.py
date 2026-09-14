@@ -4,7 +4,7 @@ import unittest
 from types import SimpleNamespace as NS
 from unittest.mock import patch
 import torch
-from strengthen_dsv4.patches.cross_step import CrossStepBounds, stable_verification
+from betterscale.patches.cross_step import CrossStepBounds, stable_verification
 
 
 def fixture():

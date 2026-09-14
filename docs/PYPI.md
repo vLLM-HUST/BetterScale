@@ -14,7 +14,7 @@ patches; it does not replace the serving engine or configure your environment.
 Use your **existing, working Ascend serving environment**, with Python 3.12+:
 
 ```bash
-python -m pip install --no-deps vllm-betterscale==0.3.1
+python -m pip install --no-deps vllm-betterscale==0.3.2
 ```
 
 The package deliberately does not install or upgrade vLLM, vLLM-Ascend, torch-npu,
@@ -25,11 +25,6 @@ This release is pinned to **vLLM 0.25.1**, **vLLM-Ascend 0.25.1rc1**, and
 Ascend 910B2 cards connected with HCCS. Worker initialization verifies both versions
 and selected upstream source files; a different build may be rejected even if its
 version string matches. Do not disable those checks to force an unqualified runtime.
-
-If you previously installed the private `strengthen-dsv4` distribution, stop your
-service and uninstall that distribution before installing this one. The new package
-retains its implementation namespace, so the two distributions must not be installed
-together. The old Worker import remains an alias-compatible entry.
 
 ## Start
 
@@ -92,7 +87,7 @@ its existing path, including first-use capture of some draft shapes.
 
 ## Verify and roll back
 
-Check for the per-worker `strengthen-dsv4 rank=... READY patches=...` log entry and
+Check for the per-worker `BetterScale rank=... READY patches=...` log entry and
 the native health endpoint after model startup:
 
 ```bash

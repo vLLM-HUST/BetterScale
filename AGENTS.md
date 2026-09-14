@@ -1,4 +1,4 @@
-# Working in strengthen-dsv4
+# Working in BetterScale
 
 Read `.agents/skills/repo-knowledge/SKILL.md` before repository work.
 

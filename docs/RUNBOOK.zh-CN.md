@@ -5,16 +5,14 @@
 在**已经准备好的 vLLM-Ascend 环境**中安装本包，给原来的启动命令加一个参数：
 
 ```bash
-python -m pip install --no-deps vllm-betterscale==0.3.1
+python -m pip install --no-deps vllm-betterscale==0.3.2
 vllm serve /models/DeepSeek-V4-Flash <原有的原生参数> \
   --worker-cls betterscale.worker.Worker
 ```
 
 `<原有的原生参数>` 是说明占位符，不是 shell 中直接执行的文本。
-`betterscale.worker.Worker` 与旧 `strengthen_dsv4.worker.Worker` 是同一个类，
-没有额外包装或执行路径。若安装过旧 `strengthen-dsv4` 发行包，先停服卸载旧包，
-避免两个发行包共同拥有同一份实现文件。
-已有 wheel 时直接 `python -m pip install --no-deps /path/to/vllm_betterscale-0.3.1-py3-none-any.whl`。
+`betterscale.worker.Worker` 是实现本身，源码位于 `src/betterscale/`。
+已有 wheel 时直接 `python -m pip install --no-deps /path/to/vllm_betterscale-0.3.2-py3-none-any.whl`。
 源码安装需要已有 setuptools>=77.0.3；包没有 donor 依赖安装/升级动作。
 
 **没有另一套 serve/check/plan CLI，没有私有 profile，没有必须配置的目录。**
@@ -30,7 +28,7 @@ vLLM-Ascend 环境负责；环境缺失应在部署阶段解决，不由补丁�
 4. 功能模块各自拥有 hook 和 `install`，不相互 import，不在 import 时安装；
    worker 只选择组合与时机。`split_draft` 用 `DraftGraphRunner` 分流，metadata 整理直接内联在同文件，
    仅单图捕获/replay 保留在 `_graph.py`。
-5. 继续原生服务；日志中每个 worker 输出 `strengthen-dsv4 rank=... READY patches=...`。
+5. 继续原生服务；日志中每个 worker 输出 `BetterScale rank=... READY patches=...`。
 
 不修改 donor 源文件或 installed packages，不添加 scheduler，不带入未采用的全波次 worker-retirement 扩展。DP8 的稳定 decode 双槽 producer
 是另行验收的较小组合，见下节。graph 仍在首次遇到合法 shape 时捕获，首次 capture 不等于 warm replay。
@@ -103,7 +101,7 @@ curl --fail http://127.0.0.1:8000/health
 
 ## DP8 稳定 decode continuation（独立于 TP8 组合）
 
-同一个 `strengthen_dsv4.worker.Worker` 根据用户给出的并行配置选择模块，不增加
+同一个 `betterscale.worker.Worker` 根据用户给出的并行配置选择模块，不增加
 CLI、私有环境变量或启动后的激活 RPC。DP8 路线是 TP1 native DSA + EP8，
 每 rank 两席位（全局16）、本地配置 token 预算1026、context上限16384、K5、
 FULL target、prefix caching关闭；DSACP必须关闭，DSpark仍使用原生 eager。
@@ -125,7 +123,7 @@ vllm serve /models/DeepSeek-V4-Flash \
 
 KV预算由用户管理，8GiB是测试配置，不是补丁自行保留的份额。
 输入/输出所有权、hook位置、fallback和证据口径见
-[`async_decode/README.md`](../src/strengthen_dsv4/patches/async_decode/README.md)。
+[`async_decode/README.md`](../src/betterscale/patches/async_decode/README.md)。
 离线原生 LLM/Worker 的历史验收与新增HTTP验收分开报告；服务路由与 admission
 仍由原生 vLLM 决定，不能把 matched-cycle 收益直接写成在线吞吐收益。
 新增HTTP结果见上面的端到端报告，包含发布版DP未稳定兑现收益的边界。

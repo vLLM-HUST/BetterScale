@@ -100,7 +100,7 @@ class DraftGraphRunner:
         # No H2D round-trip or host fence is required between these same-stream ops.
         # 其他波次仍有很多 target hidden 行需要写进 draft 的 context KV；
         # 只调用 donor 原生写入，不把这些行补到大桶后塞进小 query 图。
-        with record_function("strengthen::draft_context_ingest"):
+        with record_function("betterscale::draft_context_ingest"):
             d.build_model_inputs_first_pass(
                 kwargs["num_input_tokens"], d._context_slot_mapping_buffers
             )
@@ -126,7 +126,7 @@ class DraftGraphRunner:
             # 原生 _run_merged_draft 内仍会调用 context hook：在此作用域临时
             # 将其变成 no-op，避免写两遍；query_body 的 finally 保证异常也恢复。
             # 数学 query/Markov 逻辑仍由原生 callable 执行，不是自写第二个 drafter。
-            with query_body(d), record_function("strengthen::draft_query_graph"):
+            with query_body(d), record_function("betterscale::draft_query_graph"):
                 if key not in self.query_graphs:
                     entry = ExactDraftGraph(self.worker, self.original, count)
                     entry.query_only = True

@@ -7,8 +7,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from strengthen_dsv4.compat import check_runtime
-from strengthen_dsv4.config import PATCH_IDS, DP_PATCH_IDS, validate_worker_config
+from betterscale.compat import check_runtime
+from betterscale.config import PATCH_IDS, DP_PATCH_IDS, validate_worker_config
 
 
 def config():
@@ -54,9 +54,9 @@ class LaunchContract(unittest.TestCase):
             root=Path(folder);source=root/'worker.py';source.write_bytes(b'qualified')
             manifest={'versions':{'donor':'1.0'},'commits':{'donor':'pin'},'source_files':[
                 {'distribution':'donor','path':'worker.py','sha256':hashlib.sha256(b'qualified').hexdigest()}]}
-            with patch('strengthen_dsv4.compat.pins',return_value=manifest), \
-                 patch('strengthen_dsv4.compat.metadata.version',return_value='1.0+build'), \
-                 patch('strengthen_dsv4.compat.metadata.distribution',return_value=NS(locate_file=lambda p:root/p)):
+            with patch('betterscale.compat.pins',return_value=manifest), \
+                 patch('betterscale.compat.metadata.version',return_value='1.0+build'), \
+                 patch('betterscale.compat.metadata.distribution',return_value=NS(locate_file=lambda p:root/p)):
                 check_runtime.cache_clear();self.assertEqual(check_runtime()['checked_source_files'],1)
                 source.write_bytes(b'changed')
                 check_runtime.cache_clear()
@@ -66,13 +66,13 @@ class LaunchContract(unittest.TestCase):
 class WorkerLifecycle(unittest.TestCase):
     def worker_class(self,calls):
         import ast
-        source=Path(__file__).resolve().parents[1]/'src/strengthen_dsv4/worker.py'
+        source=Path(__file__).resolve().parents[1]/'src/betterscale/worker.py'
         node=next(n for n in ast.parse(source.read_text()).body if isinstance(n,ast.ClassDef))
         class Native:
             def __init__(self,config,*args,**kwargs):
                 calls.append('native-init');self.rank=0;self.config=config
             def compile_or_warm_up_model(self):calls.append('native-capture');return 'native-times'
-        ns=dict(__name__='strengthen_dsv4.worker_test',__package__='strengthen_dsv4',
+        ns=dict(__name__='betterscale.worker_test',__package__='betterscale',
             NPUWorker=Native,check_runtime=lambda:calls.append('compat'),
             validate_worker_config=validate_worker_config,PATCH_IDS=PATCH_IDS,DP_PATCH_IDS=DP_PATCH_IDS,
             log=NS(info=lambda *a,**kw:calls.append('ready')))
@@ -83,11 +83,11 @@ class WorkerLifecycle(unittest.TestCase):
         import copy,os,sys
         from types import ModuleType
         calls=[];modules={}
-        package=ModuleType('strengthen_dsv4.patches')
+        package=ModuleType('betterscale.patches')
         modules[package.__name__]=package
         for name in ('compat_lcm','target_full','split_draft','cross_step','ordered_replay','qli_cpu'):
             function='install'
-            module=ModuleType('strengthen_dsv4.patches.'+name)
+            module=ModuleType('betterscale.patches.'+name)
             setattr(module,function,lambda *a,_name=name,**kw:calls.append(_name))
             modules[module.__name__]=module
             setattr(package,name,module)
@@ -135,10 +135,10 @@ class DPLifecycle(WorkerLifecycle):
         import copy, sys
         from types import ModuleType
         calls = []
-        package = ModuleType("strengthen_dsv4.patches")
+        package = ModuleType("betterscale.patches")
         modules = {package.__name__: package}
         for name in ("compat_lcm", "target_full", "cross_step", "async_decode"):
-            module = ModuleType("strengthen_dsv4.patches." + name)
+            module = ModuleType("betterscale.patches." + name)
             module.install = lambda *a, _name=name, **kw: calls.append((_name, kw))
             if name == "async_decode":
                 module.install_capture = lambda: calls.append("capture-hook")

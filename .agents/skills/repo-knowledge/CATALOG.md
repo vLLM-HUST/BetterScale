@@ -24,4 +24,4 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 
 - **Build or publish BetterScale's Python distribution:** read
   [release-python-package](scenarios/release-python-package/GUIDE.md) before
-  packaging, installing the public alias, or publishing to PyPI.
+  packaging, installing the public Worker, or publishing to PyPI.

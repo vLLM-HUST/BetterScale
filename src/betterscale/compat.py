@@ -7,9 +7,7 @@ import json
 
 
 def pins():
-    return json.loads(
-        resources.files("strengthen_dsv4").joinpath("pins.json").read_text()
-    )
+    return json.loads(resources.files("betterscale").joinpath("pins.json").read_text())
 
 
 @lru_cache(maxsize=1)

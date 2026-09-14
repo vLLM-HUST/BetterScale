@@ -3,10 +3,8 @@
 Less host waiting. More device execution.
 Modular graph, replay and metadata-preparation optimizations for vLLM Ascend.
 
-Formerly **strengthen-dsv4**. The project is now named **BetterScale**; the validated
-implementation retains `strengthen_dsv4` for compatibility; the public entry
-`betterscale.worker.Worker` names the same class. The PyPI distribution is
-`vllm-betterscale`.
+Install `vllm-betterscale` and use `betterscale.worker.Worker` with your native
+vLLM serving command. The implementation lives directly in `src/betterscale/`.
 
 Incremental DeepSeek V4 serving improvements on vLLM + vLLM-Ascend.
 Keep the mature engine. Measure each change. Keep improvements that survive
@@ -78,13 +76,13 @@ kept patch bundle.
 
 ## Maintained serving entry and report
 
-The kept patches now live in **`src/strengthen_dsv4/`**, not just the historical
+The kept patches now live in **`src/betterscale/`**, not just the historical
 prototype tree. They use vLLM's explicit `worker_cls` lifecycle and normal OpenAI
 server. No donor source files are modified, upgraded or rebuilt on startup.
 Each patch is a closed directory with its own `install`: `compat_lcm`,
 `target_full`, `ordered_replay`, `qli_cpu`, `split_draft`, `cross_step`.
 Worker owns their composition; importing a module does not install its hooks.
-See each module's README under `src/strengthen_dsv4/patches/` for its contract.
+See each module's README under `src/betterscale/patches/` for its contract.
 
 ```sh
 # In your existing vLLM-Ascend environment (no donor dependencies are upgraded):
@@ -92,15 +90,15 @@ python -m pip install --no-deps --no-build-isolation .
 
 # Keep your native serving arguments; add only the worker class:
 vllm serve /models/DeepSeek-V4-Flash <your-native-vllm-arguments> \
-  --worker-cls strengthen_dsv4.worker.Worker
+  --worker-cls betterscale.worker.Worker
 ```
 
-`Worker` is the **only public integration entry**. There is no `strengthen-dsv4`
+`Worker` is the **only public integration entry**. There is no `BetterScale`
 CLI, environment setup, automatic plugin discovery, private profile or mandatory
 artifact directory. The package does not select Python/CANN, set HCCL/allocator
 variables, repair library paths, or change service/KV settings. Start with a
 working donor environment. A source install with --no-build-isolation needs existing setuptools>=77.0.3.
-Prefer the published wheel: `pip install --no-deps vllm-betterscale==0.3.1`.
+Prefer the published wheel: `pip install --no-deps vllm-betterscale==0.3.2`.
 
 The original TP admission remains bounded: TP8/EP/DSACP/K5, four seats,4128 token budget,
 max length<=15104, target FULL, native scheduler, prefix caching off. This entry
@@ -143,7 +141,7 @@ rank,1026 local token budget,context<=16384,FULL target,DSpark K5 with native
 eager draft,DSACP off,prefix caching off. It combines native DSA FULL target
 with owned input slots and captured device preparation/metadata. It does **not**
 change the kept TP8 combination or enable the rejected all-mode worker extension.
-See [the ownership protocol](src/strengthen_dsv4/patches/async_decode/README.md)
+See [the ownership protocol](src/betterscale/patches/async_decode/README.md)
 and [native launch parameters](docs/RUNBOOK.zh-CN.md#dp8-稳定-decode-continuation独立于-tp8-组合).
 Prototype matched-cycle evidence and the packaged-worker acceptance are reported
 separately; a faster step is not by itself an end-to-end throughput claim.

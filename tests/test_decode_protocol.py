@@ -19,7 +19,7 @@ class Proxy:
 class Protocol(unittest.TestCase):
     def test_private_bank_updates_without_rebinding(self):
         p = (
-            Path(__file__).resolve().parents[1] / "src/strengthen_dsv4/patches"
+            Path(__file__).resolve().parents[1] / "src/betterscale/patches"
         ).joinpath("split_draft/_graph.py")
         fs = [
             x
@@ -68,7 +68,7 @@ class Protocol(unittest.TestCase):
         from unittest.mock import patch
 
         p = (
-            Path(__file__).resolve().parents[1] / "src/strengthen_dsv4/patches"
+            Path(__file__).resolve().parents[1] / "src/betterscale/patches"
         ).joinpath("split_draft/_graph.py")
         nodes = [
             x
@@ -175,7 +175,7 @@ class Protocol(unittest.TestCase):
 
     def test_cpu_qli_uses_existing_mirrors_and_checks_them(self):
         p = (
-            Path(__file__).resolve().parents[1] / "src/strengthen_dsv4/patches"
+            Path(__file__).resolve().parents[1] / "src/betterscale/patches"
         ).joinpath("qli_cpu/__init__.py")
         f = next(
             x
@@ -220,7 +220,7 @@ class Protocol(unittest.TestCase):
 
     def test_only_admitted_stream_replays(self):
         p = (
-            Path(__file__).resolve().parents[1] / "src/strengthen_dsv4/patches"
+            Path(__file__).resolve().parents[1] / "src/betterscale/patches"
         ).joinpath("ordered_replay/__init__.py")
         f = next(
             x
@@ -308,7 +308,7 @@ class Protocol(unittest.TestCase):
         )
         patched = ast.parse(
             (
-                root / "src/strengthen_dsv4/patches/ordered_replay/__init__.py"
+                root / "src/betterscale/patches/ordered_replay/__init__.py"
             ).read_text()
         )
         current = next(

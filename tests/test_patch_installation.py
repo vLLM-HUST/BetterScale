@@ -8,7 +8,7 @@ import unittest
 from unittest.mock import patch
 import torch
 
-ROOT = Path(__file__).resolve().parents[1] / "src/strengthen_dsv4/patches"
+ROOT = Path(__file__).resolve().parents[1] / "src/betterscale/patches"
 
 
 class Installation(unittest.TestCase):
@@ -136,13 +136,13 @@ class Installation(unittest.TestCase):
                 if isinstance(node, ast.ImportFrom):
                     self.assertLessEqual(node.level, 1, str(source))
                     self.assertFalse(
-                        (node.module or "").startswith("strengthen_dsv4.patches"),
+                        (node.module or "").startswith("betterscale.patches"),
                         str(source),
                     )
                 elif isinstance(node, ast.Import):
                     self.assertFalse(
                         any(
-                            n.name.startswith("strengthen_dsv4.patches")
+                            n.name.startswith("betterscale.patches")
                             for n in node.names
                         ),
                         str(source),

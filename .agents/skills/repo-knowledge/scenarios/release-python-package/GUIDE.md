@@ -1,11 +1,11 @@
 # Release the public BetterScale package
 
 Use when building or publishing `vllm-betterscale`, or updating its install entry.
-The native entry is `betterscale.worker.Worker`, an identity alias of the qualified
-`strengthen_dsv4.worker.Worker`, not a second implementation. The old and new
-**distributions** own overlapping files: stop the service and uninstall an old
-`strengthen-dsv4` distribution before installing the new distribution. Do not
-uninstall donor packages or upgrade their dependencies.
+The native entry is `betterscale.worker.Worker`, defined directly in that module.
+From0.3.2 the wheel contains only the `betterscale` package; no legacy alias package
+is shipped. First public release was already `vllm-betterscale`0.3.0. Do not present
+private prototype naming or migration advice as the public product's introduction.
+Do not uninstall donor packages or upgrade their dependencies.
 
 - `docs/PYPI.md` is the public package README and owns the bounded TP8/DP8 commands.
   Version changes must agree in pyproject and the implementation initializer.
@@ -19,8 +19,8 @@ uninstall donor packages or upgrade their dependencies.
   test suite, without constructing NPU workers. The isolated alias test needs no
   donor. Do not install torch just to repair the packaging-tools environment.
 - Run strict Twine metadata checks, install the wheel with --no-deps outside the
-  checkout, verify both Worker imports are the same class against a native-base
-  fixture, verify pins load and no console/plugin entry points are introduced.
+  checkout, verify Worker is defined in betterscale.worker against a native-base
+  fixture and the legacy namespace is absent, verify pins load and no console/plugin entry points are introduced.
   These are packaging checks, not new NPU correctness or performance evidence.
 - Publishing requires Fletcher's authority. Credentials stay opaque in a mode600
   `.pypirc`; validate the official PyPI endpoint before upload. Never print token
@@ -80,3 +80,12 @@ Published as tag `v0.3.1` / `fbfa963` on 2026-09-14. Official PyPI wheel and
 sdist were anonymously downloaded and directly matched to both audited artifacts;
 the official wheel passed the clean-install alias/pin check. Evidence is retained
 under `runs/release-0.3.1/` (not tracked). No new NPU result is claimed.
+
+## Namespace consolidation: 0.3.2
+
+Implementation moved into `src/betterscale/`; the wrapper namespace is gone. Runtime
+ASTs match0.3.1 after only package/log/profiler label and version normalization;
+donor pins are byte-identical. The same55 CPU tests cover the new imports. Use
+clean wheel and0.3.1-to0.3.2 upgrade checks, not another eight-card experiment for
+this rename. Historical capsules/prototypes retain their original source identity
+and require their frozen versions; do not mass-rewrite old evidence or real paths.

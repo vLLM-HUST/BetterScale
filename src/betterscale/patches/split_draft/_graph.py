@@ -7,7 +7,7 @@ Draft metadata has a PRIVATE stable bank, never the target global RoPE bank.
 
 # 阅读入口：这是「把 draft 计算主体变成 graph」的机制，不是双槽连续调度器。
 # 已维护服务的实际调用链（相邻文件可以顺着读）：
-#   用户 vllm serve --worker-cls strengthen_dsv4.worker.Worker
+#   用户 vllm serve --worker-cls betterscale.worker.Worker
 #   → Worker.compile_or_warm_up_model() 先完成 donor 原生 warmup
 #   → 调用 split_draft/__init__.py 的 install(worker)
 #   → drafter._runnable 被替换成 DraftGraphRunner
