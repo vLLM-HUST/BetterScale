@@ -128,5 +128,52 @@ class ProtocolTests(unittest.TestCase):
             b.sequence = 1
 
 
+class PlainDecodeTests(unittest.TestCase):
+    def plain(self, outputs=(5, 5)):
+        s = schedule()
+        s.num_scheduled_tokens = {"a": 1, "b": 1}
+        s.total_num_scheduled_tokens = 2
+        s.scheduled_spec_decode_tokens = {}
+        s.scheduled_cached_reqs.num_output_tokens = list(outputs)
+        return s
+
+    def test_plain_decode_uses_its_own_captured_buckets(self):
+        p = propose(
+            0, self.plain(), ("a", "b"), {2: (2, 2)}, query_tokens=1, max_requests=4
+        )
+        self.assertTrue(p.eligible)
+        b = agree([p, Proposal(0, 4, 2, True)], allowed_tokens=(1, 2, 4))
+        c = Consumer(0)
+        c.begin(b)
+        self.assertEqual(c.resolve(2, 2, False, True), (4, (4, 4), 2))
+        c.end()
+
+    def test_one_token_prefill_tail_stays_native(self):
+        for outputs in ((0, 5), ()):
+            p = propose(
+                0,
+                self.plain(outputs),
+                ("a", "b"),
+                {2: (2, 2)},
+                query_tokens=1,
+                max_requests=4,
+            )
+            self.assertFalse(p.eligible)
+
+    def test_plain_decode_rejects_speculative_tokens(self):
+        s = self.plain()
+        s.scheduled_spec_decode_tokens = {"a": [17]}
+        self.assertFalse(
+            propose(0, s, ("a", "b"), {2: (2, 2)}, query_tokens=1).eligible
+        )
+
+    def test_unknown_group_bucket_still_rejected(self):
+        with self.assertRaises(ValueError):
+            agree(
+                [Proposal(0, 2, 2, True), Proposal(0, 5, 2, True)],
+                allowed_tokens=(1, 2, 4),
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

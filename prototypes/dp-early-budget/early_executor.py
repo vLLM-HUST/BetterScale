@@ -47,6 +47,11 @@ class EarlyExecutor(MultiprocExecutor):
             p.data_parallel_size,
             backend="gloo",
         )
+        spec = self.vllm_config.speculative_config
+        if spec is not None:
+            assert spec.method == "dspark" and spec.num_speculative_tokens == 5
+        self.query_tokens = 1 if spec is None else 6
+        self.max_requests = self.scheduler_config.max_num_seqs
         self.budget_sequence = 0
         self.previous_ids = ()
         self.capacities = {}
@@ -59,7 +64,12 @@ class EarlyExecutor(MultiprocExecutor):
     def _agree(self, schedule):
         rank = self.parallel_config.data_parallel_rank
         proposal = propose(
-            self.budget_sequence, schedule, self.previous_ids, self.capacities
+            self.budget_sequence,
+            schedule,
+            self.previous_ids,
+            self.capacities,
+            query_tokens=self.query_tokens,
+            max_requests=self.max_requests,
         )
         started = time.time_ns()
         size = self.parallel_config.data_parallel_size
@@ -84,7 +94,8 @@ class EarlyExecutor(MultiprocExecutor):
                     bool(packet[3, r]),
                 )
                 for r in range(size)
-            ]
+            ],
+            allowed_tokens=tuple({shape[0] for shape in self.capacities.values()}),
         )
         receipt(
             "parent",

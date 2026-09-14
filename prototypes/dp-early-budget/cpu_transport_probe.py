@@ -24,6 +24,8 @@ def rank_main(rank, port, output):
     ex.budget_group = stateless_init_torch_distributed_process_group(
         "127.0.0.1", port, rank, 2, backend="gloo"
     )
+    ex.query_tokens = 6
+    ex.max_requests = 2
     ex.budget_sequence = 0
     ex.previous_ids = ("a",) if rank == 0 else ("b", "c")
     ex.capacities = {6: (6, 2), 12: (12, 2)}

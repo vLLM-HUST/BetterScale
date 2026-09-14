@@ -19,7 +19,9 @@ class Budget:
     admitted: bool
 
 
-def propose(sequence, schedule, previous_ids, capacities):
+def propose(
+    sequence, schedule, previous_ids, capacities, *, query_tokens=6, max_requests=2
+):
     """Use only an already-issued SchedulerOutput, never next-token feedback."""
     if schedule is None:
         return Proposal(sequence, 0, 0, False)
@@ -27,9 +29,9 @@ def propose(sequence, schedule, previous_ids, capacities):
     ids = tuple(counts)
     cached = schedule.scheduled_cached_reqs
     eligible = (
-        1 <= len(ids) <= 2
+        1 <= len(ids) <= max_requests
         and set(ids) == set(previous_ids)
-        and all(n == 6 for n in counts.values())
+        and all(n == query_tokens for n in counts.values())
         and sum(counts.values()) == schedule.total_num_scheduled_tokens
         and not schedule.scheduled_new_reqs
         and not schedule.finished_req_ids
@@ -37,11 +39,19 @@ def propose(sequence, schedule, previous_ids, capacities):
         and not schedule.scheduled_encoder_inputs
         and not getattr(schedule, "has_structured_output_requests", False)
         and not getattr(schedule, "preempted_req_ids", set())
-        and all(len(schedule.scheduled_spec_decode_tokens.get(r, ())) == 5 for r in ids)
+        and all(
+            len(schedule.scheduled_spec_decode_tokens.get(r, ())) == query_tokens - 1
+            for r in ids
+        )
         and set(cached.req_ids) == set(ids)
         and len(cached.num_computed_tokens) == len(ids)
         and all(n > 0 for n in cached.num_computed_tokens)
     )
+    if query_tokens == 1:
+        # A one-token tail of chunked prefill is not a decode query. Use the
+        # native host phase receipt, without predicting device acceptance.
+        outputs = getattr(cached, "num_output_tokens", ())
+        eligible = eligible and len(outputs) == len(ids) and all(n > 0 for n in outputs)
     shape = capacities.get(schedule.total_num_scheduled_tokens)
     if not eligible or shape is None:
         return Proposal(sequence, 0, 0, False)
@@ -49,13 +59,13 @@ def propose(sequence, schedule, previous_ids, capacities):
     return Proposal(sequence, tokens, mode, True)
 
 
-def agree(proposals):
+def agree(proposals, *, allowed_tokens=(6, 12)):
     """Every rank, including dummy ranks, contributes one proposal per forward."""
     if not proposals or len({p.sequence for p in proposals}) != 1:
         raise ValueError("Mismatched budget sequence")
     eligible = all(p.eligible for p in proposals)
     if eligible and (
-        any(p.tokens not in (6, 12) for p in proposals)
+        any(p.tokens not in allowed_tokens for p in proposals)
         or len({p.mode for p in proposals}) != 1
     ):
         raise ValueError("Invalid admitted graph envelope")

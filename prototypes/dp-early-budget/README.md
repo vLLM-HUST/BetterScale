@@ -112,3 +112,37 @@ transition under the local `runs/tp-continuation-20260914/` root. No numerical,
 throughput or early-budget device result was obtained;146 must not be counted
 as a passing hardware gate. This was post-admission contention, unlike142's
 pre-launch rejection. Do not relaunch while those foreign workers remain.
+
+## Two-card Qwen route (September14, in progress)
+
+Fletcher redirected scarce eight-card work to the existing shared
+`/data/shared_models/Qwen3-30B-A3B` BF16 model, TP1/DP2/EP2. All16 safetensors
+shards and tokenizer are present. Tensor headers give54GiB expert weights plus
+2.8705GiB replicated weights: ideal EP2 weight payload29.8705GiB/rank, excluding
+runtime, format conversion, KV and graph workspace. No eight-card launch is
+needed for this route; admit only the selected pair and retain same-pair controls.
+
+`qwen_worker.QwenControlWorker` uses the native Ascend Worker with the pinned
+runtime check; it installs NONE of the DeepSeek execution patches.
+`QwenEarlyWorker` adds the same early-budget consumer. The EngineCore executor
+now derives query width from the admitted native configuration: plain decode1,
+existing DSparkK5 decode6. The default pure protocol API keeps its old K5 scope.
+Known FULL bucket capacities, not arbitrary incoming token counts, gate admission.
+A one-token prefill tail must have native cached-request output progress before
+plain decode admission; unknown/mixed/turnover/dummy waves remain native globally.
+
+`EARLY_BUDGET_ORACLE=1` checks every admitted early decision against the original
+late native exchange before the unchanged model forward. It adds synchronization
+and is diagnostic only, never timing evidence. Host per-wave JSONL receipt writes
+must also be disabled for uninstrumented throughput controls/candidates.
+
+Local capsules and source closures:
+`/workspace/strengthen-dsv4/runs/qwen-dp2-early-budget-20260914/`.
+The selected-subset launcher now polls under the existing home lease (2s, bounded
+30min), then launches immediately; a CPU rejection exercise confirmed no Popen
+on busy cards.001 was cancelled while waiting for occupied pair1,3;002 resumes
+on pair0,2. No result is qualified merely by model selection or startup.
+
+This isolates the distributed scheduling protocol. It does not qualify
+DeepSeek acceptance/shadow metadata, prove removal of an eight-rank tail, or
+promise that plain-decode benefits match a speculative workload.

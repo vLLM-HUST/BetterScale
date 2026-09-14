@@ -1,5 +1,6 @@
 """Experiment-only consumer of EngineCore's agreed upcoming budget."""
 
+import os
 import torch
 from vllm.config import CUDAGraphMode
 from strengthen_dsv4.worker import Worker
@@ -7,7 +8,7 @@ from early_executor import receipt
 from early_protocol import Consumer
 
 
-class EarlyWorker(Worker):
+class EarlyBudgetMixin:
     def compile_or_warm_up_model(self):
         result = super().compile_or_warm_up_model()
         r = self.model_runner
@@ -29,6 +30,23 @@ class EarlyWorker(Worker):
                     num_tokens, is_draft_model, cudagraph_mode, allow_dp_padding
                 )
             maximum, counts, mode = resolved
+            if os.environ.get("EARLY_BUDGET_ORACLE") == "1":
+                # Diagnostic gate only: compare the early decision with the
+                # unchanged late native exchange BEFORE the same model forward.
+                # Both ranks enter this oracle; never time it as an optimization.
+                expected = native(
+                    num_tokens, is_draft_model, cudagraph_mode, allow_dp_padding
+                )
+                assert maximum == expected[0]
+                assert list(counts) == expected[1].tolist()
+                assert mode == expected[2].value
+                receipt(
+                    "worker",
+                    r.dp_rank,
+                    event="native_budget_check",
+                    sequence=self.budget_consumer.current.sequence,
+                )
+
             receipt(
                 "worker",
                 r.dp_rank,
@@ -68,7 +86,11 @@ class EarlyWorker(Worker):
     def early_budget_capabilities(self):
         r = self.model_runner
         result = {}
-        for tokens in (6, 12):
+        spec = self.vllm_config.speculative_config
+        query_tokens = 1 if spec is None else 6
+        for tokens in range(
+            query_tokens, (r.max_num_reqs + 1) * query_tokens, query_tokens
+        ):
             mode, desc = r.cudagraph_dispatcher.dispatch(
                 num_tokens=tokens,
                 has_lora=False,
@@ -102,3 +124,7 @@ class EarlyWorker(Worker):
         result = super().execute_dummy_batch()
         self.budget_consumer.end()
         return result
+
+
+class EarlyWorker(EarlyBudgetMixin, Worker):
+    """Original bounded DeepSeek candidate; package admission remains unchanged."""
