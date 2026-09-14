@@ -58,3 +58,20 @@ GitHub now recognizes the root Apache-2.0 LICENSE (same text as the packaged
 license). Public visibility and anonymous repository/license downloads were
 verified. Do not restore private-repository notices in the website or install
 instructions; keep immutable PyPI 0.3.0 artifacts and their measurement identity.
+
+## DP startup fix: 0.3.1
+
+The DP-only implementation is `db73468`; producer, metadata and startup preparation
+are copied from the already-qualified run155 program at `81ecde3`, not reinvented.
+`docs/evidence/release-0.3.1.json` owns the direct file/DP-install-branch comparison
+and the retained differences. TP's release0.3.0 composition is unchanged; do not
+merge the whole experimental branch or bring in early-budget/TP continuation.
+
+Fletcher explicitly chose to reuse the completed same-host results: DP +39.63%,
+TP +35.17%, each against its own native baseline. The new release does not imply a
+new NPU measurement. The unnecessary run162 was cancelled and its lease released.
+55 CPU tests and clean wheel/archive/alias/pin checks qualify packaging and scoped
+integration; preserve run155/158–161 identities and all rounds in the E2E report.
+Do not repeat hardware qualification merely because those identical DP programs
+are shipped under a new package version. Reopen it only for a changed behavior or
+a concrete unresolved risk, not to manufacture a fresh-looking measurement.

@@ -5,6 +5,15 @@ For the newer bounded **DP8 device preparation/metadata continuation**, enter
 and `src/strengthen_dsv4/patches/async_decode/README.md`. Do not confuse it with
 the rejected all-mode worker-retirement extension or expand the TP8 claims.
 
+## DP startup preparation (0.3.1)
+
+`async_decode/_warmup.py` prepares the finite auxiliary graph catalog before READY;
+DP two-seat K5 has4 producer banks and6 metadata entries. Runtime misses fall back,
+never grow the catalog. See the module README and `docs/evidence/release-0.3.1.json`
+for the reused qualified implementation and release provenance. This DP-only fix
+does not adopt the experimental TP/N+2/early-budget extensions. Reuse the measured
+run155 rather than repeating an expensive eight-card load for package identity.
+
 ## Maintained serving entry
 
 For deployment and reporting, start from `docs/RUNBOOK.zh-CN.md` and

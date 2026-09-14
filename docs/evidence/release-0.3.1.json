@@ -1,0 +1,37 @@
+{
+  "release_version": "0.3.1",
+  "measured_run": "155-hw3-dp8-mp-control-e2e",
+  "measured_source": "81ecde3",
+  "measurement_reused": true,
+  "fresh_wheel_npu_run": false,
+  "identical_dp_runtime_files": [
+    "src/strengthen_dsv4/patches/async_decode/_producer.py",
+    "src/strengthen_dsv4/patches/async_decode/_metadata.py",
+    "src/strengthen_dsv4/patches/async_decode/_warmup.py",
+    "src/strengthen_dsv4/patches/async_decode/_host.py",
+    "src/strengthen_dsv4/patches/async_decode/_packet.py",
+    "src/strengthen_dsv4/patches/compat_lcm/__init__.py",
+    "src/strengthen_dsv4/patches/cross_step/__init__.py",
+    "src/strengthen_dsv4/patches/target_full/__init__.py",
+    "src/strengthen_dsv4/patches/target_full/_dp.py"
+  ],
+  "worker_dp_branches_identical": true,
+  "retained_differences": [
+    "DP-only admission guard (TP1), excluding experimental TP8 continuation",
+    "Target original-call binding remains at module import; DP imports that module immediately in install_capture, with no intervening wrapper installation",
+    "Version and public Worker alias packaging"
+  ],
+  "excluded": [
+    "early-budget executor",
+    "experimental TP continuation",
+    "all-mode worker-retirement extension"
+  ],
+  "checks": {
+    "cpu_tests_passed": 55,
+    "strict_twine": true,
+    "clean_install_alias_and_pins": true,
+    "wheel_sources_match_release_commit": true
+  },
+  "cancelled_run": "162-hw3-dp8-release031-e2e",
+  "implementation_commit": "db734682053910ac200af3f09f5eeaf272f3fecf"
+}
