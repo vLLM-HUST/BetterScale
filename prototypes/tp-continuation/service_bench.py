@@ -75,6 +75,7 @@ def main(args):
     command = args.command[1:] if args.command[:1] == ["--"] else args.command
     assert command
     (args.output / "command.json").write_text(json.dumps(command, indent=2))
+    startup = time.monotonic()
     with (args.output / "server.log").open("w") as log:
         server = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
         try:
@@ -92,14 +93,28 @@ def main(args):
                     raise TimeoutError("Server readiness")
                 time.sleep(3)
             rows = []
+            ready_seconds = time.monotonic() - startup
             with ThreadPoolExecutor(max_workers=args.seats * 2) as clients:
-                # Warm target, producer, metadata and draft shapes before timings.
+                # Retain the historical short prelude for matched cohorts, but
+                # record its first-request costs rather than hiding them. The
+                # candidate's graphs must already exist before HTTP admission.
+                first_started = time.monotonic()
                 tasks = [
                     clients.submit(completion, base, [17 + i % 4] * 128, 32, i)
                     for i in range(args.seats)
                 ]
-                for task in tasks:
-                    task.result()
+                first_requests = [task.result() for task in tasks]
+                (args.output / "first-http.json").write_text(
+                    json.dumps(
+                        dict(
+                            server_ready_seconds=ready_seconds,
+                            elapsed_s=time.monotonic() - first_started,
+                            requests=first_requests,
+                            scope="First HTTP cohort after READY; unchanged 128-in/32-out prelude",
+                        ),
+                        indent=2,
+                    )
+                )
                 for repeat in range(args.repeats):
                     for label, lengths, output in (
                         ("decode", [128] * args.seats, 256),

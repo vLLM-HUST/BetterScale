@@ -106,9 +106,20 @@ gap; do not claim the whole worker is prewarmed until that gap is handled too.
   complete KV backing. No serving-time auxiliary capture remains.
 - `139`: DP8 starts with producer4/metadata6 on every rank; the online observer
   forbids entry growth. All nine HTTP cohorts finish and original32 retrieval
-  questions score32/32. Cold decode17.03s (135) becomes8.50s, but the three-repeat
+  questions score32/32. The first measured decode cohort17.03s (135) becomes8.50s, but the three-repeat
   service comparison still does not establish a stable all-cohort throughput win.
   Preserve the control133 and candidate135/139 data, rather than dropping the
   first repeat or attributing every difference to captured metadata.
 - `140`: next TP candidate also prepares split-draft4+8 before READY and forbids
-  any subsequent NPUGraph construction in the external service observer. Pending.
+  any subsequent NPUGraph construction in the external service observer. That
+  capsule was cancelled before warmup to correct an import. The corrected
+  shared-draft-pool candidate141 then hit foreign, unlisted HBM occupancy during
+  native weight loading. Neither capsule qualifies the new split-draft startup.
+
+
+HTTP133–141 retain the SAME short128-input/32-output request prelude before the
+nine measured cohorts. Do not call their first measured cohort the first HTTP
+request, and do not infer complete graph warmup from that prelude. Entry-growth
+or NPUGraph-construction guards apply immediately after Worker startup, including
+the prelude. The harness now also records `first-http.json` for subsequent runs
+without adding any requests or lengthening the warmup.
