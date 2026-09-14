@@ -577,3 +577,24 @@ is in the package. No MemoryWorker, preflight subclass, RPC or probe startup
 implementation is used. Program is the source candidate at cfd311b plus512K
 context admission; one60K input then eight8K turnover. This is a changed entry/
 composition gate, not another checkpoint load or quality rerun.
+
+Run191 exits1 **during model construction**, before physical KV profiling or
+capture: workers report OOM with only~9GiB torch-allocated, and a CPU-info helper
+also fails JSON parsing after sitecustomize emits runtime initialization logs.
+There was no established allocator/graph-pool result. All8 cards released.
+The heavy sitecustomize hook was an inappropriate fixture: it imported the
+inference runtime in unrelated Python subprocesses as well as workers.
+
+Run192 removes that hook and returns to the known worker-import timing for the
+dummy layout repair. `package_probe_worker.Worker` is a direct alias of the
+actual `betterscale.worker.Worker`, NOT a subclass or alternative implementation.
+Only that import applies the external dummy repair. Same package/shape/program,
+remote`auto-kv-package-entry/result192`, managed SSH session55070; local closure
+`runs/auto-kv-package-entry-20260914/`. Fresh admission and normal bounds remain.
+Do not claim sitecustomize caused the OOM until the corrected control establishes
+it; its CPU-helper interference is directly observed. No real checkpoint reload.
+
+Candidate0.4.0 is built but NOT uploaded.59 CPU tests, strict wheel/sdist metadata,
+clean Worker import and the website's two displayed command contracts pass.
+Implementation branch`lumi/physical-kv-release`; current main/public PyPI are
+unchanged. Website edits remain local until package qualification and publication.
