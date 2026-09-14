@@ -86,3 +86,16 @@ executor are prototype-only, not a change to the delivered worker-only entry.
 - Full-model/graph/state correctness, actual earlier device submission and
   same-host MP throughput/quality are **not yet qualified**. Do not enable this
   in the shipped Worker, claim the bubble removed, or merge it into defaults.
+
+### Hardware pause, September14 ~05:22 UTC
+
+hw3143/144/145 were also rejected at final admission (rank1 >4GiB), before
+model launch. Fletcher confirmed another task starts/probes intermittently,
+then stopped retries after it started. Ordinary SSH and the complete probe
+environment each also produced healthy idle samples between those transitions;
+no environment-specific npu-smi discrepancy was established. No owned model
+process remains and the admission leases were released. Resume only on a fresh
+window; use a NEW capsule name, starting with the short full-model gate, then
+same-host MP control/profile. Scripts and immutable candidate closure are on
+hw3 under `runs/tp-continuation-20260914/early-budget-v1` and
+`run-hw3-early-budget.sh`; do not treat any of143–145 as NPU qualification.
