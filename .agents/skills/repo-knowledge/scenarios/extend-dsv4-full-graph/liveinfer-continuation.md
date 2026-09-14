@@ -217,3 +217,56 @@ Split-draft had a SEPARATE first-use capture site; fixing async_decode alone
 cannot establish a completely prewarmed worker. Its startup change is under
 independent TP qualification; enter the patch README and current task note rather
 than treating TP138 or DP139 as validation of that later change.
+
+## Profiled DP rendezvous and early authorization, September14
+
+Do not describe run120's optimized profile as bubble-free using its separate
+unprofiled event timings. In `profiledecode-metadata` wave8, the aligned rank0
+compute/comm lane has a 9.480ms uncovered interval. Native provider CPU records
+show rank0 entering c10d allreduce 9.368ms before rank1; rank0's Gloo work lasts
+11.863ms. Metadata graph is submitted only after that work completes; target
+replay is submitted 0.088ms before its first compute task. Rank1's preceding
+host draft scope already ends 8.380ms later than rank0's. This establishes late
+target submission and DP waiting in this profiled wave, not the cause of the
+host skew or an unprofiled service speedup estimate. Small aligned crops and
+provider audit: main checkout `runs/tp-continuation-20260914/timeline-excerpts/`
+(`excerpts.json`, `wave8-gap-audit.md`). These are NOT HTTP139 profiles.
+
+Pinned Ascend `_determine_batch_execution_and_padding` invokes synchronous
+`_sync_metadata_across_dp` AFTER `_prepare_inputs`. It exchanges a CPU int32
+[2, dp_size] packet: selected local token capacity and graph mode, then derives
+padding and redispatches. DP8 payload is64bytes; waiting for ranks, not payload
+bandwidth, is the exposed problem. The inspected native code takes minimum
+mode and, when padding is enabled, maximum token capacity. Do not just delete
+this exchange: EP/graph collective shape agreement remains necessary.
+
+Re-reading LiveInfer e3acf0c1 confirms `replenish` plans up to two outstanding
+immutable waves; `_step_requirements` leases K5 lookahead17; owner seat geometry
+is fixed and exact positions/validity are derived inside ordered device work.
+Its concrete DSV4 scheduler plans the all-owner plane, but that centralized
+implementation is NOT a requirement for adopting early authorization in donor.
+Native donor EngineCore already has a schedule/execute(non_block=True) batch
+queue and independent per-DP schedulers. Preserve them.
+
+Candidate, not implemented/qualified: publish the SAME upcoming wave's
+host-known budget/mode at the earliest immutable schedule handoff and overlap
+its asynchronous agreement with preceding device work. Consume its owned result
+at the original padding point. Do not predict acceptance or reuse previous-wave
+counts; request/KV grants and invalid/draining-row semantics must remain valid.
+Record schedule-ready, coordination-submit/done and target-submit times to
+locate a genuinely early hook: merely changing all_reduce to async_op=True
+and immediately waiting in the same late model-runner call hides nothing.
+The observed draft host delay may prevent a worker-entry hook from being early
+enough; queue ingress versus scheduler handoff needs explicit audit, not a new
+central scheduler. Match wave IDs and collective order including dummy ranks;
+all ranks must agree on native fallback, not choose it independently. Prefill,
+turnover and missing draft paths can alter donor's final schedule, so a promised
+shape must either remain valid or be rejected through a group-consistent plan.
+
+The next bounded implementation is `prototypes/dp-early-budget/README.md`: native
+MP EngineCore agreement before the worker RPC, immutable same-SchedulerOutput
+decision, target-only consumption and group-wide fallback. Thirteen CPU tests
+and the real two-rank Gloo/RPC protocol probe pass; local142 was rejected at
+final NPU admission before model launch. It is NOT model-qualified or shipped.
+Compare against the same MP executor, preserve fallback-wave extra exchange
+cost, and do not infer a speedup from parent-side agreement completion alone.
