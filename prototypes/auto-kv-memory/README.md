@@ -513,3 +513,21 @@ Remote closure`/workspace/my-ascend-workspace/runs/tp-continuation-20260914/auto
 output`result189/`, managed SSH session95510. Local closure:
 `runs/auto-kv-tp-pressure-hw3-20260914/`. Same1500s execution/1800s admission bounds;
 no second local watcher. This is not a fix for the earlier3GiB resumed path.
+
+Run189 exits0: all four448Ki+2048 requests finish314.991s; subsequent sixteen
+8K+128 turnover requests finish29.490s. Native KV usage peaks96.8401%, with
+maximum3 long requests simultaneously running; the fourth waits. All8 workers
+submit3859 steps, no resumed requests; draft fallbacks0. Runtime allocated peak
+above READY326.478MiB/rank. Thus near-full cache admission/execution/reclamation
+is qualified for this dummy envelope, but preemption recovery is NOT: none
+occurred. It does not repair the earlier3GiB resumed-path failure. Exact evidence:
+`docs/evidence/auto-kv-run189.json`. Full capsule recovered; owned hw3 process
+has exited0 and release receipt has no NPU processes. No admission watcher left.
+
+The next publication boundary is real-weight quality for the new TP startup
+composition (pre-capture communication priming, shared-pool draft preparation,
+trial/final State retirement). Historical32/32 scores are different artifacts;
+dummy completion cannot replace them. Fletcher restricted these mechanism
+experiments to dummy, so do not silently resume repeated checkpoint loading.
+Public Worker and PyPI remain unchanged. Package integration/release and prefix
+cache qualification remain pending, not implied by the near-full dummy gate.

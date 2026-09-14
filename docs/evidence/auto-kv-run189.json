@@ -1,0 +1,171 @@
+{
+  "run": 189,
+  "status": "PASS_DUMMY_TP_NEAR_FULL",
+  "scope": "TP8 complete automatic sizing, one target/draft graph pool;512K horizon;4 active-seat limit;4128-token wave; synthetic dummy requests, NOT real-weight performance or quality",
+  "cohorts": [
+    {
+      "label": "0-long448-four-pressure",
+      "elapsed_s": 314.9914641639916,
+      "requests": 4,
+      "input_tokens_each": 458752,
+      "output_tokens_each": 2048,
+      "ttft_s": [
+        39.19686302205082,
+        75.58660755504388,
+        195.88806524698157,
+        111.83182633609977
+      ]
+    },
+    {
+      "label": "0-turnover8K",
+      "elapsed_s": 29.490024453029037,
+      "requests": 16,
+      "input_tokens_each": 8192,
+      "output_tokens_each": 128,
+      "ttft_s": [
+        0.571030359948054,
+        1.582035335013643,
+        1.0893755909055471,
+        2.092021735967137,
+        8.400137483025901,
+        5.177280286094174,
+        8.88922420796007,
+        9.444305984070525,
+        7.916109257959761,
+        5.217269893037155,
+        8.02666633494664,
+        8.04577309906017,
+        5.251165080000646,
+        8.376627943012863,
+        5.349056718987413,
+        8.206625499064103
+      ]
+    }
+  ],
+  "observed_metric_maxima": {
+    "0-long448-four-pressure-pressure.jsonl": {
+      "vllm:num_requests_running": 3.0,
+      "vllm:kv_cache_usage_perc": 0.9684010590537585,
+      "vllm:num_preemptions_total": 0
+    },
+    "0-turnover8K-pressure.jsonl": {
+      "vllm:num_requests_running": 4.0,
+      "vllm:kv_cache_usage_perc": 0.3469552204443421,
+      "vllm:num_preemptions_total": 0
+    }
+  },
+  "submissions": [
+    {
+      "rank": 0,
+      "steps": 3859,
+      "resumed_requests": 0
+    },
+    {
+      "rank": 1,
+      "steps": 3859,
+      "resumed_requests": 0
+    },
+    {
+      "rank": 2,
+      "steps": 3859,
+      "resumed_requests": 0
+    },
+    {
+      "rank": 3,
+      "steps": 3859,
+      "resumed_requests": 0
+    },
+    {
+      "rank": 4,
+      "steps": 3859,
+      "resumed_requests": 0
+    },
+    {
+      "rank": 5,
+      "steps": 3859,
+      "resumed_requests": 0
+    },
+    {
+      "rank": 6,
+      "steps": 3859,
+      "resumed_requests": 0
+    },
+    {
+      "rank": 7,
+      "steps": 3859,
+      "resumed_requests": 0
+    }
+  ],
+  "after_pressure": [
+    {
+      "rank": 0,
+      "free": 737968128,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342337024,
+      "draft_replays": 3853,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 1,
+      "free": 854147072,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342337024,
+      "draft_replays": 3853,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 2,
+      "free": 1011228672,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342337024,
+      "draft_replays": 3853,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 3,
+      "free": 1012482048,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342337024,
+      "draft_replays": 3853,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 4,
+      "free": 1011777536,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342337024,
+      "draft_replays": 3853,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 5,
+      "free": 1016004608,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342337024,
+      "draft_replays": 3853,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 6,
+      "free": 1007144960,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342337024,
+      "draft_replays": 3853,
+      "draft_fallbacks": 0
+    },
+    {
+      "rank": 7,
+      "free": 1009008640,
+      "reserved_growth": 6291456,
+      "peak_allocated_above_ready": 342337024,
+      "draft_replays": 3853,
+      "draft_fallbacks": 0
+    }
+  ],
+  "limitations": [
+    "Peak KV96.84%, with maximum3 long requests running; the fourth waited, not4 simultaneously resident long histories",
+    "Zero preemptions/resumes: does NOT repair or qualify earlier3GiB resumed-path failure",
+    "Dummy mechanism only, no quality or real-weight throughput claim",
+    "Public package and defaults unchanged"
+  ]
+}
