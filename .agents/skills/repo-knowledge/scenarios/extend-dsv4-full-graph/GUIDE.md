@@ -287,3 +287,12 @@ updates from capture task-group parameter updates. Its sustained GEMM overlap
 results differ materially from HCCL/AIV; do not transfer backend conclusions.
 The first24-case run passes; task-update support and multi-layer consumer/slot
 lifetimes are separate gates, not implied by that throughput microbenchmark.
+
+For whole-model rather than GEMM-only overlap, read
+`prototypes/graph-dma/qwen-dp2/README.md`: real Qwen DP2EP2 FULL prefill plus
+independent graph-external bulk DMA. Native Qwen attention consumes/resets
+ExternalEvents, so replaying its bare graph handle without parameter-update
+publication stalls even with unchanged metadata. Reuse native `_model_forward`
+when freezing this invocation. Bulk host DMA and sustained local D2D have very
+different observed interference; one fast4GiB local copy does not characterize
+continuous traffic. The fixture preserves full KV-byte and output checks.
