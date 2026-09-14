@@ -297,3 +297,12 @@ observation budget/shared draft pool. Its closure is
 `runs/auto-kv-draft-dummy-local-20260914/`, output`result176/`; launcher1076181
 was verified live after submission. Dummy results cannot qualify model quality.
 All subsequent jobs remain local; hw3 has been released with no queued watcher.
+
+Run176 exits1 before draft preparation, in native dummy target warmup:
+DSACP `npu_transpose_batchmatmul` receives a projection weight with the wrong
+rank (`Dimension out of range ... got 2`). This does not test the corrected
+metadata fixture or physical sizing. Do not expand this capacity task into
+repairing native dummy weight loading. After its supervisor released the local
+lease, run177 uses the already-loading real-weight closure from175 plus the
+CPU metadata correction. Local capsule:
+`runs/auto-kv-draft-real-v2-local-20260914/`, output`result177/`.
