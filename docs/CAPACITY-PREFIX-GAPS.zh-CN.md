@@ -115,3 +115,11 @@ spec字节加权的算法，与直接公共池页预算还有小差异，不能�
 输入均完成，运行期额外allocator峰值约327MiB/rank，所有rank的draft
 fallback为0。观测KV峰值44.5%、最多4个活跃请求、无抢占；不是饱和容量
 或真实权重吞吐成绩。详见`docs/evidence/auto-kv-run187.json`。
+
+### TP 512K dummy 执行边界（run188）
+
+完整 target/draft 共享池自动定容继续通过：单请求448Ki输入、四请求各128Ki输入，
+每个请求生成128token。KV预算14.939–14.947GiB/rank；运行期峰值比READY增加
+325.206MiB，池预留只增加4MiB/rank；八个rank的draft fallback全为0。
+这是dummy机制验收，不是模型质量或真权重吞吐成绩。最高KV占用53.9%、没有抢占，
+所以还没有证明满池恢复能力。精确账见`evidence/auto-kv-run188.json`。

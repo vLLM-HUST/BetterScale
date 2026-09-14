@@ -496,3 +496,20 @@ original agent load or model quality. The fixed execution bound is still1500s.
 Remote closure`/workspace/my-ascend-workspace/runs/tp-continuation-20260914/auto-kv-tp-long512`,
 output`result188/`, managed SSH session18041. Local closure:
 `runs/auto-kv-tp-long512-hw3-20260914/`.
+
+Run188 exits0: dummy single448Ki+128 completes42.750s; four128Ki+128 complete
+41.820s. Automatic KV14.939–14.947GiB/rank; runtime peak above READY325.206MiB,
+reserved growth4MiB/rank, all8 draft fallbacks0. KV observed peak53.9%, zero
+preemptions; no saturation or real-weight throughput claim. Exact receipt:
+`docs/evidence/auto-kv-run188.json`. All hw3 resources released and results
+recovered to the local188 capsule.
+
+Run189 tests the missing pressure boundary with the SAME dummy automatic-fit
+512K program: four448Ki prompts with2048 outputs each, then sixteen8K+128
+turnover requests. Longer outputs keep histories alive while later prefills
+arrive; final native scheduling decides actual overlap/preemption. Probe-only
+StepObserver records CPU submit/resume counts without device synchronization.
+Remote closure`/workspace/my-ascend-workspace/runs/tp-continuation-20260914/auto-kv-tp-pressure`,
+output`result189/`, managed SSH session95510. Local closure:
+`runs/auto-kv-tp-pressure-hw3-20260914/`. Same1500s execution/1800s admission bounds;
+no second local watcher. This is not a fix for the earlier3GiB resumed path.
