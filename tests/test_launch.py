@@ -119,7 +119,7 @@ class WorkerLifecycle(unittest.TestCase):
         calls=[];modules={}
         package=ModuleType('betterscale.patches')
         modules[package.__name__]=package
-        for name in ('compat_lcm','target_full','split_draft','cross_step','ordered_replay','qli_cpu'):
+        for name in ('compat_lcm','hc_workspace','target_full','split_draft','cross_step','ordered_replay','qli_cpu'):
             function='install'
             module=ModuleType('betterscale.patches.'+name)
             setattr(module,function,lambda *a,_name=name,**kw:calls.append(_name))
@@ -133,7 +133,7 @@ class WorkerLifecycle(unittest.TestCase):
             self.assertEqual(worker.compile_or_warm_up_model(),'native-times')
         self.assertEqual(c,before)
         self.assertEqual(dict(os.environ),environment)
-        self.assertEqual(calls,['compat','compat_lcm','target_full','native-init','native-capture',
+        self.assertEqual(calls,['compat','compat_lcm','hc_workspace','target_full','native-init','native-capture',
             'split_draft','cross_step','ordered_replay','qli_cpu','memory-ready','ready_after_capture','ready'])
 
     def test_bad_configuration_fails_before_native_initialization(self):

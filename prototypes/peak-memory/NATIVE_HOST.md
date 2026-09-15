@@ -1,5 +1,9 @@
 # HC-pre workspace-only native build
 
+Historical qualification below preceded package delivery. BetterScale 0.4.2
+ships the retained native fix through `src/betterscale/patches/hc_workspace/`;
+read that patch README for the installed Worker entry and distribution.
+
 This is a native operator patch, not a Python-wheel feature. Keep the shared
 donor installation untouched. Tested source: Ascend9bf964cb, CANN9.0.1,
 Ascend910B2, Python3.12, native API/kernel package already used by the donor.

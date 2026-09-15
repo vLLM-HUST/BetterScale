@@ -103,6 +103,11 @@
       "distribution": "vllm-ascend",
       "path": "vllm_ascend/core/single_type_kv_cache_manager.py",
       "sha256": "4f55ca45bec165ae0d6d5bb6b0fee314a3a440a406d9560479b7c58ec42949da"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/utils.py",
+      "sha256": "c21e2fbb6d04da43f7490c418a5a19e53f2ff5aff9f068f8fa4f1ad0f7d81593"
     }
   ]
 }

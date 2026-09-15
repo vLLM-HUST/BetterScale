@@ -127,3 +127,26 @@ public before the PyPI simple index used by pip has the release.0.4.1's first
 website CI install saw only0.4.0 despite a successful official artifact download.
 Verify the simple index as well before pushing a versioned installation job;
 retain that failure and retry only after propagation, not by altering dependencies.
+
+## Native HC-pre delivery: 0.4.2
+
+The release is no longer a pure-Python wheel: Linux/aarch64 CANN9.0.1 host tiling
+is bundled (no device kernels/API rebuild). Enter `patches/hc_workspace/README.md`
+inside the package before native packaging. The source-controlled `native.json`
+identifies the qualified artifact; copy that library into a **fresh staging tree**
+before build. `setup.py` rejects absent or mismatched artifacts, including sdist
+builds. Keep native binaries out of Git. Include the CANN1.0/2.0 license/notices and
+platform wheel tag; do not claim the whole payload is Apache-only.
+
+Worker selects a complete process-private copied vendor before native registration
+on TP only, preserving original files and other vendors. Merely setting OPP path
+is insufficient: native bootstrap uses `_CUSTOM_OP_BASE_DIR`. Source pin count is
+now20 (adds `vllm_ascend/utils.py`). DP does not select this native patch. No
+residual-alias optimization ships. The release check uses an installed wheel on
+hw3, not a copied private-vendor fixture. Its only model fixture is dummy-loader
+layout and dummy admission; neither changes installed package files.
+
+Do not reject an already-imported `vllm_ascend_C` alone: native camem imports
+it while loading NPUWorker. That unchanged API import is earlier than host
+tiling. The qualified gate rejects actual custom-op enablement or an already
+loaded vendor tiler (`/proc/self/maps`), not this harmless extension import.

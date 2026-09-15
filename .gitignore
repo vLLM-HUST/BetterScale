@@ -10,3 +10,5 @@ __pycache__/
 /kernel_meta/
 
 *.egg-info/
+
+/src/betterscale/patches/hc_workspace/*.so

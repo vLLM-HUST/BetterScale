@@ -6,6 +6,7 @@ KV budget, networking and environment remain the user's native vLLM settings.
 """
 
 PATCH_IDS = (
+    "hc-workspace",
     "physical-kv-budget",
     "compat-lcm",
     "target-full",

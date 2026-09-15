@@ -28,6 +28,9 @@ class Worker(PhysicalMemoryMixin, NPUWorker):
             target_full.install(native_dsa=True)
             async_decode.install_capture()
         else:
+            from .patches import hc_workspace
+
+            hc_workspace.install()
             target_full.install()
         super().__init__(vllm_config, *args, **kwargs)
 

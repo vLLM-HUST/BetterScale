@@ -14,11 +14,14 @@ patches; it does not replace the serving engine or configure your environment.
 Use your **existing, working Ascend serving environment**, with Python 3.12+:
 
 ```bash
-python -m pip install --no-deps vllm-betterscale==0.4.1
+python -m pip install --no-deps vllm-betterscale==0.4.2
 ```
 
 The package deliberately does not install or upgrade vLLM, vLLM-Ascend, torch-npu,
-CANN, model weights, or kernels. Install those through your normal Ascend deployment.
+the CANN runtime, model weights, or device kernels. Install those through your normal
+Ascend deployment. The Linux/aarch64 package includes a qualified HC-pre host-tiling
+library for TP, selected privately without overwriting your donor installation.
+Native CANN-licensed components remain solely for Ascend processors.
 
 This release is pinned to **vLLM 0.25.1**, **vLLM-Ascend 0.25.1rc1**, and
 **torch-npu 2.10.0.post2**. The measured environment uses CANN 9.0.1 and eight
@@ -149,3 +152,11 @@ passes a16-request repeated cohort, two requests per engine. This enables the
 existing native cache mechanism; no new cache algorithm or execution hook is added.
 The native option can still be disabled. These are bounded reuse/quality checks,
 not whole-suite certification or a preemption-recovery fix.
+
+## 0.4.2 memory improvements
+
+TP now clears each KV backing once and removes HC-pre’s fixed workspace floor.
+On the qualified TP8 dummy FULL configuration, automatic KV budget increased by
+about 186 MiB/rank (1.21%) and READY reserved memory fell 360 MiB/rank, with the
+same 1 GiB safety reserve. These are capacity measurements, not new throughput
+or real-weight quality results. DP native tiling is unchanged.

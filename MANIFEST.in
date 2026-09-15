@@ -9,3 +9,6 @@ prune upstream
 prune evidence
 prune .agents
 global-exclude __pycache__ *.py[cod]
+
+include setup.py
+recursive-include src/betterscale/patches/hc_workspace *.so *.patch *.txt

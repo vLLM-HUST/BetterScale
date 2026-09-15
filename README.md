@@ -13,8 +13,10 @@ correctness, memory and service-quality comparisons.
 ## Install and start
 
 See [public package instructions](docs/PYPI.md) for the version-pinned install and
-complete native TP8 / DP8 launch examples. This release changes packaging and naming,
-not the qualified engine execution path.
+complete native TP8 / DP8 launch examples. Version 0.4.2 adds backing-level KV
+clear and a privately selected HC-pre host tiler on TP. It preserves the donor
+installation, the single target/draft graph pool and the 1 GiB safety reserve.
+See [memory-patch mechanics and native build](src/betterscale/patches/hc_workspace/README.md).
 
 ## End-to-end service evidence
 

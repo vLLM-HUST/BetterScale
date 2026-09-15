@@ -1,0 +1,11 @@
+{
+  "compared_files": 696,
+  "changed": [
+    "op_impl/ai_core/tbe/op_tiling/liboptiling.so",
+    "op_impl/ai_core/tbe/op_tiling/lib/linux/aarch64/libcust_opmaster_rt2.0.so"
+  ],
+  "contained_symlinks": [],
+  "host_operator_set": "native build_aclnn.sh ascend910b:34 operators",
+  "original_library_sha256": "bc443be80fdddf97a2b45f59fc8ec3a06e1052bde41b7a63db57ac0802e40496",
+  "candidate_library_sha256": "38fad253a502cfc59bf4148d964363549f8e8517e36e1043630061c4b4c5ba82"
+}

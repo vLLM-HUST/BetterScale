@@ -1,0 +1,263 @@
+Original notices from the qualified host build’s csrc dependencies.
+Source: vllm-ascend 9bf964cb4b87c8cd0d6852c41a55b3c29711fa95.
+The HC-pre workspace-only change is marked in workspace.patch.
+
+Files: attention/compressor/op_host/arch32/compressor_tiling.cpp, attention/compressor/op_host/arch32/compressor_tiling.h, attention/compressor/op_kernel/arch32/compressor_template_tiling_key.h, attention/compressor/op_kernel/arch32/compressor_tiling_data.h, attention/kv_quant_sparse_flash_attention/op_host/kv_quant_sparse_flash_attention_tiling.h, attention/kv_quant_sparse_flash_attention/op_kernel/kv_quant_sparse_flash_attention_template_tiling_key.h, attention/sparse_attn_sharedkv/op_host/sparse_attn_sharedkv_tiling.cpp, attention/sparse_attn_sharedkv/op_host/sparse_attn_sharedkv_tiling.h, attention/sparse_attn_sharedkv/op_kernel/sparse_attn_sharedkv_template_tiling_key.h, attention/vllm_quant_lightning_indexer/op_host/vllm_quant_lightning_indexer_tiling.cpp, attention/vllm_quant_lightning_indexer/op_host/vllm_quant_lightning_indexer_tiling.h, attention/vllm_quant_lightning_indexer/op_kernel/vllm_quant_lightning_indexer_template_tiling_key.h
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: attention/compressor_metadata/op_host/compressor_metadata_tiling.cpp
+/*
+ * Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
+ */
+
+Files: attention/inplace_partial_rotary_mul/op_host/inplace_partial_rotary_mul_a3_tiling.cpp, attention/store_kv_block/op_host/store_kv_block_tiling.cpp
+/**
+ * Copyright (c) Huawei Technologies Co., Ltd. 2025. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+Files: attention/inplace_partial_rotary_mul/op_host/inplace_partial_rotary_mul_tiling.cpp, attention/inplace_partial_rotary_mul/op_host/inplace_partial_rotary_mul_tiling.h, attention/inplace_partial_rotary_mul/op_host/rope_regbase_tiling_a_and_b.cpp, attention/inplace_partial_rotary_mul/op_host/rope_regbase_tiling_ab.cpp, attention/inplace_partial_rotary_mul/op_host/rope_regbase_tiling_aba_and_ba.cpp, attention/inplace_partial_rotary_mul/op_host/rope_regbase_tiling_bab.cpp, attention/inplace_partial_rotary_mul/op_host/rope_regbase_tiling_base.cpp, attention/kv_quant_sparse_flash_attention/op_host/kv_quant_sparse_flash_attention_tiling.cpp, attention/lightning_indexer/op_host/lightning_indexer_tiling.cpp, attention/lightning_indexer/op_host/lightning_indexer_tiling.h, attention/lightning_indexer/op_kernel/lightning_indexer_template_tiling_key.h, attention/sparse_flash_attention/op_host/sparse_flash_attention_tiling.cpp, attention/sparse_flash_attention/op_host/sparse_flash_attention_tiling.h, attention/sparse_flash_attention/op_kernel/sparse_flash_attention_template_tiling_key.h, common/include/err/ops_err.h, common/include/fallback/fallback_comm.h, common/include/fallback/fallback_comm_2stages.h, common/include/tiling_base/tiling_base.h, common/include/tiling_base/tiling_key.h, common/include/tiling_base/tiling_templates_registry.h, common/include/tiling_base/tiling_util.h, common/src/fallback_comm.cpp, common/src/fallback_comm_2stages.cpp, common/src/tiling_base/tiling_util.cpp, common/stub/op_tiling/op_cache_def_tiling.h, common/stub/op_tiling/op_cache_tiling.cpp, common/stub/op_tiling/op_cache_tiling.h, common/stub/op_tiling/register/tuning_tiling_reflection_utils.h, common/stub/op_tiling/register/tuning_tiling_registry.h, common/stub/op_tiling/runtime_kb_api.cpp, common/stub/op_tiling/runtime_kb_api.h, common/stub/op_tiling/tbe_tiling_api.cpp, common/stub/op_tiling/tbe_tiling_api.h, gmm/grouped_matmul_swiglu_quant/op_host/grouped_matmul_swiglu_quant_tiling.cpp, gmm/grouped_matmul_swiglu_quant/op_host/grouped_matmul_swiglu_quant_tiling.h, gmm/grouped_matmul_swiglu_quant_v2/op_host/grouped_matmul_swiglu_quant_v2_base_tiling.cpp, gmm/grouped_matmul_swiglu_quant_v2/op_host/grouped_matmul_swiglu_quant_v2_base_tiling.h, gmm/grouped_matmul_swiglu_quant_v2/op_host/grouped_matmul_swiglu_quant_v2_fusion_tiling.cpp, gmm/grouped_matmul_swiglu_quant_v2/op_host/grouped_matmul_swiglu_quant_v2_fusion_tiling.h, gmm/grouped_matmul_swiglu_quant_v2/op_host/grouped_matmul_swiglu_quant_v2_tiling.cpp, gmm/grouped_matmul_swiglu_quant_v2/op_host/grouped_matmul_swiglu_quant_v2_tiling.h
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: attention/lightning_indexer_quant/op_host/lightning_indexer_quant_tiling.cpp, attention/lightning_indexer_quant/op_host/lightning_indexer_quant_tiling.h, attention/lightning_indexer_quant/op_kernel/lightning_indexer_quant_template_tiling_key.h
+/**
+ * This program is free software, you can redistribute it and/or modify it.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: attention/recurrent_gated_delta_rule/op_host/math_util.h, moe/moe_gating_top_k/op_host/math_util.h
+/**
+* Copyright (c) 2025 Huawei Technologies Co., Ltd.
+* This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+* CANN Open Software License Agreement Version 2.0 (the "License").
+* Please refer to the License for details. You may not use this file except in compliance with the License.
+* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+* INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+* See LICENSE in the root of the software repository for the full text of the License.
+*/
+
+Files: attention/recurrent_gated_delta_rule/op_host/recurrent_gated_delta_rule_tiling.cpp, attention/recurrent_gated_delta_rule/op_host/recurrent_gated_delta_rule_tiling.h, attention/recurrent_gated_delta_rule/op_kernel/recurrent_gated_delta_rule_tiling_data.h
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: attention/rms_norm_dynamic_quant/op_host/rms_norm_dynamic_quant_tiling.cpp, attention/rms_norm_dynamic_quant/op_host/rms_norm_dynamic_quant_tiling.h, moe/add_rms_norm_bias/op_host/add_rms_norm_bias_tiling.cpp, moe/add_rms_norm_bias/op_host/add_rms_norm_bias_tiling.h
+/**
+ * This program is free software, you can redistribute it and/or modify.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: gmm/grouped_matmul_swiglu_quant_weight_nz_tensor_list/op_host/grouped_matmul_swiglu_quant_weight_nz_tensor_list_tiling.cpp, gmm/grouped_matmul_swiglu_quant_weight_nz_tensor_list/op_host/grouped_matmul_swiglu_quant_weight_nz_tensor_list_tiling.h
+/*
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: moe/causal_conv1d/op_host/causal_conv1d_tiling.cpp, moe/causal_conv1d/op_host/causal_conv1d_tiling_planner.h, moe/causal_conv1d/op_host/causal_conv1d_tiling_utils.h, moe/causal_conv1d/op_host/causal_conv1d_tiling_validation.h, moe/causal_conv1d/op_kernel/causal_conv1d_tiling_data.h, moe/causal_conv1d/op_kernel/causal_conv1d_tiling_key.h
+/**
+ * This program is free software, you can redistribute it and/or modify it.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING
+ * BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: moe/chunk_fwd_o/op_host/chunk_fwd_o_tiling.cpp, moe/chunk_fwd_o/op_host/chunk_fwd_o_tiling.h, moe/chunk_gated_delta_rule_fwd_h/op_host/chunk_gated_delta_rule_fwd_h_tiling.cpp, moe/chunk_gated_delta_rule_fwd_h/op_host/chunk_gated_delta_rule_fwd_h_tiling.h
+/**
+ * Copyright (c) 2025 Tianjin University, Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * the BSD 3-Clause License (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ */
+
+Files: moe/chunk_fwd_o/tiling_base/data_copy_transpose_tiling.h, moe/chunk_fwd_o/tiling_base/data_copy_transpose_tiling_def.h, moe/chunk_fwd_o/tiling_base/tiling_base.h, moe/chunk_fwd_o/tiling_base/tiling_templates_registry.h, moe/chunk_gated_delta_rule_fwd_h/tiling_base/data_copy_transpose_tiling.h, moe/chunk_gated_delta_rule_fwd_h/tiling_base/data_copy_transpose_tiling_def.h, moe/chunk_gated_delta_rule_fwd_h/tiling_base/tiling_base.h, moe/chunk_gated_delta_rule_fwd_h/tiling_base/tiling_templates_registry.h, moe/moe_gating_top_k/op_host/moe_gating_top_k_tiling.cpp, moe/moe_gating_top_k/op_host/moe_gating_top_k_tiling.h, moe/moe_gating_top_k/op_host/moe_gating_top_k_tiling_arch35.cpp, moe/moe_gating_top_k/op_host/moe_gating_top_k_tiling_base.cpp
+/**
+ * This program is free software, you can redistribute it and/or modify.
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: moe/dequant_swiglu_quant/op_host/dequant_swiglu_quant_proto.h, moe/dequant_swiglu_quant/op_host/dequant_swiglu_quant_tiling.cpp, moe/dequant_swiglu_quant/op_host/dequant_swiglu_quant_tiling.h, moe/dequant_swiglu_quant/op_host/dequant_swiglu_quant_tiling_arch35.cpp, moe/dequant_swiglu_quant/op_host/dequant_swiglu_quant_tiling_base.cpp, moe/dequant_swiglu_quant/op_host/swi_glu_grad_regbase_tiling.h, moe/dequant_swiglu_quant/op_host/swi_glu_tiling.h, moe/dequant_swiglu_quant/tiling_base/error_log.h, moe/dequant_swiglu_quant/tiling_base/static_register_symbol.h, moe/dequant_swiglu_quant/tiling_base/tiling_base.h, moe/dequant_swiglu_quant/tiling_base/tiling_templates_registry.h, moe/dequant_swiglu_quant/tiling_base/tiling_util.h, moe/moe_gating_top_k_hash/op_host/moe_gating_top_k_hash_tiling.cpp, moe/moe_gating_top_k_hash/op_host/moe_gating_top_k_hash_tiling.h, moe/moe_gating_top_k_hash/op_host/moe_gating_top_k_hash_tiling_arch35.h
+/**
+ * Copyright (c) 2025 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: moe/hc_post/op_host/hc_post_tiling.cpp, moe/hc_post/op_host/hc_post_tiling.h, moe/hc_post/op_host/hc_post_tiling_arch35.h, moe/hc_pre/op_host/hc_pre_tiling.cpp, moe/hc_pre/op_host/hc_pre_tiling.h, moe/hc_pre/op_host/hc_pre_tiling_arch35.h, moe/hc_pre_inv_rms/op_host/hc_pre_inv_rms_tiling.cpp, moe/hc_pre_inv_rms/op_host/hc_pre_inv_rms_tiling.h, moe/hc_pre_inv_rms/op_host/hc_pre_inv_rms_tiling_arch35.h, moe/hc_pre_inv_rms/op_host/hc_pre_inv_rms_tiling_large_d.h, moe/hc_pre_sinkhorn/op_host/hc_pre_sinkhorn_tiling.cpp, moe/hc_pre_sinkhorn/op_host/hc_pre_sinkhorn_tiling.h
+/**
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: moe/scatter_nd_update_v2/op_host/scatter_nd_update_v2_tiling.cpp, moe/scatter_nd_update_v2/op_host/scatter_nd_update_v2_tiling.h
+/**
+ * Copyright (c) 2025-2026 Huawei Technologies Co., Ltd.
+ * This program is free software, you can redistribute it and/or modify it under the terms and conditions of
+ * CANN Open Software License Agreement Version 2.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: third_party/json/include/nlohmann/adl_serializer.hpp, third_party/json/include/nlohmann/byte_container_with_subtype.hpp, third_party/json/include/nlohmann/detail/abi_macros.hpp, third_party/json/include/nlohmann/detail/conversions/from_json.hpp, third_party/json/include/nlohmann/detail/conversions/to_json.hpp, third_party/json/include/nlohmann/detail/exceptions.hpp, third_party/json/include/nlohmann/detail/hash.hpp, third_party/json/include/nlohmann/detail/input/binary_reader.hpp, third_party/json/include/nlohmann/detail/input/input_adapters.hpp, third_party/json/include/nlohmann/detail/input/json_sax.hpp, third_party/json/include/nlohmann/detail/input/lexer.hpp, third_party/json/include/nlohmann/detail/input/parser.hpp, third_party/json/include/nlohmann/detail/input/position_t.hpp, third_party/json/include/nlohmann/detail/iterators/internal_iterator.hpp, third_party/json/include/nlohmann/detail/iterators/iter_impl.hpp, third_party/json/include/nlohmann/detail/iterators/iteration_proxy.hpp, third_party/json/include/nlohmann/detail/iterators/iterator_traits.hpp, third_party/json/include/nlohmann/detail/iterators/json_reverse_iterator.hpp, third_party/json/include/nlohmann/detail/iterators/primitive_iterator.hpp, third_party/json/include/nlohmann/detail/json_custom_base_class.hpp, third_party/json/include/nlohmann/detail/json_pointer.hpp, third_party/json/include/nlohmann/detail/json_ref.hpp, third_party/json/include/nlohmann/detail/macro_scope.hpp, third_party/json/include/nlohmann/detail/macro_unscope.hpp, third_party/json/include/nlohmann/detail/meta/call_std/begin.hpp, third_party/json/include/nlohmann/detail/meta/call_std/end.hpp, third_party/json/include/nlohmann/detail/meta/detected.hpp, third_party/json/include/nlohmann/detail/meta/identity_tag.hpp, third_party/json/include/nlohmann/detail/meta/is_sax.hpp, third_party/json/include/nlohmann/detail/meta/std_fs.hpp, third_party/json/include/nlohmann/detail/meta/type_traits.hpp, third_party/json/include/nlohmann/detail/meta/void_t.hpp, third_party/json/include/nlohmann/detail/output/binary_writer.hpp, third_party/json/include/nlohmann/detail/output/output_adapters.hpp, third_party/json/include/nlohmann/detail/string_concat.hpp, third_party/json/include/nlohmann/detail/string_escape.hpp, third_party/json/include/nlohmann/detail/value_t.hpp, third_party/json/include/nlohmann/json.hpp, third_party/json/include/nlohmann/json_fwd.hpp, third_party/json/include/nlohmann/ordered_map.hpp, third_party/json/include/nlohmann/thirdparty/hedley/hedley_undef.hpp
+//     __ _____ _____ _____
+//  __|  |   __|     |   | |  JSON for Modern C++
+// |  |  |__   |  |  | | | |  version 3.11.3
+// |_____|_____|_____|_|___|  https://github.com/nlohmann/json
+//
+// SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
+// SPDX-License-Identifier: MIT
+
+Files: third_party/json/include/nlohmann/detail/conversions/to_chars.hpp
+//     __ _____ _____ _____
+//  __|  |   __|     |   | |  JSON for Modern C++
+// |  |  |__   |  |  | | | |  version 3.11.3
+// |_____|_____|_____|_|___|  https://github.com/nlohmann/json
+//
+// SPDX-FileCopyrightText: 2009 Florian Loitsch <https://florian.loitsch.com/>
+// SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
+// SPDX-License-Identifier: MIT
+
+Files: third_party/json/include/nlohmann/detail/conversions/to_chars.hpp
+/*!
+@brief implements the Grisu2 algorithm for binary to decimal floating-point
+conversion.
+
+This implementation is a slightly modified version of the reference
+implementation which may be obtained from
+http://florian.loitsch.com/publications (bench.tar.gz).
+
+The code is distributed under the MIT license, Copyright (c) 2009 Florian Loitsch.
+
+For a detailed description of the algorithm see:
+
+[1] Loitsch, "Printing Floating-Point Numbers Quickly and Accurately with
+    Integers", Proceedings of the ACM SIGPLAN 2010 Conference on Programming
+    Language Design and Implementation, PLDI 2010
+[2] Burger, Dybvig, "Printing Floating-Point Numbers Quickly and Accurately",
+    Proceedings of the ACM SIGPLAN 1996 Conference on Programming Language
+    Design and Implementation, PLDI 1996
+*/
+
+Files: third_party/json/include/nlohmann/detail/meta/cpp_future.hpp
+//     __ _____ _____ _____
+//  __|  |   __|     |   | |  JSON for Modern C++
+// |  |  |__   |  |  | | | |  version 3.11.3
+// |_____|_____|_____|_|___|  https://github.com/nlohmann/json
+//
+// SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
+// SPDX-FileCopyrightText: 2018 The Abseil Authors
+// SPDX-License-Identifier: MIT
+
+Files: third_party/json/include/nlohmann/detail/meta/cpp_future.hpp
+// The following code is taken from https://github.com/abseil/abseil-cpp/blob/10cb35e459f5ecca5b2ff107635da0bfa41011b4/absl/utility/utility.h
+// which is part of Google Abseil (https://github.com/abseil/abseil-cpp), licensed under the Apache License 2.0.
+
+Files: third_party/json/include/nlohmann/detail/output/serializer.hpp
+//     __ _____ _____ _____
+//  __|  |   __|     |   | |  JSON for Modern C++
+// |  |  |__   |  |  | | | |  version 3.11.3
+// |_____|_____|_____|_|___|  https://github.com/nlohmann/json
+//
+// SPDX-FileCopyrightText: 2008-2009 Björn Hoehrmann <bjoern@hoehrmann.de>
+// SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
+// SPDX-License-Identifier: MIT
+
+Files: third_party/json/include/nlohmann/thirdparty/hedley/hedley.hpp
+//     __ _____ _____ _____
+//  __|  |   __|     |   | |  JSON for Modern C++
+// |  |  |__   |  |  | | | |  version 3.11.3
+// |_____|_____|_____|_|___|  https://github.com/nlohmann/json
+//
+// SPDX-FileCopyrightText: 2013-2023 Niels Lohmann <https://nlohmann.me>
+// SPDX-FileCopyrightText: 2016-2021 Evan Nemerson <evan@nemerson.com>
+// SPDX-License-Identifier: MIT
+
+Files: utils/inc/error/ops_error.h, utils/inc/log/inner/dfx_base.h, utils/inc/log/ops_log.h
+/**
+ * Copyright (c) 2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
+
+Files: utils/inc/tiling/tiling_base.h
+/**
+ * Copyright (c) 2023-2024 Huawei Technologies Co., Ltd.
+ * This file is a part of the CANN Open Software.
+ * Licensed under CANN Open Software License Agreement Version 1.0 (the "License").
+ * Please refer to the License for details. You may not use this file except in compliance with the License.
+ * THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED,
+ * INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY, OR FITNESS FOR A PARTICULAR PURPOSE.
+ * See LICENSE in the root of the software repository for the full text of the License.
+ */
