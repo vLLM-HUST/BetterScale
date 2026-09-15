@@ -36,3 +36,9 @@ Buffer-depth ablation is complete in MICROPIPELINE:8 slots and fully unique
 per-tile storage both passed dummy FULL but were slower than2 slots. Do not
 repeat buffer expansion on the assumption Cube must be credit-starved. Distinguish
 net timing from direct wait attribution; scratch allocation differs by build.
+
+[Per-core PMU](../../../../../prototypes/qwen14b-native/native-ffn/PMU.md)
+now measures pair credit wait~13us, Vector ready wait~3.32ms, and worse AIC
+L2 read-hit/MTE2 duration than native. No dominant credit-wait evidence.
+TimelineDetail failed while real-board PMU CSVs succeeded; preserve that partial
+status. Kernel-prefix filtering works; tested MSTX wrappers did not select kernels.
