@@ -1,5 +1,10 @@
 # BF16 FFN fusion and native FULL graph investigation
 
+The subsequent local single-card BF16 fusion trial is complete: see
+[ffn/README.md](ffn/README.md). Persistent tiled fusion bounds relay memory but
+remains2.2–2.3x slower than native whole FFN; it was NOT integrated into serving.
+The original AscendC adaptation below remains a design, not that implementation.
+
 ## Resource boundary
 
 Fletcher's September15 steering: single-card work runs on the **local host**;

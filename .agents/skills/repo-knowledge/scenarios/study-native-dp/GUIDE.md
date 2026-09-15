@@ -6,6 +6,11 @@ It needs no BetterScale execution patch. Retain the distinction between native
 resolved graph policy and actual replay coverage, and between offline cohort
 timings and the separately profiled device windows. The observer defers native
 DB analysis until after workers exit; imported profiles must be locally owned.
+For BF16 FFN fusion follow-ups, read `prototypes/qwen14b-native/ffn/README.md`
+before repeating tiled GEMM tests. The compiler allocates relay per logical
+program: a tiled fused source is not automatically bounded scratch. The local
+persistent-program probe bounds it, but still loses latency to native. Single-card
+Qwen work is now local-only; preserve hw3 whole-eight-card availability.
 
 For released0.4.1 APC compatibility, enter `prototypes/prefix-caching/README.md`
 and its retained193–195 capsules before re-running prefix experiments. Both TP
