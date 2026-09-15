@@ -21,6 +21,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--library", required=True)
     ap.add_argument("--output", type=Path, required=True)
+    ap.add_argument(
+        "--full-buffer",
+        action="store_true",
+        help="allocate unique256-row paired tiles; required for FULL_BUFFER binary",
+    )
     args = ap.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(4)
@@ -41,7 +46,17 @@ def main():
         y = ybuf[128:-128].view(m, I)
         slab = 256
         sbuf = torch.full(
-            (2 * slab * 2 * I + 256,), 19, device="npu", dtype=torch.bfloat16
+            (
+                (
+                    (m + 255) // 256 * 256 * 2 * I
+                    if args.full_buffer
+                    else 2 * slab * 2 * I
+                )
+                + 256,
+            ),
+            19,
+            device="npu",
+            dtype=torch.bfloat16,
         )
         scratch = sbuf[128:-128]
         x0 = x.cpu()

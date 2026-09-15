@@ -30,8 +30,16 @@ using namespace matmul;
 #ifndef NATIVE_PAIR
 #define NATIVE_PAIR 0
 #endif
+#ifndef NATIVE_FULL_BUFFER
+#define NATIVE_FULL_BUFFER 0
+#endif
+#ifndef NATIVE_SLOTS
+#define NATIVE_SLOTS 2
+#endif
 namespace native_bf16 {
 constexpr uint32_t CM=NATIVE_CM, CN=NATIVE_CN, CK=NATIVE_CK;
+static_assert(!NATIVE_FULL_BUFFER || (NATIVE_PAIR && NATIVE_CM == 256 && NATIVE_CN == 128),
+              "full-buffer notification bound is validated for256x128 only");
 constexpr uint32_t H = 5120, I = 13824, N = 2 * I, CORES = 24;
 // Keep the original native MDL GEMM, not a scalar/Triton K-loop rewrite.
 __aicore__ constexpr MatmulConfig MakeConfig() {
@@ -151,9 +159,13 @@ public:
         for (uint32_t tile = core; tile < total; tile += CORES, ++seq) {
             uint32_t r = tile / nc * CM, c = tile % nc * CN;
             uint32_t live = rows - r < CM ? rows - r : CM;
-            uint64_t base = ((uint64_t)core * 2 + seq % 2) * CM * (2 * CN);
+            uint64_t base = ((uint64_t)core * NATIVE_SLOTS + seq % NATIVE_SLOTS) * CM * (2 * CN);
+#if NATIVE_FULL_BUFFER
+            base = (uint64_t)tile * CM * (2 * CN);
+#endif
+            uint16_t ready = NATIVE_FULL_BUFFER ? 8 + seq % 8 : 8;
             if ASCEND_IS_AIC {
-                if (seq >= 2) CrossCoreWaitFlag(0x9);
+                if (!NATIVE_FULL_BUFFER && seq >= NATIVE_SLOTS) CrossCoreWaitFlag(0x9);
                 mm.SetOrgShape(live, 2 * CN, H);
                 mm.SetSingleShape(live, CN, H);
                 mm.SetTensorA(x[(uint64_t)r * H], false);
@@ -162,10 +174,10 @@ public:
                 mm.SetTensorA(x[(uint64_t)r * H], false);
                 mm.SetTensorB(weight[(uint64_t)(I + c) * H], false);
                 mm.Iterate(); mm.GetTensorC(scratch[base + CN], 0);
-                CrossCoreSetFlag<0x2, PIPE_FIX>(0x8);
+                CrossCoreSetFlag<0x2, PIPE_FIX>(ready);
             }
             if ASCEND_IS_AIV {
-                CrossCoreWaitFlag(0x8);
+                CrossCoreWaitFlag(ready);
                 if (vectorEnabled) {
                     for (uint32_t rr = (GetBlockIdx() % 2) * VR; rr < live; rr += 2 * VR) {
                         uint32_t take = live - rr < VR ? live - rr : VR;
@@ -192,11 +204,13 @@ public:
                         outQueue.FreeTensor(out); inQueue.FreeTensor(in);
                     }
                 }
-                CrossCoreSetFlag<0x2, PIPE_MTE3>(0x9);
+                if (!NATIVE_FULL_BUFFER) CrossCoreSetFlag<0x2, PIPE_MTE3>(0x9);
             }
         }
         if ASCEND_IS_AIC {
-            for (uint32_t i = 0; i < (seq < 2 ? seq : 2); ++i) CrossCoreWaitFlag(0x9);
+            if (!NATIVE_FULL_BUFFER) {
+                for (uint32_t i = 0; i < (seq < NATIVE_SLOTS ? seq : NATIVE_SLOTS); ++i) CrossCoreWaitFlag(0x9);
+            }
         }
     }
     __aicore__ inline void Process(bool vectorEnabled = true) {

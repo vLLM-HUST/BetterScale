@@ -39,6 +39,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--library", required=True)
     ap.add_argument("--output", required=True, type=Path)
+    ap.add_argument(
+        "--full-buffer",
+        action="store_true",
+        help="allocate unique256-row paired tiles; required for FULL_BUFFER binary",
+    )
     args = ap.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     torch.set_num_threads(4)
@@ -67,12 +72,22 @@ def main():
         gn, on, mn = capture(native_nz)
         ne = metric(on, oa)
         assert ne["max_abs"] <= 0.0625 and ne["rms"] <= 0.005, ne
-        for slab in [256, 1024, 2048]:
+        for slab in ([256] if args.full_buffer else [256, 1024, 2048]):
             sb = torch.full(
-                (2 * slab * 2 * I + 256,), 19, device="npu", dtype=torch.bfloat16
+                (
+                    (
+                        (m + 255) // 256 * 256 * 2 * I
+                        if args.full_buffer
+                        else 2 * slab * 2 * I
+                    )
+                    + 256,
+                ),
+                19,
+                device="npu",
+                dtype=torch.bfloat16,
             )
             scratch = sb[128:-128]
-            for vc in [256, 512]:
+            for vc in ([256] if args.full_buffer else [256, 512]):
 
                 def candidate():
                     ret = launch(

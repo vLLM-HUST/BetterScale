@@ -31,3 +31,8 @@ hypothesis. The fusion remains slower than native NZ pure GEMM.
 records MatMulV3 call/swizzle ablations and the successful per-Cube paired-slot
 protocol. Objective is SwiGLU overlap, not bounded scratch alone. Pair scratch
 layout invalidates diagnose.py's slab oracle; use the full-output smoke/FFN tests.
+
+Buffer-depth ablation is complete in MICROPIPELINE:8 slots and fully unique
+per-tile storage both passed dummy FULL but were slower than2 slots. Do not
+repeat buffer expansion on the assumption Cube must be credit-starved. Distinguish
+net timing from direct wait attribution; scratch allocation differs by build.

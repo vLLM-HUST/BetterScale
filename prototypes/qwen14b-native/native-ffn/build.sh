@@ -6,7 +6,7 @@ cann=/usr/local/Ascend/cann-9.0.1
 mkdir -p "$BUILD_DIR"
 set +u; source "$cann/set_env.sh"; set -u
 "$cann/bin/bisheng" -std=c++17 -O2 --asc-aicore-lang --npu-arch=dav-2201 \
-  -fPIC -shared -DNATIVE_CM="${NATIVE_CM:-128}" -DNATIVE_CN="${NATIVE_CN:-256}" -DNATIVE_CK="${NATIVE_CK:-128}" -DNATIVE_PAIR="${NATIVE_PAIR:-0}" -DNATIVE_V3="${NATIVE_V3:-0}" -DNATIVE_SWIZZLE="${NATIVE_SWIZZLE:-0}" -D_GLIBCXX_USE_CXX11_ABI=0 -Wno-ignored-attributes \
+  -fPIC -shared -DNATIVE_CM="${NATIVE_CM:-128}" -DNATIVE_CN="${NATIVE_CN:-256}" -DNATIVE_CK="${NATIVE_CK:-128}" -DNATIVE_SLOTS="${NATIVE_SLOTS:-2}" -DNATIVE_FULL_BUFFER="${NATIVE_FULL_BUFFER:-0}" -DNATIVE_PAIR="${NATIVE_PAIR:-0}" -DNATIVE_V3="${NATIVE_V3:-0}" -DNATIVE_SWIZZLE="${NATIVE_SWIZZLE:-0}" -D_GLIBCXX_USE_CXX11_ABI=0 -Wno-ignored-attributes \
   -I"$cann/include" -I"$cann/aarch64-linux/ascendc/include/highlevel_api" \
   -I"$cann/aarch64-linux/ascendc/include/basic_api" \
   -I"$cann/aarch64-linux/asc" \

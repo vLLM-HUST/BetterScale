@@ -71,3 +71,50 @@ Artifacts under `/workspace/strengthen-dsv4/runs/qwen-native-ffn-20260915/`:
 samples and release receipt retained. Test bench capsule limits slab to256 and
 VC256 instead of repeating identical paired scheduling for irrelevant slab sizes.
 No installed package or main default changed; local7 released after completion.
+
+## Remove buffer-return backpressure: full storage and8-slot controls
+
+Hypothesis: Cube spends its time waiting for Vector to return the two slots.
+Test v8 gives every paired tile a unique GM region: NATIVE_FULL_BUFFER=1,
+NATIVE_PAIR=1, CM256/CN128/CK64/V3=1. Cube has no credit waits, no return flags,
+and no final credit drain. Vector still consumes early completion notifications.
+There are up to72 tiles/core at4096rows. Ready notifications rotate over flags8..15,
+so each flag receives at most9 publications, below the native v2's conservative
+14-publication throttle interval. This prototype is statically limited to that
+M/N tile and runtime rows<=4096; do not widen shapes without rechecking flag
+counter bounds. Every notification is consumed before graph completion/replay.
+Scratch is ceil(rows/256)*256*27648 BF16 elements,216MiB at4096rows.
+
+v9 NATIVE_SLOTS=8 keeps the previous credit protocol but raises the available
+lead from2 to8 paired tiles (24MiB actual ring working set vs6MiB for2 slots).
+It is NOT a production-default change. Both cohorts allocate the same larger
+scratch envelope in the performance harness; actual accessed regions differ.
+For8 slots256x128, reserve24MiB minimum irrespective of row count. Original
+probe's slab256 allocation covers this. Do not assume slab128's old allocation
+is sufficient. The full-buffer scratch helper alone does not cover8 slots at
+rows<=256. Caller owns the required shape-specific allocation.
+
+Both builds passed rows128/257/769, both VC widths, guards/immutable inputs and
+three changed-input FULL replays. Whole FFN correctness passed512/4096. Matched
+local7 six crossed trials/ten FULL replays per trial:
+
+| cohort/rows |2-slot FFN| candidate FFN|native ND(candidate)|native NZ(candidate)|
+|---|---:|---:|---:|---:|
+|full/512|0.935ms|1.001ms|1.039ms|0.881ms|
+|full/4096|6.252ms|6.662ms|6.093ms|5.949ms|
+|8slot/512|0.971ms|1.019ms|1.037ms|0.884ms|
+|8slot/4096|6.459ms|6.953ms|6.127ms|5.905ms|
+
+Neither expansion improved throughput. Keep2 slots as the best measured control.
+This rejects a net-speedup expectation from simply removing buffer credits under
+these conditions; it does not prove the absence of individual Cube wait periods.
+Larger active scratch footprint, different lookahead and Cube/Vector memory
+competition can offset fewer waits. No direct wait-duration attribution is yet
+available. Do not replace that uncertainty with a cache-thrashing claim.
+
+Artifacts: `build-v8-full`, `full-v8-source`, `full-v8-local7`, `build-v9-ring8`,
+`ring-v9-source`, `ring-v9-local7` under the same20260915 run root. All local7
+resources released. `probe.py --full-buffer` and `bench.py --full-buffer` now
+allocate the full paired layout for v8 (also usable for matched controls when
+large enough). v8 frozen scripts use equivalent explicit allocation; v9 exercises
+the tracked bench flag. No serving/real-weight acceptance claimed.
