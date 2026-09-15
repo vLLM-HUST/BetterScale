@@ -34,7 +34,7 @@ shared donor runtime. `hc_probe.py` compares exact old/new output bits at
 1/24/255/256/257/516/4128 rows, and changing-input FULL graph behavior.
 All seven shapes pass exact old/new output equality and changing-input FULL
 replay. Original eager allocated increments versus candidate:24 rows208.191→
-22.492MiB;516 rows212.072→55.346MiB;4128 rows240.567→98.835MiB. These include
+22.492MiB;516 rows212.072→55.346MiB;4128 rows240.567→98.834MiB. These include
 operator outputs, not only scratch. Original used local card4, candidate used
 card1 after card4 became occupied: this is a numerical/allocation comparison,
 NOT a timing claim. Compact exact-byte receipts are in `leaf-results.json`.
@@ -64,3 +64,19 @@ at256 rows both are244MiB despite lower allocated peak. This illustrates why
 allocated savings do not translate proportionally to reservation. Real
 attention/MLP integration and whole-model graph-pool comparison remain required; the public Worker does not install this candidate yet. Source-level
 clone removal may yield nothing if the native compiler already removes it.
+
+## Integration admission boundary
+
+The prepared TP8 dummy capsule combines dense backing clear and residual aliases,
+using the original complete native OPP and the same24/4128 buckets and HTTP work
+as the earlier control. It does not enable the selected-op HC-pre package.
+Local admission polled under `/root/tp8.lock` for1800 seconds and timed out before
+launching any model (`Selected-card admission wait expired`). No model, capture,
+HTTP or reservation result exists for this arm. The watcher exited and released
+its lease; no task-owned NPU work remains. Reuse the prepared capsule in
+`runs/peak-memory-fixes-20260915/integration/` with a fresh output name when a
+whole-eight-card window is available, rather than repeating leaf probes.
+
+Publication boundary: the dense-clear Python source and focused CPU/leaf tests
+are committed locally; no new PyPI release was made. The residual alias and
+HC-pre native change remain explicit prototypes, not public Worker defaults.
