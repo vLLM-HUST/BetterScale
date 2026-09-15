@@ -1,0 +1,62 @@
+{
+  "run": 194,
+  "status": "PASS_TP8_FULL_K5_APC_REAL",
+  "base": "0.4.0 80a75b5, only private APC admission relaxed",
+  "quality": {
+    "cold": 32,
+    "warm": 32,
+    "total_per_arm": 32,
+    "positive_warm_hits": 32,
+    "identical_cold_warm_token_sequences": 32,
+    "evaluator_commit": "60a28a727d3b7807eb3554928f3530d04c948452",
+    "scope": "retained original LongBench retrieval, not full OpenCompass"
+  },
+  "warm_cached_tokens": {
+    "min": 8192,
+    "max": 12288
+  },
+  "branch_cases": [
+    {
+      "request": "cold",
+      "input_tokens": 12345,
+      "cached_tokens": 0,
+      "ttft_s": 1.2160241620149463
+    },
+    {
+      "request": "repeat",
+      "input_tokens": 12345,
+      "cached_tokens": 12288,
+      "ttft_s": 0.26480399805586785
+    },
+    {
+      "request": "append",
+      "input_tokens": 12601,
+      "cached_tokens": 12288,
+      "ttft_s": 0.2784922490827739
+    },
+    {
+      "request": "fork5000",
+      "input_tokens": 12345,
+      "cached_tokens": 4096,
+      "ttft_s": 0.8479011650197208
+    },
+    {
+      "request": "fork100",
+      "input_tokens": 12345,
+      "cached_tokens": 0,
+      "ttft_s": 0.9965293379500508
+    },
+    {
+      "request": "repeat-after-forks",
+      "input_tokens": 12345,
+      "cached_tokens": 12288,
+      "ttft_s": 0.26560814992990345
+    }
+  ],
+  "not_established": [
+    "arbitrary concurrent full-length saturation",
+    "small-budget preemption recovery",
+    "finer-than-native common hit alignment"
+  ],
+  "artifact": "/workspace/strengthen-dsv4/runs/prefix-cache-20260915-tp-real/result194"
+}

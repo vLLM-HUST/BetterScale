@@ -65,7 +65,6 @@ def validate_worker_config(config):
         "standard rejection": spec is not None
         and spec.rejection_sample_method == "standard",
         "layout-matched DSA backend": extra.get("enable_dsa_cp") is (not native_dp),
-        "prefix caching disabled": not config.cache_config.enable_prefix_caching,
         "real W8A8 model": config.load_config.load_format == "auto"
         and m.quantization == "ascend",
         "native scheduler": s.scheduler_cls is None,

@@ -59,3 +59,16 @@ The next real-weight gate194 uses the same program and checks32 original retaine
 retrieval inputs, each immediately followed by its identical warm repeat. Score
 both arms through the retained OpenCompass evaluator; preserve cached-token counts
 and do not equate accepted draft differences with target-quality failures.
+
+## TP8 real result194
+
+Both cold and immediately repeated warm arms score32/32 through the pinned
+OpenCompass LongBench retrieval evaluator. All32 warm requests have positive
+cache hits and all32 cold/warm output token sequences match. The six synthetic
+branch cases also pass with real weights. No additional runtime patch was needed.
+See `tp-real.json`. This does not expand preemption or maximum-concurrency claims.
+
+DP gate195 uses the native `X-data-parallel-rank` HTTP header. Simple branch cases
+stay on engine0; each retrieval cold/warm pair is routed to request_id modulo8.
+A separate16-request cohort (two per engine) repeats the same prompts concurrently.
+This avoids confusing engine-local cache affinity with prefix-cache correctness.

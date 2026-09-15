@@ -30,6 +30,22 @@ class LaunchContract(unittest.TestCase):
         self.assertIsNone(validate_worker_config(c))
         self.assertEqual(c,before)
 
+    def test_native_prefix_cache_setting_is_preserved(self):
+        import copy
+        for dp in (False, True):
+            for enabled in (False, True):
+                c = config()
+                if dp:
+                    c.parallel_config.tensor_parallel_size = 1
+                    c.parallel_config.data_parallel_size = 8
+                    c.scheduler_config.max_num_seqs = 2
+                    c.scheduler_config.max_num_batched_tokens = 1026
+                    c.additional_config["enable_dsa_cp"] = False
+                c.cache_config.enable_prefix_caching = enabled
+                before = copy.deepcopy(c)
+                validate_worker_config(c)
+                self.assertEqual(c, before)
+
     def test_capacity_is_not_set_by_the_patch(self):
         # User-selected KV budgets are unrelated to the graph admission contract.
         c=config();c.cache_config.kv_cache_memory_bytes=1024

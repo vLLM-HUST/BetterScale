@@ -83,6 +83,26 @@
       "distribution": "vllm-ascend",
       "path": "vllm_ascend/patch/platform/patch_kv_cache_utils.py",
       "sha256": "8a51df701d0260eee75939f8076d513b121a40fb8e28062c3b795dbd994188b0"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/core/block_pool.py",
+      "sha256": "3fc5dfe0ab7ccc6206f6eb7886b2aad15384f92708e6b9f7e5ec7838b7379abe"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/core/single_type_kv_cache_manager.py",
+      "sha256": "26d78d1bd457f7e26debaeb2918734c7b1f0ca2830c4d90b054dff7c940741b1"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/patch/platform/patch_kv_cache_coordinator.py",
+      "sha256": "91fdd616438ad931e85d115da72df197183cd6448118a637894e80854c4cb4c0"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/core/single_type_kv_cache_manager.py",
+      "sha256": "4f55ca45bec165ae0d6d5bb6b0fee314a3a440a406d9560479b7c58ec42949da"
     }
   ]
 }
