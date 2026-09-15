@@ -110,3 +110,14 @@ namespace, not a new root namespace; absence of custom logs is not absence of na
 Capacity ceilings and bytes are documented in `docs/CAPACITY-0.4.zh-CN.md`. Keep96.84% labeled
 TP dummy, keep DP timeout and the unrepaired small-budget preemption boundary explicit, and
 never relabel historical throughput numbers as fresh0.4 benchmark results.
+
+## Native APC admission:0.4.1
+
+Package source/tag `a4c403f` removes only APC-off admission; no numerical execution
+hook is added. Four additional native cache files are pinned (19 total), checked
+on local and actual hw3 runtimes.61 package CPU tests and16 upstream CPU tests pass.
+TP194/DP195 each pass real cold32/32 and warm32/32, with positive warm hits and
+identical token sequences; DP also passes16 repeated requests at two per engine.
+Read `prototypes/prefix-caching/README.md` for exact protocol and scope.
+The wheel's runtime bodies are unchanged apart from admission/pins/version, so do
+not reload eight cards to repeat a packaging-only gate.

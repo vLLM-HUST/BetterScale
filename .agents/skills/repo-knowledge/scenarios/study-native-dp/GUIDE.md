@@ -1,5 +1,11 @@
 # Study native donor DP+EP
 
+For released0.4.1 APC compatibility, enter `prototypes/prefix-caching/README.md`
+and its retained193–195 capsules before re-running prefix experiments. Both TP
+and DP cold/warm retrieval gates pass; use native engine affinity for DP. The
+older APC-off qualification notes below are historical, not the current guard.
+
+
 For the active percentage-free automatic KV sizing goal, first read
 `prototypes/auto-kv-memory/README.md` and its run165/166 accounting results.
 
