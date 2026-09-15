@@ -3,6 +3,7 @@
 import hashlib
 import json
 import logging
+from multiprocessing.util import Finalize
 import os
 from pathlib import Path
 import platform
@@ -85,4 +86,7 @@ def install():
     os.environ["ASCEND_CUSTOM_OPP_PATH"] = ":".join([str(destination), *paths])
     native._CUSTOM_OP_BASE_DIR = envelope.name
     _envelope = envelope
+    # multiprocessing workers exit through os._exit: Python's weakref/atexit
+    # cleanup alone is skipped. Register with their own orderly exit protocol.
+    Finalize(None, envelope.cleanup, exitpriority=10)
     log.info("HC-pre workspace floor removed; private native vendor=%s", destination)

@@ -58,7 +58,7 @@ class HCWorkspace(unittest.TestCase):
             )
         self.assertFalse((self.root / "copy").exists())
 
-    def test_early_selection_is_idempotent_and_preserves_other_vendors(self):
+    def mock_native(self):
         package = ModuleType("vllm_ascend")
         native = ModuleType("vllm_ascend.utils")
         package.utils = native
@@ -81,6 +81,10 @@ class HCWorkspace(unittest.TestCase):
                 },
             )
         )
+        return native
+
+    def test_early_selection_is_idempotent_and_preserves_other_vendors(self):
+        native = self.mock_native()
         hc.install()
         self.addCleanup(hc._envelope.cleanup)
         first = native._CUSTOM_OP_BASE_DIR
@@ -91,6 +95,28 @@ class HCWorkspace(unittest.TestCase):
         )
         self.assertTrue(Path(first).is_dir())
         self.assertEqual((self.source / "host").read_bytes(), b"old host")
+
+    def test_multiprocessing_exit_removes_private_tree(self):
+        import multiprocessing
+
+        self.mock_native()
+        context = multiprocessing.get_context("fork")
+        receive, send = context.Pipe(duplex=False)
+
+        def child():
+            hc.install()
+            send.send(hc._envelope.name)
+            send.close()
+
+        process = context.Process(target=child)
+        process.start()
+        send.close()
+        self.assertTrue(receive.poll(10))
+        private = Path(receive.recv())
+        receive.close()
+        process.join(10)
+        self.assertEqual(process.exitcode, 0)
+        self.assertFalse(private.exists())
 
 
 if __name__ == "__main__":

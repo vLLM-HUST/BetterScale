@@ -150,3 +150,12 @@ Do not reject an already-imported `vllm_ascend_C` alone: native camem imports
 it while loading NPUWorker. That unchanged API import is earlier than host
 tiling. The qualified gate rejects actual custom-op enablement or an already
 loaded vendor tiler (`/proc/self/maps`), not this harmless extension import.
+
+The installed TP8 dummy gate passes two HTTP cohorts, all8 automatic budgets
+(~15.127GiB/rank),46 backings/rank and57,896MiB READY reserved/rank. Native MP
+workers bypass ordinary TemporaryDirectory atexit, leaving their copied vendor
+trees: register cleanup with multiprocessing.util.Finalize instead. A real child
+exit CPU test qualifies that post-run-only addition; do not reload eight cards
+to validate host-filesystem cleanup. Final runtime AST differs from the installed
+gate only by that cleanup registration; native binary and29 other runtime files
+are byte-identical.67 CPU tests pass. Receipt: docs/evidence/release-0.4.2.json.

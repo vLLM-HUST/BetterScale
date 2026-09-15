@@ -1,0 +1,106 @@
+{
+  "version": "0.4.2",
+  "package_source_commit": "Recorded by release tag v0.4.2; TP8 installed-gate source includes1853803 plus corrected early guard",
+  "scope": "TP8EP K5 dummy FULL buckets24/4128; maxlen524288; automatic KV; 1GiB safety; APC off",
+  "fixture": "dummy loader weight-layout repair and dummy admission only; installed wheel unmodified; no private-vendor override or residual alias",
+  "runtime_source_pins": 20,
+  "cpu_tests": 67,
+  "private_native_installs": 8,
+  "http_cohorts": {
+    "status": "PASS",
+    "cohorts": 2
+  },
+  "exit_code": 0,
+  "ranks": [
+    {
+      "rank": 0,
+      "kv_budget_bytes": 16242163200,
+      "ready_reserved_bytes": 60708356096,
+      "state_backings_cleared": [
+        46
+      ]
+    },
+    {
+      "rank": 1,
+      "kv_budget_bytes": 16236527104,
+      "ready_reserved_bytes": 60708356096,
+      "state_backings_cleared": [
+        46
+      ]
+    },
+    {
+      "rank": 2,
+      "kv_budget_bytes": 16242007552,
+      "ready_reserved_bytes": 60708356096,
+      "state_backings_cleared": [
+        46
+      ]
+    },
+    {
+      "rank": 3,
+      "kv_budget_bytes": 16243682816,
+      "ready_reserved_bytes": 60708356096,
+      "state_backings_cleared": [
+        46
+      ]
+    },
+    {
+      "rank": 4,
+      "kv_budget_bytes": 16244567552,
+      "ready_reserved_bytes": 60708356096,
+      "state_backings_cleared": [
+        46
+      ]
+    },
+    {
+      "rank": 5,
+      "kv_budget_bytes": 16245157376,
+      "ready_reserved_bytes": 60708356096,
+      "state_backings_cleared": [
+        46
+      ]
+    },
+    {
+      "rank": 6,
+      "kv_budget_bytes": 16242372096,
+      "ready_reserved_bytes": 60708356096,
+      "state_backings_cleared": [
+        46
+      ]
+    },
+    {
+      "rank": 7,
+      "kv_budget_bytes": 16245083648,
+      "ready_reserved_bytes": 60708356096,
+      "state_backings_cleared": [
+        46
+      ]
+    }
+  ],
+  "runtime_payload_matches_final_archive": {
+    "runtime_files": 30,
+    "byte_identical_files": 29,
+    "single_changed_file": "vllm_betterscale-0.4.2.data/purelib/betterscale/patches/hc_workspace/__init__.py",
+    "difference": "Only import multiprocessing.util.Finalize and register envelope.cleanup at orderly multiprocessing exit; remaining AST identical",
+    "native_binary_identical": true
+  },
+  "native_artifact": {
+    "compared_files": 696,
+    "changed": [
+      "op_impl/ai_core/tbe/op_tiling/liboptiling.so",
+      "op_impl/ai_core/tbe/op_tiling/lib/linux/aarch64/libcust_opmaster_rt2.0.so"
+    ],
+    "contained_symlinks": [],
+    "host_operator_set": "native build_aclnn.sh ascend910b:34 operators",
+    "original_library_sha256": "bc443be80fdddf97a2b45f59fc8ec3a06e1052bde41b7a63db57ac0802e40496",
+    "candidate_library_sha256": "38fad253a502cfc59bf4148d964363549f8e8517e36e1043630061c4b4c5ba82"
+  },
+  "raw_capsule": "hw3:/workspace/my-ascend-workspace/runs/betterscale-release-0.4.2/probe-v2/result",
+  "earlier_attempt": "Stopped before weight load: overly strict guard mistook native camem API import for loaded host tiler. Corrected to actual enablement/tiler maps check; no bypass of runtime/native pins.",
+  "limits": [
+    "No new real-weight quality or throughput result",
+    "DP native tiler unchanged",
+    "Source0.4.1 retrieval evidence remains historical, not remeasured"
+  ],
+  "cleanup": "TP8 gate exposed multiprocessing skipping ordinary temporary-directory atexit. Added multiprocessing Finalize cleanup; dedicated child-exit CPU test passes. Eight task-owned copied vendor trees from the gate were removed after worker/card release; donor unchanged."
+}

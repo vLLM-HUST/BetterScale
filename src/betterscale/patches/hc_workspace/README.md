@@ -14,6 +14,9 @@ native vendor into a process-private temporary directory and replaces only its
 two host-tiler library files. API libraries, metadata and device kernels remain
 native. Symlinks are dereferenced, so replacements cannot modify the donor.
 The directory stays alive through all graph replay and is cleaned at process exit.
+Multiprocessing exit cleanup is registered explicitly (ordinary Python atexit
+is not sufficient for native worker processes); a forced SIGKILL can still leave
+temporary files, as with other process-owned temporary storage.
 It uses roughly 56 MiB of host filesystem space per TP worker, not NPU memory.
 
 Native `enable_custom_op()` bootstraps `_CUSTOM_OP_BASE_DIR`; the patch redirects
