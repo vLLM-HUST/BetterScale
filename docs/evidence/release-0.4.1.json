@@ -1,7 +1,7 @@
 {
   "release": "0.4.1",
   "source_commit": "a4c403f",
-  "upstream_pins_unchanged": true,
+  "upstream_commits_unchanged": true,
   "private_source_file_checks": 19,
   "change": "Remove APC-off admission; no new numerical/runtime hook",
   "package_cpu_tests": 61,
