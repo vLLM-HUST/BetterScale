@@ -117,3 +117,6 @@ Evidence:
 Frozen source/launch, native DBs, measurements and complete TraceLoom37323af
 `measurements/{c1-4k,c8-512}/analysis/*.json.gz` exports are retained. Card reclaimed.
 No production configuration was changed. Further single-card tests use local.
+
+For the native AscendC quantization boundaries and whole-row dependency, read
+[NATIVE-QUANT-CUT.md](NATIVE-QUANT-CUT.md). That follow-up is source analysis only.
