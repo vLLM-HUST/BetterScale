@@ -1,0 +1,80 @@
+[
+  {
+    "rows": 16,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 9,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 2,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 1,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 128,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 65,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 2,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 1,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 256,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 256,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 65,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 2,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  },
+  {
+    "rows": 1,
+    "output_exact": true,
+    "kv_exact": true,
+    "max_abs_error": 0.0
+  }
+]
