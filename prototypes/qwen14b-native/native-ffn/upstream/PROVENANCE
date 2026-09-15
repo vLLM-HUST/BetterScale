@@ -1,0 +1,4 @@
+Immutable source backup: vllm-project/vllm-ascend 9bf964c, csrc/gmm/grouped_matmul_swiglu_quant.
+File-level CANN Open Software License Agreement v2.0 notices are retained; repository license is copied separately and does not override them.
+
+Full CANN v2.0 license text retrieved from https://gitee.com/ascend/shmem/raw/master/LICENSE (same named license); original headers preserved.
