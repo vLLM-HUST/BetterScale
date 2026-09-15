@@ -4,6 +4,7 @@ The returned normalized input and residual must stay alive across remote work.
 Native sparse MLP owns router normalization and quantization in the reference
 path. A real transport must preserve those contracts, not use an ad-hoc topk.
 """
+
 from dataclasses import dataclass
 
 
@@ -29,13 +30,16 @@ def reference_expert(layer, pending):
     return layer.mlp(pending.normalized), pending.residual
 
 
-def split_forward(model, input_ids, positions, intermediate_tensors=None,
-                  inputs_embeds=None, **kwargs):
+def split_forward(
+    model, input_ids, positions, intermediate_tensors=None, inputs_embeds=None, **kwargs
+):
     if intermediate_tensors is not None or kwargs:
-        raise NotImplementedError('first prototype: TP1/PP1 ordinary Qwen only')
+        raise NotImplementedError("first prototype: TP1/PP1 ordinary Qwen only")
     if model.start_layer != 0 or model.end_layer != len(model.layers):
-        raise NotImplementedError('pipeline parallel model is not supported')
-    hidden = inputs_embeds if inputs_embeds is not None else model.embed_input_ids(input_ids)
+        raise NotImplementedError("pipeline parallel model is not supported")
+    hidden = (
+        inputs_embeds if inputs_embeds is not None else model.embed_input_ids(input_ids)
+    )
     residual = None
     for layer in model.layers:
         pending = attention_half(layer, positions, hidden, residual)

@@ -296,3 +296,40 @@ publication stalls even with unchanged metadata. Reuse native `_model_forward`
 when freezing this invocation. Bulk host DMA and sustained local D2D have very
 different observed interference; one fast4GiB local copy does not characterize
 continuous traffic. The fixture preserves full KV-byte and output checks.
+
+## Split Qwen attention around an asynchronous expert boundary
+
+Enter `prototypes/attention-client/README.md` before building per-lane attention
+replays. The reduced native Qwen oracle retains original output/KV checks, not
+just a normalized-path reference. Native2 qualifies the layer cut; graph3 qualifies
+fixed-context FULL attention segments; metadata7 qualifies native attention-task
+updates across later same-shape invocations with changed positions/lengths.
+These are TP1 dummy small-model gates, not independent multi-client serving.
+
+Three hidden singleton contracts matter: ForwardContext.moe_layer_index selects
+native MLPs, acl_graph._graph_params owns task handles/events/workspaces, and
+attention_v1._ATTN_KEYS_BUFFER caches metadata layer order. Separate layer/bank
+registries must scope ALL three (and restore them), or a later layer updates the
+first layer's key. Current scoped registry swaps require serialized host access.
+Native eager startup does not create runner.update_stream; the bank owns one.
+PrefillNoCache provides None block_table, rejected by native FULL weak references.
+The prototype uses a scoped paged ChunkedPrefill metadata view and checks against
+ORIGINAL eager arithmetic; never globally rewrite scheduler metadata to hide this.
+Bank IO and metadata tensors are private; graph capture-on-miss in these oracles
+is not an acceptable published online warmup policy.
+
+lanes12 additionally qualifies two prebuilt attention graph lanes with disjoint
+ordinary Qwen K/V, metadata and IO. Suppressing prefill's first expert completion
+does not prevent decode finishing both layers. Outputs and private KV match native
+snapshots exactly; native MLP is still a local reference on a separate stream.
+Raw-byte-backed typed K/V views cannot be Python-deepcopied on this runtime: clone
+each tensor while retaining the tuple shape, and scope the implementation's cached
+K/V references as well as attn.kv_cache at capture. This is not a general strategy
+for compressed pools with semantic aliases. For the delivered external server,
+use attention-client/server_contract.py and its explicit INT32-only boundary.
+`attention-client/ipc/` qualifies an external packet producer against the unchanged
+3532418 server binary on two cards (ipc3). Both captured graphs replay changed
+INT32 plans, exact top-k CPU retirement; this is separate from neural inference.
+ACL binary loading requires the named AIV `.ascend.meta` section, not only a
+successfully linked ELF. Real BF16 route production/reduction and expert GEMM
+remain the joint integration boundary; do not overstate these two separate gates.

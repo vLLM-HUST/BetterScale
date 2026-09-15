@@ -53,9 +53,9 @@ or new defaults. Do not patch out native DP coordination globally.
 Fletcher explicitly does not require fixed P/D attention pools: every attention
 server should independently serve either phase. Keep FULL attention segments for
 both where possible; remote expert dependencies form the explicit yield boundary.
-Reference transport is authorized for tonight; final expert-server integration
-remains part of the goal when Fletcher forwards its handoff. Do not mark the
-whole goal complete on local-reference results.
+Reference transport is authorized for model-side qualification. The delivered
+server is integrated at its declared integer-protocol boundary below; this does
+not qualify real remote neural FFN or end-to-end serving.
 
 - native1: fixture failed because native ForwardContext.moe_layer_index was
   already consumed by reference forward. Not a model arithmetic failure.
@@ -72,6 +72,79 @@ Raw receipts: `runs/attention-client-20260915/{native2,graph3}` and sibling
 `*-checks.json`. All use bounded admitted single local card7 and frozen sources.
 `continuation.py` is a CPU ownership oracle, not the device reduction kernel;
 `scheduler.py` exercises ready-lane progress with a nonblocking transport contract.
-Next gates: bank-private native metadata task updates and isolated graph IO,
-then independent request/layer progression; integrate external server only after
-its real payload and result contract is supplied.
+The later metadata and independent-lane gates below now pass. Real neural
+transport still requires the server to supply its BF16/quantized row contract.
+
+### Native metadata graph updates
+
+metadata4 rejected PrefillNoCache's None block table at native full_graph_fia;
+metadata5 then exposed absent update_stream under eager runner initialization;
+metadata6 exposed native global _ATTN_KEYS_BUFFER retaining the previous layer.
+metadata7 scopes paged metadata, bank-private IO/metadata/handles/workspace,
+layer-key cache and update stream. Original native output and raw KV checks pass,
+including later same-shape graph reuse with changed input positions/lengths.
+Capture-on-miss is an oracle convenience, not the final startup policy.
+
+### Delivered server integration boundary
+
+Workspace commit3532418 and ATTENTION-CLIENT-HANDOFF.md were received from
+Fletcher. Source tree matches that commit for prototypes/pull-expert-server.
+`server_contract.py` translates client routing-slot ownership into its eight-slot
+INT32 envelope, exact generations and weighted top-k retirement. Tests cover
+out-of-order expert results, packet-slot wrap, stale DONE and refusing BF16 input.
+This is CPU ABI/reduction validation against the delivered arithmetic contract;
+the server's already-passed two/three-card evidence is not recast as this client's
+hardware integration. Real BF16 FFN remains outside that server's current ABI.
+
+### Independent native lanes (lanes12)
+
+The two-layer TP1 dummy Qwen experiment now retains two **disjoint** KV snapshots,
+separate attention graph banks and separate forward contexts: 16-row prefill and
+one-row decode. Both banks are built before the interleaved episode. Every layer's
+attention half replays its complete graph; the local reference MLP runs on another
+stream behind an input-ready event. A completed output is exposed only after its
+completion event, and the scheduler does not block on an unready lane.
+
+The fixture deliberately withholds prefill's first expert reply. Decode completes
+B0 → B1 → final norm before prefill can advance past A0; prefill then completes.
+Both outputs and every private KV tensor match their original native snapshots
+exactly. See `independent-lanes-result.json` for the submission/retirement order.
+The enclosing native run also passes all13 output/whole-KV-byte checks and10 reused
+attention stages. `stream-scheduler-result.json` preserves the earlier single-lane
+native graph plus asynchronous local-MLP gate.
+
+This establishes dependency isolation, **not parallel GEMM throughput**: the
+reference MLP uses one stream, the delayed reply is intentional, and these are
+frozen model snapshots rather than a live HTTP scheduler. The general probe still
+captures unseen banks on demand; a serving integration needs an explicit finite
+startup catalog/admission policy. No release Worker path is changed.
+
+Native KV is a tuple of typed tensor views over raw byte allocations. Python
+`deepcopy` follows typed Storage and rejects the Char/BF16 alias. Snapshot each
+logical K/V tensor with `clone`, keep the tuple structure, and patch both native
+KV and implementation cached K/V references during capture. This fixture has
+ordinary separate K/V; do not apply that cloning rule to heterogeneous compressed
+state pools whose alias relationships carry semantics.
+
+
+### Joint IPC acceptance (ipc3)
+
+`ipc/` connects our externally supplied packet producer to the unchanged delivered
+server binary. Local cards6/7 pass two episodes of the same captured client/server
+graphs with changed input plans:16 packets, eight lane retirements, exact integer
+outputs and exact weighted top-k plus local shared-stand-in reduction. Padding
+and guard checks pass; both cards are released. The successful receipt is
+`ipc/result.json`; frozen source and loader/binaries are in
+`runs/attention-client-20260915/ipc-v3`, logs in `ipc3`.
+
+Only one client is qualified by this new joint test. The delivered server's
+separate three-card result remains its own cross-source batching evidence.
+Our originally queued three-card test was cancelled before launch because card5
+was occupied; the two-card test suffices for this adapter boundary. ipc2 exposed
+a missing AIV ELF metadata section before any task execution; ipc3 fixes it.
+
+**Next real integration boundary:** normalized BF16 model rows plus native route
+weights → device packet producer → real routed-expert GEMM → device weighted
+reduction → next attention-layer replay. The server currently has no real GEMM
+consumer or BF16 contract. Neither the exact native reference test nor the integer
+IPC test may be reported as that end-to-end path already working.
