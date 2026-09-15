@@ -34,6 +34,7 @@ def forward(self, positions, hidden_states, residual, llama_4_scaling=None):
 
 
 def install():
-    from vllm_ascend.models.deepseek_v4 import DeepseekV4DecoderLayer
+    # Native keeps the legacy V2 class name inside its deepseek_v4 module.
+    from vllm_ascend.models.deepseek_v4 import DeepseekV2DecoderLayer
 
-    DeepseekV4DecoderLayer.forward = forward
+    DeepseekV2DecoderLayer.forward = forward

@@ -14,6 +14,7 @@ p = argparse.ArgumentParser()
 p.add_argument("--output", type=Path, required=True)
 p.add_argument("--reference", type=Path)
 p.add_argument("--vendor", type=Path)
+p.add_argument("--rows", type=int, nargs="+", default=[1, 24, 255, 256, 257, 516, 4128])
 a = p.parse_args()
 a.output.mkdir(parents=True, exist_ok=True)
 torch_npu.npu.config.allow_internal_format = True
@@ -139,7 +140,7 @@ def check(rows):
 
 
 receipts = []
-for rows in (1, 24, 255, 256, 257, 516, 4128):
+for rows in a.rows:
     receipts.append(check(rows))
     gc.collect()
     torch.npu.empty_cache()

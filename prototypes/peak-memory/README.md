@@ -1,7 +1,8 @@
 # BetterScale allocation staircase
 
-Observation only against release0.4.0/ec01754. No public defaults or native operator
-changed. Reuses LiveInfer's counter-only tracer from workspace
+For the subsequent fixes and accepted hw3 comparison, read [FIXES.md](FIXES.md).
+The attribution experiment below is observation only against release0.4.0/ec01754;
+it did not change public defaults or native operators. Reuses LiveInfer's counter-only tracer from workspace
 `prototypes/dsv4-replicated-prefill/capture_memory_trace.py` and its rising-watermark
 method (`CAPTURE_WATERMARKS.md`). The adapter selects BetterScale/vLLM/Ascend Python
 frames and adds reserved/peak-reserved and native peak-reset observations.

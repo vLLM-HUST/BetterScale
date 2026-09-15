@@ -127,9 +127,16 @@ Highest target allocated water follows HC-pre; post-draft State clear raises the
 clean run's high water by222MiB (543MiB above READY live bytes, a different metric).
 Reserved slack and native temporary peaks are not automatically reclaimable KV.
 
-The staged memory fixes and exact leaf receipts are in
-`prototypes/peak-memory/FIXES.md`. KV-exclusive backing clearing avoids the
-observed strided-zero temporary without changing addresses. HC-pre workspace
-floor removal and residual aliases pass native leaf gates, NOT whole-model
-reservation acceptance. Keep the selected-op diagnostic OPP out of the shared
-runtime; use a complete vendor closure for model integration.
+The memory fixes and all-rank hw3 receipts are in
+`prototypes/peak-memory/FIXES.md`. The retained two-fix arm (dense KV backing
+clear + HC-pre workspace floor removal, original residual forward) passes TP8
+FULL startup and short HTTP execution: about186MiB/rank more automatic KV and
+360MiB/rank less READY reservation, with unchanged1GiB safety. These are dummy
+memory/execution gates, not quality or throughput. Residual aliases have no
+material integrated benefit and remain off. Do not add leaf savings together:
+clear+alias alone frees540MiB READY reservation but does not increase fitted KV.
+For native integration use `prototypes/peak-memory/NATIVE_HOST.md`: complete
+original A2 vendor, unchanged API/schema/kernel files, rebuilt complete-A2 host
+tilings only. Do not use a selected-op vendor or build ALL (duplicate indexer
+symbols); use the pinned build_aclnn.sh A2 operator set. Keep the shared runtime
+untouched. The V4 Python module's decoder class still has its legacy V2 name.
