@@ -168,3 +168,9 @@ from the sdist and compare its installed runtime payload to the qualified wheel.
 This supersedes the earlier two-artifact upload instruction for this release.
 The earlier website0.4.1 CPU CI remains pinned; changing it to0.4.2 would need
 a source-extraction-only CPU check on x86, not executing/installing ARM native code.
+
+Published0.4.2 from030fd79 on2026-09-15 (sdist only). Official artifact bytes
+match, PyPI simple index is visible, and a fresh pip install from the official
+index builds/installs successfully without operator compilation. All30 installed
+runtime/native files match the audited local sdist install; public Worker/pins
+import checks pass. Local receipt: runs/release-0.4.2/publication.json.

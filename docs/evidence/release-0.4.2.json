@@ -1,6 +1,6 @@
 {
   "version": "0.4.2",
-  "package_source_commit": "Recorded by release tag v0.4.2; TP8 installed-gate source includes1853803 plus corrected early guard",
+  "package_source_commit": "030fd79",
   "scope": "TP8EP K5 dummy FULL buckets24/4128; maxlen524288; automatic KV; 1GiB safety; APC off",
   "fixture": "dummy loader weight-layout repair and dummy admission only; installed wheel unmodified; no private-vendor override or residual alias",
   "runtime_source_pins": 20,
@@ -109,5 +109,12 @@
     "operator_compilation_during_install": false,
     "sdist_install_matched_runtime_files": 30,
     "wheel_upload": "PyPI returned HTTP400; generic Linux wheel is not published; no manylinux/any retagging"
+  },
+  "publication": {
+    "url": "https://pypi.org/project/vllm-betterscale/0.4.2/",
+    "official_sdist_matches_audited_build": true,
+    "simple_index_available": true,
+    "official_pip_install_passed": true,
+    "official_installed_runtime_files_matched": 30
   }
 }
