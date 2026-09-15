@@ -1,0 +1,949 @@
+{
+  "source": "BetterScale ec01754 / release0.4.0 with observation-only Worker and dummy fixture",
+  "host": "local 8x910B2",
+  "configuration": {
+    "TP": 8,
+    "DP": 1,
+    "EP": true,
+    "K": 5,
+    "seats": 4,
+    "buckets": [
+      24,
+      4128
+    ],
+    "context_ceiling": 524288
+  },
+  "control": "completed all three short HTTP cohorts, exit0, released",
+  "trace3": "broad tracing stopped after Python tracing CPU overhead; no memory result adopted",
+  "trace4": "both target capture buckets complete; later draft startup exceeds HTTP readiness900s; exit1, released",
+  "target_peak_equality": [
+    {
+      "rank": 0,
+      "target_allocated_peak": 48312173056,
+      "target_reserved_peak": 48867835904,
+      "traced_peaks_equal_control": true
+    },
+    {
+      "rank": 1,
+      "target_allocated_peak": 48312173056,
+      "target_reserved_peak": 48867835904,
+      "traced_peaks_equal_control": true
+    },
+    {
+      "rank": 2,
+      "target_allocated_peak": 48312173056,
+      "target_reserved_peak": 48867835904,
+      "traced_peaks_equal_control": true
+    },
+    {
+      "rank": 3,
+      "target_allocated_peak": 48312173056,
+      "target_reserved_peak": 48867835904,
+      "traced_peaks_equal_control": true
+    },
+    {
+      "rank": 4,
+      "target_allocated_peak": 48312173056,
+      "target_reserved_peak": 48867835904,
+      "traced_peaks_equal_control": true
+    },
+    {
+      "rank": 5,
+      "target_allocated_peak": 48312173056,
+      "target_reserved_peak": 48867835904,
+      "traced_peaks_equal_control": true
+    },
+    {
+      "rank": 6,
+      "target_allocated_peak": 48312173056,
+      "target_reserved_peak": 48867835904,
+      "traced_peaks_equal_control": true
+    },
+    {
+      "rank": 7,
+      "target_allocated_peak": 48312173056,
+      "target_reserved_peak": 48867835904,
+      "traced_peaks_equal_control": true
+    }
+  ],
+  "control_rank0_phases": [
+    {
+      "phase": "profile-and-trial:enter",
+      "rank": 0,
+      "allocated": 44195419136,
+      "reserved": 45285900288,
+      "peak": 44195419136,
+      "peak_reserved": 45285900288
+    },
+    {
+      "phase": "communication_buffers_prepared",
+      "rank": 0,
+      "allocated": 44195419136,
+      "reserved": 45306871808,
+      "peak": 44770302464,
+      "peak_reserved": 45306871808,
+      "groups": 5
+    },
+    {
+      "phase": "trial_before_capture",
+      "rank": 0,
+      "allocated": 47945610752,
+      "reserved": 48014295040,
+      "peak": 47945610752,
+      "peak_reserved": 48014295040,
+      "trial_kv_bytes": 3759452160
+    },
+    {
+      "phase": "trial_complete_program",
+      "rank": 0,
+      "allocated": 47975895552,
+      "reserved": 48502931456,
+      "peak": 48312173056,
+      "peak_reserved": 48867835904,
+      "target_graph_bytes": 825106432,
+      "draft_extra_bytes": 47874048
+    },
+    {
+      "phase": "trial_after_capture",
+      "rank": 0,
+      "allocated": 47975895552,
+      "reserved": 48502931456,
+      "peak": 48312173056,
+      "peak_reserved": 48867835904,
+      "trial_graph_bytes": 872980480
+    },
+    {
+      "phase": "physical_budget_after_trial_release",
+      "rank": 0,
+      "allocated": 44201712128,
+      "reserved": 44774195200,
+      "peak": 48312173056,
+      "peak_reserved": 48867835904,
+      "kv_budget": 16044894208,
+      "measured_target_graph": 872980480,
+      "persistent_growth": 6292992,
+      "safety": 1073741824
+    },
+    {
+      "phase": "profile-and-trial:exit",
+      "rank": 0,
+      "allocated": 44201712128,
+      "reserved": 44774195200,
+      "peak": 48312173056,
+      "peak_reserved": 48867835904
+    },
+    {
+      "phase": "budget",
+      "rank": 0,
+      "allocated": 44201712128,
+      "reserved": 44774195200,
+      "peak": 48312173056,
+      "peak_reserved": 48867835904,
+      "kv_budget": 16044894208,
+      "activation": 353820160,
+      "non_torch": 2654490624,
+      "model_bytes": 44058276864
+    },
+    {
+      "phase": "final-capture-and-draft:enter",
+      "rank": 0,
+      "allocated": 59958026240,
+      "reserved": 60502835200,
+      "peak": 59958590464,
+      "peak_reserved": 60502835200
+    },
+    {
+      "phase": "complete_program_before_admission",
+      "rank": 0,
+      "allocated": 59982370816,
+      "reserved": 61085843456,
+      "peak": 60551618048,
+      "peak_reserved": 61085843456,
+      "state_views_cleared": 129
+    },
+    {
+      "phase": "ready_after_capture",
+      "rank": 0,
+      "allocated": 59982370816,
+      "reserved": 61085843456,
+      "peak": 60551618048,
+      "peak_reserved": 61085843456
+    },
+    {
+      "phase": "final-capture-and-draft:exit",
+      "rank": 0,
+      "allocated": 59982370816,
+      "reserved": 61085843456,
+      "peak": 60551618048,
+      "peak_reserved": 61085843456
+    },
+    {
+      "phase": "execute-0:enter",
+      "rank": 0,
+      "allocated": 59982370816,
+      "reserved": 61085843456,
+      "peak": 60551618048,
+      "peak_reserved": 61085843456
+    },
+    {
+      "phase": "execute-0:exit",
+      "rank": 0,
+      "allocated": 60117868032,
+      "reserved": 61085843456,
+      "peak": 60551618048,
+      "peak_reserved": 61085843456
+    },
+    {
+      "phase": "execute-1:enter",
+      "rank": 0,
+      "allocated": 59982201344,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-1:exit",
+      "rank": 0,
+      "allocated": 60119340032,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-2:enter",
+      "rank": 0,
+      "allocated": 59982201344,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-2:exit",
+      "rank": 0,
+      "allocated": 60121207296,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-3:enter",
+      "rank": 0,
+      "allocated": 59982201344,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-3:exit",
+      "rank": 0,
+      "allocated": 59989394944,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-4:enter",
+      "rank": 0,
+      "allocated": 59982201344,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-4:exit",
+      "rank": 0,
+      "allocated": 59989394944,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-5:enter",
+      "rank": 0,
+      "allocated": 59982201344,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-5:exit",
+      "rank": 0,
+      "allocated": 59989394944,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-6:enter",
+      "rank": 0,
+      "allocated": 59982201344,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-6:exit",
+      "rank": 0,
+      "allocated": 59989394944,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-7:enter",
+      "rank": 0,
+      "allocated": 59982201344,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    },
+    {
+      "phase": "execute-7:exit",
+      "rank": 0,
+      "allocated": 59989394944,
+      "reserved": 61087940608,
+      "peak": 60551618048,
+      "peak_reserved": 61087940608
+    }
+  ],
+  "rank0_every_high_water": [
+    {
+      "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/auto_kv/__init__.py",
+      "function": "capture_trial_program",
+      "event": "line",
+      "previous_line": null,
+      "line": 78,
+      "allocated": 47945610752,
+      "peak": 47945610752,
+      "new_peak": true,
+      "reserved": 48014295040,
+      "peak_reserved": 48014295040,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/auto_kv/__init__.py",
+          "function": "capture_trial_program",
+          "line": 78
+        },
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/auto_kv/__init__.py",
+          "function": "determine_available_memory",
+          "line": 185
+        }
+      ],
+      "record_index": 0
+    },
+    {
+      "file": "vllm_ascend/ops/rope_dsv4.py",
+      "function": "get_cos_and_sin_dsa",
+      "event": "line",
+      "previous_line": 106,
+      "line": 107,
+      "allocated": 47946668032,
+      "peak": 47946668032,
+      "new_peak": true,
+      "reserved": 48035266560,
+      "peak_reserved": 48035266560,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/ops/rope_dsv4.py",
+          "function": "get_cos_and_sin_dsa",
+          "line": 107
+        },
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/target_full/__init__.py",
+          "function": "_stable_rope",
+          "line": 23
+        },
+        {
+          "file": "vllm_ascend/attention/context_parallel/dsa_cp.py",
+          "function": "build",
+          "line": 310
+        },
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/target_full/__init__.py",
+          "function": "_build_target",
+          "line": 29
+        },
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/target_full/__init__.py",
+          "function": "_build_fixed_capacity",
+          "line": 63
+        }
+      ],
+      "record_index": 1
+    },
+    {
+      "file": "vllm_ascend/ops/rope_dsv4.py",
+      "function": "get_cos_and_sin_dsa",
+      "event": "line",
+      "previous_line": 107,
+      "line": 109,
+      "allocated": 47947725312,
+      "peak": 47947725312,
+      "new_peak": true,
+      "reserved": 48035266560,
+      "peak_reserved": 48035266560,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/ops/rope_dsv4.py",
+          "function": "get_cos_and_sin_dsa",
+          "line": 109
+        },
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/target_full/__init__.py",
+          "function": "_stable_rope",
+          "line": 23
+        },
+        {
+          "file": "vllm_ascend/attention/context_parallel/dsa_cp.py",
+          "function": "build",
+          "line": 310
+        },
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/target_full/__init__.py",
+          "function": "_build_target",
+          "line": 29
+        },
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/target_full/__init__.py",
+          "function": "_build_fixed_capacity",
+          "line": 63
+        }
+      ],
+      "record_index": 2
+    },
+    {
+      "file": "vllm_ascend/ops/rope_dsv4.py",
+      "function": "get_cos_and_sin_dsa",
+      "event": "line",
+      "previous_line": 106,
+      "line": 107,
+      "allocated": 47947725312,
+      "peak": 47948782592,
+      "new_peak": true,
+      "reserved": 48035266560,
+      "peak_reserved": 48035266560,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/ops/rope_dsv4.py",
+          "function": "get_cos_and_sin_dsa",
+          "line": 107
+        },
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/target_full/__init__.py",
+          "function": "_stable_rope",
+          "line": 23
+        },
+        {
+          "file": "vllm_ascend/attention/context_parallel/dsa_cp.py",
+          "function": "build",
+          "line": 310
+        },
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/target_full/__init__.py",
+          "function": "_build_target",
+          "line": 29
+        },
+        {
+          "file": "/workspace/strengthen-dsv4/runs/peak-memory-20260915/betterscale/patches/target_full/__init__.py",
+          "function": "_build_fixed_capacity",
+          "line": 63
+        }
+      ],
+      "record_index": 3
+    },
+    {
+      "file": "vllm_ascend/ops/register_custom_ops.py",
+      "function": "_maybe_pad_and_reduce_impl",
+      "event": "line",
+      "previous_line": null,
+      "line": 73,
+      "allocated": 47979447808,
+      "peak": 48013269504,
+      "new_peak": true,
+      "reserved": 48100278272,
+      "peak_reserved": 48100278272,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/ops/register_custom_ops.py",
+          "function": "_maybe_pad_and_reduce_impl",
+          "line": 73
+        }
+      ],
+      "record_index": 5
+    },
+    {
+      "file": "vllm_ascend/ops/dsa.py",
+      "function": "dsa_forward",
+      "event": "line",
+      "previous_line": null,
+      "line": 184,
+      "allocated": 47971036672,
+      "peak": 48184913408,
+      "new_peak": true,
+      "reserved": 48268050432,
+      "peak_reserved": 48268050432,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/ops/dsa.py",
+          "function": "dsa_forward",
+          "line": 184
+        }
+      ],
+      "record_index": 6
+    },
+    {
+      "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+      "function": "quant_apply_mlp",
+      "event": "line",
+      "previous_line": 373,
+      "line": 386,
+      "allocated": 48149619200,
+      "peak": 48233506816,
+      "new_peak": true,
+      "reserved": 48309993472,
+      "peak_reserved": 48309993472,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+          "function": "quant_apply_mlp",
+          "line": 386
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+          "function": "unified_apply_mlp",
+          "line": 659
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_comm_method.py",
+          "function": "_apply_mlp",
+          "line": 188
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_comm_method.py",
+          "function": "fused_experts",
+          "line": 167
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "no_shared_forward_impl",
+          "line": 656
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "shared_forward_impl",
+          "line": 854
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "_forward_impl",
+          "line": 890
+        },
+        {
+          "file": "vllm/model_executor/layers/fused_moe/runner/moe_runner.py",
+          "function": "_moe_forward_shared",
+          "line": 161
+        }
+      ],
+      "record_index": 20
+    },
+    {
+      "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+      "function": "quant_apply_mlp",
+      "event": "line",
+      "previous_line": 446,
+      "line": 464,
+      "allocated": 48200343552,
+      "peak": 48280430080,
+      "new_peak": true,
+      "reserved": 48435822592,
+      "peak_reserved": 48435822592,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+          "function": "quant_apply_mlp",
+          "line": 464
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+          "function": "unified_apply_mlp",
+          "line": 659
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_comm_method.py",
+          "function": "_apply_mlp",
+          "line": 188
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_comm_method.py",
+          "function": "fused_experts",
+          "line": 167
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "no_shared_forward_impl",
+          "line": 656
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "shared_forward_impl",
+          "line": 854
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "_forward_impl",
+          "line": 890
+        },
+        {
+          "file": "vllm/model_executor/layers/fused_moe/runner/moe_runner.py",
+          "function": "_moe_forward_shared",
+          "line": 161
+        }
+      ],
+      "record_index": 22
+    },
+    {
+      "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+      "function": "quant_apply_mlp",
+      "event": "line",
+      "previous_line": 446,
+      "line": 464,
+      "allocated": 48204571136,
+      "peak": 48284657664,
+      "new_peak": true,
+      "reserved": 48479862784,
+      "peak_reserved": 48479862784,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+          "function": "quant_apply_mlp",
+          "line": 464
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+          "function": "unified_apply_mlp",
+          "line": 659
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_comm_method.py",
+          "function": "_apply_mlp",
+          "line": 188
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_comm_method.py",
+          "function": "fused_experts",
+          "line": 167
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "no_shared_forward_impl",
+          "line": 656
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "shared_forward_impl",
+          "line": 854
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "_forward_impl",
+          "line": 890
+        },
+        {
+          "file": "vllm/model_executor/layers/fused_moe/runner/moe_runner.py",
+          "function": "_moe_forward_shared",
+          "line": 161
+        }
+      ],
+      "record_index": 680
+    },
+    {
+      "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+      "function": "quant_apply_mlp",
+      "event": "line",
+      "previous_line": 446,
+      "line": 464,
+      "allocated": 48208798720,
+      "peak": 48288885248,
+      "new_peak": true,
+      "reserved": 48479862784,
+      "peak_reserved": 48479862784,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+          "function": "quant_apply_mlp",
+          "line": 464
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_mlp.py",
+          "function": "unified_apply_mlp",
+          "line": 659
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_comm_method.py",
+          "function": "_apply_mlp",
+          "line": 188
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/moe_comm_method.py",
+          "function": "fused_experts",
+          "line": 167
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "no_shared_forward_impl",
+          "line": 656
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "shared_forward_impl",
+          "line": 854
+        },
+        {
+          "file": "vllm_ascend/ops/fused_moe/fused_moe.py",
+          "function": "_forward_impl",
+          "line": 890
+        },
+        {
+          "file": "vllm/model_executor/layers/fused_moe/runner/moe_runner.py",
+          "function": "_moe_forward_shared",
+          "line": 161
+        }
+      ],
+      "record_index": 696
+    },
+    {
+      "file": "vllm_ascend/models/deepseek_v4.py",
+      "function": "hc_pre",
+      "event": "line",
+      "previous_line": 974,
+      "line": 977,
+      "allocated": 48081122816,
+      "peak": 48299227136,
+      "new_peak": true,
+      "reserved": 48479862784,
+      "peak_reserved": 48479862784,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "hc_pre",
+          "line": 977
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "forward",
+          "line": 993
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 229
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 312
+        }
+      ],
+      "record_index": 701
+    },
+    {
+      "file": "vllm_ascend/models/deepseek_v4.py",
+      "function": "hc_pre",
+      "event": "line",
+      "previous_line": 974,
+      "line": 977,
+      "allocated": 48081247744,
+      "peak": 48299352064,
+      "new_peak": true,
+      "reserved": 48479862784,
+      "peak_reserved": 48479862784,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "hc_pre",
+          "line": 977
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "forward",
+          "line": 999
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 229
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 312
+        }
+      ],
+      "record_index": 702
+    },
+    {
+      "file": "vllm_ascend/models/deepseek_v4.py",
+      "function": "hc_pre",
+      "event": "line",
+      "previous_line": 974,
+      "line": 977,
+      "allocated": 48081346560,
+      "peak": 48299450880,
+      "new_peak": true,
+      "reserved": 48481959936,
+      "peak_reserved": 48481959936,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "hc_pre",
+          "line": 977
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "forward",
+          "line": 999
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 229
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 312
+        }
+      ],
+      "record_index": 704
+    },
+    {
+      "file": "vllm_ascend/models/deepseek_v4.py",
+      "function": "hc_pre",
+      "event": "line",
+      "previous_line": 974,
+      "line": 977,
+      "allocated": 48093844992,
+      "peak": 48311949312,
+      "new_peak": true,
+      "reserved": 48840572928,
+      "peak_reserved": 48840572928,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "hc_pre",
+          "line": 977
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "forward",
+          "line": 993
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 229
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 312
+        }
+      ],
+      "record_index": 1403
+    },
+    {
+      "file": "vllm_ascend/models/deepseek_v4.py",
+      "function": "hc_pre",
+      "event": "line",
+      "previous_line": 974,
+      "line": 977,
+      "allocated": 48093969920,
+      "peak": 48312074240,
+      "new_peak": true,
+      "reserved": 48840572928,
+      "peak_reserved": 48840572928,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "hc_pre",
+          "line": 977
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "forward",
+          "line": 999
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 229
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 312
+        }
+      ],
+      "record_index": 1404
+    },
+    {
+      "file": "vllm_ascend/models/deepseek_v4.py",
+      "function": "hc_pre",
+      "event": "line",
+      "previous_line": 974,
+      "line": 977,
+      "allocated": 48094068736,
+      "peak": 48312173056,
+      "new_peak": true,
+      "reserved": 48865738752,
+      "peak_reserved": 48865738752,
+      "peak_reset": false,
+      "stack": [
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "hc_pre",
+          "line": 977
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4.py",
+          "function": "forward",
+          "line": 999
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 229
+        },
+        {
+          "file": "vllm_ascend/models/deepseek_v4_dspark.py",
+          "function": "forward",
+          "line": 312
+        }
+      ],
+      "record_index": 1407
+    }
+  ],
+  "limits": [
+    "No performance or numerical claim from tracing",
+    "No final capture or State-zero line attribution in trace4",
+    "first-line peaks can belong to preceding untraced compiled code",
+    "reserved-minus-allocated is not automatically reclaimable memory",
+    "dummy routing does not cover arbitrary real expert imbalance"
+  ]
+}
