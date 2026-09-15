@@ -1,0 +1,33 @@
+{
+  "release": "0.4.1",
+  "source_commit": "a4c403f",
+  "upstream_pins_unchanged": true,
+  "private_source_file_checks": 19,
+  "change": "Remove APC-off admission; no new numerical/runtime hook",
+  "package_cpu_tests": 61,
+  "native_cache_cpu_tests": 16,
+  "real_tp": {
+    "run": 194,
+    "cold": 32,
+    "warm": 32,
+    "all_warm_hits": true,
+    "identical_outputs": true
+  },
+  "real_dp": {
+    "run": 195,
+    "cold": 32,
+    "warm": 32,
+    "all_warm_hits": true,
+    "identical_outputs": true,
+    "concurrent_reuse_requests": 16,
+    "per_engine": 2
+  },
+  "official_artifacts_match": true,
+  "official_wheel_command_check": "pass",
+  "website_commit": "b37368d",
+  "scope": [
+    "original retained retrieval subset, not full OpenCompass",
+    "native engine-local DP caches require affinity",
+    "small-budget preemption failure not fixed"
+  ]
+}
