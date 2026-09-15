@@ -25,3 +25,7 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 - **Build or publish BetterScale's Python distribution:** read
   [release-python-package](scenarios/release-python-package/GUIDE.md) before
   packaging, installing the public Worker, or publishing to PyPI.
+
+- **Tune native BF16 dense Qwen FFN:** read
+  [tune-native-bf16-ffn](scenarios/tune-native-bf16-ffn/GUIDE.md) before native
+  fusion experiments, interpreting Cube/Vector timing or repeating tiling probes.

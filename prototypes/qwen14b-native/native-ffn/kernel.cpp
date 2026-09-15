@@ -12,13 +12,20 @@
 using namespace AscendC;
 using namespace matmul;
 
+#ifndef NATIVE_CM
+#define NATIVE_CM 128
+#endif
+#ifndef NATIVE_CN
+#define NATIVE_CN 256
+#endif
 namespace native_bf16 {
+constexpr uint32_t CM=NATIVE_CM, CN=NATIVE_CN;
 constexpr uint32_t H = 5120, I = 13824, N = 2 * I, CORES = 24;
 // Keep the original native MDL GEMM, not a scalar/Triton K-loop rewrite.
 __aicore__ constexpr MatmulConfig MakeConfig() {
     auto c = GetMDLConfig(false, false, 0, true, false, false, true);
-    c.singleCoreM = 128; c.singleCoreN = 256; c.singleCoreK = H;
-    c.basicM = 128; c.basicN = 256; c.basicK = 128;
+    c.singleCoreM = CM; c.singleCoreN = CN; c.singleCoreK = H;
+    c.basicM = CM; c.basicN = CN; c.basicK = 128;
     return c;
 }
 constexpr MatmulConfig CFG = MakeConfig();
@@ -63,17 +70,17 @@ public:
         }
     }
     __aicore__ inline void Cube(uint32_t start, uint32_t live, uint64_t base) {
-        uint32_t nm = (live + 127) / 128, nn = N / 256;
+        uint32_t nm = (live + CM - 1) / CM, nn = N / CN;
         for (uint32_t tile = GetBlockIdx(); tile < nm * nn; tile += CORES) {
             uint32_t mt = tile / nn, nt = tile % nn;
-            uint32_t rm = mt * 128;
-            uint32_t take = live - rm < 128 ? live - rm : 128;
+            uint32_t rm = mt * CM;
+            uint32_t take = live - rm < CM ? live - rm : CM;
             mm.SetOrgShape(live, N, H);
-            mm.SetSingleShape(take, 256, H);
+            mm.SetSingleShape(take, CN, H);
             mm.SetTensorA(x[(uint64_t)(start + rm) * H], false);
             // BF16 NZ has16x16 inner blocks; H,N and tile offsets are aligned.
-            mm.SetTensorB(weight[(uint64_t)nt * 256 * H], false);
-            mm.IterateAll<false>(scratch[base + (uint64_t)rm * N + nt * 256], 0);
+            mm.SetTensorB(weight[(uint64_t)nt * CN * H], false);
+            mm.IterateAll<false>(scratch[base + (uint64_t)rm * N + nt * CN], 0);
         }
     }
     __aicore__ inline void Vector(uint32_t start, uint32_t live, uint64_t base) {
@@ -109,7 +116,7 @@ public:
             inQueue.FreeTensor(in);
         }
     }
-    __aicore__ inline void Process() {
+    __aicore__ inline void Process(bool vectorEnabled = true) {
         uint32_t loops = (rows + slab - 1) / slab;
         for (uint32_t s = 0; s < loops; ++s) {
             uint32_t start = s * slab;
@@ -122,7 +129,7 @@ public:
             }
             if ASCEND_IS_AIV {
                 SyncAll<false>();            // wait until both half-rows exist
-                Vector(start, live, base);
+                if (vectorEnabled) Vector(start, live, base);
                 if (s + 2 < loops) SyncAll<false>(); // release slot for reuse
             }
         }
@@ -136,7 +143,10 @@ extern "C" __global__ __aicore__ void qwen_bf16_native_swiglu(
     TPipe pipe;
     native_bf16::MM mm;
     if ASCEND_IS_AIC { mm.SetSubBlockIdx(0); mm.Init(static_cast<const TCubeTiling*>(nullptr)); }
-    if (vc == 256) {
+    if (vc == 0) {
+        native_bf16::DenseSwiglu<256> op(mm, pipe);
+        op.Init(x,w,y,scratch,rows,slab); op.Process(false);
+    } else if (vc == 256) {
         native_bf16::DenseSwiglu<256> op(mm, pipe);
         op.Init(x,w,y,scratch,rows,slab); op.Process();
     } else {
@@ -148,7 +158,7 @@ extern "C" __global__ __aicore__ void qwen_bf16_native_swiglu(
 extern "C" int launch_native_ffn(void *x, void *w, void *y, void *scratch,
     uint32_t rows, uint32_t slab, uint32_t vc, void *stream) {
     if (!x || !w || !y || !scratch || rows == 0 || rows > 4096 ||
-        slab < 128 || slab > 4096 || slab % 128 || (vc != 256 && vc != 512)) return 1;
+        slab < 128 || slab > 4096 || slab % 128 || (vc != 0 && vc != 256 && vc != 512)) return 1;
     qwen_bf16_native_swiglu<<<24, nullptr, stream>>>(
         (uint8_t*)x,(uint8_t*)w,(uint8_t*)y,(uint8_t*)scratch,rows,slab,vc);
     return (int)aclrtGetLastError(ACL_RT_THREAD_LEVEL);
