@@ -67,3 +67,36 @@ native kernel identity. `summarize_pmu.py <measurements> <output>` regenerates
 small reports without reading multi-megabyte raw dumps. Local7 release receipt
 exists; no other tasks touched. Paired source03ea4dc, full-buffer sourceb163149;
 exact build binaries remain build-v7-pair and build-v8-full with identity receipts.
+
+## Recover actual native tiling, not just adjacent Mc2 source
+
+The native dump retained a288-byte input_tiling.bin even though instruction
+TimelineDetail failed. Decoding the installed actual TCubeTiling prefix (50
+int32 fields) and first5 L2 fields gives NATIVE-TILING.json. Shape/core count
+and exact panel coverage agree with the profile; trailing runtime/padding bytes
+are deliberately not interpreted.
+
+Actual native cube: M128/N256/K64, stepKa/Kb4, depthA1/B1=8, dbL0A/B2,
+dbL0C1. L2 panels:4 M panels *4 N panels; each8 M blocks *27 N blocks,
+thus1024 rows x6912 output channels. calOrder0 selects diagonal within-panel
+assignment. The real installed source is ops_nn/ascendc/mat_mul_v3, not the
+previously inspected ops_transformer/ascendc/3rd/Mc2 variant. Its base kernel
+traverses L2 panels in alternating N direction across M panels and calls
+UpdateBasicIndex for calOrder0. The native65536 key records the selected variant;
+no assumption of a K-shift optimization is needed here.
+
+A native panel's weight set6912*5120*2 bytes=67.5MiB, reused over1024rows. Our
+paired row-major traversal sweeps all13824 paired channels (both halves total
+270MiB weights) over roughly one256-row block before repeating for more rows.
+Logical GM->L1 bytes can be equal while a different fraction hits L2. This is
+concrete working-set structure consistent with the PMU gap, not a timed causal
+ablation. Simply saying distant addresses are slow was imprecise; reuse distance
+and active set matter, not address distance alone.
+
+Next smallest candidate: retain tested256x128 paired GEMMs and two-slot local
+micro-pipeline, but schedule panels of1024rows x3456 paired channels. Both gate
+and up together cover6912 channels=67.5MiB weights, matching native panel size.
+There are4 row panels *4 paired-channel panels, each4 M blocks *27 paired N
+blocks. Apply diagonal assignment within this panel and snake panel traversal;
+do not repeat the old slab-local swizzle-only test. No new tensor transpose or
+quantization is required. This proposal has not been implemented or timed.

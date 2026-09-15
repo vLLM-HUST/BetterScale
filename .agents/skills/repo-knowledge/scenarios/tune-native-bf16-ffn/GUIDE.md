@@ -42,3 +42,8 @@ now measures pair credit wait~13us, Vector ready wait~3.32ms, and worse AIC
 L2 read-hit/MTE2 duration than native. No dominant credit-wait evidence.
 TimelineDetail failed while real-board PMU CSVs succeeded; preserve that partial
 status. Kernel-prefix filtering works; tested MSTX wrappers did not select kernels.
+
+Actual native288-byte tiling survived the failed instruction export: PMU.md
+and NATIVE-TILING.json decode128x256x64 plus4x4 L2 panels1024x6912. Prior
+Mc2 source was only adjacent evidence. Paired panel1024x3456 (two halves) is
+the next locality candidate; equal logical traffic does not imply equal HBM reads.
