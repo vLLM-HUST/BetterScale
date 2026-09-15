@@ -8,12 +8,13 @@ import time
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--model", default="/data/shared_models/Qwen2.5-14B-Instruct")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     from vllm import LLM, SamplingParams
 
     config = dict(
-        model="/data/shared_models/Qwen2.5-14B-Instruct",
+        model=args.model,
         tensor_parallel_size=1,
         dtype="bfloat16",
         distributed_executor_backend="mp",

@@ -1,5 +1,12 @@
 # Study native donor DP+EP
 
+For native **single-card Qwen2.5-14B** prefill/decode profiling, use
+`prototypes/qwen14b-native/README.md` and its completed September15 hw3 baseline.
+It needs no BetterScale execution patch. Retain the distinction between native
+resolved graph policy and actual replay coverage, and between offline cohort
+timings and the separately profiled device windows. The observer defers native
+DB analysis until after workers exit; imported profiles must be locally owned.
+
 For released0.4.1 APC compatibility, enter `prototypes/prefix-caching/README.md`
 and its retained193–195 capsules before re-running prefix experiments. Both TP
 and DP cold/warm retrieval gates pass; use native engine affinity for DP. The

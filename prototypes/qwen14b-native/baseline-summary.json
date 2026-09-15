@@ -1,0 +1,91 @@
+{
+  "c1-4k": {
+    "late_six_graph_compute_spans_ms": [
+      26.868977,
+      26.959318,
+      26.861177,
+      26.930058,
+      26.978399,
+      26.928158
+    ],
+    "late_five_inter_graph_compute_gaps_ms": [
+      1.544291,
+      1.560751,
+      1.574312,
+      1.52135,
+      1.551831
+    ],
+    "graph_compute_span_definition": "First to last COMPUTE_TASK_INFO-linked TASK in each late graph burst, separated by >1ms. Excludes first replay and non-compute events; profiled durations, not unprofiled TPOT.",
+    "graph_operator_totals_ms": {
+      "MatMulV2": 158.042033,
+      "FusedInferAttentionScore": 17.767429,
+      "AddRmsNormBias": 2.009623,
+      "SwiGlu": 1.713849,
+      "_triton_rope_2": 1.264268,
+      "Cast": 0.871798,
+      "ScatterPaKvCache": 0.789679,
+      "GatherV2": 0.086661,
+      "RmsNorm": 0.03166
+    },
+    "unprofiled_cohorts": [
+      {
+        "label": "c1-4k",
+        "repeat": 0,
+        "elapsed_s": 1.3600333930226043,
+        "output_tokens": 32
+      },
+      {
+        "label": "c1-4k",
+        "repeat": 1,
+        "elapsed_s": 1.365645357989706,
+        "output_tokens": 32
+      }
+    ],
+    "replay_calls": 7
+  },
+  "c8-512": {
+    "late_six_graph_compute_spans_ms": [
+      27.558631,
+      27.635152,
+      27.614712,
+      27.589452,
+      27.53553,
+      27.381207
+    ],
+    "late_five_inter_graph_compute_gaps_ms": [
+      1.566131,
+      1.585632,
+      1.594511,
+      1.610432,
+      1.624293
+    ],
+    "graph_compute_span_definition": "First to last COMPUTE_TASK_INFO-linked TASK in each late graph burst, separated by >1ms. Excludes first replay and non-compute events; profiled durations, not unprofiled TPOT.",
+    "graph_operator_totals_ms": {
+      "MatMulV2": 159.176553,
+      "FusedInferAttentionScore": 16.315947,
+      "SwiGlu": 3.245463,
+      "Slice": 2.75212,
+      "AddRmsNormBias": 2.733344,
+      "_triton_rope_0": 1.584033,
+      "ScatterPaKvCache": 1.080558,
+      "Cast": 0.872791,
+      "RmsNorm": 0.04042,
+      "GatherV2": 0.025861
+    },
+    "unprofiled_cohorts": [
+      {
+        "label": "c8-512",
+        "repeat": 0,
+        "elapsed_s": 1.4645477409940213,
+        "output_tokens": 256
+      },
+      {
+        "label": "c8-512",
+        "repeat": 1,
+        "elapsed_s": 1.481530021992512,
+        "output_tokens": 256
+      }
+    ],
+    "replay_calls": 7
+  }
+}
