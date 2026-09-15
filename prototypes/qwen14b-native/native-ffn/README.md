@@ -98,3 +98,9 @@ performance. All switches remain opt-in research controls.
 [PANEL.md](PANEL.md) records native-inspired L2 panel scheduling. NATIVE_PANEL=1
 with256x128x64 paired two-slot micro-pipeline improves4K full FFN6.297->5.758ms,
 vs matched native NZ5.917ms. L2 hit rises71.7->94.1%; still leaf-only evidence.
+
+## Whole-FFN follow-up
+
+[WHOLE-FFN.md](WHOLE-FFN.md): row-phased full-K down fusion passed dummy FULL
+on authorized hw3 single-card, but lost to panel+native NZ down at4K. Keep down
+separate; converting its persistent weights to NZ is the simpler observed gain.

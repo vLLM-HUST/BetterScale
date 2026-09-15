@@ -10,6 +10,6 @@ set +u; source "$cann/set_env.sh"; set -u
   -I"$cann/include" -I"$cann/aarch64-linux/ascendc/include/highlevel_api" \
   -I"$cann/aarch64-linux/ascendc/include/basic_api" \
   -I"$cann/aarch64-linux/asc" \
-  "$src/kernel.cpp" -L"$cann/lib64" -lascendcl -lascendc_runtime -lruntime \
+  "$src/${BUILD_SOURCE:-kernel.cpp}" -L"$cann/lib64" -lascendcl -lascendc_runtime -lruntime \
   -Wl,-rpath,"$cann/lib64" -o "$BUILD_DIR/libqwen_native_ffn.so"
 sha256sum "$BUILD_DIR/libqwen_native_ffn.so" > "$BUILD_DIR/binary.sha256"

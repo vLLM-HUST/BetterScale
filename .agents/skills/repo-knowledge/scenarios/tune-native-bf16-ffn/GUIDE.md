@@ -53,3 +53,9 @@ The proposed paired L2 panel is now implemented and accepted in
 4K full FFN5.758ms vs native NZ5.917ms; L2 hit94.1% vs old71.7%.
 Tail1025/FULL passes; local counters corroborate feed improvement, not credit
 wait relief. This supersedes the earlier unimplemented-candidate status.
+
+[Whole FFN](../../../../../prototypes/qwen14b-native/native-ffn/WHOLE-FFN.md)
+records the rejected phased down-fusion prototype, its working TPipe lifetime,
+and fair NZ-down control. All shapes/FULL passed on explicitly authorized hw3
+single-card;4K chunk1024 whole6.000ms vs split panel+NZdown5.707ms. Do not
+attribute NZ format benefits to fusion or compare hw3/local timing as same-host.
