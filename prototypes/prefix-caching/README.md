@@ -42,5 +42,7 @@ request landing on another engine is not a cache-manager miss bug.
 Pinned `test_compressed_prefix_cache.py`:3 passed on the installed local donor
 runtime, exercising logical hash sensitivity, identical hits and rejection of
 partial compressed-page matches. No NPU execution or approximate hash fixture.
-The independent coordinator tests and actual device resume gate are recorded
-separately as they complete.
+Pinned `test_prefix_cache_cp_patches.py`:13 passed, including EAGLE write/read
+checkpoint consistency for merged-spec siblings. Tests were copied byte-for-byte
+into an isolated directory to avoid unrelated suite-wide NPU fixtures.
+The actual device resume gate is recorded separately as it completes.
