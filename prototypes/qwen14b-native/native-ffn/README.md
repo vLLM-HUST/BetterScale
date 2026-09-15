@@ -92,3 +92,9 @@ See [MICROPIPELINE.md](MICROPIPELINE.md): the goal is SwiGLU micro-pipelining,
 not limited workspace alone. NATIVE_PAIR=1 removes slab-wide SyncAll in favor of
 paired Cube/Vector credits; measured4K whole FFN7.225->6.528ms, still below native
 performance. All switches remain opt-in research controls.
+
+## Best measured paired variant
+
+[PANEL.md](PANEL.md) records native-inspired L2 panel scheduling. NATIVE_PANEL=1
+with256x128x64 paired two-slot micro-pipeline improves4K full FFN6.297->5.758ms,
+vs matched native NZ5.917ms. L2 hit rises71.7->94.1%; still leaf-only evidence.

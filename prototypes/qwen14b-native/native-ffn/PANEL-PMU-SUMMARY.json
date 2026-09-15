@@ -1,0 +1,200 @@
+{
+  "pair": {
+    "basic": {
+      "Op Name": "qwen_bf16_native_swiglu",
+      "Op Type": "mix",
+      "Task Duration(us)": "4018.760010",
+      "Block Dim": "24",
+      "Mix Block Dim": "48",
+      "Device Id": "7",
+      "Pid": "1515933",
+      "Current Freq": "1800",
+      "Rated Freq": "1800",
+      "": ""
+    },
+    "aic_time(us)": {
+      "n": 24,
+      "min": 4009.13501,
+      "median": 4010.3516845,
+      "max": 4015.906738
+    },
+    "aic_cube_time(us)": {
+      "n": 24,
+      "min": 3324.419434,
+      "median": 3329.368042,
+      "max": 3334.984375
+    },
+    "aic_mte2_time(us)": {
+      "n": 24,
+      "min": 3931.520508,
+      "median": 3963.2319335,
+      "max": 3976.946045
+    },
+    "aic_scalar_wait_id9_time(us)": {
+      "n": 24,
+      "min": 12.788333,
+      "median": 13.883055500000001,
+      "max": 15.067778
+    },
+    "aiv_time(us)": {
+      "n": 48,
+      "min": 4008.502686,
+      "median": 4009.7558595,
+      "max": 4015.423828
+    },
+    "aiv_vec_time(us)": {
+      "n": 48,
+      "min": 257.295563,
+      "median": 257.295563,
+      "max": 257.295563
+    },
+    "aiv_mte2_time(us)": {
+      "n": 48,
+      "min": 266.578339,
+      "median": 278.0475005,
+      "max": 293.044434
+    },
+    "aiv_mte3_time(us)": {
+      "n": 48,
+      "min": 153.795563,
+      "median": 171.42278249999998,
+      "max": 182.587219
+    },
+    "aiv_scalar_wait_id8_time(us)": {
+      "n": 48,
+      "min": 3212.693359,
+      "median": 3240.3891605,
+      "max": 3256.019531
+    },
+    "aic_read_hit_rate(%)": {
+      "n": 24,
+      "min": 69.183212,
+      "median": 71.7229955,
+      "max": 76.972015
+    },
+    "aiv_read_hit_rate(%)": {
+      "n": 48,
+      "min": 99.994576,
+      "median": 99.997284,
+      "max": 99.997284
+    }
+  },
+  "panel": {
+    "basic": {
+      "Op Name": "qwen_bf16_native_swiglu",
+      "Op Type": "mix",
+      "Task Duration(us)": "3521.539795",
+      "Block Dim": "24",
+      "Mix Block Dim": "48",
+      "Device Id": "7",
+      "Pid": "1516719",
+      "Current Freq": "1800",
+      "Rated Freq": "1800",
+      "": ""
+    },
+    "aic_time(us)": {
+      "n": 24,
+      "min": 3466.272705,
+      "median": 3498.6142575000003,
+      "max": 3518.718994
+    },
+    "aic_cube_time(us)": {
+      "n": 24,
+      "min": 3300.035645,
+      "median": 3304.5093994999997,
+      "max": 3306.952148
+    },
+    "aic_mte2_time(us)": {
+      "n": 24,
+      "min": 3122.523438,
+      "median": 3238.440796,
+      "max": 3362.392822
+    },
+    "aic_scalar_wait_id9_time(us)": {
+      "n": 24,
+      "min": 12.720555,
+      "median": 13.196111,
+      "max": 14.406111
+    },
+    "aiv_time(us)": {
+      "n": 48,
+      "min": 3465.533936,
+      "median": 3498.109497,
+      "max": 3518.288818
+    },
+    "aiv_vec_time(us)": {
+      "n": 48,
+      "min": 249.615555,
+      "median": 249.615555,
+      "max": 249.615555
+    },
+    "aiv_mte2_time(us)": {
+      "n": 48,
+      "min": 247.852219,
+      "median": 262.41583249999996,
+      "max": 282.953339
+    },
+    "aiv_mte3_time(us)": {
+      "n": 48,
+      "min": 149.681107,
+      "median": 159.72249599999998,
+      "max": 170.318893
+    },
+    "aiv_scalar_wait_id8_time(us)": {
+      "n": 48,
+      "min": 2673.412842,
+      "median": 2725.3035885,
+      "max": 2771.428955
+    },
+    "aic_read_hit_rate(%)": {
+      "n": 24,
+      "min": 90.989479,
+      "median": 94.13744,
+      "max": 95.137154
+    },
+    "aiv_read_hit_rate(%)": {
+      "n": 48,
+      "min": 99.994576,
+      "median": 99.997284,
+      "max": 99.997284
+    }
+  },
+  "matmul": {
+    "basic": {
+      "Op Name": "MatMulV3_ND_NZ_ND_ND_BF16_BF16_BF16_BF16_high_performance_65536",
+      "Op Type": "cube",
+      "Task Duration(us)": "3657.939941",
+      "Block Dim": "24",
+      "Mix Block Dim": "NA",
+      "Device Id": "7",
+      "Pid": "1517281",
+      "Current Freq": "1800",
+      "Rated Freq": "1800",
+      "": ""
+    },
+    "aic_time(us)": {
+      "n": 24,
+      "min": 3607.603271,
+      "median": 3640.7437744999997,
+      "max": 3657.323975
+    },
+    "aic_cube_time(us)": {
+      "n": 24,
+      "min": 3289.810547,
+      "median": 3295.585083,
+      "max": 3300.930664
+    },
+    "aic_mte2_time(us)": {
+      "n": 24,
+      "min": 3065.843994,
+      "median": 3156.8366699999997,
+      "max": 3328.251221
+    },
+    "aic_read_hit_rate(%)": {
+      "n": 24,
+      "min": 89.119553,
+      "median": 93.7122345,
+      "max": 94.312141
+    }
+  }
+}

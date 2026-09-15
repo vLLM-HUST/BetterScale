@@ -47,3 +47,9 @@ Actual native288-byte tiling survived the failed instruction export: PMU.md
 and NATIVE-TILING.json decode128x256x64 plus4x4 L2 panels1024x6912. Prior
 Mc2 source was only adjacent evidence. Paired panel1024x3456 (two halves) is
 the next locality candidate; equal logical traffic does not imply equal HBM reads.
+
+The proposed paired L2 panel is now implemented and accepted in
+[PANEL.md](../../../../../prototypes/qwen14b-native/native-ffn/PANEL.md):
+4K full FFN5.758ms vs native NZ5.917ms; L2 hit94.1% vs old71.7%.
+Tail1025/FULL passes; local counters corroborate feed improvement, not credit
+wait relief. This supersedes the earlier unimplemented-candidate status.

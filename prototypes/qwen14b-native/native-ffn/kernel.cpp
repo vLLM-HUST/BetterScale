@@ -36,10 +36,15 @@ using namespace matmul;
 #ifndef NATIVE_SLOTS
 #define NATIVE_SLOTS 2
 #endif
+#ifndef NATIVE_PANEL
+#define NATIVE_PANEL 0
+#endif
 namespace native_bf16 {
 constexpr uint32_t CM=NATIVE_CM, CN=NATIVE_CN, CK=NATIVE_CK;
 static_assert(!NATIVE_FULL_BUFFER || (NATIVE_PAIR && NATIVE_CM == 256 && NATIVE_CN == 128),
               "full-buffer notification bound is validated for256x128 only");
+static_assert(!NATIVE_PANEL || (NATIVE_PAIR && NATIVE_CM == 256 && NATIVE_CN == 128),
+              "paired L2 panels use256x128 GEMMs");
 constexpr uint32_t H = 5120, I = 13824, N = 2 * I, CORES = 24;
 // Keep the original native MDL GEMM, not a scalar/Triton K-loop rewrite.
 __aicore__ constexpr MatmulConfig MakeConfig() {
@@ -158,6 +163,21 @@ public:
         uint32_t seq = 0;
         for (uint32_t tile = core; tile < total; tile += CORES, ++seq) {
             uint32_t r = tile / nc * CM, c = tile % nc * CN;
+#if NATIVE_PANEL
+            // Preserve MatMulV3's67.5MiB weight panel, now as3456 gate/up pairs.
+            // Four256-row tiles per M panel;27 paired channel tiles per N panel.
+            uint32_t allM = (rows + CM - 1) / CM;
+            uint32_t pm = tile / (4 * nc), within = tile % (4 * nc);
+            uint32_t mCount = allM - pm * 4 < 4 ? allM - pm * 4 : 4;
+            uint32_t pn = within / (mCount * 27), local = within % (mCount * 27);
+            uint32_t aa = mCount, bb = 27;
+            while (bb) { uint32_t rem = aa % bb; aa = bb; bb = rem; }
+            uint32_t period = mCount / aa * 27;
+            uint32_t mr = local % mCount, nr = (local + local / period) % 27;
+            if (pm % 2) pn = 3 - pn;
+            r = (pm * 4 + mr) * CM;
+            c = (pn * 27 + nr) * CN;
+#endif
             uint32_t live = rows - r < CM ? rows - r : CM;
             uint64_t base = ((uint64_t)core * NATIVE_SLOTS + seq % NATIVE_SLOTS) * CM * (2 * CN);
 #if NATIVE_FULL_BUFFER
