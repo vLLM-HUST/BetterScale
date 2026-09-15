@@ -121,3 +121,9 @@ identical token sequences; DP also passes16 repeated requests at two per engine.
 Read `prototypes/prefix-caching/README.md` for exact protocol and scope.
 The wheel's runtime bodies are unchanged apart from admission/pins/version, so do
 not reload eight cards to repeat a packaging-only gate.
+
+Publication propagation has two gates: the version JSON/artifact URLs may be
+public before the PyPI simple index used by pip has the release.0.4.1's first
+website CI install saw only0.4.0 despite a successful official artifact download.
+Verify the simple index as well before pushing a versioned installation job;
+retain that failure and retry only after propagation, not by altering dependencies.
