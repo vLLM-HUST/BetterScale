@@ -21,7 +21,9 @@ The package deliberately does not install or upgrade vLLM, vLLM-Ascend, torch-np
 the CANN runtime, model weights, or device kernels. Install those through your normal
 Ascend deployment. The Linux/aarch64 package includes a qualified HC-pre host-tiling
 library for TP, selected privately without overwriting your donor installation.
-Native CANN-licensed components remain solely for Ascend processors.
+Native CANN-licensed components remain solely for Ascend processors. PyPI ships
+an sdist with that prebuilt library: pip builds the small Python wrapper locally,
+without compiling operators. Install on Linux/aarch64 in the qualified environment.
 
 This release is pinned to **vLLM 0.25.1**, **vLLM-Ascend 0.25.1rc1**, and
 **torch-npu 2.10.0.post2**. The measured environment uses CANN 9.0.1 and eight

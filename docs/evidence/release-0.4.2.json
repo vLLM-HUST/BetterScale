@@ -102,5 +102,12 @@
     "DP native tiler unchanged",
     "Source0.4.1 retrieval evidence remains historical, not remeasured"
   ],
-  "cleanup": "TP8 gate exposed multiprocessing skipping ordinary temporary-directory atexit. Added multiprocessing Finalize cleanup; dedicated child-exit CPU test passes. Eight task-owned copied vendor trees from the gate were removed after worker/card release; donor unchanged."
+  "cleanup": "TP8 gate exposed multiprocessing skipping ordinary temporary-directory atexit. Added multiprocessing Finalize cleanup; dedicated child-exit CPU test passes. Eight task-owned copied vendor trees from the gate were removed after worker/card release; donor unchanged.",
+  "distribution": {
+    "pypi": "sdist with qualified prebuilt native library",
+    "local_wheel_tag": "py3-none-linux_aarch64",
+    "operator_compilation_during_install": false,
+    "sdist_install_matched_runtime_files": 30,
+    "wheel_upload": "PyPI returned HTTP400; generic Linux wheel is not published; no manylinux/any retagging"
+  }
 }

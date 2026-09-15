@@ -36,10 +36,14 @@ included. Full evidence: `prototypes/peak-memory/hw3-fixes-results.json` in Git.
 
 ## Native artifact and rebuild
 
-Release wheels/sdists include `libcust_opmaster_rt2.0.so`; source control keeps
-its identity in `native.json` rather than committing build binaries. The wheel
-is Linux/aarch64, not `py3-none-any`. A source checkout needs the qualified binary
-before packaging: either extract it from the corresponding official wheel or
+PyPI publishes an sdist containing the qualified `libcust_opmaster_rt2.0.so`.
+`pip install` builds only the small Python wrapper wheel locally; it does **not**
+compile CANN operators. The resulting wheel is Linux/aarch64, not `py3-none-any`.
+PyPI does not accept that non-manylinux wheel tag, so the wheel is not uploaded;
+we do not claim a CANN-dependent library is a portable manylinux binary.
+Source control keeps its identity in `native.json` rather than build binaries.
+A source checkout needs the qualified binary before packaging: either extract
+it from the corresponding official PyPI sdist or
 rebuild with `build_native.py --upstream <pinned-checkout> --cann <CANN-9.0.1>`.
 The script uses `git archive` of the exact commit, applies `workspace.patch`,
 and builds the native 34-operator A2 host library. It does not rebuild or replace

@@ -159,3 +159,12 @@ exit CPU test qualifies that post-run-only addition; do not reload eight cards
 to validate host-filesystem cleanup. Final runtime AST differs from the installed
 gate only by that cleanup registration; native binary and29 other runtime files
 are byte-identical.67 CPU tests pass. Receipt: docs/evidence/release-0.4.2.json.
+
+PyPI rejects the generic linux_aarch64 wheel (HTTP400). Do not disguise the
+CANN-dependent library as portable manylinux or architecture-independent code.
+For0.4.2 publish the audited sdist only; it contains the qualified binary and
+builds a local platform wheel without recompiling operators. Validate pip install
+from the sdist and compare its installed runtime payload to the qualified wheel.
+This supersedes the earlier two-artifact upload instruction for this release.
+The earlier website0.4.1 CPU CI remains pinned; changing it to0.4.2 would need
+a source-extraction-only CPU check on x86, not executing/installing ARM native code.
