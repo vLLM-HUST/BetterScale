@@ -70,3 +70,7 @@ The two `measurements/{c1-4k,c8-512}/analysis/*.json.gz` files are completed
 TraceLoom37323af exports (single rank, no inter-rank clock alignment required).
 The native profiler databases remain alongside them. These are synthetic token
 performance probes, not quality or online QoS acceptance.
+
+For the subsequent BF16 streaming-fusion source investigation and configuration-only
+FULL probe, read [FFN-AND-GRAPH.md](FFN-AND-GRAPH.md). Single-card follow-ups now
+run locally, not on hw3.
