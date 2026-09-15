@@ -13,6 +13,8 @@ from probe import H, I, metric
 p = argparse.ArgumentParser()
 p.add_argument("--base", required=True)
 p.add_argument("--m256", required=True)
+p.add_argument("--old-base")
+p.add_argument("--old-m256")
 p.add_argument("--output", type=Path, required=True)
 a = p.parse_args()
 a.output.mkdir(parents=True, exist_ok=True)
@@ -24,7 +26,10 @@ x = torch.randn(4096, H, device="npu", dtype=torch.bfloat16)
 w = (torch.randn(2 * I, H, device="npu") / H**0.5).bfloat16()
 b = torch_npu.npu_format_cast(w.t().contiguous(), 29)
 reports = []
-for name, path in [("base", a.base), ("m256", a.m256)]:
+variants = [("base", a.base), ("m256", a.m256)]
+if a.old_base and a.old_m256:
+    variants = [("k128-base", a.old_base), ("k128-m256", a.old_m256)] + variants
+for name, path in variants:
     lib = ctypes.CDLL(path)
     launch = lib.launch_native_ffn
     launch.argtypes = [ctypes.c_void_p] * 4 + [ctypes.c_uint32] * 3 + [ctypes.c_void_p]

@@ -18,14 +18,17 @@ using namespace matmul;
 #ifndef NATIVE_CN
 #define NATIVE_CN 256
 #endif
+#ifndef NATIVE_CK
+#define NATIVE_CK 128
+#endif
 namespace native_bf16 {
-constexpr uint32_t CM=NATIVE_CM, CN=NATIVE_CN;
+constexpr uint32_t CM=NATIVE_CM, CN=NATIVE_CN, CK=NATIVE_CK;
 constexpr uint32_t H = 5120, I = 13824, N = 2 * I, CORES = 24;
 // Keep the original native MDL GEMM, not a scalar/Triton K-loop rewrite.
 __aicore__ constexpr MatmulConfig MakeConfig() {
     auto c = GetMDLConfig(false, false, 0, true, false, false, true);
     c.singleCoreM = CM; c.singleCoreN = CN; c.singleCoreK = H;
-    c.basicM = CM; c.basicN = CN; c.basicK = 128;
+    c.basicM = CM; c.basicN = CN; c.basicK = CK;
     return c;
 }
 constexpr MatmulConfig CFG = MakeConfig();
@@ -35,9 +38,10 @@ using C = MatmulType<TPosition::GM, CubeFormat::ND, bfloat16_t>;
 using Bias = MatmulType<TPosition::GM, CubeFormat::ND, float>;
 __aicore__ constexpr MatmulApiStaticTiling MakeTiling() {
     auto t = GetMatmulApiTiling<A, B, C, Bias>(CFG);
-    // BF16 operands need twice the bytes of the original INT8 pipeline.
-    t.stepM = 1; t.stepN = 1; t.stepKa = 2; t.stepKb = 2;
-    t.depthA1 = 4; t.depthB1 = 4; t.isBias = false;
+    // Keep L1 K extent at256 and two L1 buffers when changing the L0 K tile.
+    // K64 allows both BF16 L0 operands to double-buffer for128x256 or256x128.
+    t.stepM = 1; t.stepN = 1; t.stepKa = 256 / CK; t.stepKb = 256 / CK;
+    t.depthA1 = 512 / CK; t.depthB1 = 512 / CK; t.isBias = false;
     return t;
 }
 constexpr MatmulApiStaticTiling MDL = MakeTiling();

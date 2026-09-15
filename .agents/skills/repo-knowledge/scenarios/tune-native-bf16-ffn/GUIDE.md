@@ -21,3 +21,8 @@ Follow-up source inspection found that inherited baseK128 disables one BF16
 L0 operand double buffer. Read [BF16 tiling](../../../../../prototypes/qwen14b-native/native-ffn/BF16-TILING.md)
 before further sweeps; K64 with preserved L1 extent is the next controlled test,
 not an already measured improvement.
+
+The K64 controlled test is now recorded in BF16-TILING: both tail/FULL probes
+passed; M256/N128/slab256 fused stage improved15.8% vs matched K128 on local7.
+The earlier "next test" paragraph is historical; do not repeat it without a new
+hypothesis. The fusion remains slower than native NZ pure GEMM.
