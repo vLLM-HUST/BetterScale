@@ -1,0 +1,199 @@
+{
+  "clear": [
+    {
+      "mode": "strided",
+      "base": 1073742336,
+      "base_reserved": 1090519040,
+      "peak_extra": 1073743360,
+      "peak_reserved_extra": 1069547520,
+      "clear_ms": 8.401639938354492,
+      "logical_bytes": 536870912,
+      "backing_bytes": 1073741824,
+      "graph_updates_exact": true
+    },
+    {
+      "mode": "backing",
+      "base": 1073742336,
+      "base_reserved": 1090519040,
+      "peak_extra": 0,
+      "peak_reserved_extra": 0,
+      "clear_ms": 0.7427399754524231,
+      "logical_bytes": 536870912,
+      "backing_bytes": 1073741824,
+      "graph_updates_exact": true
+    }
+  ],
+  "hc_original": [
+    {
+      "rows": 1,
+      "eager_extra_bytes": 218114048,
+      "baseline_exact": false,
+      "hc_pair_alias_exact": true,
+      "changing_input_full_exact": true,
+      "graph_memory": {
+        "clone": {
+          "allocated_extra": 218191360,
+          "reserved_extra": 234881024
+        },
+        "alias": {
+          "allocated_extra": 218158080,
+          "reserved_extra": 234881024
+        }
+      }
+    },
+    {
+      "rows": 24,
+      "eager_extra_bytes": 218304000,
+      "baseline_exact": false,
+      "hc_pair_alias_exact": true,
+      "changing_input_full_exact": true,
+      "graph_memory": {
+        "clone": {
+          "allocated_extra": 220078592,
+          "reserved_extra": 236978176
+        },
+        "alias": {
+          "allocated_extra": 219291648,
+          "reserved_extra": 234881024
+        }
+      }
+    },
+    {
+      "rows": 255,
+      "eager_extra_bytes": 220214784,
+      "baseline_exact": false,
+      "hc_pair_alias_exact": true,
+      "changing_input_full_exact": true,
+      "graph_memory": {
+        "clone": {
+          "allocated_extra": 239038976,
+          "reserved_extra": 255852544
+        },
+        "alias": {
+          "allocated_extra": 230682624,
+          "reserved_extra": 234881024
+        }
+      }
+    },
+    {
+      "rows": 256,
+      "eager_extra_bytes": 220223488,
+      "baseline_exact": false,
+      "hc_pair_alias_exact": true,
+      "changing_input_full_exact": true,
+      "graph_memory": {
+        "clone": {
+          "allocated_extra": 239121920,
+          "reserved_extra": 255852544
+        },
+        "alias": {
+          "allocated_extra": 230732800,
+          "reserved_extra": 255852544
+        }
+      }
+    },
+    {
+      "rows": 257,
+      "eager_extra_bytes": 220231680,
+      "baseline_exact": false,
+      "hc_pair_alias_exact": true,
+      "changing_input_full_exact": true,
+      "graph_memory": {
+        "clone": {
+          "allocated_extra": 239203840,
+          "reserved_extra": 255852544
+        },
+        "alias": {
+          "allocated_extra": 230781952,
+          "reserved_extra": 255852544
+        }
+      }
+    },
+    {
+      "rows": 516,
+      "eager_extra_bytes": 222373888,
+      "baseline_exact": false,
+      "hc_pair_alias_exact": true,
+      "changing_input_full_exact": true,
+      "graph_memory": {
+        "clone": {
+          "allocated_extra": 260462080,
+          "reserved_extra": 297795584
+        },
+        "alias": {
+          "allocated_extra": 243553280,
+          "reserved_extra": 255852544
+        }
+      }
+    },
+    {
+      "rows": 4128,
+      "eager_extra_bytes": 252252672,
+      "baseline_exact": false,
+      "hc_pair_alias_exact": true,
+      "changing_input_full_exact": true,
+      "graph_memory": {
+        "clone": {
+          "allocated_extra": 556935680,
+          "reserved_extra": 675282944
+        },
+        "alias": {
+          "allocated_extra": 421668864,
+          "reserved_extra": 444596224
+        }
+      }
+    }
+  ],
+  "hc_workspace_candidate": [
+    {
+      "rows": 1,
+      "eager_extra_bytes": 19966976,
+      "baseline_exact": true,
+      "changing_input_full_exact": true
+    },
+    {
+      "rows": 24,
+      "eager_extra_bytes": 23584256,
+      "baseline_exact": true,
+      "changing_input_full_exact": true
+    },
+    {
+      "rows": 255,
+      "eager_extra_bytes": 72452608,
+      "baseline_exact": true,
+      "changing_input_full_exact": true
+    },
+    {
+      "rows": 256,
+      "eager_extra_bytes": 72472576,
+      "baseline_exact": true,
+      "changing_input_full_exact": true
+    },
+    {
+      "rows": 257,
+      "eager_extra_bytes": 48855552,
+      "baseline_exact": true,
+      "changing_input_full_exact": true
+    },
+    {
+      "rows": 516,
+      "eager_extra_bytes": 58034176,
+      "baseline_exact": true,
+      "changing_input_full_exact": true
+    },
+    {
+      "rows": 4128,
+      "eager_extra_bytes": 103635456,
+      "baseline_exact": true,
+      "changing_input_full_exact": true
+    }
+  ],
+  "scope": {
+    "clear_device": 0,
+    "hc_original_device": 4,
+    "hc_candidate_device": 1,
+    "host": "local Ascend910B2 CANN9.0.1",
+    "timing_comparison": false,
+    "whole_model_accepted": false
+  }
+}

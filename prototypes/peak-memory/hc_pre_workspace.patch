@@ -1,0 +1,13 @@
+--- a/csrc/moe/hc_pre/op_host/hc_pre_tiling.cpp
++++ b/csrc/moe/hc_pre/op_host/hc_pre_tiling.cpp
+@@ -343,8 +343,8 @@
+ 
+     uint64_t requiredSize = workspaceSize1 + workspaceSize2 + squareSumSize + 16 * 1024 * 1024; // 16MB 预留缓冲
+ 
+-    uint64_t defaultSize = 16 * 1024 * 1024 + 192 * 1024 * 1024; // 208MB
+-    workspaceSize_ = requiredSize > defaultSize ? requiredSize : defaultSize;
++    // Keep the calculated kernel bounds and the existing runtime provision.
++    workspaceSize_ = requiredSize;
+ 
+     return ge::GRAPH_SUCCESS;
+ }

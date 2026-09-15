@@ -33,6 +33,9 @@
    退休后残留超过256MiB或预算非正时明确失败，不静默掩盖一个未释放的试验池。
 6. 分配正式 KV、完成原生捕获和补丁安装；TP 再预热最终 draft，清除启动时
    写入的 scratch KV 内容而不更换地址，然后才报告 READY。
+   清理按当前 KV 专属 backing 去重，以连续 byte view 清零整份 storage，包含
+   page padding；不逐个清理带间隙的类型视图，避免 NPU strided zero 的临时量。
+   这依赖当前 pinned 原生分配器的 KV 独占 backing 契约，不适用于任意张量。
 
 DP 沿用 target 试捕获和其已验收的辅助元数据预热；不会安装 TP draft。
 保守 eager 峰值仍保留，不能因为 target 是 FULL graph 就将其直接扣掉。

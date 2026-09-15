@@ -68,20 +68,11 @@ def prepare_final(self):
     assert self.model_runner.input_batch.num_reqs == 0
     # Preparation writes scratch KV before admission. Retire those contents,
     # not their addresses; graph banks keep binding the same final State.
-    seen = set()
+    from ._state import zero_kv_backings
 
-    def clear(value):
-        if isinstance(value, torch.Tensor) and value.numel():
-            key = (value.data_ptr(), value.numel(), value.dtype)
-            if key not in seen:
-                seen.add(key)
-                value.zero_()
-        elif isinstance(value, (list, tuple)):
-            for item in value:
-                clear(item)
-
-    for layer in self.compilation_config.static_forward_context.values():
-        if hasattr(layer, "kv_cache"):
-            clear(layer.kv_cache)
+    # The admitted native allocator owns these entire backing allocations.
+    # Typed/page-strided aliases share them; clear each backing once, including
+    # padding, without materializing a dense copy of every logical view.
+    count = zero_kv_backings(self.compilation_config.static_forward_context)
     torch.npu.synchronize()
-    self.snapshot("complete_program_before_admission", state_views_cleared=len(seen))
+    self.snapshot("complete_program_before_admission", state_backings_cleared=count)
