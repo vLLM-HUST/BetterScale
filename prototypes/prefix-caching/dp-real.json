@@ -1,0 +1,57 @@
+{
+  "run": 195,
+  "status": "PASS_DP8_FULL_K5_APC_REAL",
+  "base": "0.4.0 80a75b5, only private APC admission relaxed",
+  "quality": {
+    "cold_correct": 32,
+    "warm_correct": 32,
+    "total_per_arm": 32,
+    "positive_warm_hits": 32,
+    "identical_output_sequences": 32
+  },
+  "routing": "native X-data-parallel-rank, engine-local cache; request_id modulo8 for quality",
+  "balanced": {
+    "requests": 16,
+    "per_engine": 2,
+    "input_tokens": 8193,
+    "output_tokens": 64,
+    "cold_cached": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    "warm_cached": [
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096,
+      4096
+    ]
+  },
+  "scope": "real retained32 retrieval and bounded cache reuse; not full suite or saturation",
+  "artifact": "/workspace/strengthen-dsv4/runs/prefix-cache-20260915-dp-real/result195"
+}

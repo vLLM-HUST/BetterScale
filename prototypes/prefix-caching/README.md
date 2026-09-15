@@ -72,3 +72,14 @@ DP gate195 uses the native `X-data-parallel-rank` HTTP header. Simple branch cas
 stay on engine0; each retrieval cold/warm pair is routed to request_id modulo8.
 A separate16-request cohort (two per engine) repeats the same prompts concurrently.
 This avoids confusing engine-local cache affinity with prefix-cache correctness.
+
+## DP8 real result195 and release scope
+
+Cold32/32 and warm32/32 retrieval pass, all32 warm hits positive and all output
+sequences identical. The16-request two-seat-per-engine repeated cohort also passes
+with4096 cached tokens each for8193-token prompts. See `dp-real.json`. The19 pinned
+source files match both the local CPU runtime and the actual hw3 runtime.
+
+Release0.4.1 removes only APC-off admission, retains native cache selection, and
+adds no runtime hook.61 package CPU tests and16 native cache CPU tests pass.
+The same native numerical program is retained; no NPU reload for release metadata.

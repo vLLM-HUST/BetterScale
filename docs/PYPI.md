@@ -14,7 +14,7 @@ patches; it does not replace the serving engine or configure your environment.
 Use your **existing, working Ascend serving environment**, with Python 3.12+:
 
 ```bash
-python -m pip install --no-deps vllm-betterscale==0.4.0
+python -m pip install --no-deps vllm-betterscale==0.4.1
 ```
 
 The package deliberately does not install or upgrade vLLM, vLLM-Ascend, torch-npu,
@@ -44,7 +44,7 @@ controls before exposing the service outside the host.
 ### TP8 + EP, DSpark K5
 
 Four active requests; token budget 4128; context up to 524288. DSACP is enabled,
-DCP/PCP remain 1, and prefix caching is disabled.
+DCP/PCP remain 1, and native prefix caching is supported.
 
 ```bash
 vllm serve /models/DeepSeek-V4-Flash \
@@ -52,7 +52,7 @@ vllm serve /models/DeepSeek-V4-Flash \
   --tensor-parallel-size 8 --enable-expert-parallel \
   --quantization ascend --dtype bfloat16 --async-scheduling \
   --max-num-seqs 4 --max-num-batched-tokens 4128 --max-model-len 524288 \
-  --no-enable-prefix-caching \
+  --enable-prefix-caching \
   --speculative-config '{"method":"dspark","num_speculative_tokens":5,"enforce_eager":true}' \
   --compilation-config '{"cudagraph_mode":"FULL","cudagraph_capture_sizes":[24,4128],"max_cudagraph_capture_size":4128}' \
   --additional-config '{"enable_dsa_cp":true,"multistream_overlap_shared_expert":true,"ascend_compilation_config":{"enable_npugraph_ex":true,"enable_static_kernel":false}}' \
@@ -70,7 +70,7 @@ vllm serve /models/DeepSeek-V4-Flash \
   --tensor-parallel-size 1 --data-parallel-size 8 --enable-expert-parallel \
   --quantization ascend --dtype bfloat16 --async-scheduling \
   --max-num-seqs 2 --max-num-batched-tokens 1026 --max-model-len 524288 \
-  --no-enable-prefix-caching \
+  --enable-prefix-caching \
   --speculative-config '{"method":"dspark","num_speculative_tokens":5,"enforce_eager":true}' \
   --compilation-config '{"cudagraph_mode":"FULL","cudagraph_capture_sizes":[6,12,132,264,516,1026],"max_cudagraph_capture_size":1026}' \
   --additional-config '{"enable_dsa_cp":false,"multistream_overlap_shared_expert":true,"ascend_compilation_config":{"enable_npugraph_ex":true,"enable_static_kernel":false}}' \
@@ -82,8 +82,8 @@ byte budget remains available; see the capacity boundary below.
 In 0.3.1, DP prepares its finite producer/metadata graph catalog before READY:
 4 producer banks and 6 metadata entries per rank for the two-seat K5 configuration.
 Unknown runtime metadata shapes fall back to native preparation instead of capturing
-online. This changes startup preparation, not the model or KV contents. TP retains
-its existing path, including first-use capture of some draft shapes.
+online. This changes startup preparation, not the model or KV contents. TP also prepares its bounded draft graph catalog before READY; runtime capture
+is not part of the serving path.
 
 ## Verify and roll back
 
@@ -136,5 +136,16 @@ full-length context simultaneously. Native KV admission still queues requests.
 
 Do not compare native “KV token capacity” across different context ceilings as
 if it were a fixed-size token heap. Hybrid SWA/compressed-state accounting depends
-on the horizon and prefill wave budget. APC remains disabled in this release.
+on the horizon and prefill wave budget. APC is supported with native hybrid checkpoint alignment (4K at default block32).
+DP caches remain engine-local; use session affinity or the native
+`X-data-parallel-rank` routing header to return to the same engine.
 The 3GiB diagnostic preemption failure is not claimed fixed.
+
+## Prefix reuse qualification
+
+TP8 and DP8 each pass cold32/32 and warm32/32 original retained retrieval
+questions; all warm requests hit and cold/warm token outputs match. DP also
+passes a16-request repeated cohort, two requests per engine. This enables the
+existing native cache mechanism; no new cache algorithm or execution hook is added.
+The native option can still be disabled. These are bounded reuse/quality checks,
+not whole-suite certification or a preemption-recovery fix.

@@ -99,10 +99,10 @@ artifact directory. The package does not select Python/CANN, set HCCL/allocator
 variables, repair library paths, or change network settings. Without an explicit
 KV byte budget, it sizes KV from actual execution residency and physical headroom. Start with a
 working donor environment. A source install with --no-build-isolation needs existing setuptools>=77.0.3.
-Prefer the published wheel: `pip install --no-deps vllm-betterscale==0.4.0`.
+Prefer the published wheel: `pip install --no-deps vllm-betterscale==0.4.1`.
 
 The original TP admission remains bounded: TP8/EP/DSACP/K5, four seats,4128 token budget,
-max length<=524288, target FULL, native scheduler, prefix caching off. This entry
+max length<=524288, target FULL, native scheduler, native prefix caching supported. This entry
 change does not qualify arbitrary layouts or shapes. Manual KV bytes and bind
 address remain native settings; there is no patch-imposed minimum of
 four *full-length* resident requests. See the runbook for the complete native
@@ -140,7 +140,7 @@ The SVG figures are editable vector sources under `docs/figures/`.
 
 The same Worker also has a separately gated TP1/DP8/EP8 path: two seats per
 rank,1026 local token budget,context<=524288,FULL target,DSpark K5 with native
-eager draft,DSACP off,prefix caching off. It combines native DSA FULL target
+eager draft,DSACP off,native prefix caching supported. It combines native DSA FULL target
 with owned input slots and captured device preparation/metadata. It does **not**
 enable the rejected all-mode worker extension. Automatic physical KV sizing is
 shared with the TP entry; only TP installs the finite split-draft catalog.
