@@ -40,7 +40,7 @@ For further work, isolate the suspected operator/lifetime in a small fixture.
 
 Per-rank observations (rank0; all8 target peaks are byte-identical to control):
 
-- Model41.0325GiB; native eager activation337.45MiB; non-Torch2.4722GiB.
+- Model41.0325GiB; native eager activation337.43MiB; non-Torch2.4722GiB.
 - Budgeted target786.883MiB + draft45.656MiB =832.539MiB. These are measured
   physical graph costs, not sums of individual tensors.
 - Trial capture baseline45724.498MiB → allocated peak46074.079MiB:
@@ -56,8 +56,8 @@ Per-rank observations (rank0; all8 target peaks are byte-identical to control):
 - Final READY reserved58256MiB versus allocated57203.646MiB leaves1052.354MiB
   allocator-held slack. Not all slack is safely reclaimable. After the last draft
   graph, clearing129 final-State views increases the running allocated high water
-  from57524.352 to57746.523MiB; the latter is542.877MiB above READY live bytes.
-  **222.171MiB is the high-water increase, not543MiB.** This is a phase-local
+  from57524.346 to57746.523MiB; the latter is542.877MiB above READY live bytes.
+  **222.177MiB is the high-water increase, not543MiB.** This is a phase-local
   observation, not proof of `zero_`'s exact temporary or a removable allocation.
 
 Priority for another experiment: isolate the post-preparation strided-State clear

@@ -114,3 +114,15 @@ Reusing those complete same-host capsules is preferable to another blind reload.
 The small native TP helper installs ONLY LCM startup compatibility. Preserve
 CANN's Python path when prefixing the experiment closure;157 failed import when
 its launcher replaced that path. The corrected bounded import check precedes158.
+
+## Peak-memory attribution after automatic fitting
+
+Before another full-model allocation trace, read `prototypes/peak-memory/README.md`.
+The September15 TP8 dummy control completes; its target allocated/reserved peaks
+match all8 instrumented ranks exactly. The trace later times out in draft startup,
+so only the completed target interval is qualified for attribution. Broad Python
+tracing across donor/compiler code is painfully slow; reuse retained watermarks
+and isolate an operator rather than spending another full-model capture.
+Highest target allocated water follows HC-pre; post-draft State clear raises the
+clean run's high water by222MiB (543MiB above READY live bytes, a different metric).
+Reserved slack and native temporary peaks are not automatically reclaimable KV.
