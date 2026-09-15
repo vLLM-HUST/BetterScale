@@ -26,3 +26,8 @@ The K64 controlled test is now recorded in BF16-TILING: both tail/FULL probes
 passed; M256/N128/slab256 fused stage improved15.8% vs matched K128 on local7.
 The earlier "next test" paragraph is historical; do not repeat it without a new
 hypothesis. The fusion remains slower than native NZ pure GEMM.
+
+[Pair-local micro-pipeline](../../../../../prototypes/qwen14b-native/native-ffn/MICROPIPELINE.md)
+records MatMulV3 call/swizzle ablations and the successful per-Cube paired-slot
+protocol. Objective is SwiGLU overlap, not bounded scratch alone. Pair scratch
+layout invalidates diagnose.py's slab oracle; use the full-output smoke/FFN tests.

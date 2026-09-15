@@ -85,3 +85,10 @@ identities, admission/release receipts and logs are under
 `/workspace/strengthen-dsv4/runs/qwen-native-ffn-20260915/`:
 `smoke-v3-local1`, `bench-v3-local1`, `diagnose-v4-local1`, and matching
 `build-v3`, `build-v4-base`, `build-v4-m256`. All jobs released their local card.
+
+## Pair-local follow-up
+
+See [MICROPIPELINE.md](MICROPIPELINE.md): the goal is SwiGLU micro-pipelining,
+not limited workspace alone. NATIVE_PAIR=1 removes slab-wide SyncAll in favor of
+paired Cube/Vector credits; measured4K whole FFN7.225->6.528ms, still below native
+performance. All switches remain opt-in research controls.

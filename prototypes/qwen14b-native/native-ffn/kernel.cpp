@@ -21,12 +21,21 @@ using namespace matmul;
 #ifndef NATIVE_CK
 #define NATIVE_CK 128
 #endif
+#ifndef NATIVE_V3
+#define NATIVE_V3 0
+#endif
+#ifndef NATIVE_SWIZZLE
+#define NATIVE_SWIZZLE 0
+#endif
+#ifndef NATIVE_PAIR
+#define NATIVE_PAIR 0
+#endif
 namespace native_bf16 {
 constexpr uint32_t CM=NATIVE_CM, CN=NATIVE_CN, CK=NATIVE_CK;
 constexpr uint32_t H = 5120, I = 13824, N = 2 * I, CORES = 24;
 // Keep the original native MDL GEMM, not a scalar/Triton K-loop rewrite.
 __aicore__ constexpr MatmulConfig MakeConfig() {
-    auto c = GetMDLConfig(false, false, 0, true, false, false, true);
+    auto c = GetMDLConfig(false, false, 0, !NATIVE_V3, false, false, true);
     c.singleCoreM = CM; c.singleCoreN = CN; c.singleCoreK = H;
     c.basicM = CM; c.basicN = CN; c.basicK = CK;
     return c;
@@ -77,6 +86,13 @@ public:
         uint32_t nm = (live + CM - 1) / CM, nn = N / CN;
         for (uint32_t tile = GetBlockIdx(); tile < nm * nn; tile += CORES) {
             uint32_t mt = tile / nn, nt = tile % nn;
+#if NATIVE_SWIZZLE
+            // MatMulV3 diagonal core assignment: a bijection over nm*nn tiles.
+            uint32_t a = nm, b = nn;
+            while (b) { uint32_t r = a % b; a = b; b = r; }
+            uint32_t lcm = nm / a * nn;
+            mt = tile % nm; nt = (tile + tile / lcm) % nn;
+#endif
             uint32_t rm = mt * CM;
             uint32_t take = live - rm < CM ? live - rm : CM;
             mm.SetOrgShape(live, N, H);
@@ -84,7 +100,12 @@ public:
             mm.SetTensorA(x[(uint64_t)(start + rm) * H], false);
             // BF16 NZ has16x16 inner blocks; H,N and tile offsets are aligned.
             mm.SetTensorB(weight[(uint64_t)nt * CN * H], false);
+            #if NATIVE_V3
+            mm.Iterate();
+            mm.GetTensorC(scratch[base + (uint64_t)rm * N + nt * CN], 0);
+#else
             mm.IterateAll<false>(scratch[base + (uint64_t)rm * N + nt * CN], 0);
+#endif
         }
     }
     __aicore__ inline void Vector(uint32_t start, uint32_t live, uint64_t base) {
@@ -120,7 +141,68 @@ public:
             inQueue.FreeTensor(in);
         }
     }
+    // Each physical Cube and its two Vector lanes own two paired gate/up slots.
+    // Publish after FIX; return credit after the consumers have finished the tile.
+    __aicore__ inline void PairedProcess(bool vectorEnabled) {
+        uint32_t core = GetBlockIdx();
+        if ASCEND_IS_AIV { core /= 2; }
+        uint32_t nc = I / CN, total = ((rows + CM - 1) / CM) * nc;
+        uint32_t seq = 0;
+        for (uint32_t tile = core; tile < total; tile += CORES, ++seq) {
+            uint32_t r = tile / nc * CM, c = tile % nc * CN;
+            uint32_t live = rows - r < CM ? rows - r : CM;
+            uint64_t base = ((uint64_t)core * 2 + seq % 2) * CM * (2 * CN);
+            if ASCEND_IS_AIC {
+                if (seq >= 2) CrossCoreWaitFlag(0x9);
+                mm.SetOrgShape(live, 2 * CN, H);
+                mm.SetSingleShape(live, CN, H);
+                mm.SetTensorA(x[(uint64_t)r * H], false);
+                mm.SetTensorB(weight[(uint64_t)c * H], false);
+                mm.Iterate(); mm.GetTensorC(scratch[base], 0);
+                mm.SetTensorA(x[(uint64_t)r * H], false);
+                mm.SetTensorB(weight[(uint64_t)(I + c) * H], false);
+                mm.Iterate(); mm.GetTensorC(scratch[base + CN], 0);
+                CrossCoreSetFlag<0x2, PIPE_FIX>(0x8);
+            }
+            if ASCEND_IS_AIV {
+                CrossCoreWaitFlag(0x8);
+                if (vectorEnabled) {
+                    for (uint32_t rr = (GetBlockIdx() % 2) * VR; rr < live; rr += 2 * VR) {
+                        uint32_t take = live - rr < VR ? live - rr : VR;
+                        uint32_t count = take * CN;
+                        auto in = inQueue.AllocTensor<bfloat16_t>();
+                        DataCopyExtParams load{(uint16_t)take, CN * 2, CN * 2, 0, 0};
+                        DataCopyPadExtParams<bfloat16_t> pad{false, 0, 0, 0};
+                        DataCopyPad(in, scratch[base + (uint64_t)rr * 2 * CN], load, pad);
+                        DataCopyPad(in[COUNT], scratch[base + (uint64_t)rr * 2 * CN + CN], load, pad);
+                        inQueue.EnQue(in); in = inQueue.DeQue<bfloat16_t>();
+                        auto f = fp32.Get<float>();
+                        Cast(f, in, RoundMode::CAST_NONE, count);
+                        Cast(f[COUNT], in[COUNT], RoundMode::CAST_NONE, count);
+                        PipeBarrier<PIPE_V>();
+                        auto act = activation.Get<float>();
+                        SwiGLU<float, false>(act, f[COUNT], f, 1.0f, count);
+                        PipeBarrier<PIPE_V>();
+                        auto out = outQueue.AllocTensor<bfloat16_t>();
+                        Cast(out, act, RoundMode::CAST_RINT, count);
+                        outQueue.EnQue(out); out = outQueue.DeQue<bfloat16_t>();
+                        DataCopyExtParams st{(uint16_t)take, CN * 2, 0, (I - CN) * 2, 0};
+                        DataCopyPad(output[(uint64_t)(r + rr) * I + c], out, st);
+                        PipeBarrier<PIPE_ALL>();
+                        outQueue.FreeTensor(out); inQueue.FreeTensor(in);
+                    }
+                }
+                CrossCoreSetFlag<0x2, PIPE_MTE3>(0x9);
+            }
+        }
+        if ASCEND_IS_AIC {
+            for (uint32_t i = 0; i < (seq < 2 ? seq : 2); ++i) CrossCoreWaitFlag(0x9);
+        }
+    }
     __aicore__ inline void Process(bool vectorEnabled = true) {
+#if NATIVE_PAIR
+        PairedProcess(vectorEnabled); return;
+#endif
         uint32_t loops = (rows + slab - 1) / slab;
         for (uint32_t s = 0; s < loops; ++s) {
             uint32_t start = s * slab;
