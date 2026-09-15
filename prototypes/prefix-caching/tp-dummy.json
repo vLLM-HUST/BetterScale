@@ -1,0 +1,59 @@
+{
+  "run": 193,
+  "status": "PASS_TP8_FULL_K5_APC_DUMMY",
+  "source": "0.4.0 80a75b5, only private APC/dummy admission relaxed",
+  "physical_block_size": 32,
+  "cohorts": [
+    {
+      "request": "cold",
+      "input_tokens": 12345,
+      "output_tokens": 64,
+      "cached_tokens": 0,
+      "ttft_s": 1.1798013090156019,
+      "elapsed_s": 2.5190129820257425
+    },
+    {
+      "request": "repeat",
+      "input_tokens": 12345,
+      "output_tokens": 64,
+      "cached_tokens": 12288,
+      "ttft_s": 0.2640406700083986,
+      "elapsed_s": 1.5672054369933903
+    },
+    {
+      "request": "append",
+      "input_tokens": 12601,
+      "output_tokens": 64,
+      "cached_tokens": 12288,
+      "ttft_s": 0.27919246396049857,
+      "elapsed_s": 2.874133305042051
+    },
+    {
+      "request": "fork5000",
+      "input_tokens": 12345,
+      "output_tokens": 64,
+      "cached_tokens": 4096,
+      "ttft_s": 0.8557287630392238,
+      "elapsed_s": 2.1816598110599443
+    },
+    {
+      "request": "fork100",
+      "input_tokens": 12345,
+      "output_tokens": 64,
+      "cached_tokens": 0,
+      "ttft_s": 0.9956936090020463,
+      "elapsed_s": 2.2904469009954482
+    },
+    {
+      "request": "repeat-after-forks",
+      "input_tokens": 12345,
+      "output_tokens": 64,
+      "cached_tokens": 12288,
+      "ttft_s": 0.2625008139293641,
+      "elapsed_s": 1.57056305592414
+    }
+  ],
+  "identical_repeat_output_ids": true,
+  "scope": "dummy routing and graph continuation, not quality or real performance",
+  "retained_artifact": "/workspace/strengthen-dsv4/runs/prefix-cache-20260915-tp/result193"
+}

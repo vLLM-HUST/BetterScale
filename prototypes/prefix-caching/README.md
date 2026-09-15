@@ -46,3 +46,16 @@ Pinned `test_prefix_cache_cp_patches.py`:13 passed, including EAGLE write/read
 checkpoint consistency for merged-spec siblings. Tests were copied byte-for-byte
 into an isolated directory to avoid unrelated suite-wide NPU fixtures.
 The actual device resume gate is recorded separately as it completes.
+
+## TP8 dummy result193
+
+All six cases passed with the existing FULL/K5 program. Cached-token counts were
+0,12288,12288,4096,0,12288 respectively. Identical repeat output IDs matched.
+The fork at5000 cannot reuse past4096; the fork at100 correctly misses entirely.
+No new cache or execution patch was necessary in this gate. See `tp-dummy.json`;
+timing remains dummy-only. All eight cards were released by the supervisor.
+
+The next real-weight gate194 uses the same program and checks32 original retained
+retrieval inputs, each immediately followed by its identical warm repeat. Score
+both arms through the retained OpenCompass evaluator; preserve cached-token counts
+and do not equate accepted draft differences with target-quality failures.
