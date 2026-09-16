@@ -331,6 +331,15 @@ class Worker(NPUWorker):
         self.model_runner._prefill_full = mode == "full"
         return dict(rank=self.rank, mode=mode)
 
+    def set_prefill_policy(self, mode):
+        # Diagnostic RPC: called only between fully completed requests.
+        global PADDED
+        if mode not in ("native", "padded-none", "full"):
+            raise ValueError(mode)
+        PADDED = mode != "native"
+        self.model_runner._prefill_full = mode == "full"
+        return dict(rank=self.rank, policy=mode)
+
     def get_dispatch_counts(self):
         return dict(
             rank=self.rank,
