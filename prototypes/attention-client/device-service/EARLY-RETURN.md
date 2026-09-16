@@ -101,3 +101,6 @@ dfc_probe.py repeats one weight-address set. Equal numerical values do not imply
 equal cache identity. This is an unmatched condition, NOT evidence that caching
 explains the entire DFC gap or that scheduling is already equal. These internal
 A/B results keep the same address-alternation pattern in both arms.
+
+For the subsequent matched weight-address study including fetch, see
+[FAIR-DFC.md](FAIR-DFC.md). Internal scheduling gains do not establish DFC parity.

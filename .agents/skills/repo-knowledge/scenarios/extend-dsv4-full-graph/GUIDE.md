@@ -496,3 +496,9 @@ It qualifies row-generation publication before up tile issue, composing with
 EARLY-DOWN.md; both remain opt-in. Use expert_ready_audit.py for fine-pack
 receipts, not cube_supply_audit.py's historical whole-command readiness model.
 The per-expert causal trace is diagnostic, not an MMAD-utilization measurement.
+
+For a fairer persistent-service versus DFC comparison, enter device-service/FAIR-DFC.md.
+It records same-host one/two physical weight-catalog controls, fetch-inclusive
+intervals and client/retirement scope. Address reuse affects DFC materially but
+does not establish remote parity; the remaining input-preparation seam has
+descriptor ownership and late-source-coalescing constraints.

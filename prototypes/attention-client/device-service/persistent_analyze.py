@@ -128,6 +128,7 @@ for server in range(2):
             )
         )
     wave_service_us, math_chain_us = [], []
+    fetch_to_return_us, fetch_to_pack_us = [], []
     for sequence in stages:
         wave = []
         for event in sequence:
@@ -197,6 +198,9 @@ for server in range(2):
                 if first:
                     return_headstart.append((down[3] - min(first)) / 50)
                 return_exposed_tail.append((event[3] - down[3]) / 50)
+            fetch_begin = min(e[2] for e in pulls)
+            fetch_to_return_us.append((event[3] - fetch_begin) / 50)
+            fetch_to_pack_us.append((pack[2] - fetch_begin) / 50)
             wave_service_us.append((event[3] - pack[2]) / 50)
             cube_events = [e for e in wave if e[0] == 1]
             math_chain_us.append(
@@ -451,6 +455,8 @@ for server in range(2):
                 statistics.median(remaining_up) if remaining_up else None
             ),
             tail_experts=receipt.get("tail_experts", 0),
+            median_fetch_to_return_us=statistics.median(fetch_to_return_us),
+            median_fetch_to_pack_us=statistics.median(fetch_to_pack_us),
             median_pack_to_return_us=statistics.median(wave_service_us),
             median_math_chain_us=statistics.median(math_chain_us),
             activation_up_core_overlap_us=activation_overlap,

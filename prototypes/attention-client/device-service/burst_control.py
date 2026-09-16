@@ -15,6 +15,8 @@ def run(service, model, links, root, rank, base_up, base_down, bank_type):
     ]
     assert len(sizes) == 2 and all(1 <= n <= 32 for n in sizes)
     rows = sizes[rank]
+    weight_sets = int(os.environ.get("DEVICE_SERVICE_WEIGHT_SETS", "2"))
+    assert weight_sets in (1, 2)
     jobs = []
     for step in range(service.TASKS):
         torch.manual_seed(900 + rank * 100 + step)
@@ -38,7 +40,7 @@ def run(service, model, links, root, rank, base_up, base_down, bank_type):
             .mean(1)
             .to(torch.bfloat16)
         )
-        jobs.append((step % 2, x, ids, expected))
+        jobs.append((step % weight_sets, x, ids, expected))
     remote = service.DeviceExperts(model, links, [])
     for layer in (0, 1):
         bank = bank_type(remote, layer, None, jobs[0][1])
@@ -107,6 +109,7 @@ def run(service, model, links, root, rank, base_up, base_down, bank_type):
         json.dumps(
             dict(
                 source=rank,
+                weight_address_sets=weight_sets,
                 jobs=len(jobs),
                 one_host_replay=True,
                 episode_us=elapsed,

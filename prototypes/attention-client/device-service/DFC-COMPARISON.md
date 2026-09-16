@@ -101,3 +101,6 @@ The remote burst reuses two separately allocated layer weight ranges, with equal
 dummy values, alternating layer0/1; the DFC leaf replays one range. This is not
 fresh weight generation per request. It is an unmatched address/cache condition,
 not a demonstrated explanation for the whole latency gap. See EARLY-RETURN.md.
+
+Fresh same-host address controls and complete timing boundaries are in
+[FAIR-DFC.md](FAIR-DFC.md); do not reuse the early stage-only numbers as parity.
