@@ -46,6 +46,17 @@ class PersistentEngine:
             if os.environ.get("DEVICE_SERVICE_INTERNAL_TIMING") == "1"
             else None
         )
+        pack_timing = os.environ.get("DEVICE_SERVICE_PACK_TIMING") == "1"
+        assert not pack_timing or (
+            self.work_times is not None
+            and not self.move_quantum
+            and not self.resident_moves
+        )
+        self.pack_times = (
+            torch.zeros((512, 512, 8), dtype=torch.int64, device="npu")
+            if pack_timing
+            else None
+        )
         self.slots = []
         table = []
         for _ in range(2):
@@ -110,6 +121,7 @@ class PersistentEngine:
                 self.move_quantum,
                 int(self.resident_moves),
                 int(self.early_down),
+                self.pack_times.data_ptr() if self.pack_times is not None else 0,
             ],
             dtype=torch.int64,
             device="npu",
@@ -187,6 +199,12 @@ class PersistentEngine:
             events=self.events[: ctrl[43][3]].cpu().tolist(),
         )
 
+        if self.pack_times is not None:
+            marks = self.pack_times.cpu()
+            receipt["pack_row_ready"] = [
+                [gen + 1, row, *marks[gen, row, :6].tolist()]
+                for gen, row in (marks[..., 0] > 0).nonzero().tolist()
+            ]
         if self.work_times is not None:
             timing = self.work_times.cpu()
             receipt["core_work"] = [

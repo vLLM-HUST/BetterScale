@@ -138,7 +138,8 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
       int sourceBase = 0;
       for (int c = 0; c < 2; ++c) {
         io.Read((__gm__ int32_t *)ptr[5] + c * MAP, MAP);
-        int gen = io.words.GetValue(0), n = io.words.GetValue(1);
+        int gen = io.words.GetValue(0), n = io.words.GetValue(1),
+            layer = io.words.GetValue(2);
         int map[ROUTES];
         for (int i = 0; i < ROUTES; ++i)
           map[i] = io.words.GetValue(8 + i);
@@ -165,12 +166,26 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
             if (map[route] >= 0) {
               if (kind == REPACK)
                 Urgent(cfg, io, worker, urgentSeen);
-              if (kind == REPACK)
+              if (kind == REPACK) {
                 io.Copy((__gm__ int32_t *)ptr[0] +
                             (c * 32 + route / 8) * HIDDEN / 2,
                         (__gm__ int32_t *)ptr[1] + map[route] * HIDDEN / 2,
                         HIDDEN / 2);
-              else
+                if (cfg[19]) {
+                  // Copy already waits on MTE3_S. This is an observation after
+                  // existing output completion, not a new payload fence.
+                  // One cache line per destination row: movers never share it.
+                  auto mark = (__gm__ int64_t *)cfg[19] +
+                              ((next - 1) * CAPACITY + map[route]) * 8;
+                  mark[0] = GetSystemCycle();
+                  mark[1] = c;
+                  mark[2] = gen;
+                  mark[3] = route;
+                  mark[4] = layer;
+                  mark[5] = worker;
+                  Refresh((__gm__ int32_t *)mark);
+                }
+              } else
                 io.Copy((__gm__ int32_t *)ptr[4] + map[route] * HIDDEN / 2,
                         (__gm__ int32_t *)cfg[2 + c] + 64 + route * HIDDEN / 2,
                         HIDDEN / 2);

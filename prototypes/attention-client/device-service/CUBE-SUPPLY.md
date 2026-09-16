@@ -86,3 +86,7 @@ here. We have not ruled out intra-GEMM stalls; that requires finer hardware evid
 147.04/155.26us, but wave composition differs. It shows the ability to consume
 another slot, not a controlled speedup from arrival skew. No code policy changes
 or claim of recovered service throughput follow from this offline audit.
+
+For measured ready work INSIDE a wave, enter [EXPERT-READY.md](EXPERT-READY.md).
+The opt-in row-completion observer confirms expert inputs are ready before the
+full PACK boundary; it must not be interpreted as a new optimized scheduler.
