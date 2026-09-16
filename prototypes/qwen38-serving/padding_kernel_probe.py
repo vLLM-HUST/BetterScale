@@ -14,6 +14,9 @@ from vllm_ascend.utils import enable_custom_op
 
 assert enable_custom_op()
 torch.npu.set_device(0)
+from vllm_ascend.ops.triton.triton_utils import init_device_properties_triton
+
+init_device_properties_triton()
 torch.manual_seed(17)
 from vllm_ascend.ops.triton.fla import chunk
 from vllm_ascend.ops.gdn_attn_builder import _build_non_spec_chunked_prefill_metadata
@@ -76,6 +79,9 @@ with torch.inference_mode():
                     state=compare(state, conv_reference[1]),
                 )
             )
+        (root / "receipt.json").write_text(
+            json.dumps(dict(status="RUNNING", results=results), indent=2)
+        )
         values = dict(
             q=torch.randn(1, 512, 8, 128, device="npu", dtype=torch.bfloat16),
             k=torch.randn(1, 512, 8, 128, device="npu", dtype=torch.bfloat16),
