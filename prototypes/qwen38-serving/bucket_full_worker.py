@@ -139,6 +139,20 @@ def install():
             )
         return result
 
+    # FULL descriptors own request-count identity as well as token shape.
+    # Register and look up the same single-prefill key, rather than mutating
+    # scheduler seats after keys were registered for eight requests.
+    from vllm.v1.cudagraph_dispatcher import CudagraphDispatcher
+
+    old_descriptor = CudagraphDispatcher._create_padded_batch_descriptor
+
+    def descriptor(self, *args, **kwargs):
+        result = old_descriptor(self, *args, **kwargs)
+        if result.num_tokens in PREFILLS:
+            result = dataclasses.replace(result, num_reqs=1)
+        return result
+
+    CudagraphDispatcher._create_padded_batch_descriptor = descriptor
     old_dummy = NPUModelRunner._dummy_run
 
     def dummy(self, num_tokens, *args, **kwargs):
