@@ -7,12 +7,12 @@
 # Concurrent original-trace replay with native APC and owned N+2
 
 This is the successor to the fixed32-token gate. It admits multiple resident
-requests, replays variable-length prompts without token padding/truncation,
+requests, replays variable-length prompts without truncating their actual tokens,
 batches decode, reuses prefix blocks, and defers block release across in-flight
 old generations. It is a direct execution/scheduling benchmark, not an HTTP
 service or SWE-bench task-solving evaluation.
 
-**30B performance caveat:** the integrated static-FIA candidate regresses in the
+**Historical frozen non-FD caveat:** that static-FIA candidate regressed in the
 full SWE run; [matched TraceLoom diagnosis](../fia-plan/REGRESSION-30B.zh-CN.md)
 locates slower attention and a missing FD plan path. Integration is not a30B
 performance-release claim.
@@ -48,7 +48,9 @@ Both arms use the real48-layer BF16 Qwen, TP2/EP2,4 resident requests, native
 FULL attention and the same6GiB KV arena per rank. APC is enabled in both.
 Native async-scheduling defaults remain unchanged. Prefill has a1024-query
 maximum, not a32-token substitute workload. The owned portfolio decomposes
-remaining prompt work into exact powers of two, so tail chunks are not padded.
+remaining prompt work into maximum chunks plus a ceiling-bucket tail. Actual
+query lengths remain exact; padded rows do not write KV or advance requests.
+Only the older fixed-plan control decomposes tails into exact powers of two.
 
 Keep cold-start-cache and subsequent retained-cache rounds separate. Keep
 profile collection out of timed runs. Run both native-first and owned-first
@@ -74,7 +76,8 @@ reported PyTorch allocated/reserved peaks are not total driver HBM peaks.
   update native cache hashes; they never seed the next numerical graph input.
 - root.py uses actual LiveModule State/MetaTensor/activation/replay. Compute
   alone publishes resident tables and continuation, including a new generation.
-  Prefill executes one request's exact chunk; decode batches authorized residents.
+  Prefill executes one request's ceiling bucket with exact valid lengths; decode
+  batches authorized residents.
 - reactor.py retains separate input-reader and output-copy fences, owned pinned
   sources/destinations, metadata carriers and LiveInvocations. It queues two
   waves and admits N+2 only after N's full quorum; old drains remain in order.
@@ -162,3 +165,9 @@ child edges for the established exporter workaround, and validates complete JSON
 before publishing filenames. It does not alter original profiles or claim
 cross-rank clock alignment. The completed swe-profile1 exports are indexed in
 `runs/owned-wave/swe-profile1/traceloom/exports.json`.
+
+Default host-planned prefill now chooses the smallest **ceiling** bucket and carries
+the actual query count separately;70 tokens replay128 once, not64+4+2. Padding
+has no KV/cursor/sampler authority. See
+[the planner boundary and qualification](../fia-plan/CEILING-PREFILL.zh-CN.md).
+The old frozen-plan switches retain exact-size tail splitting.

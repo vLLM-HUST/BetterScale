@@ -262,3 +262,33 @@ and no numerical attention launches occur outside graph. Device attention falls
 whole-trace gain solely from four early steps or add nested host tiling durations.
 Native host API semantics/descriptor cleanup follow the installed op-plugin ABI;
 newer upstream structs/heuristics are not substituted for the installed planner.
+
+For post-FD bottleneck analysis, enter `fia-plan/HOTSPOTS.zh-CN.md` and reuse
+`serving/inspect_hotspots.py` against the existing augmented DBs. Host plans in the
+four-step window overlap the prior body and replays are submitted~16ms ahead.
+~2.38ms of the2.96ms compute/comm-uncovered time sits around the96 layer all-reduce
+boundaries; CAPTURE_WAIT/record and HCCL control tasks occupy parts of it. This is
+not2.38ms idle or a proven regression (old-owned has~2.50ms at those boundaries).
+HotAPC leaves only2698prompt tokens across44calls, but exact power-of-two tails
+require154prefill forwards. Prioritize actual-query-length/short-tail batching
+inquiry before deviceizing an already-overlapped host planner. Native prefill
+wave count was not recorded; do not label44 an observed native count. Cold native
+also reuses3712tokens for three initial sessions while simultaneous owned admission
+hits0, so initial profile totals are not equal-work comparisons.
+
+
+For ceiling-bucket prefill, enter `fia-plan/CEILING-PREFILL.zh-CN.md`. Physical
+graph capacity and actual query counts are separate. Native TND planning rejects
+T=capacity with last actualQ<capacity (561002); describe the same allocation's
+live prefix to the host planner instead. Its GM plan plus actual device query
+length then replay at stable graph addresses. Padding must not write KV, advance
+cursors, index beyond context capacity, or select the sampled row; sanitize its
+unwritten FIA output before MoE.120 leaf checks against unpadded native queries
+pass exactly, but this does not promise whole-model token identity after changing
+GEMM row counts. Preserve old fixed-plan modes' exact-floor scheduler.
+The full30B TP2/EP2 `swe-ceiling-candidate1` subsequently passes three original
+SWE rounds. Hot prefill154->44, totalwaves3843->3703; actual2698/APC625664 unchanged,
+687padding rows. Hot89.468->86.223s (-3.63%), owned TTFTp50172->63ms. Historical
+native87.561s is reused, not a freshA/B; cold95.138s still above native94.413s.
+No new profile was collected; do not attach old four-step kernel totals to the
+new scheduling policy. See the linked note for exact source capsules and bounds.

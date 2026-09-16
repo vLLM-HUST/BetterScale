@@ -11,21 +11,29 @@ static aclTensor *tensor(void *ptr, std::vector<int64_t> shape, aclDataType type
                          shape.data(),shape.size(),ptr);
 }
 // pointers: query, key, value, mask, table, output, workspace; all persistent.
-extern "C" int plan_native(const uint64_t *ptrs, int rows, int width,
+extern "C" int plan_native_queries(const uint64_t *ptrs, int rows, int width,
  int heads, int kvheads, int pages, int columns, double scale,
- const int64_t *lengths, void *stream) {
+ const int64_t *lengths, const int64_t *query_offsets, void *stream) {
   if (metadata_only || selected.load() || pending) return -20;
-  auto q=tensor((void*)ptrs[0],{rows*width,heads,128},ACL_BF16);
+  if (rows < 1 || width < 1 || !query_offsets || !lengths) return -22;
+  int64_t previous=0;
+  for(int i=0;i<rows;++i) {
+    if(query_offsets[i]<=previous || query_offsets[i]>(int64_t)rows*width ||
+       lengths[i]<query_offsets[i]-previous) return -22;
+    previous=query_offsets[i];
+  }
+  // The allocation keeps bucket capacity; the planner sees a contiguous live
+  // prefix view. TND requires descriptor T == final actual query offset.
+  auto tokens=query_offsets[rows-1];
+  auto q=tensor((void*)ptrs[0],{tokens,heads,128},ACL_BF16);
   auto k=tensor((void*)ptrs[1],{pages,128,kvheads*128},ACL_BF16);
   auto v=tensor((void*)ptrs[2],{pages,128,kvheads*128},ACL_BF16);
   auto mask=tensor((void*)ptrs[3],{2048,2048},ACL_BOOL);
   auto table=tensor((void*)ptrs[4],{rows,columns},ACL_INT32);
-  auto out=tensor((void*)ptrs[5],{rows*width,heads,128},ACL_BF16);
+  auto out=tensor((void*)ptrs[5],{tokens,heads,128},ACL_BF16);
   auto lse=tensor(nullptr,{0},ACL_FLOAT);
   auto kl=aclCreateTensorList(&k,1), vl=aclCreateTensorList(&v,1);
-  std::vector<int64_t> offsets(rows);
-  for(int i=0;i<rows;++i) offsets[i]=(i+1)*width;
-  auto qlen=aclCreateIntArray(offsets.data(),rows);
+  auto qlen=aclCreateIntArray(query_offsets,rows);
   auto kvlen=aclCreateIntArray(lengths,rows);
   uint64_t workspace=0; aclOpExecutor *executor=nullptr;
   char layout[]="TND";

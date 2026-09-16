@@ -30,6 +30,12 @@ class HostAttentionTests(TestCase):
         self.assertEqual(a.wave_plans, 1)
         self.assertEqual(a.dispatches, {"1:23": 1})
 
+    def test_actual_query_length_reaches_native_planner(self):
+        a = self.owner()
+        a.root.frames = {"p16b1": {}, "p16b1fd": {}}
+        a.prepare("p16b1", [4096], 13)
+        a.native.assert_called_once_with("p16b1", [4096], 13)
+
     def test_missing_variant_fails_closed_and_releases(self):
         a = self.owner()
         del a.root.frames["d4b1fd"]
