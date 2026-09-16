@@ -18,6 +18,9 @@ width = 2048
 url = "http://127.0.0.1:32181"
 prompt = json.loads((root / "prompt.json").read_text())["prompt_token_ids"]
 prompts = {n: (prompt + prompt)[:n] for n in [512, 513, 1024, 1536, 2048, 2051]}
+if os.environ.get("POLICY_PROMPTS"):
+    prompts = {row["name"]: row["prompt_ids"] for row in json.loads(Path(os.environ["POLICY_PROMPTS"]).read_text())["prompts"]}
+    (root / "policy-prompts.json").write_text(Path(os.environ["POLICY_PROMPTS"]).read_text())
 command = [
     sys.executable,
     "-m",
@@ -109,12 +112,12 @@ try:
             raise TimeoutError("server readiness")
         time.sleep(2)
     for iteration, mode in enumerate(
-        ["native", "padded-none", "full", "full", "padded-none", "native"]
+        (["native", "full", "full", "native"] if os.environ.get("POLICY_PROMPTS") else ["native", "padded-none", "full", "full", "padded-none", "native"])
     ):
         rpc("set_prefill_policy", mode)
-        for n in [512, 513]:
-            row = request(url, prompts[n], 64)
-            receipt["rows"].append(dict(policy=mode, iteration=iteration, **row))
+        for n in (prompts if os.environ.get("POLICY_PROMPTS") else [512, 513]):
+            row = request(url, prompts[n], 128 if os.environ.get("POLICY_PROMPTS") else 64)
+            receipt["rows"].append(dict(policy=mode, iteration=iteration, prompt_name=n, **row))
             path.write_text(json.dumps(receipt, indent=2))
     receipt["status"] = "PASS"
     receipt["dispatch_counts"] = rpc("get_dispatch_counts")
