@@ -75,16 +75,16 @@ def install_shadow():
                     )
                 )
             result = dict(
-                rank=self.rank,
+                rank=self._shadow_rank,
                 actual_tokens=actual,
                 metadata=meta,
                 checks=checks,
                 passed=all(x["close"] for x in checks),
             )
-            path = Path(os.environ["CAPSULE"]) / f"shadow-rank{self.rank}.json"
+            path = Path(os.environ["CAPSULE"]) / f"shadow-rank{self._shadow_rank}.json"
             path.write_text(json.dumps(result, indent=2))
             self._shadow_result = dict(
-                rank=self.rank, passed=result["passed"], artifact=str(path)
+                rank=self._shadow_rank, passed=result["passed"], artifact=str(path)
             )
         finally:
             ctx.cudagraph_runtime_mode = mode
@@ -102,6 +102,7 @@ class Worker(BaseWorker):
         super().__init__(*args, **kwargs)
 
     def arm_shadow(self, actual_tokens):
+        self.model_runner._shadow_rank = self.rank
         self.model_runner._shadow_remaining = 1
         self.model_runner._shadow_actual_tokens = actual_tokens
         return dict(rank=self.rank, armed=True)
