@@ -92,6 +92,9 @@ buffer ownership. This is startup control, not a per-wave host handshake.
 - Our128 layer/expert groups and final-group padding are different from DFC's64
   local groups. Preserve this cost until a changed implementation is qualified.
 
+See [the paired-batch and local factor sweep](BATCH-ORGANIZATION.md) for the
+subsequent controlled separation of batching, group catalog and padding costs.
+
 ## Inspect / reproduce
 
 ```

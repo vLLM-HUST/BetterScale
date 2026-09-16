@@ -266,6 +266,18 @@ neural_prepare(GM_ADDR cfgaddr, GM_ADDR packed, GM_ADDR unused) {
   int selected = 0;
   if (cfg[5] && !status) {
     for (int poll = 0; poll < cfg[6]; ++poll) {
+      // Diagnostic paired-batch gate, not an online scheduling policy. Wait
+      // without consuming either descriptor, so each source is selected once.
+      // Bit0 retains parallel transport; bit1 requests this equal-work control.
+      if (cfg[12] & 2) {
+        bool allReady = true;
+        for (int c = 0; c < 2; ++c)
+          if (finished[c] < cfg[4] &&
+              io.Flag((__gm__ int32_t *)cfg[2 + c]) != finished[c] + 1)
+            allReady = false;
+        if (!allReady)
+          continue;
+      }
       for (int c = 0; c < 2; ++c) {
         if (finished[c] >= cfg[4])
           continue;

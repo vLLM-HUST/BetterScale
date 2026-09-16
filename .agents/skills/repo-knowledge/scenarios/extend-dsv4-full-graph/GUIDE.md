@@ -395,3 +395,12 @@ A separate server_ready after conversion/capture is necessary: weights_loaded
 only protects bootstrap ownership, and bounded device polls must not wait for
 host graph preparation. The local GMM-chain NZ control is slower; keep its scope
 separate rather than claiming NZ universally wins or extrapolating the first GEMM.
+
+For the same-device paired-source control and group/padding factor sweep, enter
+`prototypes/attention-client/device-service/BATCH-ORGANIZATION.md`. Paired broad32
+keeps GMM near400us while doubling live rows; active pack-to-DONE work is497us
+for two sources versus470–476us for one. This is not an online-throughput or
+latency guarantee. The native128-group/padded chain also carries measured costs
+relative to64 live groups. Capacity-only group sums passed this binary but violate
+the installed GMM group-sum == input-M contract; never silently enable them.
+The paired selector is an explicit experimental gate, not a deployed scheduler.

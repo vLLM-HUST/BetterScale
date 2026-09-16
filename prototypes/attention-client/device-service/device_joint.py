@@ -349,6 +349,8 @@ def serve(server_id, links, output_path):
     state = torch.zeros(8, device="npu", dtype=torch.int32)
     batch = torch.zeros(2 * (8 + CAP * K), device="npu", dtype=torch.int32)
     trace = torch.full((WAVES, 8), -991, device="npu", dtype=torch.int32)
+    paired_control = os.environ.get("DEVICE_SERVICE_PAIRED_CONTROL") == "1"
+    assert not paired_control or PARALLEL
     config = torch.tensor(
         [
             *[c["local"] for c in clients],
@@ -361,7 +363,7 @@ def serve(server_id, links, output_path):
             groups.data_ptr(),
             trace.data_ptr(),
             server_id,
-            int(PARALLEL),
+            int(PARALLEL) | (2 if paired_control else 0),
         ],
         device="npu",
         dtype=torch.int64,
@@ -412,6 +414,12 @@ def serve(server_id, links, output_path):
     assert status[:4] == [TASKS, TASKS, WAVES, 0], status
     records = trace.cpu().tolist()
     assert sum(r[0] for r in records) == TASKS * 2
+    if paired_control:
+        # Reject a stale binary or accidentally unpaired execution, not merely
+        # successful client outputs from a different batch organization.
+        live_records = [r for r in records if r[0]]
+        assert len(live_records) == TASKS
+        assert all(r[0] == 2 and r[2] == r[3] for r in live_records)
     seen = [[], []]
     for r in records:
         assert r[4] == 0
@@ -443,6 +451,7 @@ def serve(server_id, links, output_path):
                 bounded_waves=WAVES,
                 parallel_transport=PARALLEL,
                 weight_format=weight_format,
+                paired_control=paired_control,
             ),
             indent=2,
         )

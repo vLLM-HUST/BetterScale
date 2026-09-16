@@ -1,0 +1,719 @@
+{
+  "scope": "Synthetic active-server intervals and isolated prepacked GMM; not serving throughput",
+  "profiles": {
+    "paired": {
+      "artifact": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T045757Z",
+      "physical_devices": [
+        2,
+        3,
+        5,
+        7
+      ],
+      "exact_outputs": 48,
+      "servers": [
+        {
+          "server": 0,
+          "summaries": [
+            {
+              "pattern": "balanced",
+              "rows_per_source": 1,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 3243.4,
+                "neural_pack": 12.72,
+                "GroupedMatmul": 134.96,
+                "SwiGlu": 10.5,
+                "neural_scatter": 11.6,
+                "neural_complete": 10.26,
+                "pack_to_complete": 184.88
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "balanced",
+              "rows_per_source": 16,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 2282.86,
+                "neural_pack": 31.98,
+                "GroupedMatmul": 401.34000000000003,
+                "SwiGlu": 11.88,
+                "neural_scatter": 12.72,
+                "neural_complete": 10.24,
+                "pack_to_complete": 471.98
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "balanced",
+              "rows_per_source": 32,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 2300.66,
+                "neural_pack": 57.38,
+                "GroupedMatmul": 400.38,
+                "SwiGlu": 10.74,
+                "neural_scatter": 15.48,
+                "neural_complete": 9.98,
+                "pack_to_complete": 497.92
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 1,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 2188.6,
+                "neural_pack": 10.88,
+                "GroupedMatmul": 67.94,
+                "SwiGlu": 11.38,
+                "neural_scatter": 10.12,
+                "neural_complete": 9.98,
+                "pack_to_complete": 115.4
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 16,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 2209.48,
+                "neural_pack": 33.32,
+                "GroupedMatmul": 65.92,
+                "SwiGlu": 10.9,
+                "neural_scatter": 14.6,
+                "neural_complete": 9.74,
+                "pack_to_complete": 138.82
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 32,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 2224.96,
+                "neural_pack": 59.06,
+                "GroupedMatmul": 63.76,
+                "SwiGlu": 12.12,
+                "neural_scatter": 20.2,
+                "neural_complete": 9.86,
+                "pack_to_complete": 169.16
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            }
+          ]
+        },
+        {
+          "server": 1,
+          "summaries": [
+            {
+              "pattern": "balanced",
+              "rows_per_source": 1,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 3329.62,
+                "neural_pack": 10.58,
+                "GroupedMatmul": 52.06,
+                "SwiGlu": 11.92,
+                "neural_scatter": 10.9,
+                "neural_complete": 9.48,
+                "pack_to_complete": 99.8
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "balanced",
+              "rows_per_source": 16,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 2286.7,
+                "neural_pack": 31.24,
+                "GroupedMatmul": 400.58000000000004,
+                "SwiGlu": 10.82,
+                "neural_scatter": 13.1,
+                "neural_complete": 9.22,
+                "pack_to_complete": 470.82
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "balanced",
+              "rows_per_source": 32,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 2301.86,
+                "neural_pack": 56.58,
+                "GroupedMatmul": 399.22,
+                "SwiGlu": 11.72,
+                "neural_scatter": 15.56,
+                "neural_complete": 9.24,
+                "pack_to_complete": 496.5
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 1,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 2190.42,
+                "neural_pack": 11.2,
+                "GroupedMatmul": 68.0,
+                "SwiGlu": 10.92,
+                "neural_scatter": 10.4,
+                "neural_complete": 9.22,
+                "pack_to_complete": 113.64
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 16,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 2206.8,
+                "neural_pack": 33.44,
+                "GroupedMatmul": 67.26,
+                "SwiGlu": 12.2,
+                "neural_scatter": 14.82,
+                "neural_complete": 9.9,
+                "pack_to_complete": 141.68
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 32,
+              "sources": 2,
+              "waves": 3,
+              "costs_us": {
+                "neural_prepare": 2228.0,
+                "neural_pack": 58.3,
+                "GroupedMatmul": 64.4,
+                "SwiGlu": 11.02,
+                "neural_scatter": 20.38,
+                "neural_complete": 9.32,
+                "pack_to_complete": 167.76
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            }
+          ]
+        }
+      ]
+    },
+    "unpaired": {
+      "artifact": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T050054Z",
+      "physical_devices": [
+        2,
+        3,
+        5,
+        7
+      ],
+      "exact_outputs": 48,
+      "servers": [
+        {
+          "server": 0,
+          "summaries": [
+            {
+              "pattern": "balanced",
+              "rows_per_source": 1,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 2839.12,
+                "neural_pack": 11.02,
+                "GroupedMatmul": 88.82,
+                "SwiGlu": 11.77,
+                "neural_scatter": 10.26,
+                "neural_complete": 9.489999999999998,
+                "pack_to_complete": 135.63
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "balanced",
+              "rows_per_source": 16,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 2456.79,
+                "neural_pack": 21.63,
+                "GroupedMatmul": 402.65,
+                "SwiGlu": 11.469999999999999,
+                "neural_scatter": 11.5,
+                "neural_complete": 9.379999999999999,
+                "pack_to_complete": 461.67
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "balanced",
+              "rows_per_source": 32,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 2319.06,
+                "neural_pack": 34.55,
+                "GroupedMatmul": 403.41999999999996,
+                "SwiGlu": 10.75,
+                "neural_scatter": 12.83,
+                "neural_complete": 9.51,
+                "pack_to_complete": 475.86
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 1,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 1209.3400000000001,
+                "neural_pack": 10.17,
+                "GroupedMatmul": 68.49,
+                "SwiGlu": 11.55,
+                "neural_scatter": 10.129999999999999,
+                "neural_complete": 9.34,
+                "pack_to_complete": 113.71000000000001
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 16,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 1859.06,
+                "neural_pack": 21.56,
+                "GroupedMatmul": 67.61,
+                "SwiGlu": 11.75,
+                "neural_scatter": 12.399999999999999,
+                "neural_complete": 9.280000000000001,
+                "pack_to_complete": 126.78999999999999
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 32,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 2104.35,
+                "neural_pack": 34.260000000000005,
+                "GroupedMatmul": 67.5,
+                "SwiGlu": 11.350000000000001,
+                "neural_scatter": 15.120000000000001,
+                "neural_complete": 9.35,
+                "pack_to_complete": 141.85000000000002
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            }
+          ]
+        },
+        {
+          "server": 1,
+          "summaries": [
+            {
+              "pattern": "balanced",
+              "rows_per_source": 1,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 2876.98,
+                "neural_pack": 9.780000000000001,
+                "GroupedMatmul": 53.739999999999995,
+                "SwiGlu": 11.35,
+                "neural_scatter": 9.879999999999999,
+                "neural_complete": 9.280000000000001,
+                "pack_to_complete": 98.53999999999999
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "balanced",
+              "rows_per_source": 16,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 2460.95,
+                "neural_pack": 21.47,
+                "GroupedMatmul": 397.59,
+                "SwiGlu": 11.780000000000001,
+                "neural_scatter": 11.190000000000001,
+                "neural_complete": 9.1,
+                "pack_to_complete": 455.52
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "balanced",
+              "rows_per_source": 32,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 2325.31,
+                "neural_pack": 33.980000000000004,
+                "GroupedMatmul": 398.5,
+                "SwiGlu": 11.67,
+                "neural_scatter": 12.49,
+                "neural_complete": 9.06,
+                "pack_to_complete": 470.21000000000004
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 1,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 1211.74,
+                "neural_pack": 10.379999999999999,
+                "GroupedMatmul": 66.74000000000001,
+                "SwiGlu": 11.68,
+                "neural_scatter": 9.86,
+                "neural_complete": 8.96,
+                "pack_to_complete": 111.9
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 16,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 1859.19,
+                "neural_pack": 21.6,
+                "GroupedMatmul": 66.72999999999999,
+                "SwiGlu": 11.2,
+                "neural_scatter": 12.14,
+                "neural_complete": 8.91,
+                "pack_to_complete": 125.39
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            },
+            {
+              "pattern": "hot8",
+              "rows_per_source": 32,
+              "sources": 1,
+              "waves": 6,
+              "costs_us": {
+                "neural_prepare": 2105.08,
+                "neural_pack": 34.010000000000005,
+                "GroupedMatmul": 66.61,
+                "SwiGlu": 11.71,
+                "neural_scatter": 14.719999999999999,
+                "neural_complete": 8.89,
+                "pack_to_complete": 140.32999999999998
+              },
+              "warning": "neural_prepare includes waiting for source work"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "local_sweeps": [
+    {
+      "artifact": "/workspace/strengthen-dsv4/runs/gmm-batch-control-20260916T045701Z",
+      "documented_group_sum_contract": true,
+      "results": [
+        {
+          "layout": "ND",
+          "sources": 1,
+          "rows_per_source": 32,
+          "shape": "64_live",
+          "live_rows": 128,
+          "capacity": 128,
+          "rows_per_expert": 2,
+          "weight_format": 2,
+          "median_us": 375.7631182670593,
+          "trials_us": [
+            377.51874327659607,
+            375.7631182670593,
+            374.81749057769775
+          ],
+          "exact": true
+        },
+        {
+          "layout": "ND",
+          "sources": 1,
+          "rows_per_source": 32,
+          "shape": "64_padded",
+          "live_rows": 128,
+          "capacity": 512,
+          "rows_per_expert": 2,
+          "weight_format": 2,
+          "median_us": 403.1231105327606,
+          "trials_us": [
+            402.75436639785767,
+            403.1231105327606,
+            403.77500653266907
+          ],
+          "exact": true
+        },
+        {
+          "layout": "ND",
+          "sources": 1,
+          "rows_per_source": 32,
+          "shape": "128_padded",
+          "live_rows": 128,
+          "capacity": 512,
+          "rows_per_expert": 2,
+          "weight_format": 2,
+          "median_us": 465.0081396102905,
+          "trials_us": [
+            465.0081396102905,
+            465.2056396007538,
+            464.56751227378845
+          ],
+          "exact": true
+        },
+        {
+          "layout": "ND",
+          "sources": 2,
+          "rows_per_source": 32,
+          "shape": "64_live",
+          "live_rows": 256,
+          "capacity": 256,
+          "rows_per_expert": 4,
+          "weight_format": 2,
+          "median_us": 382.82936811447144,
+          "trials_us": [
+            382.82936811447144,
+            381.63313269615173,
+            382.946252822876
+          ],
+          "exact": true
+        },
+        {
+          "layout": "ND",
+          "sources": 2,
+          "rows_per_source": 32,
+          "shape": "64_padded",
+          "live_rows": 256,
+          "capacity": 512,
+          "rows_per_expert": 4,
+          "weight_format": 2,
+          "median_us": 398.2156217098236,
+          "trials_us": [
+            398.2156217098236,
+            398.1662392616272,
+            398.528128862381
+          ],
+          "exact": true
+        },
+        {
+          "layout": "ND",
+          "sources": 2,
+          "rows_per_source": 32,
+          "shape": "128_padded",
+          "live_rows": 256,
+          "capacity": 512,
+          "rows_per_expert": 4,
+          "weight_format": 2,
+          "median_us": 465.4468894004822,
+          "trials_us": [
+            468.0456221103668,
+            463.2568657398224,
+            465.4468894004822
+          ],
+          "exact": true
+        },
+        {
+          "layout": "NZ",
+          "sources": 1,
+          "rows_per_source": 32,
+          "shape": "64_live",
+          "live_rows": 128,
+          "capacity": 128,
+          "rows_per_expert": 2,
+          "weight_format": 29,
+          "median_us": 385.35749912261963,
+          "trials_us": [
+            385.35749912261963,
+            385.64813137054443,
+            385.10313630104065
+          ],
+          "exact": true
+        },
+        {
+          "layout": "NZ",
+          "sources": 1,
+          "rows_per_source": 32,
+          "shape": "64_padded",
+          "live_rows": 128,
+          "capacity": 512,
+          "rows_per_expert": 2,
+          "weight_format": 29,
+          "median_us": 411.17188334465027,
+          "trials_us": [
+            411.48748993873596,
+            411.17188334465027,
+            411.1218750476837
+          ],
+          "exact": true
+        },
+        {
+          "layout": "NZ",
+          "sources": 1,
+          "rows_per_source": 32,
+          "shape": "128_padded",
+          "live_rows": 128,
+          "capacity": 512,
+          "rows_per_expert": 2,
+          "weight_format": 29,
+          "median_us": 440.31062722206116,
+          "trials_us": [
+            440.6762421131134,
+            440.0181174278259,
+            440.31062722206116
+          ],
+          "exact": true
+        },
+        {
+          "layout": "NZ",
+          "sources": 2,
+          "rows_per_source": 32,
+          "shape": "64_live",
+          "live_rows": 256,
+          "capacity": 256,
+          "rows_per_expert": 4,
+          "weight_format": 29,
+          "median_us": 374.948114156723,
+          "trials_us": [
+            374.948114156723,
+            375.03498792648315,
+            374.5668828487396
+          ],
+          "exact": true
+        },
+        {
+          "layout": "NZ",
+          "sources": 2,
+          "rows_per_source": 32,
+          "shape": "64_padded",
+          "live_rows": 256,
+          "capacity": 512,
+          "rows_per_expert": 4,
+          "weight_format": 29,
+          "median_us": 389.8768723011017,
+          "trials_us": [
+            389.4743621349335,
+            389.9812400341034,
+            389.8768723011017
+          ],
+          "exact": true
+        },
+        {
+          "layout": "NZ",
+          "sources": 2,
+          "rows_per_source": 32,
+          "shape": "128_padded",
+          "live_rows": 256,
+          "capacity": 512,
+          "rows_per_expert": 4,
+          "weight_format": 29,
+          "median_us": 440.21686911582947,
+          "trials_us": [
+            440.1743710041046,
+            440.21686911582947,
+            440.9624934196472
+          ],
+          "exact": true
+        }
+      ]
+    },
+    {
+      "artifact": "/workspace/strengthen-dsv4/runs/gmm-batch-control-20260916T045842Z",
+      "documented_group_sum_contract": false,
+      "results": [
+        {
+          "layout": "NZ",
+          "sources": 1,
+          "rows_per_source": 32,
+          "shape": "64_capacity_only",
+          "live_rows": 128,
+          "capacity": 512,
+          "rows_per_expert": 2,
+          "weight_format": 29,
+          "median_us": 380.0712525844574,
+          "trials_us": [
+            382.9599916934967,
+            380.0712525844574,
+            379.9368739128113
+          ],
+          "exact": true
+        },
+        {
+          "layout": "NZ",
+          "sources": 1,
+          "rows_per_source": 32,
+          "shape": "128_capacity_only",
+          "live_rows": 128,
+          "capacity": 512,
+          "rows_per_expert": 2,
+          "weight_format": 29,
+          "median_us": 426.6168773174286,
+          "trials_us": [
+            426.28687620162964,
+            426.642507314682,
+            426.6168773174286
+          ],
+          "exact": true
+        },
+        {
+          "layout": "NZ",
+          "sources": 2,
+          "rows_per_source": 32,
+          "shape": "64_capacity_only",
+          "live_rows": 256,
+          "capacity": 512,
+          "rows_per_expert": 4,
+          "weight_format": 29,
+          "median_us": 382.5399875640869,
+          "trials_us": [
+            382.8243613243103,
+            382.3356330394745,
+            382.5399875640869
+          ],
+          "exact": true
+        },
+        {
+          "layout": "NZ",
+          "sources": 2,
+          "rows_per_source": 32,
+          "shape": "128_capacity_only",
+          "live_rows": 256,
+          "capacity": 512,
+          "rows_per_expert": 4,
+          "weight_format": 29,
+          "median_us": 431.7568838596344,
+          "trials_us": [
+            431.7568838596344,
+            432.01813101768494,
+            431.7300021648407
+          ],
+          "exact": true
+        }
+      ]
+    }
+  ]
+}

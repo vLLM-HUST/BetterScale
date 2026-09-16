@@ -48,6 +48,10 @@ for server in (0, 1):
                 "SwiGlu",
             ):
                 costs[e["label"]] = costs.get(e["label"], 0) + e["dur_us"]
+        compute = [e for e in events[start:stop] if e["label"] == "neural_pack"]
+        done = [e for e in events[start:stop] if e["label"] == "neural_complete"]
+        assert len(compute) == len(done) == 1
+        costs["pack_to_complete"] = (done[0]["end_ns"] - compute[0]["start_ns"]) / 1000
         samples.append(dict(wave=wave, jobs=jobs, live_routes=t[1], costs_us=costs))
     summaries = []
     for pattern in ("balanced", "hot8"):
