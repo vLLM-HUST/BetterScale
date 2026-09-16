@@ -187,5 +187,8 @@ entry explicitly sets image/video limits0. Both use the same backend hash
 for the earlier tensor-valued inputs_embeds, while text-only dummy passesNone.
 This supports a signature/cache-key collision, not a weight-layout arithmetic bug.
 Do NOT clear shared compiler caches or alter installed donor files. `package-mtp2`
-uses a fresh capsule-local VLLM_CACHE_ROOT to test that explanation. Pending result;
-keep the exact failure even if fresh-cache startup succeeds.
+uses a fresh capsule-local VLLM_CACHE_ROOT to test that explanation. Fresh-cache `package-mtp2` PASSES C1/C4/C8(two cohorts each), C1texts match
+`conv-mtp2-2`; this supports the cache-collision diagnosis. Retain the failed
+capsule, document dedicated text-only cache use, and do not claim an upstream fix.
+Package C1/C4/C8 rates41.98/84.19/114.21 vary versus the earlier prototype; this
+reinforces reporting exact graph cost removal rather than a stable concurrency%.

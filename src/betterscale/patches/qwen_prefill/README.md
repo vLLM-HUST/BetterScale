@@ -59,3 +59,17 @@ settings, omit the FULL capture configuration, and supply:
 Keep native FULL_AND_PIECEWISE and its default capture set (maximum24tokens for
 8seats). Do not use the large non-speculative FULL prefill capture set with MTP.
 The native MTP route does not install this directory's FULL metadata hooks.
+
+Native MTP2 route qualification: `conv-mtp2-2` removes48weightTranspose kernels
+per targetstep on bothranks; a short native MTP2 control confirms target-body means
+36.253→35.367ms (rank0),36.268→35.445ms (rank1), four exact graphs each. This is
+~.8-.9ms saved per targetstep, not per accepted output token. E2E concurrent
+throughput varies across runs; no stable C4/C8 percentage is promised.
+`package-mtp2` passes both cohorts at C1/C4/C8; C1texts match the prototype.
+
+**Use a dedicated native compile cache for the text-only MTP route**, e.g. set
+`VLLM_CACHE_ROOT="$HOME/.cache/vllm-betterscale-qwen-mtp2-text"` before launching.
+The pinned donor reused a multimodal tensor-input AOT artifact for text-only
+`inputs_embeds=None` and failed at startup with `NoneType.size`. A fresh isolated
+cache passes. Do not delete a shared cache or silently modify donor files. This
+is an upstream cache/signature limitation, not fixed by the weight-layout patch.
