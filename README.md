@@ -18,6 +18,15 @@ clear and a privately selected HC-pre host tiler on TP. It preserves the donor
 installation, the single target/draft graph pool and the 1 GiB safety reserve.
 See [memory-patch mechanics and native build](src/betterscale/patches/hc_workspace/README.md).
 
+## Qwen hybrid TP2 (source-only, separate entry)
+
+The current source adds `betterscale.qwen_worker.Worker` alongside DSV4:
+non-speculative FULL prefill, or native MTP2 with immutable convolution-weight
+packing. These are separate configurations, not combined FULL+MTP qualification.
+See [commands, measured scope and compiler-cache caveat](src/betterscale/patches/qwen_prefill/README.md)
+and [entry acceptance](docs/evidence/qwen-prefill.json). This addition is **not in
+published PyPI0.4.2** and does not change the existing DSV4 Worker behavior.
+
 ## End-to-end service evidence
 
 [September14 HTTP acceptance](docs/E2E-20260914.zh-CN.md) compares retained
