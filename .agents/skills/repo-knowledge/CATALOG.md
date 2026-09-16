@@ -25,3 +25,7 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 - **Build or publish BetterScale's Python distribution:** read
   [release-python-package](scenarios/release-python-package/GUIDE.md) before
   packaging, installing the public Worker, or publishing to PyPI.
+
+- **Optimize Qwen hybrid TP2 HTTP serving and interpret FULL prefill:** read
+  [optimize-qwen-hybrid-serving](scenarios/optimize-qwen-hybrid-serving/GUIDE.md)
+  before repeating Qwen27 profiles or generalizing its fixed-shape graph prototype.
