@@ -25,9 +25,11 @@ unset ASCEND_CUSTOM_OPP_PATH
 profile=()
 if [[ ${PROFILE:-0} == 1 ]]; then profile=(--profile); fi
 command=("$runtime/bin/python" "$CAPSULE/source/service_probe.py" --capsule "$CAPSULE" --arm "$ARM" "${profile[@]}")
-if [[ $ARM == fixed-full ]]; then
+if [[ $ARM == fixed-full || $ARM == bucket-full ]]; then
   export CAPSULE VLLM_SERVER_DEV_MODE=1 FIXED_PREFILL_TOKENS=${FIXED_PREFILL_TOKENS:-512}
-  command=("$runtime/bin/python" "$CAPSULE/source/fixed_full_probe.py")
+  probe=fixed_full_probe.py
+  if [[ $ARM == bucket-full ]]; then probe=bucket_full_probe.py; fi
+  command=("$runtime/bin/python" "$CAPSULE/source/$probe")
 fi
 exec "$runtime/bin/python" /workspace/strengthen-dsv4/prototypes/attention-client/device-service/admit_subset.py \
  --devices "$ASCEND_RT_VISIBLE_DEVICES" --wait-seconds 1800 --output "$CAPSULE/admission" -- \
