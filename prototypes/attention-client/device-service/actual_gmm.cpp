@@ -53,25 +53,7 @@ template <class Base> struct DfcBf16Tile : Base {
 };
 #endif
 
-// cfg: K,N,group_count,weight_address,group_list_address,capacity.
-// The producer guarantees monotone ends in [0,capacity]. Only live rows are
-// computed; inactive output rows are untouched, not synthetic expert work.
-__aicore__ inline void RunActualGmm(GM_ADDR config, GM_ADDR input,
-                                    GM_ADDR output) {
-  auto cfg = (__gm__ int64_t *)config;
-  uint32_t k = cfg[0], n = cfg[1], groups = cfg[2], capacity = cfg[5];
-  GlobalTensor<int64_t> ends;
-  ends.SetGlobalBuffer((__gm__ int64_t *)cfg[4]);
-  uint32_t first = 0, last = groups;
-  while (first < groups && ends.GetValue(first) == 0)
-    ++first;
-  if (first == groups)
-    return;
-  while (last > first + 1 && ends.GetValue(last - 1) == ends.GetValue(last - 2))
-    --last;
-  // Leading groups have zero prefix, so this is a zero-copy live catalog view;
-  // group ends remain relative to the packed input. NZ expert stride is K*N
-  // because this adapter admits only fully16-aligned Qwen matrices.
+struct ActualGmmTypes {
 #if ACTUAL_GMM_DFC
   using Policy =
       Gemm::MmadAtlasA2PreloadAsyncFixpipe<1, 2, 2, 2, 1, false, true>;
@@ -91,6 +73,28 @@ __aicore__ inline void RunActualGmm(GM_ADDR config, GM_ADDR input,
 #else
   using Mmad = BaseMmad;
 #endif
+};
+
+// cfg: K,N,group_count,weight_address,group_list_address,capacity.
+// The producer guarantees monotone ends in [0,capacity]. Only live rows are
+// computed; inactive output rows are untouched, not synthetic expert work.
+__aicore__ inline void RunActualGmm(GM_ADDR config, GM_ADDR input,
+                                    GM_ADDR output) {
+  auto cfg = (__gm__ int64_t *)config;
+  uint32_t k = cfg[0], n = cfg[1], groups = cfg[2], capacity = cfg[5];
+  GlobalTensor<int64_t> ends;
+  ends.SetGlobalBuffer((__gm__ int64_t *)cfg[4]);
+  uint32_t first = 0, last = groups;
+  while (first < groups && ends.GetValue(first) == 0)
+    ++first;
+  if (first == groups)
+    return;
+  while (last > first + 1 && ends.GetValue(last - 1) == ends.GetValue(last - 2))
+    --last;
+  // Leading groups have zero prefix, so this is a zero-copy live catalog view;
+  // group ends remain relative to the packed input. NZ expert stride is K*N
+  // because this adapter admits only fully16-aligned Qwen matrices.
+  using Mmad = ActualGmmTypes::Mmad;
   using Scheduler = Gemm::Block::GemmIdentityBlockSwizzle<9, 1>;
   using Kernel =
       Gemm::Kernel::GroupedMatmulSliceM<Mmad, void, Scheduler, int64_t>;

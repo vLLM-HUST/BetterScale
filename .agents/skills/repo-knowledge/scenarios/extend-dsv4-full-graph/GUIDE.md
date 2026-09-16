@@ -450,3 +450,13 @@ CATLASS invocations is not DFC's continuous internal tile pipeline. Never attrib
 the independent-arrival25.1->18.7ms episode to segmentation: pairing changed0->24.
 Use the causal segment audit and same-wave timing in persistent_analyze.py rather
 than requiring serial completion order or mistaking cross-slot overlap for this gain.
+
+
+The subsequent device-service/INTERNAL-PIPELINE.md keeps one up tile object alive
+and publishes a prefix from inside group traversal (mode2), retaining whole down.
+Leaf and four-card paired/heterogeneous gates pass. Matched half-cut pack-to-return
+617/574 ->593/542us is a bounded positive result, not DFC parity or stable serving
+throughput. Tail-two still regresses: producer join leaves only3.6–4.1us up work,
+while first AIV consumption follows14–16us later. Reuse the prefix timestamp audit
+in persistent_analyze.py to separate lost notification windows from GEMM cost.
+The underlying external CATLASS tile type is shared; no matrix kernel is rewritten.

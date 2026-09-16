@@ -278,14 +278,20 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
   int vgen = 0, cgen = 0, vs = -1, cs = -1, waves = 0, idle = 0;
   int pullsDuringCube = 0, eventCount = 0, vkind = 0, ckind = 0;
   uint64_t vbegin = 0, cbegin = 0;
+  bool streaming = cfg[14] == 2;
   while (!Load(ctrl + STOP * LINE)) {
     bool progress = false;
+    if (streaming && cs >= 0 && ckind == 1 && s[cs].upDone == 0 &&
+        Joined(ctrl, UP_PREFIX_DONE, CW, cgen)) {
+      s[cs].upDone = 1;
+      progress = true;
+    }
     if (cs >= 0 && Joined(ctrl, CDONE, CW, cgen)) {
       Record(cfg, eventCount, 1, ckind, cs, cbegin, s[cs].live, cpart);
       if (ckind == 1)
-        ++s[cs].upDone;
+        s[cs].upDone = streaming ? parts : s[cs].upDone + 1;
       else
-        ++s[cs].downDone;
+        s[cs].downDone = streaming ? parts : s[cs].downDone + 1;
       cs = -1;
       progress = true;
     }
@@ -371,8 +377,10 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           auto &slot = s[i];
           if (slot.stage != READY_UP && slot.stage != UP)
             continue;
-          bool ready =
-              phase == 0 ? slot.downDone < slot.actDone : slot.upDone < parts;
+          bool ready = phase == 0 ? (streaming ? slot.actDone == parts &&
+                                                     slot.downDone == 0
+                                               : slot.downDone < slot.actDone)
+                                  : slot.upDone < parts;
           if (ready) {
             cs = i;
             slot.stage = UP;

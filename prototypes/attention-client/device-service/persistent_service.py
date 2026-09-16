@@ -25,8 +25,13 @@ class PersistentEngine:
         )
         assert 0 <= self.tail_experts <= 128
         self.up, self.down = up, down
-        self.segmented = os.environ.get("DEVICE_SERVICE_SEGMENTED") == "1"
-        self.control = torch.zeros((64, 16), dtype=torch.int32, device="npu")
+        self.internal_pipeline = (
+            os.environ.get("DEVICE_SERVICE_INTERNAL_PIPELINE") == "1"
+        )
+        self.segmented = (
+            self.internal_pipeline or os.environ.get("DEVICE_SERVICE_SEGMENTED") == "1"
+        )
+        self.control = torch.zeros((80, 16), dtype=torch.int32, device="npu")
         self.trace = torch.full((tasks * 2, 16), -991, dtype=torch.int32, device="npu")
         self.events = torch.zeros((512, 8), dtype=torch.int64, device="npu")
         self.work_times = (
@@ -93,7 +98,7 @@ class PersistentEngine:
                 self.events.data_ptr(),
                 0,
                 self.work_times.data_ptr() if self.work_times is not None else 0,
-                int(self.segmented),
+                2 if self.internal_pipeline else int(self.segmented),
                 self.tail_experts,
             ],
             dtype=torch.int64,
@@ -161,6 +166,7 @@ class PersistentEngine:
         records = self.trace[: ctrl[43][1]].cpu().tolist()
         receipt = dict(
             segmented=self.segmented,
+            internal_pipeline=self.internal_pipeline,
             tail_experts=self.tail_experts,
             waves=len(records),
             pulls_during_cube=ctrl[43][2],
@@ -173,6 +179,10 @@ class PersistentEngine:
             receipt["core_work"] = [
                 [engine, gen + 1, core, *timing[engine, gen, core, :2].tolist()]
                 for engine, gen, core in (timing[..., 1] > 0).nonzero().tolist()
+            ]
+            receipt["core_prefix"] = [
+                [gen + 1, core, timing[1, gen, core, 2].item()]
+                for gen, core in (timing[1, ..., 2] > 0).nonzero().tolist()
             ]
         return receipt
 

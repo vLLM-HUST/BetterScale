@@ -6,6 +6,7 @@ namespace Persistent {
 using namespace AscendC;
 constexpr int LINE = 16, VW = 16, CW = 24, MAP = 264, CAPACITY = 512;
 constexpr int STOP = 0, VCMD = 1, CCMD = 2, VDONE = 3, CDONE = 19, STATUS = 43;
+constexpr int UP_PREFIX_DONE = 44;
 enum Stage {
   EMPTY,
   PULL,

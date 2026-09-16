@@ -199,3 +199,8 @@ still open. None of those follow automatically from this bounded protocol pass.
 For the opt-in intra-wave two-segment implementation and its **negative net-speedup**
 control, read [SEGMENTED.md](SEGMENTED.md). Real phase overlap is qualified; it does
 not justify changing the unsegmented default.
+
+The next opt-in [internal publication prototype](INTERNAL-PIPELINE.md) keeps one
+CATLASS up tile object alive across the prefix boundary. Its half-cut shows a
+small positive matched-control result; tail-two still misses the consumer window.
+Read its scoped evidence before equating either variant with full DFC fusion.

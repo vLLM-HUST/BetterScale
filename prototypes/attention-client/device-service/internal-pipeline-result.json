@@ -1,0 +1,304 @@
+{
+  "paired_control": {
+    "run": "runs/remote-dfc-control-20260916T072514Z",
+    "exit": 0,
+    "servers": [
+      {
+        "server": 0,
+        "segmented": false,
+        "internal_pipeline": false,
+        "prefix_to_activation_median_us": null,
+        "up_remaining_after_prefix_median_us": null,
+        "tail_experts": 0,
+        "median_pack_to_return_us": 616.87,
+        "median_math_chain_us": 522.9300000000001,
+        "activation_up_core_overlap_us": 0.0,
+        "same_wave_activation_up_core_overlap_us": 0.0,
+        "waves": 24,
+        "paired": 24,
+        "preparation_cube_overlap_us": 0.0,
+        "measured_core_routine_overlap_us": 0.0,
+        "medians_us": {
+          "pull": 37.97,
+          "pack": 44.05,
+          "up": 311.31,
+          "swiglu": 35.95,
+          "down": 173.29000000000002,
+          "return": 46.04
+        },
+        "active_envelope_us": 21378.34
+      },
+      {
+        "server": 1,
+        "segmented": false,
+        "internal_pipeline": false,
+        "prefix_to_activation_median_us": null,
+        "up_remaining_after_prefix_median_us": null,
+        "tail_experts": 0,
+        "median_pack_to_return_us": 574.0699999999999,
+        "median_math_chain_us": 484.54999999999995,
+        "activation_up_core_overlap_us": 0.0,
+        "same_wave_activation_up_core_overlap_us": 0.0,
+        "waves": 24,
+        "paired": 24,
+        "preparation_cube_overlap_us": 0.0,
+        "measured_core_routine_overlap_us": 0.0,
+        "medians_us": {
+          "pull": 38.72,
+          "pack": 41.72,
+          "up": 290.63,
+          "swiglu": 40.480000000000004,
+          "down": 151.22,
+          "return": 47.29
+        },
+        "active_envelope_us": 20895.72
+      }
+    ],
+    "clients": [
+      {
+        "source": 0,
+        "jobs": 24,
+        "one_host_replay": true,
+        "episode_us": 25641.13998413086,
+        "deliberate_delay_ms": 0.0,
+        "max_relative_l2": 0.000260984554188326
+      },
+      {
+        "source": 1,
+        "jobs": 24,
+        "one_host_replay": true,
+        "episode_us": 23697.599411010742,
+        "deliberate_delay_ms": 0.0,
+        "max_relative_l2": 0.00029240731964819133
+      }
+    ]
+  },
+  "paired_internal_half": {
+    "run": "runs/remote-dfc-control-20260916T072733Z",
+    "exit": 0,
+    "servers": [
+      {
+        "server": 0,
+        "segmented": true,
+        "internal_pipeline": true,
+        "prefix_to_activation_median_us": 23.16,
+        "up_remaining_after_prefix_median_us": 150.14,
+        "tail_experts": 0,
+        "median_pack_to_return_us": 592.9,
+        "median_math_chain_us": 509.13,
+        "activation_up_core_overlap_us": 373.18,
+        "same_wave_activation_up_core_overlap_us": 373.18,
+        "waves": 24,
+        "paired": 24,
+        "preparation_cube_overlap_us": 0.0,
+        "measured_core_routine_overlap_us": 0.0,
+        "medians_us": {
+          "pull": 35.12,
+          "pack": 39.760000000000005,
+          "swiglu.part0": 21.7,
+          "up": 307.61,
+          "swiglu.part1": 31.27,
+          "down": 168.85000000000002,
+          "return": 42.19
+        },
+        "active_envelope_us": 18662.86
+      },
+      {
+        "server": 1,
+        "segmented": true,
+        "internal_pipeline": true,
+        "prefix_to_activation_median_us": 5.85,
+        "up_remaining_after_prefix_median_us": 133.95,
+        "tail_experts": 0,
+        "median_pack_to_return_us": 542.41,
+        "median_math_chain_us": 466.87,
+        "activation_up_core_overlap_us": 208.0,
+        "same_wave_activation_up_core_overlap_us": 208.0,
+        "waves": 24,
+        "paired": 24,
+        "preparation_cube_overlap_us": 0.0,
+        "measured_core_routine_overlap_us": 0.0,
+        "medians_us": {
+          "pull": 30.58,
+          "pack": 36.39,
+          "swiglu.part0": 15.870000000000001,
+          "up": 287.57000000000005,
+          "swiglu.part1": 28.060000000000002,
+          "down": 151.54,
+          "return": 36.85
+        },
+        "active_envelope_us": 18224.64
+      }
+    ],
+    "clients": [
+      {
+        "source": 0,
+        "jobs": 24,
+        "one_host_replay": true,
+        "episode_us": 21766.159057617188,
+        "deliberate_delay_ms": 0.0,
+        "max_relative_l2": 0.000260984554188326
+      },
+      {
+        "source": 1,
+        "jobs": 24,
+        "one_host_replay": true,
+        "episode_us": 21811.30027770996,
+        "deliberate_delay_ms": 0.0,
+        "max_relative_l2": 0.00029240731964819133
+      }
+    ]
+  },
+  "paired_internal_tail2": {
+    "run": "runs/remote-dfc-control-20260916T072800Z",
+    "exit": 0,
+    "servers": [
+      {
+        "server": 0,
+        "segmented": true,
+        "internal_pipeline": true,
+        "prefix_to_activation_median_us": 14.46,
+        "up_remaining_after_prefix_median_us": 3.6,
+        "tail_experts": 2,
+        "median_pack_to_return_us": 626.79,
+        "median_math_chain_us": 540.8,
+        "activation_up_core_overlap_us": 0.0,
+        "same_wave_activation_up_core_overlap_us": 0.0,
+        "waves": 24,
+        "paired": 24,
+        "preparation_cube_overlap_us": 0.0,
+        "measured_core_routine_overlap_us": 0.0,
+        "medians_us": {
+          "pull": 34.28,
+          "pack": 41.57,
+          "up": 312.82000000000005,
+          "swiglu.part0": 34.93,
+          "swiglu.part1": 24.23,
+          "down": 166.17000000000002,
+          "return": 42.5
+        },
+        "active_envelope_us": 19006.76
+      },
+      {
+        "server": 1,
+        "segmented": true,
+        "internal_pipeline": true,
+        "prefix_to_activation_median_us": 16.03,
+        "up_remaining_after_prefix_median_us": 4.0600000000000005,
+        "tail_experts": 2,
+        "median_pack_to_return_us": 598.7,
+        "median_math_chain_us": 514.17,
+        "activation_up_core_overlap_us": 0.0,
+        "same_wave_activation_up_core_overlap_us": 0.0,
+        "waves": 24,
+        "paired": 24,
+        "preparation_cube_overlap_us": 0.0,
+        "measured_core_routine_overlap_us": 0.0,
+        "medians_us": {
+          "pull": 36.66,
+          "pack": 41.46,
+          "up": 295.47,
+          "swiglu.part0": 32.8,
+          "swiglu.part1": 26.78,
+          "down": 151.54000000000002,
+          "return": 43.31
+        },
+        "active_envelope_us": 18921.9
+      }
+    ],
+    "clients": [
+      {
+        "source": 0,
+        "jobs": 24,
+        "one_host_replay": true,
+        "episode_us": 24529.760360717773,
+        "deliberate_delay_ms": 0.0,
+        "max_relative_l2": 0.000260984554188326
+      },
+      {
+        "source": 1,
+        "jobs": 24,
+        "one_host_replay": true,
+        "episode_us": 24331.140518188477,
+        "deliberate_delay_ms": 0.0,
+        "max_relative_l2": 0.00029240731964819133
+      }
+    ]
+  },
+  "heterogeneous_internal_half": {
+    "run": "runs/remote-dfc-control-20260916T072920Z",
+    "exit": 0,
+    "servers": [
+      {
+        "server": 0,
+        "segmented": true,
+        "internal_pipeline": true,
+        "prefix_to_activation_median_us": 16.32,
+        "up_remaining_after_prefix_median_us": 149.3,
+        "tail_experts": 0,
+        "median_pack_to_return_us": 563.56,
+        "median_math_chain_us": 496.9,
+        "activation_up_core_overlap_us": 247.76,
+        "same_wave_activation_up_core_overlap_us": 215.66,
+        "waves": 40,
+        "paired": 8,
+        "preparation_cube_overlap_us": 559.68,
+        "measured_core_routine_overlap_us": 293.34,
+        "medians_us": {
+          "pull": 26.45,
+          "pack": 29.79,
+          "swiglu.part0": 15.879999999999999,
+          "up": 301.47,
+          "swiglu.part1": 16.07,
+          "down": 168.32,
+          "return": 29.16
+        },
+        "active_envelope_us": 16902.42
+      },
+      {
+        "server": 1,
+        "segmented": true,
+        "internal_pipeline": true,
+        "prefix_to_activation_median_us": 8.96,
+        "up_remaining_after_prefix_median_us": 129.32,
+        "tail_experts": 0,
+        "median_pack_to_return_us": 525.46,
+        "median_math_chain_us": 454.46,
+        "activation_up_core_overlap_us": 168.14,
+        "same_wave_activation_up_core_overlap_us": 128.6,
+        "waves": 41,
+        "paired": 7,
+        "preparation_cube_overlap_us": 535.84,
+        "measured_core_routine_overlap_us": 249.64,
+        "medians_us": {
+          "pull": 30.38,
+          "pack": 30.84,
+          "swiglu.part0": 13.92,
+          "up": 281.02,
+          "swiglu.part1": 21.08,
+          "down": 148.48,
+          "return": 31.4
+        },
+        "active_envelope_us": 16866.9
+      }
+    ],
+    "clients": [
+      {
+        "source": 0,
+        "jobs": 24,
+        "one_host_replay": true,
+        "episode_us": 17917.999267578125,
+        "deliberate_delay_ms": 0.0,
+        "max_relative_l2": 0.000260984554188326
+      },
+      {
+        "source": 1,
+        "jobs": 24,
+        "one_host_replay": true,
+        "episode_us": 14511.40022277832,
+        "deliberate_delay_ms": 2.0,
+        "max_relative_l2": 0.0006371109047904611
+      }
+    ]
+  }
+}
