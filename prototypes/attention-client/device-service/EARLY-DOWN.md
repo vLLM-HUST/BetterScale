@@ -79,3 +79,8 @@ runs/remote-dfc-control-20260916T115222Z/analysis/persistent-work-relative.json.
 This is actual internal per-core timestamp instrumentation, independently
 zeroed per server, not a new cross-device clock fit or a native DFC instruction
 timeline. Down envelopes include any scalar readiness wait and normal tile work.
+
+For remaining command gaps versus absent/partially prepared input, use
+[CUBE-SUPPLY.md](CUBE-SUPPLY.md) and cube_supply_audit.py before proposing
+another Cube task queue. Existing heterogeneous traces already contain up→up
+and down→down execution.
