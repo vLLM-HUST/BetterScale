@@ -59,3 +59,7 @@ remains unmeasured; a separate isolated instrumented provider is needed.
 Sources:
 - https://raw.githubusercontent.com/Ascend/msopprof/master/docs/en/user_guide/msopprof_usage.md
 - https://raw.githubusercontent.com/Ascend/msopprof/master/docs/en/user_guide/msopprof_user_guide.md
+
+For the subsequent source-level adoption decision and exact readiness seams, read
+[DFC-MICROSCHEDULE.md](DFC-MICROSCHEDULE.md). It separates already-shared tile
+machinery from missing intra-down readiness and FIX-ordered return publication.
