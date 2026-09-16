@@ -13,7 +13,7 @@ from service_probe import request
 
 root = Path(os.environ["CAPSULE"])
 alignment = int(os.environ.get("SPEC_PREFILL_ALIGNMENT", "3"))
-buckets = [((n + alignment - 1) // alignment) * alignment for n in [512, 1024]]
+buckets = sorted({((n + alignment - 1) // alignment) * alignment for n in ([64, 128, 256, 512, 1024] if os.environ.get("POLICY_PROMPTS") else [512, 1024])})
 width = 2048
 url = "http://127.0.0.1:32181"
 prompt = json.loads((root / "prompt.json").read_text())["prompt_token_ids"]
