@@ -9,6 +9,8 @@ constexpr int STOP = 0, VCMD = 1, CCMD = 2, VDONE = 3, CDONE = 19, STATUS = 43;
 constexpr int UP_PREFIX_DONE = 44, URGENT_CMD = 68, URGENT_DONE = 69;
 constexpr int ACT_TAIL_READY = 85; // two slot lines, coordinator-only writer
 constexpr int PACK_EPOCH = 87;     // immutable pack command generation per slot
+constexpr int DOWN_RANGE_READY = 89, DOWN_ALL_READY = 91;
+constexpr int DOWN_PREFIX_DONE = 96; // 24 Cube-owned lines
 struct PackGate {
   __gm__ int32_t *ready;
   __gm__ int32_t *stop;

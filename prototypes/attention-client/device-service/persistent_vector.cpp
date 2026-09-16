@@ -79,6 +79,53 @@ struct Transfer {
   }
 };
 
+// One SEND command retains both route maps across prefix/tail passes. All
+// activation must finish before admission, otherwise waiting for down here
+// could prevent the same AIV team from producing its required activation.
+__aicore__ inline void ReturnStreaming(__gm__ int64_t *cfg, Transfer &io,
+                                       int slot, int worker, int command) {
+  auto ctrl = (__gm__ int32_t *)cfg[0];
+  auto ptr = (__gm__ int64_t *)cfg[1] + slot * 16;
+  int boundary = ctrl[VCMD * LINE + 3], generation = ctrl[VCMD * LINE + 4];
+  int maps[2][ROUTES], rows[2], sources[2];
+  for (int c = 0; c < 2; ++c) {
+    io.Read((__gm__ int32_t *)ptr[5] + c * MAP, MAP);
+    sources[c] = io.words.GetValue(0);
+    rows[c] = io.words.GetValue(1);
+    for (int r = 0; r < ROUTES; ++r)
+      maps[c][r] = io.words.GetValue(8 + r);
+  }
+  for (int pass = 0; pass < 2; ++pass) {
+    int64_t polls = 0;
+    int line = pass ? DOWN_ALL_READY : DOWN_RANGE_READY;
+    while (Load(ctrl + (line + slot) * LINE) != generation) {
+      if (Load(ctrl + STOP * LINE) || ++polls >= cfg[9]) {
+        Store(ctrl + STOP * LINE, -25);
+        return;
+      }
+    }
+    bool marked = false;
+    for (int c = 0; c < 2; ++c) {
+      if (!sources[c])
+        continue;
+      for (int route = worker; route < rows[c] * 8; route += VW) {
+        int row = maps[c][route];
+        if (row < 0 || (row >= boundary) != bool(pass))
+          continue;
+        if (cfg[13] && !marked) {
+          auto times =
+              (__gm__ int64_t *)cfg[13] + ((command - 1) * 24 + worker) * 8;
+          times[3 + pass] = GetSystemCycle();
+          marked = true;
+        }
+        io.Copy((__gm__ int32_t *)ptr[4] + row * HIDDEN / 2,
+                (__gm__ int32_t *)cfg[2 + c] + 64 + route * HIDDEN / 2,
+                HIDDEN / 2);
+      }
+    }
+  }
+}
+
 // A separate urgent mailbox lets a mover suspend its local copy loop without
 // retiring/reissuing that command or rereading its already-local route map.
 // Poll only after completed DMA; Activation may overwrite UB, not local maps.
@@ -130,7 +177,9 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
     }
     auto ptr = (__gm__ int64_t *)cfg[1] + slot * 16;
     uint64_t begin = GetSystemCycle();
-    if (kind == ACTIVATE) {
+    if (kind == SEND && cfg[22]) {
+      ReturnStreaming(cfg, io, slot, worker, next);
+    } else if (kind == ACTIVATE) {
       for (int row = ctrl[VCMD * LINE + 4] + worker; row < extra; row += VW)
         io.Activation((__gm__ bfloat16_t *)ptr[2] + row * INNER * 2,
                       (__gm__ bfloat16_t *)ptr[3] + row * INNER);
@@ -207,7 +256,7 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
 struct Slot {
   int stage = EMPTY, gen[2] = {0, 0}, rows[2] = {0, 0}, layer[2] = {0, 0};
   int ids[2][ROUTES], live = 0, boundary = 0;
-  int upDone = 0, actDone = 0, downDone = 0, downGen = 0;
+  int upDone = 0, actDone = 0, downDone = 0, downGen = 0, downPrefix = 0;
   int moveCursor = 0, moveEnd = 0, fetchMask = 0;
 };
 __aicore__ inline void Descriptor(Transfer &io, __gm__ int64_t *ptr, Slot &s) {
@@ -375,12 +424,21 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       s[cs].upDone = 1;
       progress = true;
     }
+    if (cfg[22] && cs >= 0 && ckind == 2 && !s[cs].downPrefix &&
+        Joined(ctrl, DOWN_PREFIX_DONE, CW, cgen)) {
+      s[cs].downPrefix = 1;
+      Store(ctrl + (DOWN_RANGE_READY + cs) * LINE, cgen);
+      progress = true;
+    }
     if (cs >= 0 && Joined(ctrl, CDONE, CW, cgen)) {
       Record(cfg, eventCount, 1, ckind, cs, cbegin, s[cs].live, cpart);
       if (ckind == 1)
         s[cs].upDone = streaming ? parts : s[cs].upDone + 1;
-      else
+      else {
         s[cs].downDone = streaming ? parts : s[cs].downDone + 1;
+        if (cfg[22])
+          Store(ctrl + (DOWN_ALL_READY + cs) * LINE, cgen);
+      }
       cs = -1;
       progress = true;
     }
@@ -478,6 +536,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           slot.gen[0] = slot.gen[1] = slot.rows[0] = slot.rows[1] = 0;
           slot.stage = EMPTY;
           slot.upDone = slot.actDone = slot.downDone = slot.downGen = 0;
+          slot.downPrefix = 0;
         }
         vs = -1;
       }
@@ -546,7 +605,10 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           if (slot.stage != UP)
             continue;
           bool ready =
-              phase == 0 ? slot.downDone == parts : slot.actDone < slot.upDone;
+              phase == 0
+                  ? (slot.downDone == parts ||
+                     (cfg[22] && slot.downPrefix && slot.actDone == parts))
+                  : slot.actDone < slot.upDone;
           if (ready) {
             vs = i;
             vkind = phase == 0 ? SEND : ACTIVATE;
@@ -556,6 +618,10 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
             int start = vpart ? slot.boundary : 0;
             int end = parts == 2 && !vpart ? slot.boundary : slot.live;
             vbegin = GetSystemCycle();
+            if (phase == 0 && cfg[22]) {
+              end = slot.boundary;
+              start = slot.downGen;
+            }
             Command(ctrl, VCMD, ++vgen, vkind, i, end, start);
             progress = true;
           }

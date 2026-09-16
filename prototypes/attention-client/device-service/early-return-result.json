@@ -1,0 +1,241 @@
+{
+  "leaf": "/workspace/strengthen-dsv4/runs/persistent-control-20260916T130522Z",
+  "runs": [
+    {
+      "kind": "control",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T130606Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 24,
+          "paired": 24,
+          "early_return": false,
+          "pack_to_return_us": 537.59,
+          "exposed_return_us": 42.06,
+          "down_us": 168.54,
+          "episode_us": 17016.5
+        },
+        {
+          "role": "expert1",
+          "waves": 24,
+          "paired": 24,
+          "early_return": false,
+          "pack_to_return_us": 492.03999999999996,
+          "exposed_return_us": 39.370000000000005,
+          "down_us": 148.13,
+          "episode_us": 16820.22
+        }
+      ]
+    },
+    {
+      "kind": "candidate",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T130655Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 24,
+          "paired": 24,
+          "early_return": true,
+          "pack_to_return_us": 513.3199999999999,
+          "exposed_return_us": 19.62,
+          "down_us": 167.85000000000002,
+          "episode_us": 16475.62
+        },
+        {
+          "role": "expert1",
+          "waves": 24,
+          "paired": 24,
+          "early_return": true,
+          "pack_to_return_us": 471.33000000000004,
+          "exposed_return_us": 19.92,
+          "down_us": 149.64,
+          "episode_us": 16574.88
+        }
+      ]
+    },
+    {
+      "kind": "observer",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T130722Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 24,
+          "paired": 24,
+          "early_return": true,
+          "pack_to_return_us": 518.4100000000001,
+          "exposed_return_us": 23.11,
+          "down_us": 170.48,
+          "episode_us": 17155.98
+        },
+        {
+          "role": "expert1",
+          "waves": 24,
+          "paired": 24,
+          "early_return": true,
+          "pack_to_return_us": 487.53999999999996,
+          "exposed_return_us": 25.63,
+          "down_us": 152.75,
+          "episode_us": 16431.68
+        }
+      ]
+    },
+    {
+      "kind": "observer-control",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T130811Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 24,
+          "paired": 24,
+          "early_return": false,
+          "pack_to_return_us": 537.1800000000001,
+          "exposed_return_us": 48.55,
+          "down_us": 165.06,
+          "episode_us": 17772.12
+        },
+        {
+          "role": "expert1",
+          "waves": 24,
+          "paired": 24,
+          "early_return": false,
+          "pack_to_return_us": 487.26,
+          "exposed_return_us": 38.989999999999995,
+          "down_us": 147.92000000000002,
+          "episode_us": 17031.62
+        }
+      ]
+    },
+    {
+      "kind": "hetero",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T130942Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 44,
+          "paired": 4,
+          "early_return": true,
+          "pack_to_return_us": 499.14,
+          "exposed_return_us": 17.36,
+          "down_us": 158.91,
+          "episode_us": 15587.24
+        },
+        {
+          "role": "expert1",
+          "waves": 44,
+          "paired": 4,
+          "early_return": true,
+          "pack_to_return_us": 447.53999999999996,
+          "exposed_return_us": 14.7,
+          "down_us": 142.85,
+          "episode_us": 15544.04
+        }
+      ]
+    },
+    {
+      "kind": "hetero-control",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T131013Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 41,
+          "paired": 7,
+          "early_return": false,
+          "pack_to_return_us": 515.2,
+          "exposed_return_us": 33.78,
+          "down_us": 164.46,
+          "episode_us": 15694.48
+        },
+        {
+          "role": "expert1",
+          "waves": 42,
+          "paired": 6,
+          "early_return": false,
+          "pack_to_return_us": 467.88,
+          "exposed_return_us": 31.950000000000003,
+          "down_us": 145.07999999999998,
+          "episode_us": 15658.32
+        }
+      ]
+    }
+  ],
+  "observer": [
+    {
+      "server": 0,
+      "segmented": true,
+      "internal_pipeline": true,
+      "early_down": true,
+      "fine_pack": true,
+      "early_return": true,
+      "return_exposed_tail_median_us": 23.11,
+      "return_prefix_headstart_median_us": 65.05000000000001,
+      "down_tail_wait_median_us": 0.12,
+      "move_quantum": 0,
+      "resident_moves": false,
+      "urgent_activations": 0,
+      "interrupted_move_commands": 0,
+      "tail_activation_delay_median_us": 9.66,
+      "tail_activation_move_overlap_total_us": 0.0,
+      "tail_activation_move_blocked_waves": 0,
+      "prefix_to_activation_median_us": 13.36,
+      "up_remaining_after_prefix_median_us": 155.26999999999998,
+      "tail_experts": 0,
+      "median_pack_to_return_us": 518.4100000000001,
+      "median_math_chain_us": 489.99,
+      "activation_up_core_overlap_us": 393.88,
+      "same_wave_activation_up_core_overlap_us": 393.88,
+      "waves": 24,
+      "paired": 24,
+      "preparation_cube_overlap_us": 697.4,
+      "measured_core_routine_overlap_us": 477.56,
+      "medians_us": {
+        "pull": 33.09,
+        "pack": 32.97,
+        "swiglu.part0": 22.310000000000002,
+        "up": 319.31,
+        "swiglu.part1": 20.86,
+        "down": 170.48,
+        "return": 97.52000000000001
+      },
+      "active_envelope_us": 17155.98
+    },
+    {
+      "server": 1,
+      "segmented": true,
+      "internal_pipeline": true,
+      "early_down": true,
+      "fine_pack": true,
+      "early_return": true,
+      "return_exposed_tail_median_us": 25.63,
+      "return_prefix_headstart_median_us": 57.42,
+      "down_tail_wait_median_us": 0.12,
+      "move_quantum": 0,
+      "resident_moves": false,
+      "urgent_activations": 0,
+      "interrupted_move_commands": 0,
+      "tail_activation_delay_median_us": 9.53,
+      "tail_activation_move_overlap_total_us": 0.0,
+      "tail_activation_move_blocked_waves": 0,
+      "prefix_to_activation_median_us": 6.73,
+      "up_remaining_after_prefix_median_us": 136.1,
+      "tail_experts": 0,
+      "median_pack_to_return_us": 487.53999999999996,
+      "median_math_chain_us": 453.90999999999997,
+      "activation_up_core_overlap_us": 192.08,
+      "same_wave_activation_up_core_overlap_us": 192.08,
+      "waves": 24,
+      "paired": 24,
+      "preparation_cube_overlap_us": 720.18,
+      "measured_core_routine_overlap_us": 513.34,
+      "medians_us": {
+        "pull": 36.510000000000005,
+        "pack": 34.97,
+        "swiglu.part0": 15.74,
+        "up": 300.52,
+        "swiglu.part1": 15.64,
+        "down": 152.75,
+        "return": 93.00999999999999
+      },
+      "active_envelope_us": 16431.68
+    }
+  ]
+}

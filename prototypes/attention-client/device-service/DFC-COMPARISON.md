@@ -94,3 +94,10 @@ The remote control reuses the production-path prototype's existing kernels,
 DeviceExperts lifecycle and native GMM; only the bank's gate is replaced with
 fixed routing to match DFC's input boundary. It still has the same bounded24-job
 per-source protocol. No serving default is changed.
+
+### Weight address scope clarification (2026-09-16)
+
+The remote burst reuses two separately allocated layer weight ranges, with equal
+dummy values, alternating layer0/1; the DFC leaf replays one range. This is not
+fresh weight generation per request. It is an unmatched address/cache condition,
+not a demonstrated explanation for the whole latency gap. See EARLY-RETURN.md.

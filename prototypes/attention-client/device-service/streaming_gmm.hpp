@@ -8,7 +8,8 @@ __aicore__ inline void
 RunStreamingGmm(GM_ADDR config, GM_ADDR input, GM_ADDR output, int boundary,
                 __gm__ int32_t *progress, int generation,
                 __gm__ int64_t *timing, __gm__ int32_t *stop = nullptr,
-                int64_t pollLimit = 0, Persistent::PackGate *pack = nullptr) {
+                int64_t pollLimit = 0, Persistent::PackGate *pack = nullptr,
+                __gm__ int32_t *downPrefix = nullptr) {
   auto cfg = (__gm__ int64_t *)config;
   const uint32_t k = cfg[0], n = cfg[1], groups = cfg[2];
   using Tile = ActualGmmTypes::Mmad;
@@ -26,6 +27,15 @@ RunStreamingGmm(GM_ADDR config, GM_ADDR input, GM_ADDR output, int boundary,
   bool published = false;
   for (uint32_t expert = 0; expert < groups; ++expert) {
     if (stop && !published && row >= boundary) {
+      if (downPrefix) {
+        // One bounded prefix drain, not a drain per expert. Retain the same
+        // tile object/buffers for the tail. FIX output must precede readiness.
+        tile.SynchronizeBlock();
+        PipeBarrier<PIPE_ALL>();
+        if (timing)
+          timing[5] = GetSystemCycle();
+        Persistent::Store(downPrefix, generation);
+      }
       // Check before issuing any tail GM->L1 copy. Keep the same tile object:
       // prefix MMAD/FIX may continue while its scalar issuer waits.
       if (timing)
@@ -106,6 +116,11 @@ RunStreamingGmm(GM_ADDR config, GM_ADDR input, GM_ADDR output, int boundary,
   }
   tile.SynchronizeBlock();
   PipeBarrier<PIPE_ALL>();
+  if (stop && !published && downPrefix) {
+    if (timing)
+      timing[5] = GetSystemCycle();
+    Persistent::Store(downPrefix, generation);
+  }
   if (!stop && !published) {
     if (timing) {
       timing[2] = GetSystemCycle();

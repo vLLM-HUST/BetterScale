@@ -62,6 +62,15 @@ for server in range(2):
     internal = receipt.get("internal_pipeline", False)
     early_down = receipt.get("early_down", False)
     fine_pack = receipt.get("fine_pack", False)
+    early_return = receipt.get("early_return", False)
+    return_markers = {}
+    vector_commands = [e for e in events if e[0] == 0]
+    for gen, core, prefix, tail in receipt.get("core_return_pass", []):
+        event = vector_commands[gen - 1]
+        assert event[1] == 4
+        assert all(event[3] <= t <= event[4] for t in (prefix, tail) if t)
+        return_markers.setdefault(event[6], []).append((core, prefix, tail))
+    down_prefix = {}
     down_waits = {}
     cube_commands = [e for e in events if e[0] == 1]
     for gen, core, begin, end in receipt.get("core_down_wait", []):
@@ -80,6 +89,12 @@ for server in range(2):
             assert event[1] == 1
             assert all(event[3] <= t <= event[4] for t in cores.values())
             prefix_ready[event[6]] = max(cores.values())
+    for gen, core, timestamp in receipt.get("core_down_prefix", []):
+        event = cube_commands[gen - 1]
+        assert event[1] == 2 and event[3] <= timestamp <= event[4]
+        down_prefix.setdefault(event[6], {})[core] = timestamp
+    assert all(set(cores) == set(range(24)) for cores in down_prefix.values())
+    return_exposed_tail, return_headstart = [], []
     assert len(events) <= 512
     origin = min(e[3] for e in events)
     stages = [[], []]
@@ -159,9 +174,29 @@ for server in range(2):
                     if waits:
                         assert set(waits) == set(range(24))
                         assert all(end >= act[3] for begin, end in waits.values())
-                    assert down[2] <= down[3] <= event[2]
+                    assert (
+                        down[2] <= down[3] <= (event[3] if early_return else event[2])
+                    )
                 else:
-                    assert act[3] <= down[2] <= down[3] <= event[2]
+                    assert (
+                        act[3]
+                        <= down[2]
+                        <= down[3]
+                        <= (event[3] if early_return else event[2])
+                    )
+                if early_return:
+                    assert act[3] <= event[2]
+            if early_return:
+                produced = max(down_prefix[down[5]].values())
+                consumers = return_markers.get(event[5], [])
+                assert all(
+                    not prefix or prefix >= produced for _, prefix, _ in consumers
+                )
+                assert all(not tail or tail >= down[3] for _, _, tail in consumers)
+                first = [prefix for _, prefix, _ in consumers if prefix]
+                if first:
+                    return_headstart.append((down[3] - min(first)) / 50)
+                return_exposed_tail.append((event[3] - down[3]) / 50)
             wave_service_us.append((event[3] - pack[2]) / 50)
             cube_events = [e for e in wave if e[0] == 1]
             math_chain_us.append(
@@ -240,6 +275,11 @@ for server in range(2):
                             if parts == 2
                             and ((engine == 1 and not internal) or e[1] == 3)
                             else ""
+                        )
+                        + (
+                            " (includes readiness wait)"
+                            if early_return and e[:2] == [0, 4]
+                            else ""
                         ),
                         ph="X",
                         pid=server,
@@ -253,6 +293,43 @@ for server in range(2):
                         ),
                     )
                 )
+        if early_return:
+            for seq, markers in return_markers.items():
+                for core, prefix, tail in markers:
+                    for label, timestamp in (
+                        ("prefix return first read", prefix),
+                        ("tail return first read", tail),
+                    ):
+                        if timestamp:
+                            core_display.append(
+                                dict(
+                                    name=label,
+                                    ph="i",
+                                    s="t",
+                                    pid=server,
+                                    tid=core,
+                                    ts=(timestamp - origin) / 50,
+                                    args=dict(
+                                        sequence=seq,
+                                        scope="first Copy call after readiness; not DMA duration",
+                                    ),
+                                )
+                            )
+            for seq, markers in down_prefix.items():
+                for core, timestamp in markers.items():
+                    core_display.append(
+                        dict(
+                            name="down prefix output complete",
+                            ph="i",
+                            s="t",
+                            pid=server,
+                            tid=100 + core,
+                            ts=(timestamp - origin) / 50,
+                            args=dict(
+                                sequence=seq, scope="after prefix drain/FIX completion"
+                            ),
+                        )
+                    )
         assert all(counts[key] == (24 if key[0] == 1 else 16) for key in commands)
         for intervals in vector_lanes.values():
             ordered = sorted(intervals)
@@ -338,6 +415,13 @@ for server in range(2):
             internal_pipeline=internal,
             early_down=early_down,
             fine_pack=fine_pack,
+            early_return=early_return,
+            return_exposed_tail_median_us=(
+                statistics.median(return_exposed_tail) if return_exposed_tail else None
+            ),
+            return_prefix_headstart_median_us=(
+                statistics.median(return_headstart) if return_headstart else None
+            ),
             down_tail_wait_median_us=(
                 statistics.median(
                     (end - begin) / 50

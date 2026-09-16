@@ -38,7 +38,11 @@ class PersistentEngine:
         )
         assert not (self.move_quantum and self.resident_moves)
         assert not (self.move_quantum or self.resident_moves) or self.internal_pipeline
-        self.control = torch.zeros((96, 16), dtype=torch.int32, device="npu")
+        self.early_return = os.environ.get("DEVICE_SERVICE_EARLY_RETURN") == "1"
+        assert not self.early_return or (
+            self.early_down and not self.move_quantum and not self.resident_moves
+        )
+        self.control = torch.zeros((128, 16), dtype=torch.int32, device="npu")
         self.trace = torch.full((tasks * 2, 16), -991, dtype=torch.int32, device="npu")
         self.events = torch.zeros((512, 8), dtype=torch.int64, device="npu")
         self.work_times = (
@@ -138,6 +142,7 @@ class PersistentEngine:
                 self.pack_times.data_ptr() if self.pack_times is not None else 0,
                 self.pack_ready.data_ptr() if self.pack_ready is not None else 0,
                 self.issue_times.data_ptr() if self.issue_times is not None else 0,
+                int(self.early_return),
             ],
             dtype=torch.int64,
             device="npu",
@@ -210,6 +215,7 @@ class PersistentEngine:
             resident_moves=self.resident_moves,
             early_down=self.early_down,
             fine_pack=self.fine_pack,
+            early_return=self.early_return,
             waves=len(records),
             pulls_during_cube=ctrl[43][2],
             trace=records,
@@ -237,6 +243,16 @@ class PersistentEngine:
             receipt["core_down_wait"] = [
                 [gen + 1, core, *timing[1, gen, core, 3:5].tolist()]
                 for gen, core in (timing[1, ..., 4] > 0).nonzero().tolist()
+            ]
+            receipt["core_down_prefix"] = [
+                [gen + 1, core, timing[1, gen, core, 5].item()]
+                for gen, core in (timing[1, ..., 5] > 0).nonzero().tolist()
+            ]
+            receipt["core_return_pass"] = [
+                [gen + 1, core, *timing[0, gen, core, 3:5].tolist()]
+                for gen, core in ((timing[0, ..., 3] > 0) | (timing[0, ..., 4] > 0))
+                .nonzero()
+                .tolist()
             ]
             receipt["core_prefix"] = [
                 [gen + 1, core, timing[1, gen, core, 2].item()]

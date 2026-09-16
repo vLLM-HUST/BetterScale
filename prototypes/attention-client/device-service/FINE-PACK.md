@@ -102,3 +102,6 @@ runs/remote-dfc-control-20260916T124816Z/analysis/
 Clocks are independently zeroed per device, not a cross-device clock fit.
 cube_supply_audit.py's old whole-command prerequisite model is intentionally
 rejected for fine-pack receipts; use the per-expert audit instead.
+
+The subsequent down-prefix return continuation and its variable net gains are
+qualified separately in [EARLY-RETURN.md](EARLY-RETURN.md). Both remain opt-in.

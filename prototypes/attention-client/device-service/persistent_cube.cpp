@@ -68,7 +68,9 @@ persistent_cube(GM_ADDR config, GM_ADDR unused, GM_ADDR unused2) {
                             : nullptr;
       RunStreamingGmm((GM_ADDR)ptr[8], (GM_ADDR)ptr[3], (GM_ADDR)ptr[4],
                       firstRow, ctrl + (ACT_TAIL_READY + slot) * LINE, next,
-                      timing, ctrl + STOP * LINE, cfg[9]);
+                      timing, ctrl + STOP * LINE, cfg[9], nullptr,
+                      cfg[22] ? ctrl + (DOWN_PREFIX_DONE + GetBlockIdx()) * LINE
+                              : nullptr);
     } else {
       if (streaming)
         firstRow = 0;
