@@ -21,7 +21,7 @@ def duration(rows):
     return sum(hi - lo for lo, hi in union(rows)) / 1e6
 
 
-def inspect(path):
+def inspect(path, matmul_type="MatMulV3", matmul_count=256, synchronous=True):
     c = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     rows = c.execute(
         """select t.startNs,t.endNs,s.value,t.modelId,t.globalTaskId from TASK t
@@ -44,7 +44,9 @@ def inspect(path):
         ]
         hi = tail[1]
         body = [r for r in rows if lo <= r[0] < hi]
-        assert sum(r[2] == "MatMulV3" for r in body) == 256
+        assert (
+            sum(r[2] == matmul_type for r in body) == matmul_count
+        ), collections.Counter(r[2] for r in body)
         assert sum(r[2] == "FusedInferAttentionScore" for r in body) == 16
         compute = [(r[0], r[1]) for r in body]
         comm = [(max(a, lo), min(b, hi)) for a, b in all_comm if a < hi and b > lo]
@@ -60,7 +62,8 @@ def inspect(path):
             for a, b, name, tid in apis
             if name == "aclrtSynchronizeEvent" and lo < a < sample[1] + 1000000
         ]
-        assert len(events) == 1, events
+        if synchronous:
+            assert len(events) == 1, events
         nonwait = [
             (max(a, lo), min(b, hi))
             for a, b, name, tid in apis
@@ -82,8 +85,12 @@ def inspect(path):
                 uncovered_by_compute_comm_ms=(hi - lo) / 1e6 - cov,
                 api_nonwait_union_across_threads_ms=duration(nonwait),
                 api_wait_union_across_threads_ms=duration(waits),
-                final_event_wait_start_relative_ms=(events[0][0] - lo) / 1e6,
-                final_event_wait_ms=(events[0][1] - events[0][0]) / 1e6,
+                final_event_wait_start_relative_ms=(
+                    (events[0][0] - lo) / 1e6 if synchronous else None
+                ),
+                final_event_wait_ms=(
+                    (events[0][1] - events[0][0]) / 1e6 if synchronous else None
+                ),
                 model_end_to_sample_end_ms=(sample[1] - hi) / 1e6,
                 api_calls_started_in_body=sum(counts.values()),
                 top_api_counts=counts.most_common(8),
