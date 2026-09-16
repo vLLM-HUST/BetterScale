@@ -26,7 +26,10 @@ PREFILLS = (
 
 
 if SPEC:
-    PREFILLS = tuple(((n + SPEC) // (SPEC + 1)) * (SPEC + 1) for n in PREFILLS)
+    # Diagnostic shape discriminator, not an assumed recurrence fix.
+    alignment = int(os.environ.get("SPEC_PREFILL_ALIGNMENT", str(SPEC + 1)))
+    assert alignment > 0 and alignment % (SPEC + 1) == 0
+    PREFILLS = tuple(sorted({((n + alignment - 1) // alignment) * alignment for n in PREFILLS}))
 
 
 def prefill_bucket(tokens):

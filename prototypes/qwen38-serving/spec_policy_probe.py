@@ -12,6 +12,8 @@ import urllib.request
 from service_probe import request
 
 root = Path(os.environ["CAPSULE"])
+alignment = int(os.environ.get("SPEC_PREFILL_ALIGNMENT", "3"))
+buckets = [((n + alignment - 1) // alignment) * alignment for n in [512, 1024]]
 width = 2048
 url = "http://127.0.0.1:32181"
 prompt = json.loads((root / "prompt.json").read_text())["prompt_token_ids"]
@@ -58,8 +60,8 @@ command = [
     json.dumps(
         dict(
             cudagraph_mode="FULL_AND_PIECEWISE",
-            cudagraph_capture_sizes=[3, 6, 12, 24, 513, 1026],
-            max_cudagraph_capture_size=1026,
+            cudagraph_capture_sizes=[3, 6, 12, 24, *buckets],
+            max_cudagraph_capture_size=max(buckets),
         )
     ),
 ]
