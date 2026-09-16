@@ -3,6 +3,7 @@
 import copy
 import inspect
 import json
+import os
 import time
 from pathlib import Path
 import torch
@@ -21,6 +22,8 @@ class JointWorker(NPUWorker):
     def compile_or_warm_up_model(self):
         result = super().compile_or_warm_up_model()
         self.remote = None
+        self.shadow = os.environ.get("ATTENTION_JOINT_SHADOW", "1") == "1"
+        self.reference_calls = 0
         self.records = []
         self.events = []
         self.banks = {}
@@ -33,21 +36,24 @@ class JointWorker(NPUWorker):
                 return original(*args, **kwargs)
             ctx = get_forward_context()
             entry = ctx.moe_layer_index
-            before = [
-                (tensor, tensor.clone())
-                for layer in self.model_body.layers
-                for tensor in layer.self_attn.attn.kv_cache
-            ]
-            expected = original(*args, **kwargs).clone()
-            exit_index = ctx.moe_layer_index
-            caches = []
-            for layer in self.model_body.layers:
-                caches.extend((t, t.clone()) for t in layer.self_attn.attn.kv_cache)
-            # Compare from the SAME pre-forward state. Leaving the native writes
-            # installed could hide a missing KV update in the remote candidate.
-            for tensor, snapshot in before:
-                tensor.copy_(snapshot)
-            del before
+            exit_index = entry + len(self.model_body.layers)
+            if self.shadow:
+                before = [
+                    (tensor, tensor.clone())
+                    for layer in self.model_body.layers
+                    for tensor in layer.self_attn.attn.kv_cache
+                ]
+                expected = original(*args, **kwargs).clone()
+                exit_index = ctx.moe_layer_index
+                caches = []
+                for layer in self.model_body.layers:
+                    caches.extend((t, t.clone()) for t in layer.self_attn.attn.kv_cache)
+                # Compare from the SAME pre-forward state. Leaving the native writes
+                # installed could hide a missing KV update in the remote candidate.
+                for tensor, snapshot in before:
+                    tensor.copy_(snapshot)
+                del before
+                self.reference_calls += 1
             context = copy.copy(ctx)
             context.moe_layer_index = entry
             context.attn_metadata = {
@@ -103,34 +109,46 @@ class JointWorker(NPUWorker):
                     if not scheduler.tick():
                         time.sleep(0.001)
                 actual = scheduler.completed.popleft()[1]
-                torch.npu.synchronize()
-                # Different grouped-GEMM/reduction paths can differ by BF16 rounding.
-                # Report exactness and normalized errors, not just an absolute pass.
-                diff = (actual.float() - expected.float()).abs()
-                rel_l2 = (
-                    torch.linalg.vector_norm(diff)
-                    / torch.linalg.vector_norm(expected.float()).clamp_min(1e-12)
-                ).item()
-                torch.testing.assert_close(actual, expected, rtol=0.02, atol=1e-6)
-                assert rel_l2 < 0.01, rel_l2
-                kv_exact = all(torch.equal(t, ref) for t, ref in caches)
-                kv_errors = [
-                    (t.float() - ref.float()).abs().max().item() for t, ref in caches
-                ]
-                for t, ref in caches:
-                    torch.testing.assert_close(t, ref, rtol=0.02, atol=1e-6)
-                self.records.append(
-                    dict(
-                        rows=hidden.shape[0],
-                        preparing=self.preparing,
-                        attention_replays=replays,
-                        output_exact=torch.equal(actual, expected),
-                        max_abs=diff.max().item(),
-                        relative_l2=rel_l2,
-                        kv_exact=kv_exact,
-                        kv_max_abs=max(kv_errors),
+                if self.shadow:
+                    torch.npu.synchronize()
+                    # Different grouped-GEMM/reduction paths can differ by BF16 rounding.
+                    # Report exactness and normalized errors, not just an absolute pass.
+                    diff = (actual.float() - expected.float()).abs()
+                    rel_l2 = (
+                        torch.linalg.vector_norm(diff)
+                        / torch.linalg.vector_norm(expected.float()).clamp_min(1e-12)
+                    ).item()
+                    torch.testing.assert_close(actual, expected, rtol=0.02, atol=1e-6)
+                    assert rel_l2 < 0.01, rel_l2
+                    kv_exact = all(torch.equal(t, ref) for t, ref in caches)
+                    kv_errors = [
+                        (t.float() - ref.float()).abs().max().item()
+                        for t, ref in caches
+                    ]
+                    for t, ref in caches:
+                        torch.testing.assert_close(t, ref, rtol=0.02, atol=1e-6)
+                    self.records.append(
+                        dict(
+                            rows=hidden.shape[0],
+                            preparing=self.preparing,
+                            attention_replays=replays,
+                            output_exact=torch.equal(actual, expected),
+                            max_abs=diff.max().item(),
+                            relative_l2=rel_l2,
+                            kv_exact=kv_exact,
+                            kv_max_abs=max(kv_errors),
+                        )
                     )
-                )
+                else:
+                    self.records.append(
+                        dict(
+                            rows=hidden.shape[0],
+                            preparing=self.preparing,
+                            attention_replays=replays,
+                            shadow=False,
+                            reference_calls=self.reference_calls,
+                        )
+                    )
                 Path(common.OUTPUT).write_text(
                     json.dumps(dict(checks=self.records, events=self.events), indent=2)
                 )

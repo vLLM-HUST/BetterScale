@@ -450,3 +450,15 @@ CATLASS invocations is not DFC's continuous internal tile pipeline. Never attrib
 the independent-arrival25.1->18.7ms episode to segmentation: pairing changed0->24.
 Use the causal segment audit and same-wave timing in persistent_analyze.py rather
 than requiring serial completion order or mistaking cross-slot overlap for this gain.
+
+
+For native model generation with the persistent expert backend, enter
+`prototypes/attention-client/device-service/SERVING.md` and use serving_receipt.py,
+not the older unrolled-service summarizer. Four-card two-layer dummy shadow gates
+match native outputs/KV; no-shadow generation uses zero reference calls and a
+raising local-expert guard. A matched32-job shadow run reproduces generated tokens.
+The explicit1–32-job unsegmented budget is still bounded/exact, not online EOF or
+unlimited service. Full48-layer BF16 needs role-specific weight loading: current
+client staging alone would be54GiB plus54GiB local experts. Do not scale the dummy
+bootstrap and blame its OOM on the expert transport. This is separate from the
+operator worker's evolving GEMM implementation and changes no released defaults.

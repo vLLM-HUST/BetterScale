@@ -1,5 +1,10 @@
 # Attention-side continuation for a shared expert server
 
+For the latest native-generation integration with the persistent BF16 server,
+read [the serving checkpoint](device-service/SERVING.md). It includes no-shadow generation and
+explicit remaining full-model/online-lifetime boundaries; older gates below
+retain their original scope.
+
 Owned here: vLLM Qwen layer splitting, per-batch continuation and returned
 contribution accounting. The server in
 `/workspace/my-ascend-workspace/prototypes/pull-expert-server` is independently

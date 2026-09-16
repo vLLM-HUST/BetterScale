@@ -41,7 +41,7 @@ for server in range(2):
     receipt = json.loads((a.run / f"run/measurements/expert{server}.json").read_text())
     events = receipt["events"]
     parts = 2 if receipt.get("segmented") else 1
-    assert len(events) <= (4 + 3 * parts) * 48
+    assert len(events) <= (4 + 3 * parts) * 2 * receipt.get("tasks_per_source", 24)
     origin = min(e[3] for e in events)
     stages = [[], []]
     wave_ids = {}

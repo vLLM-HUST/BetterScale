@@ -12,7 +12,9 @@ import torch_npu
 class PersistentEngine:
     def __init__(self, sources, outputs, up, down, owner, tasks=24):
         assert len(sources) == len(outputs) == 2 and owner in (0, 1)
-        assert 1 <= tasks <= 24
+        assert 1 <= tasks <= 32
+        if os.environ.get("DEVICE_SERVICE_SEGMENTED") == "1":
+            assert tasks <= 24, "segmented trace capacity"
         assert up.shape == (128, 2048, 1536) and down.shape == (128, 768, 2048)
         assert up.dtype == down.dtype == torch.bfloat16
         assert (
@@ -183,7 +185,7 @@ class PersistentEngine:
             assert self.lib.unload_server(binary) == 0
 
 
-def serve(api, clients, up, down, owner, output_path):
+def serve(api, clients, up, down, owner, output_path, tasks=24):
     from common import INPUT_OFFSET, recv
     from profile_capture import start, stop
 
@@ -193,6 +195,7 @@ def serve(api, clients, up, down, owner, output_path):
         up,
         down,
         owner,
+        tasks=tasks,
     )
     for c in clients:
         c["pipe"].send(("server_ready",))
@@ -204,7 +207,7 @@ def serve(api, clients, up, down, owner, output_path):
     receipt = engine.finish()
     for source in range(2):
         seen = [r[source] for r in receipt["trace"] if r[source]]
-        assert seen == list(range(1, 25)), seen
+        assert seen == list(range(1, tasks + 1)), seen
     for c in clients:
         pipe = c["pipe"]
         assert recv(pipe)[0] == "stop"
@@ -217,6 +220,7 @@ def serve(api, clients, up, down, owner, output_path):
     stop(profiler)
     engine.close()
     receipt.update(
+        tasks_per_source=tasks,
         server=owner,
         persistent=True,
         deliberate_batch_wait=False,

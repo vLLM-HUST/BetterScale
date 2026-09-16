@@ -1,0 +1,307 @@
+{
+  "runs": [
+    {
+      "run": "runs/attention-device-joint-20260916T072614Z",
+      "status": "pass",
+      "model": "Qwen3-30B-A3B dimensions",
+      "layers": 2,
+      "dummy": true,
+      "clients": [
+        {
+          "client": 0,
+          "forwards": 12,
+          "sealed_forwards": 6,
+          "source_layer_jobs": 24,
+          "shadow": true,
+          "reference_calls": 12,
+          "generations": []
+        },
+        {
+          "client": 1,
+          "forwards": 12,
+          "sealed_forwards": 6,
+          "source_layer_jobs": 24,
+          "shadow": true,
+          "reference_calls": 12,
+          "generations": []
+        }
+      ],
+      "servers": [
+        {
+          "server": 0,
+          "waves": 48,
+          "source_layer_jobs": 48,
+          "paired": 0
+        },
+        {
+          "server": 1,
+          "waves": 48,
+          "source_layer_jobs": 48,
+          "paired": 0
+        }
+      ],
+      "native_generation": true,
+      "host_attention_continuation": true,
+      "bounded_episode": true,
+      "performance_claim": false
+    },
+    {
+      "run": "runs/attention-device-joint-20260916T072712Z",
+      "status": "pass",
+      "model": "Qwen3-30B-A3B dimensions",
+      "layers": 2,
+      "dummy": true,
+      "clients": [
+        {
+          "client": 0,
+          "forwards": 12,
+          "sealed_forwards": 6,
+          "source_layer_jobs": 24,
+          "shadow": false,
+          "reference_calls": 0,
+          "generations": [
+            {
+              "input_tokens": 32,
+              "token_ids": [
+                116736,
+                26499,
+                116736
+              ],
+              "wall_seconds": 0.0508581530302763
+            },
+            {
+              "input_tokens": 16,
+              "token_ids": [
+                116736,
+                26499,
+                116736
+              ],
+              "wall_seconds": 0.053811245947144926
+            }
+          ]
+        },
+        {
+          "client": 1,
+          "forwards": 12,
+          "sealed_forwards": 6,
+          "source_layer_jobs": 24,
+          "shadow": false,
+          "reference_calls": 0,
+          "generations": [
+            {
+              "input_tokens": 16,
+              "token_ids": [
+                62393,
+                20,
+                62393
+              ],
+              "wall_seconds": 0.05036577791906893
+            },
+            {
+              "input_tokens": 32,
+              "token_ids": [
+                62393,
+                20,
+                62393
+              ],
+              "wall_seconds": 0.051833653007633984
+            }
+          ]
+        }
+      ],
+      "servers": [
+        {
+          "server": 0,
+          "waves": 47,
+          "source_layer_jobs": 48,
+          "paired": 1
+        },
+        {
+          "server": 1,
+          "waves": 47,
+          "source_layer_jobs": 48,
+          "paired": 1
+        }
+      ],
+      "native_generation": true,
+      "host_attention_continuation": true,
+      "bounded_episode": true,
+      "performance_claim": false
+    },
+    {
+      "run": "runs/attention-device-joint-20260916T072932Z",
+      "status": "pass",
+      "model": "Qwen3-30B-A3B dimensions",
+      "layers": 2,
+      "dummy": true,
+      "clients": [
+        {
+          "client": 0,
+          "forwards": 16,
+          "sealed_forwards": 8,
+          "source_layer_jobs": 32,
+          "shadow": false,
+          "reference_calls": 0,
+          "generations": [
+            {
+              "input_tokens": 32,
+              "token_ids": [
+                116736,
+                26499,
+                116736,
+                26499
+              ],
+              "wall_seconds": 0.05459593003615737
+            },
+            {
+              "input_tokens": 16,
+              "token_ids": [
+                116736,
+                26499,
+                116736,
+                26499
+              ],
+              "wall_seconds": 0.05505328590516001
+            }
+          ]
+        },
+        {
+          "client": 1,
+          "forwards": 16,
+          "sealed_forwards": 8,
+          "source_layer_jobs": 32,
+          "shadow": false,
+          "reference_calls": 0,
+          "generations": [
+            {
+              "input_tokens": 16,
+              "token_ids": [
+                62393,
+                20,
+                62393,
+                20
+              ],
+              "wall_seconds": 0.05469030106905848
+            },
+            {
+              "input_tokens": 32,
+              "token_ids": [
+                62393,
+                20,
+                62393,
+                20
+              ],
+              "wall_seconds": 0.06036418199073523
+            }
+          ]
+        }
+      ],
+      "servers": [
+        {
+          "server": 0,
+          "waves": 64,
+          "source_layer_jobs": 64,
+          "paired": 0
+        },
+        {
+          "server": 1,
+          "waves": 63,
+          "source_layer_jobs": 64,
+          "paired": 1
+        }
+      ],
+      "native_generation": true,
+      "host_attention_continuation": true,
+      "bounded_episode": true,
+      "performance_claim": false
+    },
+    {
+      "run": "runs/attention-device-joint-20260916T073202Z",
+      "status": "pass",
+      "model": "Qwen3-30B-A3B dimensions",
+      "layers": 2,
+      "dummy": true,
+      "clients": [
+        {
+          "client": 0,
+          "forwards": 16,
+          "sealed_forwards": 8,
+          "source_layer_jobs": 32,
+          "shadow": true,
+          "reference_calls": 16,
+          "generations": [
+            {
+              "input_tokens": 32,
+              "token_ids": [
+                116736,
+                26499,
+                116736,
+                26499
+              ],
+              "wall_seconds": 0.11365097400266677
+            },
+            {
+              "input_tokens": 16,
+              "token_ids": [
+                116736,
+                26499,
+                116736,
+                26499
+              ],
+              "wall_seconds": 0.11065364303067327
+            }
+          ]
+        },
+        {
+          "client": 1,
+          "forwards": 16,
+          "sealed_forwards": 8,
+          "source_layer_jobs": 32,
+          "shadow": true,
+          "reference_calls": 16,
+          "generations": [
+            {
+              "input_tokens": 16,
+              "token_ids": [
+                62393,
+                20,
+                62393,
+                20
+              ],
+              "wall_seconds": 0.11124276008922607
+            },
+            {
+              "input_tokens": 32,
+              "token_ids": [
+                62393,
+                20,
+                62393,
+                20
+              ],
+              "wall_seconds": 0.10427864105440676
+            }
+          ]
+        }
+      ],
+      "servers": [
+        {
+          "server": 0,
+          "waves": 64,
+          "source_layer_jobs": 64,
+          "paired": 0
+        },
+        {
+          "server": 1,
+          "waves": 64,
+          "source_layer_jobs": 64,
+          "paired": 0
+        }
+      ],
+      "native_generation": true,
+      "host_attention_continuation": true,
+      "bounded_episode": true,
+      "performance_claim": false
+    }
+  ],
+  "matched_shadow_remote_only_generated_tokens": true
+}
