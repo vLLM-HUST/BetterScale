@@ -80,3 +80,23 @@ groups as two TP1 attention ranks, or report BF16 dequantized execution as nativ
 W8A8 inference. Candidate A4/E4 (two TP2 attention groups, four expert servers)
 is an engineering hypothesis pending the adapter/weight census, not a placement
 already qualified.
+
+### Downloaded shard spot-check (not a complete checkpoint census)
+
+The first completed shard has actual I8 expert weights: gate/up`[640,2560]`,
+down`[2560,640]`, with F32 per-output-channel scale/offset`[out,1]`.
+Non-quantized GDN and HC entries in that shard are **F32 on disk**, not BF16;
+placement and conversion must follow the runtime contract, not the filename.
+The existing host PLE table accepts floating checkpoint tensors and preserves
+storage dtype during lookup, so it does not inherently require BF16 backing.
+The mapped response protocol must still be checked against the new table dtype.
+
+Source seam verified at the pinned LiveInfer commit:
+`arch/ascend/llm/qwen38/moe.py::AscendQwen38MoE` owns the router, separate gated
+shared expert and routed FusedMoE. Its current local expert count requires
+EP==TP; replacing the routed branch must not accidentally keep that local
+allocation or change shared/QSA ownership. The model's
+`causal_lm.py::checkpoint_tensor_slice/load_weights` explicitly recognizes
+fused`experts.(gate_up_proj|down_proj)` tensors, not this checkpoint's per-expert
+triples. Passing quant_config through constructors is not sufficient evidence
+that the new checkpoint is loadable. No new-model runtime gate is claimed yet.
