@@ -16,6 +16,9 @@ cp "$DEVICE_SERVICE_SOURCE_BUILD/"{queue_service.o,launch.so} "$capsule/build/"
 cp -r "$PERSISTENT_BUILD" "$capsule/persistent-build"
 export PERSISTENT_BUILD="$capsule/persistent-build" DEVICE_SERVICE_BUILD="$capsule/build"
 export PYTHONPATH="$capsule/source/next:$capsule/source/roles:$capsule/source/device:$capsule/source/joint:$capsule/source${PYTHONPATH:+:$PYTHONPATH}"
+if [[ "${NEXT_PROFILE:-0}" == "1" ]]; then
+  export DEVICE_SERVICE_PROFILE="$capsule/profile"
+fi
 export PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=2 TASK_QUEUE_ENABLE=0
 export HCCL_CONNECT_TIMEOUT=120 HCCL_EXEC_TIMEOUT=120 HCCL_BUFFSIZE=256 HCCL_OP_EXPANSION_MODE=AIV
 export VLLM_ENABLE_V1_MULTIPROCESSING=0

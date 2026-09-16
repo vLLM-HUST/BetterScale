@@ -28,11 +28,17 @@ def run(command, log, timeout=300):
         )
 
 
-def main(root):
+def main(
+    root,
+    roles=ROLES,
+    label="attention2-expert2",
+    scope="two dummy layers, includes native oracle and startup; not throughput",
+):
+    assert len(set(roles)) == len(roles) and len(roles) >= 2
     output = root / "analysis"
     output.mkdir(exist_ok=True)
     manifest = []
-    for rank, role in enumerate(ROLES):
+    for rank, role in enumerate(roles):
         paths = list((root / "profile").glob(f"{role}_*"))
         assert len(paths) == 1, (role, paths)
         profile = paths[0]
@@ -75,7 +81,7 @@ def main(root):
             )
         )
         print(f"analyzed {role}", flush=True)
-    partial = output / "four-device-normalized.partial.json.gz"
+    partial = output / f"{label}-normalized.partial.json.gz"
     command = [
         str(TOOL),
         "export-perfetto",
@@ -90,13 +96,13 @@ def main(root):
     run(command, output / "export.log", timeout=600)
     with gzip.open(partial, "rt") as stream:
         exported = json.load(stream)
-    partial.rename(output / "four-device-normalized.json.gz")
+    partial.rename(output / f"{label}-normalized.json.gz")
     # Native exporter already constructs/labels the event hierarchy. Retain its
     # four distributed lanes, changing ONLY their display translation back to
     # provider timestamps; do not invent collective matches for point-to-point IPC.
     events = [e for e in exported["traceEvents"] if e.get("pid") == 120]
     slices = [e for e in events if e.get("ph") == "X"]
-    assert {e["args"]["rank"] for e in slices} == set(range(4))
+    assert {e["args"]["rank"] for e in slices} == set(range(len(roles)))
     origin = min(e["args"]["source_start_ns"] for e in slices)
     for event in events:
         if event.get("ph") == "X":
@@ -107,24 +113,31 @@ def main(root):
         elif event.get("name") == "process_name":
             event["args"]["name"] = "Device expert service · provider clock"
         elif event.get("name") == "thread_name":
-            event["args"]["name"] = ROLES[event["tid"] - 1]
+            event["args"]["name"] = roles[event["tid"] - 1]
     receipt = dict(
         source=str(root),
         roles=manifest,
         time_origin_ns=origin,
         alignment="native provider timestamps; no independently fitted clock",
-        scope="two dummy layers, includes native oracle and startup; not throughput",
+        scope=scope,
         event_count=len(slices),
     )
     with gzip.open(
-        output / "attention2-expert2-provider-clock.json.gz", "wt", compresslevel=1
+        output / f"{label}-provider-clock.json.gz", "wt", compresslevel=1
     ) as stream:
         json.dump(dict(traceEvents=events, metadata=receipt), stream)
     (output / "profile-receipt.json").write_text(json.dumps(receipt, indent=2))
-    print(output / "attention2-expert2-provider-clock.json.gz", flush=True)
+    print(output / f"{label}-provider-clock.json.gz", flush=True)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
-    main(parser.parse_args().root.resolve())
+    parser.add_argument("--roles", nargs="+", default=ROLES)
+    parser.add_argument("--label", default="attention2-expert2")
+    parser.add_argument(
+        "--scope",
+        default="two dummy layers, includes native oracle and startup; not throughput",
+    )
+    args = parser.parse_args()
+    main(args.root.resolve(), tuple(args.roles), args.label, args.scope)

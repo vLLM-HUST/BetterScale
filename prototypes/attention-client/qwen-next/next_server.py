@@ -11,6 +11,7 @@ from control import Channel, listen
 from settings import CONTRACT, LAYERS
 from next_weights import weights
 from persistent_service import PersistentEngine
+from profile_capture import start as start_profile, stop as stop_profile
 
 
 def main():
@@ -78,11 +79,13 @@ def main():
         open_service=True,
         weight_table=weight_table,
     )
+    profiler = start_profile(f"expert{a.owner}")
     engine.replay()
     for c in ordered:
         c["ch"].send(dict(op="ready"))
     expected = [c["ch"].expect("drain")["generation"] for c in ordered]
     receipt = engine.finish()
+    stop_profile(profiler)
     assert receipt["completed_counts"] == expected
     for c in ordered:
         c["ch"].send(dict(op="drained"))

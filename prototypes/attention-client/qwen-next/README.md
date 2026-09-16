@@ -132,3 +132,36 @@ The lifecycle change is sufficient for this successful run, not proof of the roo
 cause of prior507011 failures. No latency advantage, sustained load, complete
 model FULL capture or production failure recovery has been established. The clean
 capsule is `runs/qwen-next-20260916T132952Z`; portable receipts are `real-result.json`.
+
+
+## Six-role native timeline
+
+Set `NEXT_PROFILE=1` on the same real-weight launch to collect into the capsule's
+`profile/`. Attention collection begins after native model startup and ends after
+the requests, before audit/drain. Expert collection starts immediately before the
+persistent replay and includes client startup through EOF. Offline parsing releases
+cards before analysis; use the pinned donor Python with:
+
+```bash
+python prototypes/attention-client/device-service/profile_export.py CAPSULE \
+  --roles attention0 attention1 expert0 expert1 expert2 expert3 \
+  --label attention2-expert4 \
+  --scope 'Qwen Next full48 BF16, short generation; eager A and persistent E'
+```
+
+Run `qwen-next-20260916T134603Z` passed all six exits and matching240/1008 calls
+(without the two oracle calls/source). TraceLoom analyzed six native profiler DBs
+and exported `analysis/attention2-expert4-provider-clock.json.gz` (about3.7MiB).
+This restores provider timestamps, NOT a fitted collective endpoint alignment:
+IPC roles have no cross-role HCCL collectives. Do not infer microsecond cross-device
+ordering accuracy. Native first-event-normalized export is also retained, but
+normalizing each role independently destroys their relative startup timing.
+
+The persistent expert AIV/AIC kernels appear as two long resident tasks per server;
+profiler task duration includes queue waiting, not just GEMM. The native timeline
+cannot expose individual expert waves inside those tasks. Client `neural_collect`
+medians are15.18us/7.68us over192/960 calls respectively, including whatever result
+wait remains when that kernel executes; this is NOT total remote-expert latency.
+Instrumentation and eager host supply also affect this short run. Use it to inspect
+the actual client graph boundaries, shared MLP and waits, not to claim throughput
+or quantify hidden compute from the long server bars.

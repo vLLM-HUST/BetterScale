@@ -510,3 +510,9 @@ Clients retain no routed weights; E4 each holds36GiB. Five short requests and125
 waves for1252 calls do not demonstrate batching/throughput or full quality. The
 1GiB fixture KV budget avoids the observed128MiB smoke-test preemption. Report
 Torch allocated peak separately from device residency and diagnostic allocations.
+
+Qwen Next six-role profiling: `NEXT_PROFILE=1`, then the shared profile_export.py
+with explicit six `--roles` and `--label attention2-expert4`; see the Next README.
+134603 passes all role exits. IPC has no HCCL clock-fit markers: provider-clock
+translation is not independent calibration. Persistent E bars include waits and
+do not expose inner GEMM phases; never count their entire duration as useful work.

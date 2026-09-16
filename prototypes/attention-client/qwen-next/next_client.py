@@ -7,6 +7,7 @@ import time
 
 from vllm import LLM, SamplingParams
 from settings import MODEL, LAYERS, REAL
+from profile_capture import start as start_profile, stop as stop_profile
 
 source = int(os.environ["EXPERT_SOURCE_ID"])
 llm = LLM(
@@ -27,6 +28,7 @@ llm = LLM(
     async_scheduling=False,
     additional_config=dict(enable_cpu_binding=False),
 )
+profiler = start_profile(f"attention{source}")
 outputs = []
 # Unequal source lifetimes and more than32 source-layer jobs. No server task budget.
 for index in range(2 + source):
@@ -65,6 +67,7 @@ for index in range(2 + source):
 Path(os.environ["EXPERT_ROLE_DIRECTORY"], f"client{source}-requests.json").write_text(
     json.dumps(dict(status="generation_complete", requests=outputs), indent=2)
 )
+stop_profile(profiler)
 audit = (
     llm.collective_rpc("audit_experts")
     if os.environ.get("EXPERT_ROLE_AUDIT") == "1"
