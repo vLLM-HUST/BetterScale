@@ -51,9 +51,17 @@ persistent_cube(GM_ADDR config, GM_ADDR unused, GM_ADDR unused2) {
       auto timing = cfg[13] ? (__gm__ int64_t *)cfg[13] +
                                   ((512 + next - 1) * 24 + GetBlockIdx()) * 8
                             : nullptr;
+      PackGate pack{cfg[20] ? (__gm__ int32_t *)cfg[20] + slot * CAPACITY * LINE
+                            : nullptr,
+                    ctrl + STOP * LINE,
+                    cfg[20] ? Load(ctrl + (PACK_EPOCH + slot) * LINE) : 0,
+                    cfg[9],
+                    cfg[21] ? (__gm__ int64_t *)cfg[21] +
+                                  ((next - 1) * CW + GetBlockIdx()) * 128 * 2
+                            : nullptr};
       RunStreamingGmm((GM_ADDR)ptr[7], (GM_ADDR)ptr[1], (GM_ADDR)ptr[2],
                       firstRow, ctrl + (UP_PREFIX_DONE + GetBlockIdx()) * LINE,
-                      next, timing);
+                      next, timing, nullptr, 0, &pack);
     } else if (streaming && kind == 2 && cfg[18]) {
       auto timing = cfg[13] ? (__gm__ int64_t *)cfg[13] +
                                   ((512 + next - 1) * 24 + GetBlockIdx()) * 8

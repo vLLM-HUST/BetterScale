@@ -185,6 +185,10 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
                   mark[5] = worker;
                   Refresh((__gm__ int32_t *)mark);
                 }
+                if (cfg[20])
+                  Store((__gm__ int32_t *)cfg[20] +
+                            (slot * CAPACITY + map[route]) * LINE,
+                        next);
               } else
                 io.Copy((__gm__ int32_t *)ptr[4] + map[route] * HIDDEN / 2,
                         (__gm__ int32_t *)cfg[2 + c] + 64 + route * HIDDEN / 2,
@@ -432,12 +436,15 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           slot.stage = PACK;
           vkind = REPACK;
           vbegin = GetSystemCycle();
+          if (cfg[20])
+            Store(ctrl + (PACK_EPOCH + vs) * LINE, vgen + 1);
           Command(ctrl, VCMD, ++vgen, REPACK, vs);
         }
       } else {
-        if (slot.stage == PACK)
-          slot.stage = READY_UP;
-        else if (vkind == ACTIVATE) {
+        if (vkind == REPACK) {
+          if (slot.stage == PACK)
+            slot.stage = READY_UP;
+        } else if (vkind == ACTIVATE) {
           ++slot.actDone;
           if (cfg[18] && slot.actDone == parts && slot.downGen)
             Store(ctrl + (ACT_TAIL_READY + vs) * LINE, slot.downGen);
@@ -491,7 +498,8 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       for (int phase = 0; phase < 2 && cs < 0; ++phase)
         for (int i = 0; i < 2 && cs < 0; ++i) {
           auto &slot = s[i];
-          if (slot.stage != READY_UP && slot.stage != UP)
+          if (slot.stage != READY_UP && slot.stage != UP &&
+              !(cfg[20] && slot.stage == PACK))
             continue;
           bool ready =
               phase == 0

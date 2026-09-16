@@ -43,6 +43,7 @@ def audit(root, server, timeline):
         json.loads((root / f"run/measurements/client{c}.json").read_text())
         for c in range(2)
     ]
+    fine_pack = receipt.get("fine_pack", False)
     events = receipt["events"]
     vector = [e for e in events if e[0] == 0]
     cube = [e for e in events if e[0] == 1]
@@ -59,6 +60,14 @@ def audit(root, server, timeline):
         if engine == 1:
             core[cube[gen - 1][6]][cid] = (begin, end)
     assert all(set(v) == set(range(24)) for v in core.values())
+    issues = collections.defaultdict(dict)
+    for gen, cid, expert, timestamp, row in receipt.get("up_expert_issue", []):
+        e = cube[gen - 1]
+        assert e[1] == 1 and cid not in issues[e[6], expert]
+        begin, end = core[e[6]][cid]
+        assert begin <= timestamp <= end
+        issues[e[6], expert][cid] = (timestamp, row)
+    assert not fine_pack or issues
     spans = [
         (min(b for b, e in core[c[6]].values()), max(e for b, e in core[c[6]].values()))
         for c in cube
@@ -101,25 +110,41 @@ def audit(root, server, timeline):
             t, mc, mg, mr, ml, worker = marks[pack[6]][row]
             assert (c, gen, route, layer) == (mc, mg, mr, ml)
             assert worker == route % 16
-            assert t <= start_up
+            assert fine_pack or t <= start_up
             grouped[g].append(t)
         count, boundary = 0, None
         for g, times in sorted(grouped.items()):
             count += len(times)
             if boundary is None and count >= (len(expected) + 1) // 2:
                 boundary = g
-        inputs = []
+        inputs, issue_starts = [], []
+        next_core = 0
+        row_offset = 0
         for g, times in sorted(grouped.items()):
             input_ready = max(times)
             # Whole-expert split: completed activation segment is a safe upper
             # bound on when each member expert's down inputs became ready.
             act_ready = acts[int(g > boundary)][4]
             inputs.append(input_ready)
-            ready_up.append((input_ready, start_up))
+            first_issue = start_up
+            if issues:
+                assigned = issues[up[6], g]
+                tiles = math.ceil(len(times) / 128) * 6
+                expected_cores = {(next_core + t) % 24 for t in range(tiles)}
+                assert set(assigned) == expected_cores
+                assert all(
+                    row == row_offset and t >= input_ready
+                    for t, row in assigned.values()
+                )
+                first_issue = min(t for t, row in assigned.values())
+                next_core = (next_core + tiles) % 24
+                row_offset += len(times)
+            issue_starts.append(first_issue)
+            ready_up.append((input_ready, first_issue))
             if act_ready < start_down:
                 ready_down.append((act_ready, start_down))
             for name, a, b in [
-                ("up inputs ready", input_ready, start_up),
+                ("up inputs ready", input_ready, first_issue),
                 ("down inputs proven ready", act_ready, start_down),
             ]:
                 if a < b:
@@ -135,7 +160,11 @@ def audit(root, server, timeline):
                                 wave=waveid,
                                 expert_group=g,
                                 routed_rows=len(times),
-                                scope="ready until earliest core routine start; not MMAD scheduling",
+                                scope=(
+                                    "ready until expert first tile-call issue; not MMAD scheduling"
+                                    if issues
+                                    else "ready until earliest core routine start; not MMAD scheduling"
+                                ),
                             ),
                         )
                     )
@@ -151,6 +180,8 @@ def audit(root, server, timeline):
                 all_ready_lead_us=(start_up - inputs[-1]) / 50,
                 pack_duration_us=(pack[4] - pack[3]) / 50,
                 prefix_down_ready_while_up_us=max(0, up[4] - acts[0][4]) / 50,
+                first_issue_lead_before_pack_done_us=(pack[4] - min(issue_starts)) / 50,
+                experts_issued_before_pack_done=sum(t < pack[4] for t in issue_starts),
             )
         )
         slots[event[2]] = []
@@ -170,6 +201,8 @@ def audit(root, server, timeline):
         )
     return dict(
         server=server,
+        fine_pack=fine_pack,
+        expert_issue_timestamps=bool(issues),
         waves=results,
         gap_total_us=sum(b - a for a, b in gaps) / 50,
         gap_with_ready_up_us=coverage(ready_up, gaps),
@@ -186,6 +219,8 @@ def audit(root, server, timeline):
                 "all_ready_lead_us",
                 "pack_duration_us",
                 "prefix_down_ready_while_up_us",
+                "first_issue_lead_before_pack_done_us",
+                "experts_issued_before_pack_done",
             ]
         },
     )

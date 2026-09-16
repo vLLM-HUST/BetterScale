@@ -1,0 +1,193 @@
+{
+  "runs": [
+    {
+      "kind": "control",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T124722Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 24,
+          "paired": 24,
+          "fine_pack": false,
+          "pack_to_return_us": 550.6600000000001,
+          "pack_us": 35.760000000000005,
+          "episode_us": 17452.9
+        },
+        {
+          "role": "expert1",
+          "waves": 24,
+          "paired": 24,
+          "fine_pack": false,
+          "pack_to_return_us": 517.81,
+          "pack_us": 38.8,
+          "episode_us": 17161.34
+        }
+      ]
+    },
+    {
+      "kind": "candidate",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T124749Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 24,
+          "paired": 24,
+          "fine_pack": true,
+          "pack_to_return_us": 536.48,
+          "pack_us": 30.689999999999998,
+          "episode_us": 16869.86
+        },
+        {
+          "role": "expert1",
+          "waves": 24,
+          "paired": 24,
+          "fine_pack": true,
+          "pack_to_return_us": 494.36,
+          "pack_us": 32.69,
+          "episode_us": 16596.22
+        }
+      ]
+    },
+    {
+      "kind": "observer",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T124816Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 24,
+          "paired": 24,
+          "fine_pack": true,
+          "pack_to_return_us": 554.0799999999999,
+          "pack_us": 38.25,
+          "episode_us": 17373.46
+        },
+        {
+          "role": "expert1",
+          "waves": 24,
+          "paired": 24,
+          "fine_pack": true,
+          "pack_to_return_us": 502.22,
+          "pack_us": 36.9,
+          "episode_us": 17356.52
+        }
+      ]
+    },
+    {
+      "kind": "observer-control",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T124936Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 24,
+          "paired": 24,
+          "fine_pack": false,
+          "pack_to_return_us": 569.05,
+          "pack_us": 45.25,
+          "episode_us": 17884.4
+        },
+        {
+          "role": "expert1",
+          "waves": 24,
+          "paired": 24,
+          "fine_pack": false,
+          "pack_to_return_us": 526.05,
+          "pack_us": 44.74,
+          "episode_us": 17740.42
+        }
+      ]
+    },
+    {
+      "kind": "hetero",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T125003Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 46,
+          "paired": 2,
+          "fine_pack": true,
+          "pack_to_return_us": 527.58,
+          "pack_us": 26.490000000000002,
+          "episode_us": 15787.82
+        },
+        {
+          "role": "expert1",
+          "waves": 46,
+          "paired": 2,
+          "fine_pack": true,
+          "pack_to_return_us": 475.91999999999996,
+          "pack_us": 24.2,
+          "episode_us": 15777.48
+        }
+      ]
+    },
+    {
+      "kind": "hetero-control",
+      "run": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T125030Z",
+      "ranks": [
+        {
+          "role": "expert0",
+          "waves": 44,
+          "paired": 4,
+          "fine_pack": false,
+          "pack_to_return_us": 551.75,
+          "pack_us": 30.799999999999997,
+          "episode_us": 16652.44
+        },
+        {
+          "role": "expert1",
+          "waves": 46,
+          "paired": 2,
+          "fine_pack": false,
+          "pack_to_return_us": 489.39,
+          "pack_us": 28.9,
+          "episode_us": 16655.78
+        }
+      ]
+    }
+  ],
+  "observer": [
+    {
+      "server": 0,
+      "fine_pack": true,
+      "expert_issue_timestamps": true,
+      "gap_total_us": 4796.5,
+      "gap_with_ready_up_us": 0.0,
+      "gap_with_proven_ready_down_us": 212.6,
+      "gap_with_either_ready_us": 212.6,
+      "medians": {
+        "experts": 64.0,
+        "routed_rows": 256.0,
+        "up_tiles": 384.0,
+        "first_ready_lead_us": -17.89,
+        "half_ready_lead_us": -21.689999999999998,
+        "all_ready_lead_us": -26.08,
+        "pack_duration_us": 38.25,
+        "prefix_down_ready_while_up_us": 130.91000000000003,
+        "first_issue_lead_before_pack_done_us": 12.309999999999999,
+        "experts_issued_before_pack_done": 5.0
+      }
+    },
+    {
+      "server": 1,
+      "fine_pack": true,
+      "expert_issue_timestamps": true,
+      "gap_total_us": 5867.54,
+      "gap_with_ready_up_us": 0.0,
+      "gap_with_proven_ready_down_us": 186.12,
+      "gap_with_either_ready_us": 186.12,
+      "medians": {
+        "experts": 64.0,
+        "routed_rows": 256.0,
+        "up_tiles": 384.0,
+        "first_ready_lead_us": -17.62,
+        "half_ready_lead_us": -21.02,
+        "all_ready_lead_us": -24.61,
+        "pack_duration_us": 36.9,
+        "prefix_down_ready_while_up_us": 121.66,
+        "first_issue_lead_before_pack_done_us": 11.65,
+        "experts_issued_before_pack_done": 4.5
+      }
+    }
+  ],
+  "leaf": "/workspace/strengthen-dsv4/runs/persistent-control-20260916T124643Z"
+}

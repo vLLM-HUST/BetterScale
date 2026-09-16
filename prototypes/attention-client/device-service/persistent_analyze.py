@@ -61,6 +61,7 @@ for server in range(2):
     chunked = receipt.get("move_quantum", 0) != 0
     internal = receipt.get("internal_pipeline", False)
     early_down = receipt.get("early_down", False)
+    fine_pack = receipt.get("fine_pack", False)
     down_waits = {}
     cube_commands = [e for e in events if e[0] == 1]
     for gen, core, begin, end in receipt.get("core_down_wait", []):
@@ -141,7 +142,12 @@ for server in range(2):
                     return found[0]
 
                 up, act, down = unique(1, 1), unique(0, 3), unique(1, 2)
-                assert pack[3] <= up[2]
+                if fine_pack:
+                    # Per-expert consumption is separately checked against
+                    # packed-row completion by expert_ready_audit.py.
+                    assert pack[2] <= up[2]
+                else:
+                    assert pack[3] <= up[2]
                 if internal and part == 0:
                     assert prefix_ready[up[5]] <= act[2]
                 else:
@@ -331,6 +337,7 @@ for server in range(2):
             segmented=parts == 2,
             internal_pipeline=internal,
             early_down=early_down,
+            fine_pack=fine_pack,
             down_tail_wait_median_us=(
                 statistics.median(
                     (end - begin) / 50

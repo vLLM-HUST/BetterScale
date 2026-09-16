@@ -13,6 +13,9 @@ from pathlib import Path
 def audit(path):
     receipt = json.loads(path.read_text())
     assert receipt["internal_pipeline"] and receipt["early_down"]
+    assert not receipt.get(
+        "fine_pack"
+    ), "use expert_ready_audit for per-expert readiness"
     events = receipt["events"]
     cube = [e for e in events if e[0] == 1]
     cores = {}

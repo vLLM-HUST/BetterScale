@@ -4,12 +4,11 @@
 // stop selects down mode. timing[2] is up publication; [3:5] is down tail wait.
 // This local group traversal supplies the progress publication hook absent from
 // GroupedMatmulSliceM. Keep math/tile policy shared with actual_gmm.cpp.
-__aicore__ inline void RunStreamingGmm(GM_ADDR config, GM_ADDR input,
-                                       GM_ADDR output, int boundary,
-                                       __gm__ int32_t *progress, int generation,
-                                       __gm__ int64_t *timing,
-                                       __gm__ int32_t *stop = nullptr,
-                                       int64_t pollLimit = 0) {
+__aicore__ inline void
+RunStreamingGmm(GM_ADDR config, GM_ADDR input, GM_ADDR output, int boundary,
+                __gm__ int32_t *progress, int generation,
+                __gm__ int64_t *timing, __gm__ int32_t *stop = nullptr,
+                int64_t pollLimit = 0, Persistent::PackGate *pack = nullptr) {
   auto cfg = (__gm__ int64_t *)config;
   const uint32_t k = cfg[0], n = cfg[1], groups = cfg[2];
   using Tile = ActualGmmTypes::Mmad;
@@ -67,9 +66,31 @@ __aicore__ inline void RunStreamingGmm(GM_ADDR config, GM_ADDR input,
       if (rows <= ACTUAL_GMM_TILE_M)
         weight.SetL2CacheHint(CacheMode::CACHE_MODE_DISABLE);
       const layout::RowMajor lx{rows, k}, ly{rows, n};
-      for (uint32_t t =
-               (GetBlockIdx() + GetBlockNum() - nextCore) % GetBlockNum();
-           t < tiles; t += GetBlockNum()) {
+      uint32_t firstTile =
+          (GetBlockIdx() + GetBlockNum() - nextCore) % GetBlockNum();
+      if (firstTile < tiles && pack && pack->ready) {
+        // All rows of this expert are required, including contributions from
+        // both sources. Cores with no tile for it have no input dependency.
+        // This guard precedes tile() and hence any pending GM->L1 prefetch.
+        int64_t polls = 0;
+        for (uint32_t r = row; r < end; ++r)
+          while (Persistent::Load(pack->ready + r * Persistent::LINE) !=
+                 pack->generation) {
+            if (Persistent::Load(pack->stop) || ++polls >= pack->pollLimit) {
+              Persistent::Store(pack->stop, -15);
+              return;
+            }
+          }
+      }
+      for (uint32_t t = firstTile; t < tiles; t += GetBlockNum()) {
+        if (t == firstTile && pack && pack->issueTrace) {
+          auto mark = pack->issueTrace + expert * 2;
+          mark[0] = GetSystemCycle();
+          mark[1] = row;
+          // Four expert records per line; one AIC owns the entire region.
+          Persistent::Refresh(
+              (__gm__ int32_t *)(pack->issueTrace + (expert / 4) * 8));
+        }
         auto coord = schedule.GetBlockCoord(t);
         uint64_t m = coord.m() * ACTUAL_GMM_TILE_M;
         uint64_t col = coord.n() * ACTUAL_GMM_TILE_N;

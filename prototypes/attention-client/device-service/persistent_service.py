@@ -57,6 +57,20 @@ class PersistentEngine:
             if pack_timing
             else None
         )
+        self.fine_pack = os.environ.get("DEVICE_SERVICE_FINE_PACK") == "1"
+        assert not self.fine_pack or (
+            self.internal_pipeline and not self.move_quantum and not self.resident_moves
+        )
+        self.pack_ready = (
+            torch.zeros((2, 512, 16), dtype=torch.int32, device="npu")
+            if self.fine_pack
+            else None
+        )
+        self.issue_times = (
+            torch.zeros((512, 24, 128, 2), dtype=torch.int64, device="npu")
+            if pack_timing
+            else None
+        )
         self.slots = []
         table = []
         for _ in range(2):
@@ -122,6 +136,8 @@ class PersistentEngine:
                 int(self.resident_moves),
                 int(self.early_down),
                 self.pack_times.data_ptr() if self.pack_times is not None else 0,
+                self.pack_ready.data_ptr() if self.pack_ready is not None else 0,
+                self.issue_times.data_ptr() if self.issue_times is not None else 0,
             ],
             dtype=torch.int64,
             device="npu",
@@ -193,12 +209,19 @@ class PersistentEngine:
             move_quantum=self.move_quantum,
             resident_moves=self.resident_moves,
             early_down=self.early_down,
+            fine_pack=self.fine_pack,
             waves=len(records),
             pulls_during_cube=ctrl[43][2],
             trace=records,
             events=self.events[: ctrl[43][3]].cpu().tolist(),
         )
 
+        if self.issue_times is not None:
+            marks = self.issue_times.cpu()
+            receipt["up_expert_issue"] = [
+                [gen + 1, core, expert, *marks[gen, core, expert].tolist()]
+                for gen, core, expert in (marks[..., 0] > 0).nonzero().tolist()
+            ]
         if self.pack_times is not None:
             marks = self.pack_times.cpu()
             receipt["pack_row_ready"] = [

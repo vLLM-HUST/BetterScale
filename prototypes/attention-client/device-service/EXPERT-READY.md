@@ -102,3 +102,7 @@ Expert tracks show **ready-but-not-yet-started** intervals, not GEMM execution.
 A separate track shows the measured Cube-team routine envelopes. Server clocks
 are independently zeroed, not cross-device calibrated.
 Compact results: expert-ready-result.json.
+
+The subsequent implemented row-ready gate, numerical/causal checks and matched
+controls are in [FINE-PACK.md](FINE-PACK.md). Whole-PACK dispatch is no longer a
+requirement when that opt-in feature is selected.

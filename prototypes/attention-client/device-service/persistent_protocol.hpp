@@ -8,6 +8,14 @@ constexpr int LINE = 16, VW = 16, CW = 24, MAP = 264, CAPACITY = 512;
 constexpr int STOP = 0, VCMD = 1, CCMD = 2, VDONE = 3, CDONE = 19, STATUS = 43;
 constexpr int UP_PREFIX_DONE = 44, URGENT_CMD = 68, URGENT_DONE = 69;
 constexpr int ACT_TAIL_READY = 85; // two slot lines, coordinator-only writer
+constexpr int PACK_EPOCH = 87;     // immutable pack command generation per slot
+struct PackGate {
+  __gm__ int32_t *ready;
+  __gm__ int32_t *stop;
+  int generation;
+  int64_t pollLimit;
+  __gm__ int64_t *issueTrace;
+};
 enum Stage {
   EMPTY,
   PULL,
