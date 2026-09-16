@@ -12,7 +12,16 @@ from observe_worker import Worker as NPUWorker
 import os
 from pathlib import Path
 
-PREFILLS = (512, 1024, 1536, 2048)
+PADDED = os.environ.get("PADDED_PREFILL") == "1"
+PREFILLS = (
+    (16, 32, 64, 128, 256, 512, 1024, 1536, 2048) if PADDED else (512, 1024, 1536, 2048)
+)
+
+
+def prefill_bucket(tokens):
+    if PADDED and 1 < tokens <= max(PREFILLS):
+        return next(n for n in PREFILLS if n >= tokens)
+    return tokens if tokens in PREFILLS else None
 
 
 def install():
@@ -25,6 +34,10 @@ def install():
 
     if getattr(Builder, "_qwen_full_pilot", False):
         return
+    if PADDED:
+        import padded_gdn
+
+        padded_gdn.install()
     original = Builder.build
 
     def build(self, *args, **kwargs):
@@ -33,11 +46,15 @@ def install():
             return metadata
         if not (
             metadata.num_prefills == 1
-            and metadata.num_prefill_tokens in PREFILLS
+            and prefill_bucket(metadata.num_prefill_tokens) is not None
             and metadata.num_decodes == 0
             and metadata.num_spec_decodes == 0
         ):
             return metadata
+        if PADDED:
+            metadata = padded_gdn.normalize(
+                self, metadata, prefill_bucket(metadata.num_prefill_tokens)
+            )
         if not hasattr(self, "_prefill_contracts"):
             self._prefill_contracts = {}
         buffers, scalars = self._prefill_contracts.setdefault(
@@ -87,7 +104,10 @@ def install():
     def attention(self, *args, **kwargs):
         # Fixed large-bucket capture and real initial prefill share paged FIA,
         # avoiding capture with dummy DecodeOnly / runtime PrefillNoCache.
-        if kwargs.get("num_tokens") in PREFILLS and kwargs.get("num_reqs") == 1:
+        if (
+            prefill_bucket(kwargs.get("num_tokens", 0)) is not None
+            and kwargs.get("num_reqs") == 1
+        ):
             self.attn_state = AscendAttentionState.ChunkedPrefill
         return old_attention(self, *args, **kwargs)
 
@@ -105,14 +125,19 @@ def install():
         pure_decode = num_tokens == num_reqs and bool(
             (num_scheduled_tokens_np == 1).all()
         )
-        eligible = num_reqs == 1 and num_tokens in PREFILLS
+        eligible = (
+            not pure_decode and num_reqs == 1 and prefill_bucket(num_tokens) is not None
+        )
+        dispatch_tokens = (
+            prefill_bucket(num_tokens) if PADDED and eligible else num_tokens
+        )
         if not pure_decode and (
             not eligible or not getattr(self, "_prefill_full", True)
         ):
             kwargs["force_eager"] = True
         result = old_determine(
             self,
-            num_tokens,
+            dispatch_tokens,
             num_reqs,
             num_scheduled_tokens_np,
             max_num_scheduled_tokens,
