@@ -146,6 +146,10 @@ def main():
         assert a.arm == "mtp" + os.environ["FULL_MTP"]
         command[command.index("observe_worker.Worker")] = "bucket_full_worker.Worker"
         q = int(os.environ["FULL_MTP"]) + 1
+        prefill_sizes = [
+            ((n + q - 1) // q) * q for n in [64, 128, 256, 512, 1024, 1536, 2048]
+        ]
+        command[command.index("--max-num-batched-tokens") + 1] = str(prefill_sizes[-1])
         command += [
             "--limit-mm-per-prompt",
             '{"image":0,"video":0}',
@@ -153,20 +157,8 @@ def main():
             json.dumps(
                 dict(
                     cudagraph_mode="FULL_AND_PIECEWISE",
-                    cudagraph_capture_sizes=[
-                        q,
-                        q * 2,
-                        q * 4,
-                        q * 8,
-                        64,
-                        128,
-                        256,
-                        512,
-                        1024,
-                        1536,
-                        2048,
-                    ],
-                    max_cudagraph_capture_size=2048,
+                    cudagraph_capture_sizes=[q, q * 2, q * 4, q * 8] + prefill_sizes,
+                    max_cudagraph_capture_size=prefill_sizes[-1],
                 )
             ),
         ]

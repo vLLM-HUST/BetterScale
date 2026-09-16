@@ -25,6 +25,10 @@ PREFILLS = (
 )
 
 
+if SPEC:
+    PREFILLS = tuple(((n + SPEC) // (SPEC + 1)) * (SPEC + 1) for n in PREFILLS)
+
+
 def prefill_bucket(tokens):
     if PADDED and 1 < tokens <= max(PREFILLS):
         return next(n for n in PREFILLS if n >= tokens)
@@ -243,6 +247,29 @@ def install():
             return result
 
         CudagraphDispatcher.initialize_cudagraph_keys = initialize
+
+        from vllm_ascend.spec_decode.llm_base_proposer import (
+            AscendSpecDecodeBaseProposer,
+        )
+
+        old_propose = AscendSpecDecodeBaseProposer._propose
+
+        def propose(self, *args, **kwargs):
+            # Draft first-pass batching is not the target's single-prefill
+            # contract. Keep native uniform decode FULL, not our prefill keys.
+            from vllm.config import CUDAGraphMode
+
+            dispatcher = self.runner.cudagraph_dispatcher
+            keys = dispatcher.cudagraph_keys[CUDAGraphMode.FULL]
+            try:
+                dispatcher.cudagraph_keys[CUDAGraphMode.FULL] = {
+                    k for k in keys if k.uniform
+                }
+                return old_propose(self, *args, **kwargs)
+            finally:
+                dispatcher.cudagraph_keys[CUDAGraphMode.FULL] = keys
+
+        AscendSpecDecodeBaseProposer._propose = propose
     old_dummy = NPUModelRunner._dummy_run
 
     def dummy(self, num_tokens, *args, **kwargs):
