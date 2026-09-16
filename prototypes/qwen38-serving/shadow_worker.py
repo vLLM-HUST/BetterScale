@@ -59,7 +59,11 @@ def install_shadow():
             ctx.cudagraph_runtime_mode = CUDAGraphMode.NONE
             eager = original(self, *args, **kwargs)
             torch.npu.synchronize()
-            actual = self._shadow_actual_tokens
+            actual = next(
+                m.num_actual_tokens
+                for m in ctx.attn_metadata.values()
+                if type(m).__name__ == "AscendMetadata"
+            )
             pairs = [("valid_hidden", graph[:actual], eager[:actual])]
             pairs += [(name, a, t) for a, (name, t) in zip(after, tensors)]
             for name, a, b in pairs:
@@ -81,10 +85,16 @@ def install_shadow():
                 checks=checks,
                 passed=all(x["close"] for x in checks),
             )
-            path = Path(os.environ["CAPSULE"]) / f"shadow-rank{self._shadow_rank}.json"
+            step = len(self._shadow_results)
+            path = (
+                Path(os.environ["CAPSULE"])
+                / f"shadow-rank{self._shadow_rank}-step{step}.json"
+            )
             path.write_text(json.dumps(result, indent=2))
-            self._shadow_result = dict(
-                rank=self._shadow_rank, passed=result["passed"], artifact=str(path)
+            self._shadow_results.append(
+                dict(
+                    rank=self._shadow_rank, passed=result["passed"], artifact=str(path)
+                )
             )
         finally:
             ctx.cudagraph_runtime_mode = mode
@@ -101,11 +111,15 @@ class Worker(BaseWorker):
         install_shadow()
         super().__init__(*args, **kwargs)
 
-    def arm_shadow(self, actual_tokens):
+    def arm_shadow(self, actual_tokens, steps=1):
         self.model_runner._shadow_rank = self.rank
-        self.model_runner._shadow_remaining = 1
+        self.model_runner._shadow_remaining = steps
+        self.model_runner._shadow_results = []
         self.model_runner._shadow_actual_tokens = actual_tokens
         return dict(rank=self.rank, armed=True)
 
     def shadow_result(self):
-        return self.model_runner._shadow_result
+        results = self.model_runner._shadow_results
+        return dict(
+            rank=self.rank, passed=all(x["passed"] for x in results), steps=results
+        )
