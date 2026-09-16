@@ -208,3 +208,7 @@ Read its scoped evidence before equating either variant with full DFC fusion.
 For interruptible-at-boundary pull/pack, read [YIELDING-MOVES.md](YIELDING-MOVES.md).
 It reduces measured mover overlap with activation waiting but loses net episode
 performance; it remains an explicit diagnostic, not the default or a full ready-queue design.
+
+For descriptor/cursor retention across urgent AIV work, see
+[RESIDENT-MOVES.md](RESIDENT-MOVES.md). Real in-command suspension/resumption is
+qualified, but reversed controls do not show a stable net throughput benefit.

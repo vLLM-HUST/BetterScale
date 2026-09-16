@@ -79,10 +79,40 @@ struct Transfer {
   }
 };
 
+// A separate urgent mailbox lets a mover suspend its local copy loop without
+// retiring/reissuing that command or rereading its already-local route map.
+// Poll only after completed DMA; Activation may overwrite UB, not local maps.
+__aicore__ inline void Urgent(__gm__ int64_t *cfg, Transfer &io, int worker,
+                              int &seen) {
+  if (!cfg[17])
+    return;
+  auto ctrl = (__gm__ int32_t *)cfg[0];
+  int gen = Load(ctrl + URGENT_CMD * LINE);
+  if (gen == seen)
+    return;
+  int slot = ctrl[URGENT_CMD * LINE + 2];
+  if (gen != seen + 1 || slot < 0 || slot > 1 ||
+      ctrl[URGENT_CMD * LINE + 1] != ACTIVATE) {
+    Store(ctrl + STOP * LINE, -24);
+    return;
+  }
+  int end = ctrl[URGENT_CMD * LINE + 3], beginRow = ctrl[URGENT_CMD * LINE + 4];
+  auto ptr = (__gm__ int64_t *)cfg[1] + slot * 16;
+  uint64_t begin = GetSystemCycle();
+  for (int row = beginRow + worker; row < end; row += VW)
+    io.Activation((__gm__ bfloat16_t *)ptr[2] + row * INNER * 2,
+                  (__gm__ bfloat16_t *)ptr[3] + row * INNER);
+  PipeBarrier<PIPE_ALL>();
+  WorkTime(cfg, 2, gen, worker, begin);
+  seen = gen;
+  Store(ctrl + (URGENT_DONE + worker) * LINE, gen);
+}
+
 __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
   auto ctrl = (__gm__ int32_t *)cfg[0];
-  int seen = 0, idle = 0, worker = GetBlockIdx() - 1;
+  int seen = 0, idle = 0, worker = GetBlockIdx() - 1, urgentSeen = 0;
   while (!Load(ctrl + STOP * LINE)) {
+    Urgent(cfg, io, worker, urgentSeen);
     int next = Load(ctrl + VCMD * LINE);
     if (next == seen) {
       if (++idle >= cfg[9]) {
@@ -124,13 +154,17 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
         if (kind == FETCH) {
           if (!(extra & (1 << c)))
             continue;
-          for (int row = first + worker; row < limit; row += VW)
+          for (int row = first + worker; row < limit; row += VW) {
+            Urgent(cfg, io, worker, urgentSeen);
             io.Copy((__gm__ int32_t *)cfg[4 + c] + 1024 + row * HIDDEN / 2,
                     (__gm__ int32_t *)ptr[0] + (c * 32 + row) * HIDDEN / 2,
                     HIDDEN / 2);
+          }
         } else {
           for (int route = first + worker; route < limit; route += VW)
             if (map[route] >= 0) {
+              if (kind == REPACK)
+                Urgent(cfg, io, worker, urgentSeen);
               if (kind == REPACK)
                 io.Copy((__gm__ int32_t *)ptr[0] +
                             (c * 32 + route / 8) * HIDDEN / 2,
@@ -304,9 +338,17 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
   int vgen = 0, cgen = 0, vs = -1, cs = -1, waves = 0, idle = 0;
   int pullsDuringCube = 0, eventCount = 0, vkind = 0, ckind = 0;
   uint64_t vbegin = 0, cbegin = 0;
+  int us = -1, ugen = 0, upart = 0;
+  uint64_t ubegin = 0;
   bool streaming = cfg[14] == 2;
   while (!Load(ctrl + STOP * LINE)) {
     bool progress = false;
+    if (us >= 0 && Joined(ctrl, URGENT_DONE, VW, ugen)) {
+      Record(cfg, eventCount, 2, ACTIVATE, us, ubegin, s[us].live, upart);
+      ++s[us].actDone;
+      us = -1;
+      progress = true;
+    }
     if (streaming && cs >= 0 && ckind == 1 && s[cs].upDone == 0 &&
         Joined(ctrl, UP_PREFIX_DONE, CW, cgen)) {
       s[cs].upDone = 1;
@@ -325,10 +367,13 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       auto &slot = s[vs];
       auto ptr = slots + vs * 16;
       Record(cfg, eventCount, 0, vkind, vs, vbegin, slot.live, vpart);
-      if (cfg[16] && (slot.stage == PULL || slot.stage == PACK)) {
+      if ((cfg[16] || cfg[17]) && (slot.stage == PULL || slot.stage == PACK)) {
         bool fetch = slot.stage == PULL;
-        slot.moveCursor = ScalarMin(
-            slot.moveEnd, slot.moveCursor + int(fetch ? cfg[16] / 8 : cfg[16]));
+        slot.moveCursor =
+            cfg[17] ? slot.moveEnd
+                    : ScalarMin(slot.moveEnd,
+                                slot.moveCursor +
+                                    int(fetch ? cfg[16] / 8 : cfg[16]));
         if (slot.moveCursor == slot.moveEnd) {
           if (fetch) {
             int added = Accept(io, cfg, slot, claimed, finished);
@@ -444,7 +489,20 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           }
         }
     }
-    if (vs < 0) {
+    if (cfg[17] && us < 0 && vs >= 0 && (vkind == FETCH || vkind == REPACK)) {
+      for (int i = 0; i < 2 && us < 0; ++i) {
+        if (i == vs || s[i].stage != UP || s[i].actDone >= s[i].upDone)
+          continue;
+        us = i;
+        upart = s[i].actDone;
+        ubegin = GetSystemCycle();
+        int start = upart ? s[i].boundary : 0;
+        int end = upart ? s[i].live : s[i].boundary;
+        Command(ctrl, URGENT_CMD, ++ugen, ACTIVATE, i, end, start);
+        progress = true;
+      }
+    }
+    if (vs < 0 && us < 0) {
       for (int phase = 0; phase < 2 && vs < 0; ++phase)
         for (int i = 0; i < 2 && vs < 0; ++i) {
           auto &slot = s[i];
@@ -465,7 +523,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
             progress = true;
           }
         }
-      if (cfg[16]) {
+      if (cfg[16] || cfg[17]) {
         for (int i = 0; i < 2 && vs < 0; ++i) {
           if (s[i].stage != PULL && s[i].stage != PACK)
             continue;
@@ -473,7 +531,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           vkind = s[i].stage == PULL ? FETCH : REPACK;
           vpart = s[i].moveCursor;
           vbegin = GetSystemCycle();
-          MoveCommand(ctrl, ++vgen, i, s[i], cfg[16]);
+          MoveCommand(ctrl, ++vgen, i, s[i], cfg[17] ? 512 : cfg[16]);
           if (cs >= 0 && vkind == FETCH)
             ++pullsDuringCube;
           progress = true;
@@ -493,9 +551,9 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
             vkind = FETCH;
             vpart = 0;
             vbegin = GetSystemCycle();
-            if (cfg[16]) {
+            if (cfg[16] || cfg[17]) {
               StartFetch(s[i], mask);
-              MoveCommand(ctrl, ++vgen, i, s[i], cfg[16]);
+              MoveCommand(ctrl, ++vgen, i, s[i], cfg[17] ? 512 : cfg[16]);
             } else {
               Command(ctrl, VCMD, ++vgen, FETCH, i, mask);
             }

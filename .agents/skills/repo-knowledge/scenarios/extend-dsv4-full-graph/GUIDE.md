@@ -470,3 +470,13 @@ but total episode is slower. Complete-command handoffs and repeated map parsing
 are not free internal queues. Keep disabled; full pack readiness and whole down
 remain batch barriers. Use the analyzer's actual core-overlap metric rather than
 attributing every up/down hole to DMA or comparing unlike naturally paired waves.
+
+
+The resident continuation is in device-service/RESIDENT-MOVES.md. A separate urgent
+mailbox allows AIV activation inside one ongoing FETCH/REPACK command, retaining
+maps/cursors. Actual interruptions and four-card numerical/causal gates pass.
+Two A/B orders reduce measured mover blocking, but net episode gain is not stable;
+keep opt-in. Timing engine2 is urgent work on the SAME AIV cores, not a new team:
+subtract its intervals from suspended move envelopes and assert physical-lane
+exclusivity (implemented in persistent_analyze.py). Source retirement and producer
+joins remain mandatory; this is not arbitrary DMA preemption or full DFC fusion.

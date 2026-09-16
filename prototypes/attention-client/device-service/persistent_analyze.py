@@ -21,6 +21,7 @@ names = {
     (0, 4): "return",
     (1, 1): "up",
     (1, 2): "down",
+    (2, 3): "urgent_swiglu",
 }
 
 
@@ -32,6 +33,22 @@ def merge_intervals(intervals):
         else:
             merged.append([begin, end])
     return merged
+
+
+def subtract_intervals(interval, cuts):
+    pieces = [interval]
+    for lo, hi in merge_intervals(cuts):
+        updated = []
+        for begin, end in pieces:
+            if hi <= begin or lo >= end:
+                updated.append((begin, end))
+            else:
+                if begin < lo:
+                    updated.append((begin, lo))
+                if hi < end:
+                    updated.append((hi, end))
+        pieces = updated
+    return pieces
 
 
 display = []
@@ -66,7 +83,7 @@ for server in range(2):
         name = names[engine, kind]
         if parts == 2 and ((engine == 1 and not internal) or kind == 3):
             name += f".part{part}"
-        stages[slot].append((engine, kind, begin, end, part, seq))
+        stages[slot].append((0 if engine == 2 else engine, kind, begin, end, part, seq))
         wave_ids[seq] = (slot, slot_wave[slot])
         if (engine, kind) == (0, 4):
             slot_wave[slot] += 1
@@ -130,7 +147,7 @@ for server in range(2):
             )
             wave = []
         assert not wave, wave
-    for engine in range(2):
+    for engine in range(3):
         ordered = sorted((e[3], e[4]) for e in events if e[0] == engine)
         assert all(y[0] >= x[1] for x, y in zip(ordered, ordered[1:]))
     overlap_ticks = sum(
@@ -141,9 +158,10 @@ for server in range(2):
         if c[0] == 1
     )
     core_overlap = None
+    interrupted_commands = set()
     if "core_work" in receipt:
         commands = {}
-        generation = [0, 0]
+        generation = [0, 0, 0]
         for e in events:
             engine = e[0]
             generation[engine] += 1
@@ -152,45 +170,71 @@ for server in range(2):
         preparation, compute, activation, up_compute = [], [], [], []
         by_wave = {}
         work_by_event = {}
+        vector_lanes = {}
+        urgent_by_core = {}
+        for engine, gen, core, begin, end in receipt["core_work"]:
+            if engine == 2:
+                urgent_by_core.setdefault(core, []).append((begin, end))
         for engine, gen, core, begin, end in receipt["core_work"]:
             e = commands[engine, gen]
             assert e[3] <= begin <= end <= e[4], (e, begin, end)
             counts[engine, gen] = counts.get((engine, gen), 0) + 1
-            work_by_event.setdefault(e[6], []).append((begin, end))
+            if (
+                engine == 0
+                and e[1] in (1, 2)
+                and any(
+                    min(end, hi) > max(begin, lo)
+                    for lo, hi in urgent_by_core.get(core, [])
+                )
+            ):
+                interrupted_commands.add(gen)
+            exclusive = (
+                subtract_intervals((begin, end), urgent_by_core.get(core, []))
+                if engine == 0 and e[1] in (1, 2)
+                else [(begin, end)]
+            )
+            work_by_event.setdefault(e[6], []).extend(exclusive)
+            if engine != 1:
+                vector_lanes.setdefault(core, []).extend(exclusive)
             wave_work = by_wave.setdefault(wave_ids[e[6]], {"up": [], "act": []})
             if engine == 1 and e[1] == 1:
                 wave_work["up"].append((begin, end))
-            elif engine == 0 and e[1] == 3:
+            elif engine in (0, 2) and e[1] == 3:
                 wave_work["act"].append((begin, end))
             if engine == 1:
                 compute.append((begin, end))
                 if e[1] == 1:
                     up_compute.append((begin, end))
             elif e[1] in (1, 2):
-                preparation.append((begin, end))
+                preparation.extend(exclusive)
             elif e[1] == 3:
                 activation.append((begin, end))
-            core_display.append(
-                dict(
-                    name=names[engine, e[1]]
-                    + (
-                        f".part{e[7]}"
-                        if parts == 2 and ((engine == 1 and not internal) or e[1] == 3)
-                        else ""
-                    ),
-                    ph="X",
-                    pid=server,
-                    tid=engine * 100 + core,
-                    ts=(begin - origin) / 50,
-                    dur=(end - begin) / 50,
-                    args=dict(
-                        slot=e[2],
-                        generation=gen,
-                        scope="per-core routine; no mailbox wait",
-                    ),
+            for piece_begin, piece_end in exclusive:
+                core_display.append(
+                    dict(
+                        name=names[engine, e[1]]
+                        + (
+                            f".part{e[7]}"
+                            if parts == 2
+                            and ((engine == 1 and not internal) or e[1] == 3)
+                            else ""
+                        ),
+                        ph="X",
+                        pid=server,
+                        tid=(100 if engine == 1 else 0) + core,
+                        ts=(piece_begin - origin) / 50,
+                        dur=(piece_end - piece_begin) / 50,
+                        args=dict(
+                            slot=e[2],
+                            generation=gen,
+                            scope="per-core routine, urgent service excluded from suspended moves",
+                        ),
+                    )
                 )
-            )
-        assert all(counts[key] == (24 if key[0] else 16) for key in commands)
+        assert all(counts[key] == (24 if key[0] == 1 else 16) for key in commands)
+        for intervals in vector_lanes.values():
+            ordered = sorted(intervals)
+            assert all(b[0] >= a[1] for a, b in zip(ordered, ordered[1:])), ordered
         core_overlap = (
             sum(
                 max(0, min(v[1], c[1]) - max(v[0], c[0]))
@@ -227,7 +271,7 @@ for server in range(2):
                 e
                 for e in events
                 if wave_ids[e[6]] == wave_ids[seq]
-                and e[0] == 0
+                and e[0] in (0, 2)
                 and e[1] == 3
                 and e[7] == 0
             )
@@ -241,7 +285,7 @@ for server in range(2):
                 e
                 for e in events
                 if wave_ids[e[6]] == wave_ids[seq]
-                and e[0] == 0
+                and e[0] in (0, 2)
                 and e[1] == 3
                 and e[7] == 1
             )
@@ -271,6 +315,9 @@ for server in range(2):
             segmented=parts == 2,
             internal_pipeline=internal,
             move_quantum=receipt.get("move_quantum", 0),
+            resident_moves=receipt.get("resident_moves", False),
+            urgent_activations=sum(e[0] == 2 for e in events),
+            interrupted_move_commands=len(interrupted_commands),
             tail_activation_delay_median_us=(
                 statistics.median(activation_tail_delay)
                 if activation_tail_delay
