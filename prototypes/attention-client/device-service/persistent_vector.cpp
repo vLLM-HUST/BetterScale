@@ -98,7 +98,7 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
     auto ptr = (__gm__ int64_t *)cfg[1] + slot * 16;
     uint64_t begin = GetSystemCycle();
     if (kind == ACTIVATE) {
-      for (int row = worker; row < extra; row += VW)
+      for (int row = ctrl[VCMD * LINE + 4] + worker; row < extra; row += VW)
         io.Activation((__gm__ bfloat16_t *)ptr[2] + row * INNER * 2,
                       (__gm__ bfloat16_t *)ptr[3] + row * INNER);
     } else {
@@ -142,7 +142,8 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
 
 struct Slot {
   int stage = EMPTY, gen[2] = {0, 0}, rows[2] = {0, 0}, layer[2] = {0, 0};
-  int ids[2][ROUTES], live = 0;
+  int ids[2][ROUTES], live = 0, boundary = 0;
+  int upDone = 0, actDone = 0, downDone = 0;
 };
 __aicore__ inline void Descriptor(Transfer &io, __gm__ int64_t *ptr, Slot &s) {
   for (int c = 0; c < 2; ++c) {
@@ -183,7 +184,7 @@ __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
   return mask;
 }
 __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
-                             int owner) {
+                             int owner, bool segmented, int tailExperts) {
   int count[GROUPS], cursor[GROUPS];
   for (int g = 0; g < GROUPS; ++g)
     count[g] = 0;
@@ -200,6 +201,35 @@ __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
     io.words.SetValue(g * 2 + 1, 0);
   }
   io.Write((__gm__ int32_t *)ptr[6], GROUPS * 2);
+  s.boundary = s.live;
+  if (segmented) {
+    // Split only at an expert boundary. A single hot expert stays intact;
+    // empty segments remain legal no-ops. Catalogs are frozen before PACK.
+    int cut = 0, sum = 0;
+    while (cut < GROUPS && sum < (s.live + 1) / 2)
+      sum += count[cut++];
+    if (tailExperts) {
+      cut = GROUPS;
+      int remaining = tailExperts;
+      while (cut > 0 && remaining > 0)
+        if (count[--cut])
+          --remaining;
+      sum = 0;
+      for (int g = 0; g < cut; ++g)
+        sum += count[g];
+    }
+    s.boundary = sum;
+    for (int part = 0; part < 2; ++part) {
+      int prefix = 0;
+      for (int g = 0; g < GROUPS; ++g) {
+        if ((part == 0 && g < cut) || (part == 1 && g >= cut))
+          prefix += count[g];
+        io.words.SetValue(g * 2, prefix);
+        io.words.SetValue(g * 2 + 1, 0);
+      }
+      io.Write((__gm__ int32_t *)ptr[9 + part], GROUPS * 2);
+    }
+  }
   for (int c = 0; c < 2; ++c) {
     for (int i = 0; i < MAP; ++i)
       io.words.SetValue(i, -1);
@@ -215,15 +245,18 @@ __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
   }
 }
 __aicore__ inline void Command(__gm__ int32_t *ctrl, int line, int gen,
-                               int kind, int slot, int extra = 0) {
+                               int kind, int slot, int extra = 0,
+                               int firstRow = 0) {
   ctrl[line * LINE + 1] = kind;
   ctrl[line * LINE + 2] = slot;
   ctrl[line * LINE + 3] = extra;
+  ctrl[line * LINE + 4] = firstRow;
   Store(ctrl + line * LINE, gen);
 }
 // Coordinator-observed command intervals, not exact instruction timestamps.
 __aicore__ inline void Record(__gm__ int64_t *cfg, int &count, int engine,
-                              int kind, int slot, uint64_t begin, int rows) {
+                              int kind, int slot, uint64_t begin, int rows,
+                              int part = 0) {
   auto record = (__gm__ int64_t *)cfg[11] + count * 8;
   record[0] = engine;
   record[1] = kind;
@@ -232,7 +265,7 @@ __aicore__ inline void Record(__gm__ int64_t *cfg, int &count, int engine,
   record[4] = GetSystemCycle();
   record[5] = rows;
   record[6] = count;
-  record[7] = 0;
+  record[7] = part;
   Refresh((__gm__ int32_t *)record);
   ++count;
 }
@@ -240,6 +273,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
   auto ctrl = (__gm__ int32_t *)cfg[0];
   auto slots = (__gm__ int64_t *)cfg[1];
   Slot s[2];
+  int parts = cfg[14] ? 2 : 1, vpart = 0, cpart = 0;
   int claimed[2] = {0, 0}, finished[2] = {0, 0};
   int vgen = 0, cgen = 0, vs = -1, cs = -1, waves = 0, idle = 0;
   int pullsDuringCube = 0, eventCount = 0, vkind = 0, ckind = 0;
@@ -247,15 +281,18 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
   while (!Load(ctrl + STOP * LINE)) {
     bool progress = false;
     if (cs >= 0 && Joined(ctrl, CDONE, CW, cgen)) {
-      Record(cfg, eventCount, 1, ckind, cs, cbegin, s[cs].live);
-      s[cs].stage = s[cs].stage == UP ? READY_ACT : READY_RETURN;
+      Record(cfg, eventCount, 1, ckind, cs, cbegin, s[cs].live, cpart);
+      if (ckind == 1)
+        ++s[cs].upDone;
+      else
+        ++s[cs].downDone;
       cs = -1;
       progress = true;
     }
     if (vs >= 0 && Joined(ctrl, VDONE, VW, vgen)) {
       auto &slot = s[vs];
       auto ptr = slots + vs * 16;
-      Record(cfg, eventCount, 0, vkind, vs, vbegin, slot.live);
+      Record(cfg, eventCount, 0, vkind, vs, vbegin, slot.live, vpart);
       if (slot.stage == PULL) {
         // No wait-to-coalesce: one snapshot after useful DMA completes.
         int added = Accept(io, cfg, slot, claimed, finished);
@@ -271,7 +308,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           if (cs >= 0)
             ++pullsDuringCube;
         } else {
-          Group(io, ptr, slot, cfg[7]);
+          Group(io, ptr, slot, cfg[7], cfg[14], cfg[15]);
           slot.stage = PACK;
           vkind = REPACK;
           vbegin = GetSystemCycle();
@@ -280,8 +317,8 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       } else {
         if (slot.stage == PACK)
           slot.stage = READY_UP;
-        else if (slot.stage == ACT)
-          slot.stage = READY_DOWN;
+        else if (vkind == ACTIVATE)
+          ++slot.actDone;
         else if (slot.stage == RETURN) {
           for (int c = 0; c < 2; ++c)
             if (slot.gen[c]) {
@@ -311,6 +348,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           ++waves;
           slot.gen[0] = slot.gen[1] = slot.rows[0] = slot.rows[1] = 0;
           slot.stage = EMPTY;
+          slot.upDone = slot.actDone = slot.downDone = 0;
         }
         vs = -1;
       }
@@ -325,31 +363,48 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       break;
     }
     if (cs < 0) {
-      // Complete a batch before starting another up projection when both ready.
+      // Down may consume only a joined activation segment. Otherwise continue
+      // up while AIV consumes its earlier, disjoint segment. UP denotes the
+      // entire compute lifetime; engine progress is tracked independently.
       for (int phase = 0; phase < 2 && cs < 0; ++phase)
-        for (int i = 0; i < 2 && cs < 0; ++i)
-          if (s[i].stage == (phase == 0 ? READY_DOWN : READY_UP)) {
+        for (int i = 0; i < 2 && cs < 0; ++i) {
+          auto &slot = s[i];
+          if (slot.stage != READY_UP && slot.stage != UP)
+            continue;
+          bool ready =
+              phase == 0 ? slot.downDone < slot.actDone : slot.upDone < parts;
+          if (ready) {
             cs = i;
-            s[i].stage = phase == 0 ? DOWN : UP;
+            slot.stage = UP;
             ckind = phase == 0 ? 2 : 1;
+            cpart = phase == 0 ? slot.downDone : slot.upDone;
             cbegin = GetSystemCycle();
-            Command(ctrl, CCMD, ++cgen, ckind, i);
+            Command(ctrl, CCMD, ++cgen, ckind, i, cpart);
             progress = true;
           }
+        }
     }
     if (vs < 0) {
-      // Return/activation are progress-critical; prepare the next slot
-      // otherwise.
       for (int phase = 0; phase < 2 && vs < 0; ++phase)
-        for (int i = 0; i < 2 && vs < 0; ++i)
-          if (s[i].stage == (phase == 0 ? READY_RETURN : READY_ACT)) {
+        for (int i = 0; i < 2 && vs < 0; ++i) {
+          auto &slot = s[i];
+          if (slot.stage != UP)
+            continue;
+          bool ready =
+              phase == 0 ? slot.downDone == parts : slot.actDone < slot.upDone;
+          if (ready) {
             vs = i;
-            s[i].stage = phase == 0 ? RETURN : ACT;
             vkind = phase == 0 ? SEND : ACTIVATE;
+            vpart = phase == 0 ? 0 : slot.actDone;
+            if (phase == 0)
+              slot.stage = RETURN;
+            int start = vpart ? slot.boundary : 0;
+            int end = parts == 2 && !vpart ? slot.boundary : slot.live;
             vbegin = GetSystemCycle();
-            Command(ctrl, VCMD, ++vgen, vkind, i, s[i].live);
+            Command(ctrl, VCMD, ++vgen, vkind, i, end, start);
             progress = true;
           }
+        }
       for (int i = 0; i < 2 && vs < 0; ++i)
         if (s[i].stage == EMPTY) {
           int mask = Accept(io, cfg, s[i], claimed, finished);
@@ -362,6 +417,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
             s[i].stage = PULL;
             Descriptor(io, slots + i * 16, s[i]);
             vkind = FETCH;
+            vpart = 0;
             vbegin = GetSystemCycle();
             Command(ctrl, VCMD, ++vgen, FETCH, i, mask);
             if (cs >= 0)

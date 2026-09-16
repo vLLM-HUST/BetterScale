@@ -20,12 +20,17 @@ class PersistentEngine:
             == int(torch_npu.get_npu_format(down))
             == 29
         )
+        self.tail_experts = int(
+            os.environ.get("DEVICE_SERVICE_SEGMENT_TAIL_EXPERTS", "0")
+        )
+        assert 0 <= self.tail_experts <= 128
         self.up, self.down = up, down
+        self.segmented = os.environ.get("DEVICE_SERVICE_SEGMENTED") == "1"
         self.control = torch.zeros((64, 16), dtype=torch.int32, device="npu")
         self.trace = torch.full((tasks * 2, 16), -991, dtype=torch.int32, device="npu")
         self.events = torch.zeros((512, 8), dtype=torch.int64, device="npu")
         self.work_times = (
-            torch.zeros((2, 256, 24, 8), dtype=torch.int64, device="npu")
+            torch.zeros((2, 512, 24, 8), dtype=torch.int64, device="npu")
             if os.environ.get("DEVICE_SERVICE_INTERNAL_TIMING") == "1"
             else None
         )
@@ -49,6 +54,28 @@ class PersistentEngine:
                         device="npu",
                     )
                 )
+            if self.segmented:
+                # Two device-authored prefix catalogs, each relative to its own
+                # packed row slice; weights retain the original expert IDs.
+                slot.extend(
+                    torch.zeros(128, dtype=torch.int64, device="npu") for _ in range(2)
+                )
+                for w, k, n in ((up, 2048, 1536), (down, 768, 2048)):
+                    for part in range(2):
+                        slot.append(
+                            torch.tensor(
+                                [
+                                    k,
+                                    n,
+                                    128,
+                                    w.data_ptr(),
+                                    slot[9 + part].data_ptr(),
+                                    512,
+                                ],
+                                dtype=torch.int64,
+                                device="npu",
+                            )
+                        )
             self.slots.append(slot)
             table.append([p.data_ptr() for p in slot] + [0] * (16 - len(slot)))
         self.table = torch.tensor(table, dtype=torch.int64, device="npu")
@@ -66,6 +93,8 @@ class PersistentEngine:
                 self.events.data_ptr(),
                 0,
                 self.work_times.data_ptr() if self.work_times is not None else 0,
+                int(self.segmented),
+                self.tail_experts,
             ],
             dtype=torch.int64,
             device="npu",
@@ -131,6 +160,8 @@ class PersistentEngine:
         assert ctrl[0][0] == ctrl[43][0] == 1, ctrl[:3] + ctrl[43:44]
         records = self.trace[: ctrl[43][1]].cpu().tolist()
         receipt = dict(
+            segmented=self.segmented,
+            tail_experts=self.tail_experts,
             waves=len(records),
             pulls_during_cube=ctrl[43][2],
             trace=records,

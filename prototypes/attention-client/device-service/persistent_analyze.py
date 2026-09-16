@@ -40,14 +40,22 @@ summaries = []
 for server in range(2):
     receipt = json.loads((a.run / f"run/measurements/expert{server}.json").read_text())
     events = receipt["events"]
-    assert len(events) <= 336  # at most7 stages *48 single-source waves
+    parts = 2 if receipt.get("segmented") else 1
+    assert len(events) <= (4 + 3 * parts) * 48
     origin = min(e[3] for e in events)
     stages = [[], []]
+    wave_ids = {}
+    slot_wave = [0, 0]
     costs = {}
-    for engine, kind, slot, begin, end, rows, seq, _ in events:
+    for engine, kind, slot, begin, end, rows, seq, part in events:
         assert 0 <= slot < 2 and end >= begin
         name = names[engine, kind]
-        stages[slot].append(name)
+        if parts == 2 and (engine == 1 or kind == 3):
+            name += f".part{part}"
+        stages[slot].append((engine, kind, begin, end, part))
+        wave_ids[seq] = (slot, slot_wave[slot])
+        if (engine, kind) == (0, 4):
+            slot_wave[slot] += 1
         costs.setdefault(name, []).append((end - begin) / 50)
         display.append(
             dict(
@@ -65,21 +73,38 @@ for server in range(2):
                 ),
             )
         )
+    wave_service_us, math_chain_us = [], []
     for sequence in stages:
-        cursor = 0
-        while cursor < len(sequence):
-            assert sequence[cursor] == "pull", sequence
-            cursor += 1
-            if cursor < len(sequence) and sequence[cursor] == "pull":
-                cursor += 1  # second source joined after first payload arrived
-            assert sequence[cursor : cursor + 5] == [
-                "pack",
-                "up",
-                "swiglu",
-                "down",
-                "return",
-            ], sequence
-            cursor += 5
+        wave = []
+        for event in sequence:
+            wave.append(event)
+            if event[:2] != (0, 4):
+                continue
+            pulls = [e for e in wave if e[:2] == (0, 1)]
+            packs = [e for e in wave if e[:2] == (0, 2)]
+            assert 1 <= len(pulls) <= 2 and len(packs) == 1
+            pack = packs[0]
+            assert max(e[3] for e in pulls) <= pack[2]
+            assert len(wave) == len(pulls) + 2 + 3 * parts
+            for part in range(parts):
+
+                def unique(engine, kind):
+                    found = [
+                        e for e in wave if e[:2] == (engine, kind) and e[4] == part
+                    ]
+                    assert len(found) == 1, wave
+                    return found[0]
+
+                up, act, down = unique(1, 1), unique(0, 3), unique(1, 2)
+                assert pack[3] <= up[2] <= up[3] <= act[2]
+                assert act[3] <= down[2] <= down[3] <= event[2]
+            wave_service_us.append((event[3] - pack[2]) / 50)
+            cube_events = [e for e in wave if e[0] == 1]
+            math_chain_us.append(
+                (max(e[3] for e in cube_events) - min(e[2] for e in cube_events)) / 50
+            )
+            wave = []
+        assert not wave, wave
     for engine in range(2):
         ordered = sorted((e[3], e[4]) for e in events if e[0] == engine)
         assert all(y[0] >= x[1] for x, y in zip(ordered, ordered[1:]))
@@ -99,18 +124,33 @@ for server in range(2):
             generation[engine] += 1
             commands[engine, generation[engine]] = e
         counts = {}
-        preparation, compute = [], []
+        preparation, compute, activation, up_compute = [], [], [], []
+        by_wave = {}
         for engine, gen, core, begin, end in receipt["core_work"]:
             e = commands[engine, gen]
             assert e[3] <= begin <= end <= e[4], (e, begin, end)
             counts[engine, gen] = counts.get((engine, gen), 0) + 1
+            wave_work = by_wave.setdefault(wave_ids[e[6]], {"up": [], "act": []})
+            if engine == 1 and e[1] == 1:
+                wave_work["up"].append((begin, end))
+            elif engine == 0 and e[1] == 3:
+                wave_work["act"].append((begin, end))
             if engine == 1:
                 compute.append((begin, end))
+                if e[1] == 1:
+                    up_compute.append((begin, end))
             elif e[1] in (1, 2):
                 preparation.append((begin, end))
+            elif e[1] == 3:
+                activation.append((begin, end))
             core_display.append(
                 dict(
-                    name=names[engine, e[1]],
+                    name=names[engine, e[1]]
+                    + (
+                        f".part{e[7]}"
+                        if parts == 2 and (engine == 1 or e[1] == 3)
+                        else ""
+                    ),
                     ph="X",
                     pid=server,
                     tid=engine * 100 + core,
@@ -132,9 +172,35 @@ for server in range(2):
             )
             / 50
         )
+    activation_overlap = None
+    within_wave_overlap = None
+    if "core_work" in receipt:
+        activation_overlap = (
+            sum(
+                max(0, min(v[1], c[1]) - max(v[0], c[0]))
+                for v in merge_intervals(activation)
+                for c in merge_intervals(up_compute)
+            )
+            / 50
+        )
+        within_wave_overlap = (
+            sum(
+                max(0, min(v[1], c[1]) - max(v[0], c[0]))
+                for work in by_wave.values()
+                for v in merge_intervals(work["act"])
+                for c in merge_intervals(work["up"])
+            )
+            / 50
+        )
     summaries.append(
         dict(
             server=server,
+            segmented=parts == 2,
+            tail_experts=receipt.get("tail_experts", 0),
+            median_pack_to_return_us=statistics.median(wave_service_us),
+            median_math_chain_us=statistics.median(math_chain_us),
+            activation_up_core_overlap_us=activation_overlap,
+            same_wave_activation_up_core_overlap_us=within_wave_overlap,
             waves=receipt["waves"],
             paired=receipt["same_graph_cross_source_waves"],
             preparation_cube_overlap_us=overlap_ticks / 50,

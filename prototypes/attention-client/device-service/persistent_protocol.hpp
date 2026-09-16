@@ -49,7 +49,7 @@ __aicore__ inline void WorkTime(__gm__ int64_t *cfg, int engine, int generation,
   if (!cfg[13])
     return;
   auto row = (__gm__ int64_t *)cfg[13] +
-             ((engine * 256 + generation - 1) * 24 + core) * 8;
+             ((engine * 512 + generation - 1) * 24 + core) * 8;
   row[0] = begin;
   row[1] = GetSystemCycle();
   Refresh((__gm__ int32_t *)row);

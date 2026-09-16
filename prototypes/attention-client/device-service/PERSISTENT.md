@@ -19,9 +19,10 @@ per-core completion lines. AIC computes native CATLASS tiles with real row count
 AIV performs live-row SwiGLU and return copies. While AIC computes, AIV may pull
 and pack the other slot. No host per-wave decisions or finite unrolled GMM graph.
 
-Slot lifecycle: EMPTY -> PULL -> PACK -> READY_UP -> UP -> READY_ACT -> ACT ->
-READY_DOWN -> DOWN -> READY_RETURN -> RETURN -> EMPTY. Only the coordinator
-changes lifecycle. At most one vector command and one cube command in flight.
+Original serial lifecycle: EMPTY -> PULL -> PACK -> READY_UP -> UP -> READY_ACT ->
+ACT -> READY_DOWN -> DOWN -> READY_RETURN -> RETURN -> EMPTY. The optional
+segmented successor uses independent compute-phase counters; see `SEGMENTED.md`.
+Only the coordinator changes lifecycle. At most one vector command and one cube command in flight.
 Stage completions join every participating core before publishing successors.
 Sources are claimed until return writes finish; clients still wait for BOTH
 servers before reusing input/output frames. Per-source generations prevent ABA.
@@ -194,3 +195,7 @@ Remaining scope: more independent lanes/queue depth, trained weights and full
 attention/KV/model correctness, production cancellation and replenishment, and
 equal-resource serving throughput. The small-expert/fused-DFC performance gap is
 still open. None of those follow automatically from this bounded protocol pass.
+
+For the opt-in intra-wave two-segment implementation and its **negative net-speedup**
+control, read [SEGMENTED.md](SEGMENTED.md). Real phase overlap is qualified; it does
+not justify changing the unsegmented default.

@@ -439,3 +439,14 @@ HBM roofline. Existing CATLASS already stripes tiles and preloads/double-buffers
 DFC additionally segments up/SwiGLU readiness. Two request slots alone do not
 provide that intra-wave pipeline. Under interleaved slots, join command generation
 to stage events; odd/even command IDs are not a valid up/down classifier.
+
+
+For intra-wave expert segmentation, enter device-service/SEGMENTED.md. Two frozen
+relative count catalogs and disjoint row slices pass leaf and four-card changing
+route/generation gates, with real same-wave AIV activation/AIC up overlap. Yet
+matched24-paired-wave controls regress: half-cut pack-to-return medians603/547us
+become610/566us; tail-two625/591us. Keep opt-in, not the default. Splitting complete
+CATLASS invocations is not DFC's continuous internal tile pipeline. Never attribute
+the independent-arrival25.1->18.7ms episode to segmentation: pairing changed0->24.
+Use the causal segment audit and same-wave timing in persistent_analyze.py rather
+than requiring serial completion order or mistaking cross-slot overlap for this gain.

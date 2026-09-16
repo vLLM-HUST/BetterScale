@@ -27,14 +27,29 @@ persistent_cube(GM_ADDR config, GM_ADDR unused, GM_ADDR unused2) {
       break;
     }
     auto ptr = slots + slot * 16;
-    // Counts are published by a different engine and change at every
-    // generation.
+    int part = ctrl[CCMD * LINE + 3];
+    if (part < 0 || part > (cfg[14] ? 1 : 0)) {
+      Store(ctrl + STOP * LINE, -13);
+      break;
+    }
+    int catalog = cfg[14] ? 9 + part : 6;
+    // Freeze both catalogs for the complete slot lifetime. Invalidate scalar
+    // cache before reading device-authored counts from the other engine.
     for (int offset = 0; offset < 256; offset += LINE)
-      Refresh((__gm__ int32_t *)ptr[6] + offset);
+      Refresh((__gm__ int32_t *)ptr[catalog] + offset);
+    int firstRow = 0;
+    if (cfg[14] && part) {
+      Refresh((__gm__ int32_t *)ptr[9] + 240);
+      firstRow = ((__gm__ int64_t *)ptr[9])[127];
+    }
+    int configIndex =
+        cfg[14] ? (kind == 1 ? 11 : 13) + part : (kind == 1 ? 7 : 8);
     uint64_t begin = GetSystemCycle();
-    RunActualGmm((GM_ADDR)ptr[kind == 1 ? 7 : 8],
-                 (GM_ADDR)ptr[kind == 1 ? 1 : 3],
-                 (GM_ADDR)ptr[kind == 1 ? 2 : 4]);
+    RunActualGmm((GM_ADDR)ptr[configIndex],
+                 (GM_ADDR)(ptr[kind == 1 ? 1 : 3] +
+                           int64_t(firstRow) * (kind == 1 ? 2048 : 768) * 2),
+                 (GM_ADDR)(ptr[kind == 1 ? 2 : 4] +
+                           int64_t(firstRow) * (kind == 1 ? 1536 : 2048) * 2));
     PipeBarrier<PIPE_ALL>();
     WorkTime(cfg, 1, next, GetBlockIdx(), begin);
     seen = next;
