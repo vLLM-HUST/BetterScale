@@ -21,7 +21,7 @@ llm = LLM(
     max_model_len=256,
     max_num_batched_tokens=32,
     max_num_seqs=1,
-    kv_cache_memory_bytes=128 * 1024**2,
+    kv_cache_memory_bytes=(1024 if REAL else 128) * 1024**2,
     enable_prefix_caching=False,
     skip_tokenizer_init=not REAL,
     async_scheduling=False,
@@ -40,9 +40,11 @@ for index in range(2 + source):
         prompt = llm.get_tokenizer().apply_chat_template(
             [dict(role="user", content=question)],
             tokenize=True,
+            return_dict=False,
             add_generation_prompt=True,
             enable_thinking=False,
         )
+    assert isinstance(prompt, list) and all(isinstance(t, int) for t in prompt)
     start = time.monotonic()
     result = llm.generate(
         [dict(prompt_token_ids=prompt)],
@@ -60,6 +62,9 @@ for index in range(2 + source):
             tokens=ids, text=result[0].outputs[0].text, seconds=time.monotonic() - start
         )
     )
+Path(os.environ["EXPERT_ROLE_DIRECTORY"], f"client{source}-requests.json").write_text(
+    json.dumps(dict(status="generation_complete", requests=outputs), indent=2)
+)
 audit = (
     llm.collective_rpc("audit_experts")
     if os.environ.get("EXPERT_ROLE_AUDIT") == "1"

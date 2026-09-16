@@ -58,9 +58,10 @@ Use the existing pinned runtime and `build.sh` to prepare a frozen Qwen-Next
 binary closure. Set PERSISTENT_BUILD and DEVICE_SERVICE_SOURCE_BUILD to that same
 build, then run `run.sh <six comma-separated idle devices>`. Admission uses the
 existing per-device locks/foreign occupancy check. `NEXT_LAYERS=4` is the default;
-`NEXT_REAL=1 NEXT_LAYERS=48` loads full target weights. `EXPERT_ROLE_AUDIT=1` runs
-an explicit diagnostic reference after generation; its temporary weights inflate
-client peak memory and must not be counted as ordinary service residency.
+`NEXT_REAL=1 NEXT_LAYERS=48` loads full target weights. `EXPERT_ROLE_AUDIT=1` prepares the independent reference before IPC registration,
+then compares only small retained tensors after generation. Earlier capsules
+constructed reference weights during live service and their client peaks include
+those diagnostic allocations; do not report them as ordinary service residency.
 
 Isolation gates: `NEXT_LEAF=1 run.sh <one device>` exercises engine geometry,
 hot/broad/zero/skew routes, different layers, actual GEMM and output canaries.
@@ -87,5 +88,47 @@ Retained local capsules:
 - `runs/qwen-next-20260916T131201Z`: clean native four-layer A2/E4 + oracle.
 - `runs/persistent-control-20260916T131136Z`: legacy geometry regression.
 
-Full48-layer real-weight acceptance is recorded separately once complete; these
-four-layer results do not establish serving quality, throughput or DFC parity.
+The first full48 real run131330 loaded all roles and completed native startup;
+its request fixture then failed before generation because chat-template output
+was not explicitly requested as an integer-ID list. The fixture now specifies
+return_dict=False and validates IDs; a CPU tokenizer check covers that contract.
+This is not a model/transport failure and not a generation pass.
+
+Full48-layer real-weight acceptance is recorded in `real-result.json`; neither
+the fixture nor this short gate establishes serving quality, throughput or DFC parity.
+
+## Full-model investigation and clean gate
+
+Run131945 completed the first two requests on each client, then encountered native
+cache preemption with the inherited128MiB fixture KV budget. Run132344 uses1GiB
+and completed all five requests (both sources answered5 andParis), but failed in
+post-generation numerical audit during reference-weight loading; thus larger KV
+alone did NOT fix the complete gate. The relationship between live reference
+allocations, remote DMA and the507011 errors is still an inference, not a proven
+allocator defect. The next arm prepares oracle outputs before registration; no
+large reference weights are loaded during active service. That revised arm passed as described below. Simple answers are not a quality benchmark.
+
+The first failing run also exposed a transient nonnumeric container PID in NPU
+monitoring. Admission now treats that as unresolved0 and applies the EXISTING
+host-PID/start-time/grace rule; unknown owners remain foreign. Identity reuse and
+expired-grace cases have CPU tests. This does not weaken occupancy admission.
+
+
+Run132952 passed the complete full48 real-weight gate with references prepared
+before IPC registration. All six independent processes exited zero; both clients
+and all four servers agree on242/1010 completed calls, including startup and audit.
+Each server processed1252 waves: this fixture did not demonstrate source coalescing.
+The two sources answered “5” and “Paris”; source1's third response hit its16-token
+cap. This is a five-request generation smoke test, not an accuracy evaluation.
+
+Independent MoE samples at layer0/3, rows3/5 passed with maximum relative L2
+0.000157574 under the documented BF16 probability boundary. Routed weights occupy
+36GiB per expert server; clients carry zero routed parameters and4,729,962,240
+parameter bytes each. Reported client Torch allocation peaks after reference
+preparation reset are6,011,446,272 and6,011,593,728 bytes; these exclude the earlier
+oracle peak and are NOT total device residency. KV fixture budget is1GiB/client.
+
+The lifecycle change is sufficient for this successful run, not proof of the root
+cause of prior507011 failures. No latency advantage, sustained load, complete
+model FULL capture or production failure recovery has been established. The clean
+capsule is `runs/qwen-next-20260916T132952Z`; portable receipts are `real-result.json`.

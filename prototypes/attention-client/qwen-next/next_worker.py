@@ -1,6 +1,7 @@
 """Native hybrid model; only routed-expert construction and loading are replaced."""
 
 import re
+import os
 import torch
 from vllm_ascend.worker.worker import NPUWorker
 from settings import LAYERS, REAL
@@ -64,14 +65,17 @@ class Worker(NPUWorker):
         global SESSION
         from next_remote import Session
 
+        self.audit_cases = []
+        if os.environ.get("EXPERT_ROLE_AUDIT") == "1":
+            self.prepare_audit()
         SESSION = Session()
         return result
 
-    def audit_experts(self):
+    @torch.inference_mode()
+    def prepare_audit(self):
         from next_weights import weights
         from vllm_ascend.ops.fused_moe.experts_selector import select_experts
 
-        checks = []
         for layer, rows in ((0, 3), (3, 5)):
             torch.manual_seed(931 + layer)
             x = (torch.randn(rows, 2048) * 0.1).bfloat16().npu()
@@ -91,7 +95,6 @@ class Worker(NPUWorker):
             )
             probs, ids = select_experts(x, logits, 10, False, True, num_experts=512)
             shared = self.model_runner.model.model.layers[layer].mlp.shared_expert
-            actual = SESSION.forward(layer, x, logits, shared).clone()
             contributions = torch.zeros(
                 (rows * 10, 2048), dtype=torch.bfloat16, device="npu"
             )
@@ -116,6 +119,19 @@ class Worker(NPUWorker):
                 contributions.view(rows, 10, 2048).float()
                 * probs.bfloat16().float().unsqueeze(-1)
             ).sum(1).bfloat16() + shared(x)
+            self.audit_cases.append((layer, rows, x, logits, expected))
+        torch.npu.synchronize()
+        # Reclaimed reference weights must not inflate service-residency reporting.
+        torch.npu.empty_cache()
+        torch.npu.reset_peak_memory_stats()
+
+    @torch.inference_mode()
+    def audit_experts(self):
+        checks = []
+        for layer, rows, x, logits, expected in self.audit_cases:
+            shared = self.model_runner.model.model.layers[layer].mlp.shared_expert
+            actual = SESSION.forward(layer, x, logits, shared).clone()
+            torch.npu.synchronize()
             torch.testing.assert_close(actual, expected, rtol=0.02, atol=2e-5)
             rel = (
                 torch.linalg.vector_norm(actual.float() - expected.float())

@@ -496,7 +496,17 @@ between submit/collect; this is not a measured overlap speedup. Compile QWEN_NEX
 for top-k10/512 experts and single-layer slot catalogs; legacy shape remains the
 default. Layerwise weight pointer lookup preserves two reusable workspaces, not
 48 full group catalogs. Set persistent server device execution timeout explicitly
-for cold compilation; retain a bounded supervisor. A daemon device-snapshot thread
-caused an unclean teardown arm, removed rather than accepted. Never report audit
+for cold compilation; retain a bounded supervisor. An arm with a daemon device-snapshot thread
+had an unclean teardown; the observer was removed rather than accepting that arm. Never report audit
 weight reconstruction memory as ordinary client peak. Full-model evidence remains
 separate from these fixture gates.
+
+Full48 BF16 real-weight A2/E4 passed132952; see `qwen-next/real-result.json` beside
+the fixture evidence. All six roles exited0 and matched242/1010 calls; oracle
+layer0/3 relL2<=0.000158. Prepare reference weights/results BEFORE registering IPC,
+not while persistent service is live. Earlier real arms generated successfully
+but failed during post-generation reference construction; causality is unresolved.
+Clients retain no routed weights; E4 each holds36GiB. Five short requests and1252
+waves for1252 calls do not demonstrate batching/throughput or full quality. The
+1GiB fixture KV budget avoids the observed128MiB smoke-test preemption. Report
+Torch allocated peak separately from device residency and diagnostic allocations.
