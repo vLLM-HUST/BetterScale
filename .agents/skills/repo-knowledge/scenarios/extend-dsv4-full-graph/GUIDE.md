@@ -487,3 +487,12 @@ For broad-hit expert scheduling comparisons, read
 `prototypes/attention-client/device-service/DFC-TIMELINE.md` before interpreting
 a fused DFC envelope as Cube utilization. The two-card capture/export entry is
 recorded there; internal MC2 timing requires separate instrumentation.
+
+### Fine-grained expert input readiness (2026-09-16)
+
+For the latest persistent expert dependency cuts, enter
+`prototypes/attention-client/device-service/FINE-PACK.md` directly.
+It qualifies row-generation publication before up tile issue, composing with
+EARLY-DOWN.md; both remain opt-in. Use expert_ready_audit.py for fine-pack
+receipts, not cube_supply_audit.py's historical whole-command readiness model.
+The per-expert causal trace is diagnostic, not an MMAD-utilization measurement.
