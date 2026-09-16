@@ -41,6 +41,7 @@ for server in range(2):
     receipt = json.loads((a.run / f"run/measurements/expert{server}.json").read_text())
     events = receipt["events"]
     parts = 2 if receipt.get("segmented") else 1
+    chunked = receipt.get("move_quantum", 0) != 0
     internal = receipt.get("internal_pipeline", False)
     prefix_ready = {}
     if internal:
@@ -54,7 +55,7 @@ for server in range(2):
             assert event[1] == 1
             assert all(event[3] <= t <= event[4] for t in cores.values())
             prefix_ready[event[6]] = max(cores.values())
-    assert len(events) <= (4 + 3 * parts) * 48
+    assert len(events) <= 512
     origin = min(e[3] for e in events)
     stages = [[], []]
     wave_ids = {}
@@ -95,10 +96,14 @@ for server in range(2):
                 continue
             pulls = [e for e in wave if e[:2] == (0, 1)]
             packs = [e for e in wave if e[:2] == (0, 2)]
-            assert 1 <= len(pulls) <= 2 and len(packs) == 1
-            pack = packs[0]
+            assert pulls and packs
+            if not chunked:
+                assert len(pulls) <= 2 and len(packs) == 1
+            pack = (0, 2, min(e[2] for e in packs), max(e[3] for e in packs), 0, 0)
             assert max(e[3] for e in pulls) <= pack[2]
-            assert len(wave) == len(pulls) + 2 + (parts + 2 if internal else 3 * parts)
+            assert len(wave) == len(pulls) + len(packs) + 1 + (
+                parts + 2 if internal else 3 * parts
+            )
             for part in range(parts):
 
                 def unique(engine, kind):
@@ -215,6 +220,7 @@ for server in range(2):
             / 50
         )
     publication_delay, remaining_up = [], []
+    activation_tail_delay, activation_tail_move = [], []
     if internal:
         for seq, ready in prefix_ready.items():
             act = next(
@@ -231,11 +237,49 @@ for server in range(2):
             remaining_up.append(
                 (max(end for b, end in work_by_event[seq]) - ready) / 50
             )
+            last_act = next(
+                e
+                for e in events
+                if wave_ids[e[6]] == wave_ids[seq]
+                and e[0] == 0
+                and e[1] == 3
+                and e[7] == 1
+            )
+            up_end = max(end for b, end in work_by_event[seq])
+            act_start = min(b for b, end in work_by_event[last_act[6]])
+            assert act_start >= up_end
+            activation_tail_delay.append((act_start - up_end) / 50)
+            moves = merge_intervals(
+                [
+                    interval
+                    for e in events
+                    if e[0] == 0 and e[1] in (1, 2)
+                    for interval in work_by_event[e[6]]
+                ]
+            )
+            activation_tail_move.append(
+                sum(
+                    max(0, min(end, act_start) - max(begin, up_end))
+                    for begin, end in moves
+                )
+                / 50
+            )
+
     summaries.append(
         dict(
             server=server,
             segmented=parts == 2,
             internal_pipeline=internal,
+            move_quantum=receipt.get("move_quantum", 0),
+            tail_activation_delay_median_us=(
+                statistics.median(activation_tail_delay)
+                if activation_tail_delay
+                else None
+            ),
+            tail_activation_move_overlap_total_us=(
+                sum(activation_tail_move) if activation_tail_move else None
+            ),
+            tail_activation_move_blocked_waves=sum(x > 0 for x in activation_tail_move),
             prefix_to_activation_median_us=(
                 statistics.median(publication_delay) if publication_delay else None
             ),

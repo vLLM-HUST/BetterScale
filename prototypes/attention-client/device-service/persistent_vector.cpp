@@ -3,6 +3,9 @@ using namespace AscendC;
 using namespace Persistent;
 constexpr int HIDDEN = 2048, INNER = 768, ROUTES = 256, GROUPS = 128;
 
+__aicore__ inline int ScalarMin(int a, int b) { return a < b ? a : b; }
+__aicore__ inline int ScalarMax(int a, int b) { return a > b ? a : b; }
+
 // MTE completion precedes every flag publication. Control lines use scalar
 // DCCI; payload reads/writes use DMA, not scalar cache.
 struct Transfer {
@@ -102,23 +105,31 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
         io.Activation((__gm__ bfloat16_t *)ptr[2] + row * INNER * 2,
                       (__gm__ bfloat16_t *)ptr[3] + row * INNER);
     } else {
+      int sourceBase = 0;
       for (int c = 0; c < 2; ++c) {
         io.Read((__gm__ int32_t *)ptr[5] + c * MAP, MAP);
         int gen = io.words.GetValue(0), n = io.words.GetValue(1);
         int map[ROUTES];
         for (int i = 0; i < ROUTES; ++i)
           map[i] = io.words.GetValue(8 + i);
+        int base = sourceBase;
+        sourceBase += kind == FETCH ? n : n * 8;
+        int first = 0, limit = kind == FETCH ? n : n * 8;
+        if (cfg[16] && (kind == FETCH || kind == REPACK)) {
+          first = ScalarMax(0, ctrl[VCMD * LINE + 4] - base);
+          limit = ScalarMin(limit, ctrl[VCMD * LINE + 5] - base);
+        }
         if (!gen)
           continue;
         if (kind == FETCH) {
           if (!(extra & (1 << c)))
             continue;
-          for (int row = worker; row < n; row += VW)
+          for (int row = first + worker; row < limit; row += VW)
             io.Copy((__gm__ int32_t *)cfg[4 + c] + 1024 + row * HIDDEN / 2,
                     (__gm__ int32_t *)ptr[0] + (c * 32 + row) * HIDDEN / 2,
                     HIDDEN / 2);
         } else {
-          for (int route = worker; route < n * 8; route += VW)
+          for (int route = first + worker; route < limit; route += VW)
             if (map[route] >= 0) {
               if (kind == REPACK)
                 io.Copy((__gm__ int32_t *)ptr[0] +
@@ -144,6 +155,7 @@ struct Slot {
   int stage = EMPTY, gen[2] = {0, 0}, rows[2] = {0, 0}, layer[2] = {0, 0};
   int ids[2][ROUTES], live = 0, boundary = 0;
   int upDone = 0, actDone = 0, downDone = 0;
+  int moveCursor = 0, moveEnd = 0, fetchMask = 0;
 };
 __aicore__ inline void Descriptor(Transfer &io, __gm__ int64_t *ptr, Slot &s) {
   for (int c = 0; c < 2; ++c) {
@@ -246,12 +258,26 @@ __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
 }
 __aicore__ inline void Command(__gm__ int32_t *ctrl, int line, int gen,
                                int kind, int slot, int extra = 0,
-                               int firstRow = 0) {
+                               int firstRow = 0, int lastRow = 0) {
   ctrl[line * LINE + 1] = kind;
   ctrl[line * LINE + 2] = slot;
   ctrl[line * LINE + 3] = extra;
   ctrl[line * LINE + 4] = firstRow;
+  ctrl[line * LINE + 5] = lastRow;
   Store(ctrl + line * LINE, gen);
+}
+__aicore__ inline void StartFetch(Slot &slot, int mask) {
+  slot.fetchMask = mask;
+  slot.moveCursor = mask & 1 ? 0 : slot.rows[0];
+  slot.moveEnd = mask & 2 ? slot.rows[0] + slot.rows[1] : slot.rows[0];
+}
+__aicore__ inline void MoveCommand(__gm__ int32_t *ctrl, int gen, int id,
+                                   Slot &slot, int quantum) {
+  bool fetch = slot.stage == PULL;
+  int limit = ScalarMin(slot.moveEnd,
+                        slot.moveCursor + (fetch ? quantum / 8 : quantum));
+  Command(ctrl, VCMD, gen, fetch ? FETCH : REPACK, id,
+          fetch ? slot.fetchMask : 0, slot.moveCursor, limit);
 }
 // Coordinator-observed command intervals, not exact instruction timestamps.
 __aicore__ inline void Record(__gm__ int64_t *cfg, int &count, int engine,
@@ -299,7 +325,33 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       auto &slot = s[vs];
       auto ptr = slots + vs * 16;
       Record(cfg, eventCount, 0, vkind, vs, vbegin, slot.live, vpart);
-      if (slot.stage == PULL) {
+      if (cfg[16] && (slot.stage == PULL || slot.stage == PACK)) {
+        bool fetch = slot.stage == PULL;
+        slot.moveCursor = ScalarMin(
+            slot.moveEnd, slot.moveCursor + int(fetch ? cfg[16] / 8 : cfg[16]));
+        if (slot.moveCursor == slot.moveEnd) {
+          if (fetch) {
+            int added = Accept(io, cfg, slot, claimed, finished);
+            if (added < 0) {
+              Store(ctrl + STOP * LINE, -31);
+              break;
+            }
+            if (added) {
+              Descriptor(io, ptr, slot);
+              StartFetch(slot, added);
+            } else {
+              Group(io, ptr, slot, cfg[7], cfg[14], cfg[15]);
+              slot.stage = PACK;
+              slot.moveCursor = 0;
+              slot.moveEnd = (slot.rows[0] + slot.rows[1]) * 8;
+            }
+          } else {
+            slot.stage = READY_UP;
+          }
+        }
+        // Rejoin the ready selection instead of chaining the next DMA chunk.
+        vs = -1;
+      } else if (slot.stage == PULL) {
         // No wait-to-coalesce: one snapshot after useful DMA completes.
         int added = Accept(io, cfg, slot, claimed, finished);
         if (added < 0) {
@@ -413,6 +465,20 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
             progress = true;
           }
         }
+      if (cfg[16]) {
+        for (int i = 0; i < 2 && vs < 0; ++i) {
+          if (s[i].stage != PULL && s[i].stage != PACK)
+            continue;
+          vs = i;
+          vkind = s[i].stage == PULL ? FETCH : REPACK;
+          vpart = s[i].moveCursor;
+          vbegin = GetSystemCycle();
+          MoveCommand(ctrl, ++vgen, i, s[i], cfg[16]);
+          if (cs >= 0 && vkind == FETCH)
+            ++pullsDuringCube;
+          progress = true;
+        }
+      }
       for (int i = 0; i < 2 && vs < 0; ++i)
         if (s[i].stage == EMPTY) {
           int mask = Accept(io, cfg, s[i], claimed, finished);
@@ -427,7 +493,12 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
             vkind = FETCH;
             vpart = 0;
             vbegin = GetSystemCycle();
-            Command(ctrl, VCMD, ++vgen, FETCH, i, mask);
+            if (cfg[16]) {
+              StartFetch(s[i], mask);
+              MoveCommand(ctrl, ++vgen, i, s[i], cfg[16]);
+            } else {
+              Command(ctrl, VCMD, ++vgen, FETCH, i, mask);
+            }
             if (cs >= 0)
               ++pullsDuringCube;
             progress = true;

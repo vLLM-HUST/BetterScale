@@ -204,3 +204,7 @@ The next opt-in [internal publication prototype](INTERNAL-PIPELINE.md) keeps one
 CATLASS up tile object alive across the prefix boundary. Its half-cut shows a
 small positive matched-control result; tail-two still misses the consumer window.
 Read its scoped evidence before equating either variant with full DFC fusion.
+
+For interruptible-at-boundary pull/pack, read [YIELDING-MOVES.md](YIELDING-MOVES.md).
+It reduces measured mover overlap with activation waiting but loses net episode
+performance; it remains an explicit diagnostic, not the default or a full ready-queue design.

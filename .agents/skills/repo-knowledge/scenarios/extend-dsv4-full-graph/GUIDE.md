@@ -460,3 +460,13 @@ throughput. Tail-two still regresses: producer join leaves only3.6–4.1us up wo
 while first AIV consumption follows14–16us later. Reuse the prefix timestamp audit
 in persistent_analyze.py to separate lost notification windows from GEMM cost.
 The underlying external CATLASS tile type is shared; no matrix kernel is rewritten.
+
+
+For AIV pull/pack head-of-line experiments, read device-service/YIELDING-MOVES.md.
+Opt-in quantum128/256 yields at DMA chunk boundaries while preserving slot/source
+ownership; leaf and48-output four-card cases pass. Quantum128 cuts measured
+pull/pack overlap with final-activation waiting126/129 ->24/25us per episode,
+but total episode is slower. Complete-command handoffs and repeated map parsing
+are not free internal queues. Keep disabled; full pack readiness and whole down
+remain batch barriers. Use the analyzer's actual core-overlap metric rather than
+attributing every up/down hole to DMA or comparing unlike naturally paired waves.

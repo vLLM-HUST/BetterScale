@@ -20,6 +20,8 @@ class PersistentEngine:
             == int(torch_npu.get_npu_format(down))
             == 29
         )
+        self.move_quantum = int(os.environ.get("DEVICE_SERVICE_MOVE_QUANTUM", "0"))
+        assert self.move_quantum in (0, 128, 256)
         self.tail_experts = int(
             os.environ.get("DEVICE_SERVICE_SEGMENT_TAIL_EXPERTS", "0")
         )
@@ -31,6 +33,7 @@ class PersistentEngine:
         self.segmented = (
             self.internal_pipeline or os.environ.get("DEVICE_SERVICE_SEGMENTED") == "1"
         )
+        assert not self.move_quantum or self.internal_pipeline
         self.control = torch.zeros((80, 16), dtype=torch.int32, device="npu")
         self.trace = torch.full((tasks * 2, 16), -991, dtype=torch.int32, device="npu")
         self.events = torch.zeros((512, 8), dtype=torch.int64, device="npu")
@@ -100,6 +103,7 @@ class PersistentEngine:
                 self.work_times.data_ptr() if self.work_times is not None else 0,
                 2 if self.internal_pipeline else int(self.segmented),
                 self.tail_experts,
+                self.move_quantum,
             ],
             dtype=torch.int64,
             device="npu",
@@ -168,6 +172,7 @@ class PersistentEngine:
             segmented=self.segmented,
             internal_pipeline=self.internal_pipeline,
             tail_experts=self.tail_experts,
+            move_quantum=self.move_quantum,
             waves=len(records),
             pulls_during_cube=ctrl[43][2],
             trace=records,
