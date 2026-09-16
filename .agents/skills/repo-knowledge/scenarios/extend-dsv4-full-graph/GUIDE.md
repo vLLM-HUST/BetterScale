@@ -613,3 +613,22 @@ leaf160001 did pair:797.67us same-layer versus1112.53us different-layer median.
 This distinction is preserved in qwen-next/CONCURRENCY.md: admission can batch,
 but independent-client arrival/early-slot assignment can miss the opportunity;
 no waiting-for-batch policy was added or uniquely blamed by that observation.
+
+### Bulk expert-source frames (2026-09-16)
+
+For prefill batching rather than repeated 32-row decode fixtures, enter
+`prototypes/attention-client/qwen-next/bulk-prefill/README.md`. Frozen 1024-row
+source variant passed three-device run163223: dual128→dual1024 grows input 8x,
+coordinator span0.966→2.550ms; solo1024 vs dual512: 1.569/1.582ms. Both sources
+are ready before admission; only one quarter-expert owner, no full serving
+throughput claim. Published serving ABI stays32. Same-layer coalescing works
+under backlog; continuous arrival opportunity remains separately unproven.
+
+Avoid a costly harness trap: `device-service/admit_subset.py` copies sibling
+Python files into its snapshot and prepends it to PYTHONPATH. That shadowed the
+expanded runtime with32-row allocations while loading its widened binary,
+causing507011/memory corruption. Isolate the admission helper directory and
+assert the runtime module path matches the binary/geometry closure before NPU
+initialization. Frozen coordinator IDs now use int16 UB storage and workers
+retain strided maps; increasing the scalar stack to128KiB is not supported by
+the current compiler. Do not infer algorithm limits from mismatched-ABI failures.

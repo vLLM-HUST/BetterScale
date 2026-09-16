@@ -1,0 +1,76 @@
+{
+  "scope": "Two physical source NPUs with bulk same/different-layer work, one server.\n\nAll inputs are published before server execution: this measures a genuinely\nbacklogged admission opportunity, not the probability of catching late arrivals.\nTiming is device coordinator pull-to-return; client reduction/attention and host\nrendezvous are excluded. IPC capabilities never enter result files.",
+  "source": "runs/bulk-prefill-20260916T163223Z/results/result.json",
+  "samples": 102,
+  "max_selected_relative_l2": 9.276004675484728e-06,
+  "summary": {
+    "solo32": {
+      "median_us": 665.53,
+      "median_us_per_token": 20.7978125
+    },
+    "same16": {
+      "median_us": 654.46,
+      "median_us_per_token": 20.451875
+    },
+    "different16": {
+      "median_us": 772.72,
+      "median_us_per_token": 24.1475
+    },
+    "solo128": {
+      "median_us": 968.78,
+      "median_us_per_token": 7.56859375
+    },
+    "same64": {
+      "median_us": 954.31,
+      "median_us_per_token": 7.455546875
+    },
+    "different64": {
+      "median_us": 1320.1100000000001,
+      "median_us_per_token": 10.313359375000001
+    },
+    "solo256": {
+      "median_us": 959.9300000000001,
+      "median_us_per_token": 3.7497265625000002
+    },
+    "same128": {
+      "median_us": 965.81,
+      "median_us_per_token": 3.7726953125
+    },
+    "different128": {
+      "median_us": 1575.8600000000001,
+      "median_us_per_token": 6.1557031250000005
+    },
+    "solo512": {
+      "median_us": 1111.58,
+      "median_us_per_token": 2.1710546875
+    },
+    "same256": {
+      "median_us": 1121.81,
+      "median_us_per_token": 2.19103515625
+    },
+    "different256": {
+      "median_us": 1589.8,
+      "median_us_per_token": 3.105078125
+    },
+    "solo1024": {
+      "median_us": 1568.93,
+      "median_us_per_token": 1.532158203125
+    },
+    "same512": {
+      "median_us": 1581.65,
+      "median_us_per_token": 1.544580078125
+    },
+    "different512": {
+      "median_us": 2032.38,
+      "median_us_per_token": 1.98474609375
+    },
+    "same1024": {
+      "median_us": 2549.62,
+      "median_us_per_token": 1.244931640625
+    },
+    "different1024": {
+      "median_us": 3016.16,
+      "median_us_per_token": 1.472734375
+    }
+  }
+}
