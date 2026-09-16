@@ -61,6 +61,11 @@ def child(rank, device, links, out, ready_queue, start_event):
             additional_config=dict(enable_cpu_binding=False),
         )
         llm.collective_rpc("attach")
+        profiler = None
+        if os.environ.get("DEVICE_SERVICE_PROFILE"):
+            from profile_capture import start, stop
+
+            profiler = start(f"attention{rank}")
         params = SamplingParams(
             temperature=0, max_tokens=3, ignore_eos=True, detokenize=False
         )
@@ -76,6 +81,8 @@ def child(rank, device, links, out, ready_queue, start_event):
             results = llm.generate([dict(prompt_token_ids=[19 + rank] * size)], params)
             assert len(results[0].outputs[0].token_ids) == 3
         llm.collective_rpc("detach")
+        if profiler is not None:
+            stop(profiler)
         Path(out, f"attention{rank}-complete.json").write_text(
             json.dumps(dict(banks=banks, complete=True))
         )

@@ -344,6 +344,9 @@ def serve(server_id, links, output_path):
             body()
     stream.synchronize()
     config[5] = 1
+    from profile_capture import start, stop
+
+    profiler = start(f"expert{server_id}")
     graph.replay()
     stream.synchronize()
     status = state.cpu().tolist()
@@ -366,6 +369,7 @@ def serve(server_id, links, output_path):
         api.close_mapping(c["key"])
         api.free_staging(c["local"])
         pipe.send(("unmapped",))
+    stop(profiler)
     graph.reset()
     kernels.close()
     Path(output_path).write_text(

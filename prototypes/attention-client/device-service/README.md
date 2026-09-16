@@ -109,3 +109,38 @@ They rely on the workspace's pinned donor environment, IPC helper, CANN9.0.1 and
 Qwen model configuration; this is a lab acceptance capsule, not an installable
 public service. Queue waits, kernel execution and the outer process supervisor
 are bounded. A timeout fails the episode; it is not a retry or recovery protocol.
+
+## Four-device timeline
+
+Set `DEVICE_SERVICE_PROFILE=1` for `run_joint.sh`. Collection stops after the
+IPC drain; parse/export offline using the pinned runtime Python:
+
+```
+python prototypes/attention-client/device-service/profile_export.py <capsule>
+python prototypes/attention-client/device-service/profile_window.py <capsule>
+```
+
+The 20260916T032439Z capsule passes the same exact output/KV acceptance under
+profiling. `analysis/attention2-expert2-sealed-window.json.gz` is the compact
+161.532ms generations13–24 view; `attention2-expert2-provider-clock.json.gz` keeps
+the full recording. Both use TraceLoom37323af's exported event identities and
+source timestamps. The original first-event-normalized export is retained too.
+Roles0/1 are attention clients; roles2/3 are expert shards. Provider rank IDs are
+not distributed service roles: each native attention process is TP1 rank0.
+
+There are no matching HCCL collectives in this point-to-point protocol. Do not
+fabricate a collective-end clock fit. The provider-clock view restores native
+profiler timestamps rather than independently translating each device's first
+event to zero. Profiler realtime-minus-monotonic mappings differ by5.44us in this
+run. This is **not** a measured bound on device-to-device clock error. Original
+source timestamps and mapping receipts remain available; avoid microsecond-scale
+causal claims. Window cropping marks truncated intervals explicitly.
+
+In the sealed window each server's `neural_prepare` occupies about154.17ms,
+**including device polling for source work**, whereas its native GMM slices sum
+to about1.62ms and `neural_complete` to3.04ms. Do not call that154ms packing cost.
+Attention-side GroupedMatmul belongs to the independent native correctness oracle;
+clones, comparisons and host coroutine polling also remain. Each client's12
+`neural_client` invocations total about4ms, including wait and transfer. These
+profiled diagnostic sums are not latency/speedup claims. Use a separate
+oracle-free load fixture before judging service throughput or batching policy.

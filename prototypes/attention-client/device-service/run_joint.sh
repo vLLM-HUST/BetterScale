@@ -10,6 +10,9 @@ admission="$repo/runs/attention-client-20260915/v12/launch.py"
 test -f "$admission"
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 capsule="$repo/runs/attention-device-joint-$stamp"
+if [[ "${DEVICE_SERVICE_PROFILE:-}" == "1" ]]; then
+  export DEVICE_SERVICE_PROFILE="$capsule/profile"
+fi
 mkdir -p "$capsule/source/joint" "$capsule/source/device" "$capsule/build"
 cp "$repo/prototypes/attention-client/device-service/"*.py "$capsule/source/device/"
 cp "$repo/runs/attention-device-service-build/"{queue_service.o,launch.so} "$capsule/build/"
