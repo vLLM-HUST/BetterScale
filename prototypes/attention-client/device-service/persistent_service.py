@@ -31,6 +31,8 @@ class PersistentEngine:
         self.internal_pipeline = (
             os.environ.get("DEVICE_SERVICE_INTERNAL_PIPELINE") == "1"
         )
+        self.early_down = os.environ.get("DEVICE_SERVICE_EARLY_DOWN") == "1"
+        assert not self.early_down or self.internal_pipeline
         self.segmented = (
             self.internal_pipeline or os.environ.get("DEVICE_SERVICE_SEGMENTED") == "1"
         )
@@ -107,6 +109,7 @@ class PersistentEngine:
                 self.tail_experts,
                 self.move_quantum,
                 int(self.resident_moves),
+                int(self.early_down),
             ],
             dtype=torch.int64,
             device="npu",
@@ -177,6 +180,7 @@ class PersistentEngine:
             tail_experts=self.tail_experts,
             move_quantum=self.move_quantum,
             resident_moves=self.resident_moves,
+            early_down=self.early_down,
             waves=len(records),
             pulls_during_cube=ctrl[43][2],
             trace=records,
@@ -188,6 +192,10 @@ class PersistentEngine:
             receipt["core_work"] = [
                 [engine, gen + 1, core, *timing[engine, gen, core, :2].tolist()]
                 for engine, gen, core in (timing[..., 1] > 0).nonzero().tolist()
+            ]
+            receipt["core_down_wait"] = [
+                [gen + 1, core, *timing[1, gen, core, 3:5].tolist()]
+                for gen, core in (timing[1, ..., 4] > 0).nonzero().tolist()
             ]
             receipt["core_prefix"] = [
                 [gen + 1, core, timing[1, gen, core, 2].item()]

@@ -188,7 +188,7 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
 struct Slot {
   int stage = EMPTY, gen[2] = {0, 0}, rows[2] = {0, 0}, layer[2] = {0, 0};
   int ids[2][ROUTES], live = 0, boundary = 0;
-  int upDone = 0, actDone = 0, downDone = 0;
+  int upDone = 0, actDone = 0, downDone = 0, downGen = 0;
   int moveCursor = 0, moveEnd = 0, fetchMask = 0;
 };
 __aicore__ inline void Descriptor(Transfer &io, __gm__ int64_t *ptr, Slot &s) {
@@ -346,6 +346,8 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
     if (us >= 0 && Joined(ctrl, URGENT_DONE, VW, ugen)) {
       Record(cfg, eventCount, 2, ACTIVATE, us, ubegin, s[us].live, upart);
       ++s[us].actDone;
+      if (cfg[18] && s[us].actDone == parts && s[us].downGen)
+        Store(ctrl + (ACT_TAIL_READY + us) * LINE, s[us].downGen);
       us = -1;
       progress = true;
     }
@@ -420,9 +422,11 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       } else {
         if (slot.stage == PACK)
           slot.stage = READY_UP;
-        else if (vkind == ACTIVATE)
+        else if (vkind == ACTIVATE) {
           ++slot.actDone;
-        else if (slot.stage == RETURN) {
+          if (cfg[18] && slot.actDone == parts && slot.downGen)
+            Store(ctrl + (ACT_TAIL_READY + vs) * LINE, slot.downGen);
+        } else if (slot.stage == RETURN) {
           for (int c = 0; c < 2; ++c)
             if (slot.gen[c]) {
               io.Publish((__gm__ int32_t *)cfg[2 + c], slot.gen[c]);
@@ -451,7 +455,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           ++waves;
           slot.gen[0] = slot.gen[1] = slot.rows[0] = slot.rows[1] = 0;
           slot.stage = EMPTY;
-          slot.upDone = slot.actDone = slot.downDone = 0;
+          slot.upDone = slot.actDone = slot.downDone = slot.downGen = 0;
         }
         vs = -1;
       }
@@ -474,17 +478,27 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           auto &slot = s[i];
           if (slot.stage != READY_UP && slot.stage != UP)
             continue;
-          bool ready = phase == 0 ? (streaming ? slot.actDone == parts &&
-                                                     slot.downDone == 0
-                                               : slot.downDone < slot.actDone)
-                                  : slot.upDone < parts;
+          bool ready =
+              phase == 0
+                  ? (streaming ? slot.actDone >= (cfg[18] ? 1 : parts) &&
+                                     slot.upDone == parts && slot.downDone == 0
+                               : slot.downDone < slot.actDone)
+                  : slot.upDone < parts;
           if (ready) {
             cs = i;
             slot.stage = UP;
             ckind = phase == 0 ? 2 : 1;
             cpart = phase == 0 ? slot.downDone : slot.upDone;
             cbegin = GetSystemCycle();
-            Command(ctrl, CCMD, ++cgen, ckind, i, cpart);
+            ++cgen;
+            if (cfg[18] && ckind == 2) {
+              // A globally unique command generation prevents old slot flags
+              // satisfying a new invocation. Publish only after the AIV join.
+              slot.downGen = cgen;
+              if (slot.actDone == parts)
+                Store(ctrl + (ACT_TAIL_READY + i) * LINE, cgen);
+            }
+            Command(ctrl, CCMD, cgen, ckind, i, cpart);
             progress = true;
           }
         }

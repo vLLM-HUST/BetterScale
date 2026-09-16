@@ -60,6 +60,13 @@ for server in range(2):
     parts = 2 if receipt.get("segmented") else 1
     chunked = receipt.get("move_quantum", 0) != 0
     internal = receipt.get("internal_pipeline", False)
+    early_down = receipt.get("early_down", False)
+    down_waits = {}
+    cube_commands = [e for e in events if e[0] == 1]
+    for gen, core, begin, end in receipt.get("core_down_wait", []):
+        event = cube_commands[gen - 1]
+        assert event[1] == 2 and event[3] <= begin <= end <= event[4]
+        down_waits.setdefault(event[6], {})[core] = (begin, end)
     prefix_ready = {}
     if internal:
         cube_commands = [e for e in events if e[0] == 1]
@@ -139,7 +146,16 @@ for server in range(2):
                     assert prefix_ready[up[5]] <= act[2]
                 else:
                     assert up[3] <= act[2]
-                assert act[3] <= down[2] <= down[3] <= event[2]
+                if early_down and part == 1:
+                    waits = down_waits.get(down[5], {})
+                    # An empty tail need not be consumed. Otherwise every core
+                    # passes the readiness guard before its first tail tile.
+                    if waits:
+                        assert set(waits) == set(range(24))
+                        assert all(end >= act[3] for begin, end in waits.values())
+                    assert down[2] <= down[3] <= event[2]
+                else:
+                    assert act[3] <= down[2] <= down[3] <= event[2]
             wave_service_us.append((event[3] - pack[2]) / 50)
             cube_events = [e for e in wave if e[0] == 1]
             math_chain_us.append(
@@ -314,6 +330,16 @@ for server in range(2):
             server=server,
             segmented=parts == 2,
             internal_pipeline=internal,
+            early_down=early_down,
+            down_tail_wait_median_us=(
+                statistics.median(
+                    (end - begin) / 50
+                    for cores in down_waits.values()
+                    for begin, end in cores.values()
+                )
+                if down_waits
+                else None
+            ),
             move_quantum=receipt.get("move_quantum", 0),
             resident_moves=receipt.get("resident_moves", False),
             urgent_activations=sum(e[0] == 2 for e in events),

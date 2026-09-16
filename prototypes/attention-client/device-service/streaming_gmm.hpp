@@ -1,11 +1,15 @@
 #pragma once
 // Uses the installed CATLASS tile engine, layouts and swizzler unchanged.
+// Up publishes a prefix; down waits at its first tail input issue. A non-null
+// stop selects down mode. timing[2] is up publication; [3:5] is down tail wait.
 // This local group traversal supplies the progress publication hook absent from
 // GroupedMatmulSliceM. Keep math/tile policy shared with actual_gmm.cpp.
-__aicore__ inline void RunStreamingUp(GM_ADDR config, GM_ADDR input,
-                                      GM_ADDR output, int boundary,
-                                      __gm__ int32_t *progress, int generation,
-                                      __gm__ int64_t *timing) {
+__aicore__ inline void RunStreamingGmm(GM_ADDR config, GM_ADDR input,
+                                       GM_ADDR output, int boundary,
+                                       __gm__ int32_t *progress, int generation,
+                                       __gm__ int64_t *timing,
+                                       __gm__ int32_t *stop = nullptr,
+                                       int64_t pollLimit = 0) {
   auto cfg = (__gm__ int64_t *)config;
   const uint32_t k = cfg[0], n = cfg[1], groups = cfg[2];
   using Tile = ActualGmmTypes::Mmad;
@@ -22,7 +26,23 @@ __aicore__ inline void RunStreamingUp(GM_ADDR config, GM_ADDR input,
   uint32_t row = 0, nextCore = 0;
   bool published = false;
   for (uint32_t expert = 0; expert < groups; ++expert) {
-    if (!published && row == boundary) {
+    if (stop && !published && row >= boundary) {
+      // Check before issuing any tail GM->L1 copy. Keep the same tile object:
+      // prefix MMAD/FIX may continue while its scalar issuer waits.
+      if (timing)
+        timing[3] = GetSystemCycle();
+      int64_t polls = 0;
+      while (Persistent::Load(progress) != generation) {
+        if (Persistent::Load(stop) || ++polls >= pollLimit) {
+          Persistent::Store(stop, -14);
+          return;
+        }
+      }
+      if (timing)
+        timing[4] = GetSystemCycle();
+      published = true;
+    }
+    if (!stop && !published && row == boundary) {
       // Drain outstanding tile work, including FIX writes, before publishing.
       // The tile object and its L1/L0 buffers remain alive across this
       // boundary.
@@ -65,7 +85,7 @@ __aicore__ inline void RunStreamingUp(GM_ADDR config, GM_ADDR input,
   }
   tile.SynchronizeBlock();
   PipeBarrier<PIPE_ALL>();
-  if (!published) {
+  if (!stop && !published) {
     if (timing) {
       timing[2] = GetSystemCycle();
       Persistent::Refresh((__gm__ int32_t *)timing);

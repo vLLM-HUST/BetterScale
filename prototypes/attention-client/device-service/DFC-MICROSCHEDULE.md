@@ -99,3 +99,6 @@ no partial DONE and no source reuse before both server receipts. Existing intern
 work timestamps can show these boundaries; ordinary DFC Level1 envelopes cannot.
 Nothing here establishes that all of the DFC latency gap is recoverable by
 scheduling, or that the differing two-card/four-card topologies have equal costs.
+
+Implementation and bounded measurements of the first seam are now in
+[EARLY-DOWN.md](EARLY-DOWN.md); subsequent seams above remain designs.
