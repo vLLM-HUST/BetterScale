@@ -475,3 +475,10 @@ reservations, not physical expert storage. This gate uses eager native attention
 and captured MoE, not full-model graph composition or real-weight qualification.
 Host teardown remains session-wide, with failure recovery unsupported. Keep
 persistent binaries and the extended configuration ABI from the same source.
+
+For scaling independent roles to DSV4, read roles/DSV4-PLAN.md and use
+roles/weight_census.py before choosing ranks. Local W8A8 target routed payload
+alone is258.67GiB: E4 on64GiB cannot fit. The0731 checkpoint adds THREE DSpark
+expert layers; older W8A8 adds one. Config expert_dtype=fp4 is misleading for these
+INT8 checkpoint tensors. E6 needs uneven43/42 ownership, not native integer-floor
+EP placement. Capacity evidence is checkpoint headers, not a runtime peak gate.
