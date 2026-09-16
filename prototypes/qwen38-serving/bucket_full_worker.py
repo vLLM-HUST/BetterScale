@@ -40,8 +40,18 @@ def install():
         padded_gdn.install()
     original = Builder.build
 
-    def build(self, *args, **kwargs):
-        metadata = original(self, *args, **kwargs)
+    def build(self, common_prefix_len, common_attn_metadata, *args, **kwargs):
+        m = common_attn_metadata
+        if PADDED and m.num_reqs > 1 and m.num_actual_tokens > 1:
+            # Native FIA padding may append an empty GDN virtual request.
+            # Keep the real slot/endpoints before stable single-prefill binding;
+            # otherwise the extra row silently bypasses the graph contract.
+            starts = m.query_start_loc_cpu
+            if int(starts[1]) == m.num_actual_tokens and bool(
+                (starts[1:] == starts[1]).all()
+            ):
+                m = m.unpadded(m.num_actual_tokens, 1)
+        metadata = original(self, common_prefix_len, m, *args, **kwargs)
         if metadata.num_prefills == 0:
             return metadata
         if not (
