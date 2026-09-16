@@ -100,3 +100,13 @@ allocation or change shared/QSA ownership. The model's
 fused`experts.(gate_up_proj|down_proj)` tensors, not this checkpoint's per-expert
 triples. Passing quant_config through constructors is not sufficient evidence
 that the new checkpoint is loadable. No new-model runtime gate is claimed yet.
+
+### Pinned snapshot inventory correction
+
+At final-download preparation, the initial75-file listing proved to describe
+newer repository documentation rather than the exact pinned snapshot. A fresh
+explicit-revision listing has76 files and245,484,022,806 bytes: its README is
+1389 rather than1972 bytes and it includes a2379-byte`.gitattributes`. All tensor
+shard sizes and SHA256 identities match the initial listing. The SDK already
+uses the intended revision; no weight redownload is needed. Final validation
+uses`runs/qwen38-download/pinned-remote-files.json`, not the initial listing.
