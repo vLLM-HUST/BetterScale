@@ -8,7 +8,7 @@ devices=${1:-0,1,2,3,4,5}
 "$runtime/bin/python" - "$PERSISTENT_BUILD" "$DEVICE_SERVICE_SOURCE_BUILD" <<'PYABI'
 import json, sys
 from pathlib import Path
-expected = dict(server_config_words=27, client_config_words=15, hidden=2048, inner=512, topk=10, owners=4)
+expected = dict(server_config_words=27, client_config_words=16, hidden=2048, inner=512, topk=10, owners=4)
 for root in sys.argv[1:]:
     assert json.loads((Path(root)/"abi.json").read_text()) == expected, root
 assert Path(sys.argv[1]).resolve() == Path(sys.argv[2]).resolve(), "Use one matched build closure"

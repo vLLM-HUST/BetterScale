@@ -33,6 +33,16 @@ def cases():
         )
     n = geometry()["rows"]
     work.extend([(f"same{n}", n, n, 0), (f"different{n}", n, n, 1)])
+    if os.environ.get("BULK_SCENARIO") == "priority":
+        n = geometry()["rows"]
+        work = [
+            ("priority_decode_first", n, 32, 0),
+            ("priority_decode_other_layer", n, 32, 1),
+            ("priority_promoted_prefill", n, 32, 0),
+            ("priority_stale_promotion", n, 32, 0),
+            ("priority_future_promotion", n, 32, 0),
+            ("prefill_pair", n, n, 0),
+        ]
     for repeat in range(6):
         for case in work if repeat % 2 == 0 else reversed(work):
             yield repeat, case
@@ -94,7 +104,19 @@ def worker(role, device, links, out):
             layer = layer1 if role else 0
             frame.zero_()
             if n:
-                frame[8:16] = torch.tensor([1, layer, n, 0, 0, 0, 0, 0], device="npu")
+                priority = int(
+                    label == "prefill_pair"
+                    or (label.startswith("priority_") and role == 0)
+                )
+                frame[8:16] = torch.tensor(
+                    [1, layer, n, priority, 0, 0, 0, 0], device="npu"
+                )
+                if role == 0:
+                    frame[16] = {
+                        "priority_promoted_prefill": 1,
+                        "priority_stale_promotion": -1,
+                        "priority_future_promotion": 2,
+                    }.get(label, 0)
                 ids = (
                     (
                         (torch.arange(n, device="npu")[:, None] + (n0 if role else 0))
@@ -230,7 +252,17 @@ def worker(role, device, links, out):
         torch.npu.synchronize()
         receipt = engine.finish()
         assert receipt["completed_counts"] == [1, int(n1 > 0)]
-        assert receipt["waves"] == (2 if layer1 else 1), (label, receipt["trace"])
+        assert receipt["waves"] == (
+            2 if layer1 or label.startswith("priority_") else 1
+        ), (label, receipt["trace"])
+        if label.startswith("priority_"):
+            admitted = sorted(receipt["trace"], key=lambda row: row[12])
+            first = 0 if label == "priority_promoted_prefill" else 1
+            assert admitted[0][first] == 1 and admitted[0][1 - first] == 0, (
+                label,
+                admitted,
+            )
+            assert admitted[0][11] == int(first == 0), (label, admitted)
         events = receipt["events"]
         span = (max(e[4] for e in events) - min(e[3] for e in events)) / 50
         max_rel = 0

@@ -7,7 +7,7 @@ REAL = os.environ.get("NEXT_REAL") == "1"
 MODEL = "/data/shared_models/Qwen3-Next-80B-A3B-Instruct"
 assert LAYERS in (4, 48)
 CONTRACT = dict(
-    version=3,
+    version=4,
     server_config_abi=27,
     route_pull=os.environ.get("DEVICE_SERVICE_ROUTE_PULL") == "1",
     layers=LAYERS,

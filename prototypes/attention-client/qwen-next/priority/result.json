@@ -1,0 +1,32 @@
+{
+  "scope": "Two physical source NPUs with bulk same/different-layer work, one server.\n\nAll inputs are published before server execution: this measures a genuinely\nbacklogged admission opportunity, not the probability of catching late arrivals.\nTiming is device coordinator pull-to-return; client reduction/attention and host\nrendezvous are excluded. IPC capabilities never enter result files.",
+  "source": "runs/bulk-prefill-20260916T165658Z/results/result.json",
+  "samples": 36,
+  "max_selected_relative_l2": 0,
+  "summary": {
+    "priority_decode_first": {
+      "median_us": 2097.71,
+      "median_us_per_token": 1.986467803030303
+    },
+    "priority_decode_other_layer": {
+      "median_us": 2165.2700000000004,
+      "median_us_per_token": 2.050445075757576
+    },
+    "priority_promoted_prefill": {
+      "median_us": 1842.56,
+      "median_us_per_token": 1.7448484848484849
+    },
+    "priority_stale_promotion": {
+      "median_us": 2096.38,
+      "median_us_per_token": 1.9852083333333335
+    },
+    "priority_future_promotion": {
+      "median_us": 2087.23,
+      "median_us_per_token": 1.9765435606060606
+    },
+    "prefill_pair": {
+      "median_us": 2575.1499999999996,
+      "median_us_per_token": 1.2573974609374998
+    }
+  }
+}

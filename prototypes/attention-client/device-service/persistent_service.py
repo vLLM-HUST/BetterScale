@@ -260,6 +260,7 @@ class PersistentEngine:
             waves=ctrl[43][1],
             open_service=self.open_service,
             completed_counts=ctrl[43][4:6],
+            admitted_promotions=ctrl[43][6],
             rolling_trace=ctrl[43][1] > self.trace.shape[0],
             pulls_during_cube=ctrl[43][2],
             trace=records,

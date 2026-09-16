@@ -39,6 +39,7 @@ class Bank:
                 self.output.data_ptr(),
                 0,  # Open service must not index bounded generation diagnostics.
                 session.poll_cycles,
+                0,  # Homogeneous token-frame class: decode=0, prefill=1.
             ],
             dtype=torch.int64,
             device="npu",
@@ -101,6 +102,7 @@ class Session:
         self.counter = torch.zeros(8, dtype=torch.int32, device="npu")
         self.kernels = Kernels()
         self.submit = self.kernels.load("neural_client")
+        self.promote = self.kernels.load("neural_promote")
         self.route_pull = CONTRACT["route_pull"]
         self.poll_cycles = int(os.environ.get("DEVICE_SERVICE_PULL_POLL_CYCLES", "250"))
         assert 0 <= self.poll_cycles <= 500
@@ -114,11 +116,13 @@ class Session:
         for ch in self.channels:
             ch.expect("ready")
 
-    def forward(self, layer, hidden, logits, shared):
+    def forward(self, layer, hidden, logits, shared, *, priority=0):
         from vllm_ascend.ops.fused_moe.experts_selector import select_experts
 
         bank = self.banks[hidden.shape[0]]
         probs, ids = select_experts(hidden, logits, 10, False, True, num_experts=512)
+        assert priority in (0, 1)
+        bank.config[15] = priority
         bank.config[5] = layer
         bank.x.copy_(hidden)
         bank.ids.copy_(ids)
@@ -132,6 +136,8 @@ class Session:
             bank.submit_graph.replay()
         # No device polling kernel is queued ahead of local useful work.
         shared_output = shared(hidden)
+        if priority:
+            self.kernels.call(self.promote, bank.config, bank.x, bank.id_storage)
         if inline:
             self.kernels.call(
                 self.collect, bank.config, bank.x, bank.id_storage, blocks=16

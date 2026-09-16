@@ -35,6 +35,7 @@ for name in (
     "persistent_vector.cpp",
     "persistent_cube.cpp",
     "persistent_protocol.hpp",
+    "priority_policy.hpp",
     "streaming_gmm.hpp",
     "actual_gmm.cpp",
     "launch.cpp",

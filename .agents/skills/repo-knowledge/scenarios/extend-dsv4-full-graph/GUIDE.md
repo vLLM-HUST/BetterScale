@@ -632,3 +632,18 @@ assert the runtime module path matches the binary/geometry closure before NPU
 initialization. Frozen coordinator IDs now use int16 UB storage and workers
 retain strided maps; increasing the scalar stack to128KiB is not supported by
 the current compiler. Do not infer algorithm limits from mismatched-ABI failures.
+
+### Slack-aware expert priority (2026-09-16)
+
+Enter `qwen-next/priority/README.md` under `prototypes/attention-client` for
+decode/prefill scheduling. Original class, dynamic urgency and layer compatibility
+are separate contracts. Prefill client publishes a generation-tagged promotion
+after shared, before collect; source+16 is not the descriptor class at+11.
+Check both unclaimed and already-staged tasks. A staged prefill must remain in
+burst-fairness accounting or the other slot can recycle decode indefinitely.
+Current scope is two homogeneous source frames, not arbitrary mixed rows.
+Role ABI4/client16 words rejects stale clients; graph decode omits no-op promotion.
+Final four-layer native gate165554 and bulk priority165658 pass. Diagnostic165349
+observed one in-slot promotion but predates decode no-op removal; do not report
+it as a final performance A/B. The linked model-readiness audit separates the
+new Qwen4Exp W8A8/PLE requirements from the existing BF16 Next path.

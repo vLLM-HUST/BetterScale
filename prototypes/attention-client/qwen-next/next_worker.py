@@ -25,7 +25,24 @@ class RemoteExperts(torch.nn.Module):
     def forward(self, hidden_states, router_logits):
         assert SESSION is not None
         logits, _ = self.gate(hidden_states)
-        return SESSION.forward(self.layer_id, hidden_states, logits, self.shared)
+        from vllm.forward_context import (
+            get_forward_context,
+            is_forward_context_available,
+        )
+
+        priority = 0
+        if is_forward_context_available():
+            metadata = get_forward_context().attn_metadata
+            if isinstance(metadata, dict) and metadata:
+                # Current fixture has one sequence: this frame is homogeneous.
+                # Decode priority must not be guessed from row count (K+1 and
+                # short prefills overlap). Use native scheduling metadata.
+                priority = int(
+                    any(getattr(m, "num_prefills", 0) > 0 for m in metadata.values())
+                )
+        return SESSION.forward(
+            self.layer_id, hidden_states, logits, self.shared, priority=priority
+        )
 
 
 class Worker(NPUWorker):

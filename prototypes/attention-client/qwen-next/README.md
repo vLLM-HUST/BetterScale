@@ -311,3 +311,11 @@ residual server wait, not just data transfer or GEMM. This is one profiled short
 A/B, not a sustained-throughput claim. See [CONCURRENCY.md](CONCURRENCY.md) for
 same-layer/different-layer arrival experiments and the presently missed batching
 opportunity.
+
+## Decode priority and shared-completion promotion
+
+The new role contract is version4, client config16 words (class at15); rebuild
+the matched closure. See [priority/README.md](priority/README.md) for the
+cross-layer scheduling plane, generation-tagged shared completion, starvation
+backstop, six-role gate and its limits. See [model readiness](priority/model-readiness.md)
+before substituting the Qwen3.8-Flash-Next W8A8 checkpoint for this BF16 model.

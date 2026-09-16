@@ -132,6 +132,7 @@ def main():
                     receipt if os.environ.get("NEXT_WIRE_CONCURRENCY") == "1" else None
                 ),
                 completed=expected,
+                admitted_promotions=receipt["admitted_promotions"],
                 waves=receipt["waves"],
                 rolling_trace=receipt["rolling_trace"],
                 role_weight_bytes=sum(

@@ -1,4 +1,5 @@
 #include "persistent_protocol.hpp"
+#include "priority_policy.hpp"
 using namespace AscendC;
 using namespace Persistent;
 
@@ -264,6 +265,7 @@ struct Slot {
   int ids[2][ROUTES], live = 0, boundary = 0;
   int upDone = 0, actDone = 0, downDone = 0, downGen = 0, downPrefix = 0;
   int moveCursor = 0, moveEnd = 0, fetchMask = 0;
+  int priority = 0, serviceRank = 0, ticket = 0;
 };
 __aicore__ inline void Descriptor(Transfer &io, __gm__ int64_t *ptr, Slot &s) {
   for (int c = 0; c < 2; ++c) {
@@ -275,8 +277,13 @@ __aicore__ inline void Descriptor(Transfer &io, __gm__ int64_t *ptr, Slot &s) {
   }
 }
 __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
-                             int *claimed, int *finished, int *closed) {
+                             int *claimed, int *finished, int *closed,
+                             PriorityPolicy &policy) {
   int mask = 0;
+  bool pending[2] = {false, false};
+  int generations[2] = {0, 0}, layers[2] = {0, 0}, rows[2] = {0, 0};
+  int priorities[2] = {0, 0}, urgency[2] = {0, 0};
+  bool occupied = s.gen[0] || s.gen[1];
   for (int c = 0; c < 2; ++c) {
     if (claimed[c] || closed[c] || (!cfg[24] && finished[c] >= cfg[6]))
       continue;
@@ -292,13 +299,38 @@ __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
       continue;
     io.Read(src + 8, 8);
     int desc = io.words.GetValue(0), layer = io.words.GetValue(1),
-        n = io.words.GetValue(2);
+        n = io.words.GetValue(2), priority = io.words.GetValue(3);
     if (desc != gen || layer < 0 || layer >= LAYERS ||
-        (SINGLE_LAYER && layer >= cfg[26]) || n < 1 || n > 32)
+        (SINGLE_LAYER && layer >= cfg[26]) || n < 1 || n > 32 || priority < 0 ||
+        priority > 1)
       return -1;
-    if (SINGLE_LAYER && ((s.gen[0] && s.layer[0] != layer) ||
-                         (s.gen[1] && s.layer[1] != layer)))
+    if (occupied && (priority != s.priority ||
+                     (SINGLE_LAYER && ((s.gen[0] && s.layer[0] != layer) ||
+                                       (s.gen[1] && s.layer[1] != layer)))))
       continue;
+    pending[c] = true;
+    generations[c] = gen;
+    layers[c] = layer;
+    rows[c] = n;
+    priorities[c] = priority;
+    urgency[c] =
+        priority == 1 && Promoted(gen, io.Flag(src + 16)) ? 0 : priority;
+  }
+  int first = policy.Choose(pending, urgency);
+  if (first < 0)
+    return 0;
+  if (!occupied) {
+    s.priority = priorities[first];
+    s.serviceRank = policy.Grant(first, s.priority) ? -1 : urgency[first];
+    s.ticket = policy.nextTicket++;
+  }
+  for (int j = 0; j < 2; ++j) {
+    int c = (first + j) % 2;
+    if (!pending[c] || priorities[c] != s.priority ||
+        (SINGLE_LAYER && layers[c] != layers[first]))
+      continue;
+    auto src = (__gm__ int32_t *)cfg[4 + c];
+    int gen = generations[c], n = rows[c], layer = layers[c];
     io.Read(src + 64, (n * TOPK + 7) / 8 * 8);
     for (int i = 0; i < n * TOPK; ++i) {
       s.ids[c][i] = io.words.GetValue(i);
@@ -427,6 +459,8 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
   auto ctrl = (__gm__ int32_t *)cfg[0];
   auto slots = (__gm__ int64_t *)cfg[1];
   Slot s[2];
+  PriorityPolicy policy;
+  int promotions = 0;
   int parts = cfg[14] ? 2 : 1, vpart = 0, cpart = 0;
   int claimed[2] = {0, 0}, finished[2] = {0, 0}, closed[2] = {0, 0};
   int vgen = 0, cgen = 0, vs = -1, cs = -1, waves = 0, idle = 0;
@@ -488,7 +522,8 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
                                     int(fetch ? cfg[16] / 8 : cfg[16]));
         if (slot.moveCursor == slot.moveEnd) {
           if (fetch) {
-            int added = Accept(io, cfg, slot, claimed, finished, closed);
+            int added =
+                Accept(io, cfg, slot, claimed, finished, closed, policy);
             if (added < 0) {
               Store(ctrl + STOP * LINE, -31);
               break;
@@ -510,7 +545,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
         vs = -1;
       } else if (slot.stage == PULL) {
         // No wait-to-coalesce: one snapshot after useful DMA completes.
-        int added = Accept(io, cfg, slot, claimed, finished, closed);
+        int added = Accept(io, cfg, slot, claimed, finished, closed, policy);
         if (added < 0) {
           Store(ctrl + STOP * LINE, -31);
           break;
@@ -557,9 +592,9 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
                             slot.gen[1] ? slot.layer[1] : -1,
                             slot.rows[0],
                             slot.rows[1],
-                            0,
-                            0,
-                            0,
+                            slot.priority,
+                            slot.ticket,
+                            slot.serviceRank,
                             0,
                             0};
           for (int i = 0; i < 16; ++i)
@@ -582,16 +617,44 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       ctrl[STATUS * LINE + 3] = eventCount;
       ctrl[STATUS * LINE + 4] = finished[0];
       ctrl[STATUS * LINE + 5] = finished[1];
+      ctrl[STATUS * LINE + 6] = promotions;
       Store(ctrl + STATUS * LINE, 1);
       Store(ctrl + STOP * LINE, 1);
       break;
+    }
+    // Shared completion promotes a still-owned generation, including work
+    // already admitted into staging. Never let a previous generation promote
+    // a new task. Promotions are monotone until this slot retires.
+    for (int i = 0; i < 2; ++i)
+      if (s[i].stage != EMPTY && s[i].serviceRank > 0)
+        for (int c = 0; c < 2; ++c)
+          if (s[i].gen[c] &&
+              Promoted(s[i].gen[c],
+                       io.Flag((__gm__ int32_t *)cfg[4 + c] + 16))) {
+            s[i].serviceRank = 0;
+            ++promotions;
+            break;
+          }
+    int oldest = s[0].ticket <= s[1].ticket ? 0 : 1;
+    for (int k = 0; k < 2; ++k) {
+      int i = (oldest + k) % 2;
+      if (s[i].stage != EMPTY &&
+          policy.ProtectWaitingPrefill(s[i].priority, s[i].serviceRank))
+        break;
+    }
+    int order[2] = {0, 1};
+    if (PriorityBefore(s[1].serviceRank, s[1].ticket, s[0].serviceRank,
+                       s[0].ticket)) {
+      order[0] = 1;
+      order[1] = 0;
     }
     if (cs < 0) {
       // Down may consume only a joined activation segment. Otherwise continue
       // up while AIV consumes its earlier, disjoint segment. UP denotes the
       // entire compute lifetime; engine progress is tracked independently.
-      for (int phase = 0; phase < 2 && cs < 0; ++phase)
-        for (int i = 0; i < 2 && cs < 0; ++i) {
+      for (int k = 0; k < 2 && cs < 0; ++k)
+        for (int phase = 0; phase < 2 && cs < 0; ++phase) {
+          int i = order[k];
           auto &slot = s[i];
           if (slot.stage != READY_UP && slot.stage != UP &&
               !(cfg[20] && slot.stage == PACK))
@@ -635,8 +698,9 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       }
     }
     if (vs < 0 && us < 0) {
-      for (int phase = 0; phase < 2 && vs < 0; ++phase)
-        for (int i = 0; i < 2 && vs < 0; ++i) {
+      for (int k = 0; k < 2 && vs < 0; ++k)
+        for (int phase = 0; phase < 2 && vs < 0; ++phase) {
+          int i = order[k];
           auto &slot = s[i];
           if (slot.stage != UP)
             continue;
@@ -678,7 +742,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       }
       for (int i = 0; i < 2 && vs < 0; ++i)
         if (s[i].stage == EMPTY) {
-          int mask = Accept(io, cfg, s[i], claimed, finished, closed);
+          int mask = Accept(io, cfg, s[i], claimed, finished, closed, policy);
           if (mask < 0) {
             Store(ctrl + STOP * LINE, -32);
             break;

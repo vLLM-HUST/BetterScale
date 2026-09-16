@@ -10,14 +10,18 @@ from unittest.mock import Mock, patch
 
 class SubmitOrder(unittest.TestCase):
     def test_useful_work_precedes_collect_and_output_is_not_bank_alias(self):
-        self.check_order(False, False)
-        self.check_order(False, True)
+        self.check_order(False, False, 0)
+        self.check_order(False, False, 1)
+        self.check_order(False, True, 0)
+        self.check_order(False, True, 1)
 
     def test_outer_graph_inlines_nodes_instead_of_replaying_child_graphs(self):
-        self.check_order(True, False)
-        self.check_order(True, True)
+        self.check_order(True, False, 0)
+        self.check_order(True, False, 1)
+        self.check_order(True, True, 0)
+        self.check_order(True, True, 1)
 
-    def check_order(self, inline, route_pull):
+    def check_order(self, inline, route_pull, priority):
         events = []
         fake = types.ModuleType("fake")
         deps = {
@@ -52,7 +56,7 @@ class SubmitOrder(unittest.TestCase):
             output = Mock()
             output.__add__ = Mock(return_value="independent_result")
             bank = types.SimpleNamespace(
-                config=[0] * 11,
+                config=[0] * 16,
                 x=Mock(),
                 ids=Mock(),
                 probs=Mock(),
@@ -67,6 +71,7 @@ class SubmitOrder(unittest.TestCase):
                 indices="indices",
                 id_storage="id_storage",
             )
+            session.promote = "promote"
             session.route_pull = route_pull
             session.banks = {3: bank}
             session.submit, session.collect, session.retire = (
@@ -83,12 +88,21 @@ class SubmitOrder(unittest.TestCase):
                 return "shared_output"
 
             result = session.forward(
-                17, types.SimpleNamespace(shape=(3, 2048)), "logits", shared
+                17,
+                types.SimpleNamespace(shape=(3, 2048)),
+                "logits",
+                shared,
+                priority=priority,
             )
         self.assertEqual(
-            events, ["submit", "shared", "collect"] + (["retire"] if inline else [])
+            events,
+            ["submit", "shared"]
+            + (["promote"] if priority else [])
+            + ["collect"]
+            + (["retire"] if inline else []),
         )
         self.assertEqual(bank.config[5], 17)
+        self.assertEqual(bank.config[15], priority)
         self.assertEqual(result, "independent_result")
         output.__add__.assert_called_once_with("shared_output")
         if inline:

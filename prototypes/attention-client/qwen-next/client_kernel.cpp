@@ -2,7 +2,8 @@
 #include "kernel_operator.h"
 using namespace AscendC;
 constexpr int H = 2048, TOPK = 10, ROUTES = 320;
-// Metadata = [generation, task, layer, expert, phase (0=D), rows, 0, 0].
+// Descriptor at source+8: [generation, layer, rows, class (0=D/1=P), 0...].
+// source+16 contains a separate generation-tagged shared-completion signal.
 // Source READY and result DONE are separate cache-line-sized blocks.
 class IO {
 public:
@@ -61,9 +62,27 @@ neural_client(GM_ADDR cfgaddr, GM_ADDR hidden, GM_ADDR topk) {
   io.Read((__gm__ int32_t *)topk, padded);
   io.Write(src + 64, padded);
   for (int j = 0; j < 8; ++j)
-    io.ub.SetValue(j, j == 0 ? gen : (j == 1 ? cfg[5] : (j == 2 ? n : 0)));
+    io.ub.SetValue(
+        j, j == 0 ? gen
+                  : (j == 1 ? cfg[5] : (j == 2 ? n : (j == 3 ? cfg[15] : 0))));
   io.Write(src + 8);
   io.Publish(src, gen);
+}
+// Enqueued AFTER native shared expert and BEFORE collect, inside the same
+// outer graph/stream. It publishes critical-path urgency without a host fence.
+extern "C" __global__ __aicore__ void
+neural_promote(GM_ADDR cfgaddr, GM_ADDR unused, GM_ADDR unused2) {
+  if (GetBlockIdx() != 0)
+    return;
+  auto cfg = (__gm__ int64_t *)cfgaddr;
+  if (!cfg[8] || cfg[15] != 1)
+    return;
+  IO io;
+  io.Init();
+  auto src = (__gm__ int32_t *)cfg[0];
+  int generation = io.Flag(src);
+  if (generation > 0)
+    io.Publish(src + 16, generation);
 }
 extern "C" __global__ __aicore__ void
 neural_collect(GM_ADDR cfgaddr, GM_ADDR unused, GM_ADDR topk) {
@@ -228,3 +247,5 @@ META(neural_collect)
 META(neural_retire)
 
 META(neural_collect_reduce)
+
+META(neural_promote)

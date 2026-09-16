@@ -35,7 +35,9 @@ for step, (layer, rows) in enumerate(work):
         .expand(rows, 512)
         .contiguous()
     )
-    y = session.forward(layer, x, logits, lambda z: torch.zeros_like(z))
+    y = session.forward(
+        layer, x, logits, lambda z: torch.zeros_like(z), priority=int(rows > 1)
+    )
     torch.npu.synchronize()
     assert torch.isfinite(y).all()
     if not stress or step % 100 == 0:
