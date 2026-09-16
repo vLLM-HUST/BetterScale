@@ -346,3 +346,18 @@ attention_v1 before donor device initialization, to avoid its circular import.
 Align only episode startup after both clients prewarm: otherwise one client may
 finish the bounded fixture before the second finishes loading, yielding no useful
 concurrent-ownership coverage despite a four-card run.
+
+For the next **device-driven BF16** gate, enter
+`attention-client/device-service/README.md`. Device-authored int64 GMM group counts
+and `(layer, local expert)` groups allow unchanged native grouped GEMM/SwiGLU/GMM
+inside a finite, pre-unrolled service graph. Queue/pack and scatter/DONE are AIV
+kernels; one server replay consumes a bounded episode without host route extraction
+or per-batch decisions. The three-card primitive passes64 exact outputs; the
+four-card two-layer Qwen dummy oracle passes24 exact forwards/KV across two clients.
+This is NOT an infinite persistent neural kernel or deviceized whole scheduler:
+host attention continuation, fixed padding compute and scalar packing remain.
+Both expert DONE generations must be consumed before reusing a source frame;
+publish all payloads before DONE (the publication helper reuses its UB). Keep
+native Worker imports out of the expert-only process to avoid the donor's platform
+initialization cycle. New neural policy does not inherit the integer server's
+priority/cancellation qualification merely by using its publication pattern.

@@ -26,7 +26,11 @@ def child(rank, device, links, out, ready_queue, start_event):
     torch.set_num_threads(2)
     torch.npu.set_device(0)
     if rank >= 2:
-        from server import serve
+        import importlib
+
+        serve = importlib.import_module(
+            os.environ.get("ATTENTION_JOINT_SERVER_MODULE", "server")
+        ).serve
 
         serve(rank - 2, links, str(Path(out, f"expert{rank-2}.json")))
     else:
@@ -43,7 +47,9 @@ def child(rank, device, links, out, ready_queue, start_event):
             dtype="bfloat16",
             tensor_parallel_size=1,
             distributed_executor_backend="uni",
-            worker_cls="joint_worker.JointWorker",
+            worker_cls=os.environ.get(
+                "ATTENTION_JOINT_WORKER", "joint_worker.JointWorker"
+            ),
             enforce_eager=True,
             max_model_len=256,
             max_num_batched_tokens=32,
@@ -133,7 +139,9 @@ def main():
                     layers=2,
                     full_layer_dimensions=True,
                     dummy_weights=True,
-                    host_control=True,
+                    host_control=not bool(
+                        os.environ.get("ATTENTION_JOINT_SERVER_MODULE")
+                    ),
                     performance_claim=False,
                 ),
                 indent=2,
