@@ -162,3 +162,9 @@ ordered per-device locks plus fresh health/occupancy admission and foreign-owner
 monitoring. They never terminate another task. A rejection test on occupiedcard0
 confirmed the workload launch marker was not created. The old queued global-lease
 job was cancelled before any model launched; no duplicate watcher remains.
+
+For the EP2 fused-DFC target rather than TP1 local MLP, read
+[DFC-COMPARISON.md](DFC-COMPARISON.md). Matching synthetic route/input controls show
+conditional parity: concentrated routing favors the remote stage; broad128-expert
+routing at16/32 tokens is still46–52% slower. The910B DFC provider is a lab A2 port
+with a different BF16 ABI, not the stock pinned donor operator package.

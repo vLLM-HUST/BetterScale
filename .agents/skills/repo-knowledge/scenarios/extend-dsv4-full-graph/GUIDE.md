@@ -375,3 +375,12 @@ card-set provenance in the timing receipts.
 Fletcher's2026-09-16 override permits idle subsets without the global tp8 lease;
 this prototype's per-device admission still rejects foreign occupancy. Independent
 TP1 engines need separated rendezvous port ranges, not adjacent base ports.
+
+EP2 fused comparison is in `attention-client/device-service/DFC-COMPARISON.md`.
+Pinned donor A2 OPP lacks BF16 DFC; stateharbor's lab A2 build supplies it but adds
+xActiveMask to its ACLNN ABI. Never load that OPP with the older donor Torch
+binding (observed host SIGSEGV); load its matching extension in an isolated probe.
+The qualified synthetic controls exclude gate/top-k and use identical routes:
+hot8 favors remote latency, broad128-expert cases16/32 still trail DFC46–52%.
+Different2-card versus4-card topologies and synchronous versus independent batches
+make this a stage-cost diagnostic, not a serving throughput win.
