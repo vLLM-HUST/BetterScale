@@ -18,7 +18,7 @@ dependencies = []
 where = ["src"]
 
 [tool.setuptools.package-data]
-betterscale = ["pins.json"]
+betterscale = ["pins.json", "qwen_pins.json"]
 "*" = ["README.md"]
 "betterscale.patches.hc_workspace" = ["*.json", "*.so", "*.patch", "*.txt", "README.md"]
 

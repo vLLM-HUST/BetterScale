@@ -1,0 +1,32 @@
+[
+  {
+    "distribution": "vllm",
+    "path": "vllm/v1/cudagraph_dispatcher.py",
+    "sha256": "51f632753af729aeee6ce4a802d9d74b64f22eef02a524f36e2a24b07ef0cf63"
+  },
+  {
+    "distribution": "vllm",
+    "path": "vllm/model_executor/models/qwen3_5.py",
+    "sha256": "5f47ae4f4a08d0a78dd681d58b290f3298744c73a82f1349f3e2853469ef73e6"
+  },
+  {
+    "distribution": "vllm-ascend",
+    "path": "vllm_ascend/ops/gdn.py",
+    "sha256": "8c349f68d37bede53ebe4771ac0ffd4396896f11473627446ab71f782a01eb71"
+  },
+  {
+    "distribution": "vllm-ascend",
+    "path": "vllm_ascend/ops/gdn_attn_builder.py",
+    "sha256": "af181fdd860d221bf7d35512c26c265559e11f111ea97484a0bba68ae2fa6458"
+  },
+  {
+    "distribution": "vllm-ascend",
+    "path": "vllm_ascend/ops/triton/fla/chunk.py",
+    "sha256": "7326d2ef4df1240e8ac6852c4a0152470a1e4732433992c779e4ec475b1010b5"
+  },
+  {
+    "distribution": "vllm-ascend",
+    "path": "vllm_ascend/attention/attention_v1.py",
+    "sha256": "96d36dbd87fd422b8a4928b136b334209510cd321e0d7d2b2e5bdd7a3e259d9e"
+  }
+]

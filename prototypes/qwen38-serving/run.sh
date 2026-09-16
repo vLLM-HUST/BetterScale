@@ -7,6 +7,7 @@ runtime=/workspace/my-ascend-workspace/runs/rp-legacy/20260903T155041Z-layout/rp
 mkdir -p "$(dirname "$CAPSULE")"
 mkdir "$CAPSULE" "$CAPSULE/source"
 cp "$source_dir/"*.py "$CAPSULE/source/"
+if [[ $ARM == package ]]; then cp -a "$repo/src/betterscale" "$CAPSULE/source/betterscale"; fi
 cp /root/my-ascend-workspace/runs/qwen38-27b-tp2-baseline/20260916-donor0251-v5/prompt.json "$CAPSULE/prompt.json"
 git -C "$repo" rev-parse HEAD > "$CAPSULE/source-commit.txt"
 cp /models/vllm-ascend-models/Qwen3.8-27B/config.json "$CAPSULE/model-config.json"
@@ -34,6 +35,10 @@ if [[ $ARM == fixed-full || $ARM == bucket-full || $ARM == shadow || $ARM == spe
   if [[ $ARM == spec-policy || $ARM == logical-state ]]; then probe=spec_policy_probe.py; fi
   if [[ $ARM == logical-state ]]; then probe=logical_state_probe.py; fi
   command=("$runtime/bin/python" "$CAPSULE/source/$probe")
+fi
+if [[ $ARM == package ]]; then
+  export CAPSULE
+  command=("$runtime/bin/python" "$CAPSULE/source/package_probe.py")
 fi
 if [[ $ARM == padding-kernel ]]; then
   export CAPSULE
