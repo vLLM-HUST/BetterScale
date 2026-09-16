@@ -39,3 +39,10 @@ vllm serve "$MODEL" --worker-cls betterscale.qwen_worker.Worker \
 No debug RPC, profiler, custom allocator, environment mutation, automatic donor
 upgrade, weight-layout change, or native DSV4 patches are installed by this entry.
 This source addition is not a PyPI release.
+
+Frozen public-entry acceptance `package2` (source `ebe3725`) passed12 C1 requests
+(two rounds of the six lengths above) plus C4/C8 mixed cohorts. All12 C1
+continuations matched the qualified prototype. The subsequent source changes add
+only two donor pins and distinguish the DSV4 entry's docstring; runtime behavior
+is unchanged.69CPU tests pass. Fresh local wheel/sdist delivery is checked separately;
+no installed runtime or published package was replaced.

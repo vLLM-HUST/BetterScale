@@ -1,0 +1,24 @@
+{
+  "status": "PASS",
+  "source_commit": "ebe3725a4d8230ebdc4d1e277c6ab69fe88dc5fd",
+  "entry": "betterscale.qwen_worker.Worker",
+  "capsule": "/workspace/strengthen-dsv4/runs/qwen38-tp2-serving/package2",
+  "scope": "non-speculative single-request FULL prefill; native mixed/decode; APC off; local source integration, not PyPI publication",
+  "c1_requests": 12,
+  "c1_prompt_lengths": [
+    512,
+    513,
+    1024,
+    1536,
+    2048,
+    2051
+  ],
+  "c1_text_matches_prototype": 12,
+  "mixed_concurrency": [
+    4,
+    8
+  ],
+  "cpu_tests": 69,
+  "prototype": "padded-full3",
+  "later_changes": "additional donor pins, DSV4 entry docstring, evidence prose only"
+}

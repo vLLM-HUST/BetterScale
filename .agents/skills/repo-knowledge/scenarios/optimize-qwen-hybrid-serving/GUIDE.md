@@ -149,7 +149,9 @@ Do not call the source addition a PyPI release.
 Editable vLLM source may not live beneath distribution.locate_file(). Qwen's own
 pin check validates find_spec(package).origin roots, actual imported files and
 versions. Initial `package1` correctly failed closed before model load on missing
-legacy distribution-relative files; `package2` tests the corrected independent gate.
+legacy distribution-relative files; `package2` passes the corrected independent gate,12 C1 continuations matching
+`padded-full3` plus C4/C8 mixed cohorts. It is actual entry acceptance, not a
+fresh claim against an independently measured native baseline.
 Do not silently weaken content pins or modify the DSV4 Worker to fix this route.
 
 The existing CPU suite needs the pinned Ascend submodule populated. A new parent
