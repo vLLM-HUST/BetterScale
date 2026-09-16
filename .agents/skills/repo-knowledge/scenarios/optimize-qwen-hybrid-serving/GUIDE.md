@@ -72,3 +72,25 @@ request membership must be proved before padding/general mixed replay.
 `bucket_full_worker.py` is a bounded prototype: per-shape stable metadata,
 single-prefill exact buckets, native mixed/other-length fallback,8live seats.
 Do not call it production-qualified without the actual capsule receipt.
+
+### Padded GDN investigation: current hidden is not a state oracle
+
+Experimental identity padding masks q/k/v/g/beta outside the real endpoint and
+runs chunk recurrence against a static padded cu_seqlens. Native conv retains
+its real tensor endpoint. `padded-full2` reduced2051 TTFT~812→549ms, but513 FULL
+produced corrupted continuation; reject this candidate pending state validation.
+One-shot `padded-shadow3` compares FULL against restored-before-state NONE:
+valid hidden[:513] was exactly equal on both ranks while112 cache checks differed.
+Metadata revealed GDN qloc[0,513,513], two prefills and stateindices[3,0]: FIA
+padding inserted a zero-length virtual request, bypassing single-prefill stable
+buffer binding. Correct present hidden does NOT validate future decode state.
+
+The pinned AscendCommonAttentionMetadata.unpadded override intentionally retains
+block_table_tensor/slot_mapping unsliced for FIA, unlike core vLLM's helper.
+For a GDN-only real-request view, explicitly slice block-table rows too; merely
+calling unpadded left state-index shape2 and triggered the stable shape assertion
+in `padded-shadow4`. Do not alter shared FIA metadata while repairing GDN.
+
+Full6GiB-cache before/after snapshots plus13 graphs exceeded59GiB in the shadow.
+Use the diagnostic1GiB KV budget and only512/1024 plus decode graphs for513;
+this is correctness evidence with a changed memory budget, not a timing control.
