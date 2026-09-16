@@ -2,7 +2,8 @@
 
 from functools import lru_cache
 import hashlib
-from importlib import metadata, resources
+from importlib import metadata, resources, util
+from pathlib import Path
 import json
 
 from vllm_ascend.worker.worker import NPUWorker
@@ -11,14 +12,20 @@ from .patches.qwen_prefill import PREFILLS, install
 
 @lru_cache(maxsize=1)
 def check_runtime():
-    from .compat import check_runtime as check_common_runtime
-
-    check_common_runtime()
     pins = json.loads(
         resources.files("betterscale").joinpath("qwen_pins.json").read_text()
     )
-    for item in pins:
-        path = metadata.distribution(item["distribution"]).locate_file(item["path"])
+    for name, expected in pins["versions"].items():
+        if metadata.version(name).split("+", 1)[0] != expected:
+            raise RuntimeError(f"Unqualified Qwen donor version: {name}")
+    # Editable donors need not place source under distribution.locate_file().
+    # Validate the package actually imported, never an unrelated installed copy.
+    for item in pins["source_files"]:
+        package, relative = item["path"].split("/", 1)
+        spec = util.find_spec(package)
+        if spec is None or spec.origin is None:
+            raise RuntimeError(f"Missing Qwen donor package: {package}")
+        path = Path(spec.origin).parent / relative
         if (
             not path.is_file()
             or hashlib.sha256(path.read_bytes()).hexdigest() != item["sha256"]
