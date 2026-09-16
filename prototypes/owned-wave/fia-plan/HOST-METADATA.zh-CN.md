@@ -151,3 +151,7 @@ tiling85.6us是嵌套部分，不能相加重复计费。这是profile期间的h
 复用原有native基线，没有再次采baseline。未覆盖时间不是所有引擎空闲；
 compute求和与collective可能重叠，不能相加当墙钟。TraceLoom精确Ascend replay
 partition仍不支持，沿用provider model-ID连续体/每体48FIA+1sampler断言。
+
+后续向上选桶、真实 query metadata 与新 C ABI 见
+[`CEILING-PREFILL.zh-CN.md`](CEILING-PREFILL.zh-CN.md)。上面性能表保留旧 exact-tail
+协议的历史结果，不应当当作新 ceiling candidate 的测量。

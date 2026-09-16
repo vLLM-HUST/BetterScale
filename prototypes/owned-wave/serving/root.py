@@ -39,7 +39,7 @@ class ServingRoot(OwnedRoot):
 
     State columns: cursor, anchor, remaining, phase, generation, prompt_len,
     generated. Phase: empty0/prefill1/decode2/done3. One prefill resident per
-    wave; decode batches all authorized residents. No padded prefill tokens.
+    wave; decode batches all authorized residents. Padding has no KV/state authority.
     """
 
     def __init__(self, bundle, backend, *, residents, max_length, chunks):
@@ -196,7 +196,10 @@ class ServingRoot(OwnedRoot):
                 intermediate_tensors=None,
                 inputs_embeds=None,
             )
-        logits = self.bundle.model.compute_logits(hidden[-1:] if last_only else hidden)
+        if last_only:
+            last = self.frames[key]["device_q_lengths"] - 1
+            hidden = hidden.index_select(0, last)
+        logits = self.bundle.model.compute_logits(hidden)
         return (
             self.bundle.sampler(logits=logits, sampling_metadata=self.bundle.sampling)
             .sampled_token_ids.flatten()
@@ -212,7 +215,11 @@ class ServingRoot(OwnedRoot):
         index = slot.view(1)
         old = self.progress.index_select(0, index)[0]
         cursor = torch.where(start.bool(), hit, old[0])
-        positions = cursor + torch.arange(q, device=self.bundle.device)
+        valid = f["device_q_lengths"][0]
+        offsets = torch.arange(q, device=self.bundle.device)
+        live = offsets < valid
+        f["padding_mask"] = ~live
+        positions = torch.where(live, cursor + offsets, 0)
         # New-generation publication is compute-ordered behind old readers.
         table = torch.where(
             start.bool(), f["block_row"], self.tables.index_select(0, index)[0]
@@ -221,14 +228,16 @@ class ServingRoot(OwnedRoot):
         m.block_tables.copy_(table.view(1, -1))
         physical = table.gather(0, positions // self.bundle.block_size)
         m.slot_mapping.copy_(
-            (physical * self.bundle.block_size + positions % self.bundle.block_size).to(
-                torch.int32
-            )
+            torch.where(
+                live,
+                physical * self.bundle.block_size + positions % self.bundle.block_size,
+                -1,
+            ).to(torch.int32)
         )
         if self.static_attention is not None:
-            f["device_kv_lengths"].copy_((cursor + q).view(1))
+            f["device_kv_lengths"].copy_((cursor + valid).view(1))
         sampled = self.run_model(f["ids"], positions, m, key, last_only=True)[0]
-        end = cursor + q
+        end = cursor + valid
         final = end == promptlen
         generated = final.to(torch.int64)
         done = final & (limit == 1)

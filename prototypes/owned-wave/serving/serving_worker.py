@@ -151,6 +151,7 @@ class ServingWorker(NPUWorker):
                         sessions,
                         slots=n,
                         chunks=chunks,
+                        pad_prefill=hasattr(root.static_attention, "prepare"),
                         table_width=table.shape[1],
                         generations=generations,
                     )
@@ -199,6 +200,12 @@ class ServingWorker(NPUWorker):
                         peak_used_blocks=cache.peak_used_blocks,
                         deferred_releases=cache.deferred_releases,
                         waves=scheduler.sequence,
+                        prefill_policy=(
+                            "ceiling" if scheduler.pad_prefill else "exact-floor"
+                        ),
+                        prefill_waves=scheduler.prefill_waves,
+                        prefill_tokens=scheduler.prefill_tokens,
+                        padding_tokens=scheduler.padding_tokens,
                         memory=self.memory_receipt(),
                         events=scheduler.events,
                     )

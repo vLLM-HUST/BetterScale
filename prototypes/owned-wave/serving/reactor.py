@@ -40,7 +40,7 @@ class Reactor:
         attention_metadata = None
         if hasattr(root.static_attention, "prepare"):
             key, attention_metadata = root.static_attention.prepare(
-                key, plan["lengths"]
+                key, plan["lengths"], plan.get("query_tokens")
             )
         f = root.frames[key]
         if f["bank"] != bank:

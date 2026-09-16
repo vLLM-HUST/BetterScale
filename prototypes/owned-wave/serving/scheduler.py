@@ -22,17 +22,35 @@ class Resident:
 
 class SessionScheduler:
     def __init__(
-        self, cache, sessions, *, slots, chunks, table_width, generations=None
+        self,
+        cache,
+        sessions,
+        *,
+        slots,
+        chunks,
+        table_width,
+        generations=None,
+        pad_prefill=True,
     ):
         self.cache = cache
         self.sessions = sessions
         self.slots = [None] * slots
-        self.chunks = sorted(chunks, reverse=True)
+        self.chunks = sorted(set(chunks), reverse=True)
+        if (
+            not self.chunks
+            or self.chunks[-1] < 1
+            or (not pad_prefill and self.chunks[-1] != 1)
+        ):
+            raise ValueError(
+                "invalid prefill catalog (exact fallback requires bucket1)"
+            )
+        self.pad_prefill = pad_prefill
         self.table_width = table_width
         self.generations = generations or [0] * slots
         self.waiting = [(i, 0) for i in range(len(sessions))]
         self.pending = []
         self.sequence = 0
+        self.prefill_waves = self.prefill_tokens = self.padding_tokens = 0
         self.prefill_cursor = 0
         self.last_kind = "d"
         self.records = []
@@ -89,8 +107,15 @@ class SessionScheduler:
             r = prefills[self.prefill_cursor % len(prefills)]
             self.prefill_cursor += 1
             remaining = len(r.call["prompt_ids"]) - r.projected
-            q = next(x for x in self.chunks if x <= remaining)
-            end = r.projected + q
+            valid = min(remaining, self.chunks[0])
+            q = (
+                min(x for x in self.chunks if x >= valid)
+                if self.pad_prefill
+                else next(x for x in self.chunks if x <= remaining)
+            )
+            if not self.pad_prefill:
+                valid = q
+            end = r.projected + valid
             command = [
                 seq,
                 r.lease.slot,
@@ -105,14 +130,19 @@ class SessionScheduler:
                 key=f"p{q}b{bank}",
                 kind="p",
                 lengths=[end],
+                query_tokens=valid,
                 residents=[r],
                 inputs=dict(
                     command=command,
-                    ids=r.call["prompt_ids"][r.projected : end],
+                    ids=r.call["prompt_ids"][r.projected : end] + [0] * (q - valid),
+                    device_q_lengths=[valid],
                     block_row=r.lease.blocks
                     + [0] * (self.table_width - len(r.lease.blocks)),
                 ),
             )
+            self.prefill_waves += 1
+            self.prefill_tokens += valid
+            self.padding_tokens += q - valid
             r.started = True
             r.projected = end
             r.ready = end == len(r.call["prompt_ids"])

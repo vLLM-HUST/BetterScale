@@ -59,7 +59,11 @@ class SchedulerTests(unittest.TestCase):
                     key = (r.lease.slot, r.lease.generation)
                     cursor, generated = state.get(key, (0, 0))
                     if p["kind"] == "p":
-                        cursor = p["lengths"][0]
+                        cursor += p["query_tokens"]
+                        self.assertEqual(p["lengths"], [cursor])
+                        self.assertEqual(
+                            p["inputs"]["device_q_lengths"], [p["query_tokens"]]
+                        )
                     else:
                         active = generated < r.call["output_tokens"]
                         cursor += int(active)
@@ -96,6 +100,45 @@ class SchedulerTests(unittest.TestCase):
             all(len(r["token_ids"]) == r["output_tokens"] for r in s.records)
         )
         self.assertGreater(cache.deferred, 0)
+
+    def test_ceiling_bucket_keeps_actual_length_and_padding(self):
+        for valid, bucket in [
+            (70, 128),
+            (13, 16),
+            (41, 64),
+            (30, 32),
+            (1, 1),
+            (128, 128),
+            (1025, 1024),
+        ]:
+            with self.subTest(valid=valid):
+                s = SessionScheduler(
+                    Cache(),
+                    [
+                        dict(
+                            calls=[
+                                dict(
+                                    prompt_ids=list(range(1, valid + 1)),
+                                    output_tokens=2,
+                                )
+                            ]
+                        )
+                    ],
+                    slots=1,
+                    chunks=[2**i for i in range(11)],
+                    table_width=2,
+                )
+                p = s.next_plan()
+                actual = min(valid, 1024)
+                self.assertEqual(p["key"], f"p{bucket}b0")
+                self.assertEqual(p["query_tokens"], actual)
+                self.assertEqual(p["lengths"], [actual])
+                self.assertEqual(p["inputs"]["device_q_lengths"], [actual])
+                self.assertEqual(
+                    p["inputs"]["ids"],
+                    list(range(1, actual + 1)) + [0] * (bucket - actual),
+                )
+                self.assertEqual(p["residents"][0].projected, actual)
 
     def test_tp_disagreement_cannot_release(self):
         cache = Cache()

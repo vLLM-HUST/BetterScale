@@ -16,10 +16,11 @@ class HostAttention(StaticAttention):
     def __init__(self, root):
         super().__init__(root)
         u64 = ctypes.c_uint64
-        self.lib.plan_native.argtypes = [
+        self.lib.plan_native_queries.argtypes = [
             ctypes.POINTER(u64),
             *[ctypes.c_int] * 6,
             ctypes.c_double,
+            ctypes.POINTER(ctypes.c_int64),
             ctypes.POINTER(ctypes.c_int64),
             ctypes.c_void_p,
         ]
@@ -30,7 +31,7 @@ class HostAttention(StaticAttention):
         ]
         self.lib.plan_bind_metadata.argtypes = [ctypes.c_int, u64]
         for name in (
-            "plan_native",
+            "plan_native_queries",
             "plan_metadata",
             "plan_pad_blocks",
             "plan_blocks",
@@ -61,15 +62,22 @@ class HostAttention(StaticAttention):
             and rows * impl.num_kv_heads <= 0.8 * 24
         )
 
-    def native(self, base, lengths):
+    def native(self, base, lengths, query_tokens=None):
         query, key, value, mask, table, output, impl, rows, width = self.fixtures[base]
+        if query_tokens is not None and (rows != 1 or not 1 <= query_tokens <= width):
+            raise ValueError("invalid actual prefill query length")
+        offsets = (
+            [query_tokens]
+            if query_tokens is not None
+            else [(i + 1) * width for i in range(rows)]
+        )
         ptrs = (ctypes.c_uint64 * 7)(
             *[
                 t.data_ptr()
                 for t in (query, key, value, mask, table, output, self.workspace)
             ]
         )
-        plan = self.lib.plan_native(
+        plan = self.lib.plan_native_queries(
             ptrs,
             rows,
             width,
@@ -79,6 +87,7 @@ class HostAttention(StaticAttention):
             table.shape[1],
             impl.scale,
             (ctypes.c_int64 * rows)(*lengths),
+            (ctypes.c_int64 * rows)(*offsets),
             torch.npu.current_stream().npu_stream,
         )
         if plan < 0:
@@ -102,8 +111,8 @@ class HostAttention(StaticAttention):
             raise RuntimeError(f"unqualified native tiling payload: {size}")
         return host
 
-    def prepare(self, base, lengths):
-        plan, blocks = self.native(base, lengths)
+    def prepare(self, base, lengths, query_tokens=None):
+        plan, blocks = self.native(base, lengths, query_tokens)
         try:
             fd = self.lib.plan_is_fd(plan)
             key = base + ("fd" if fd else "")
@@ -205,6 +214,12 @@ class HostAttention(StaticAttention):
             self.lib.plan_launch(plan, torch.npu.current_stream().npu_stream), "launch"
         )
         self.launch_calls += 1
+        if f["kind"] == "p":
+            # FIA writes only the live prefix. Never feed uninitialized padding
+            # into downstream projection/router/GMM, even though KV ignores it.
+            output.masked_fill_(
+                f["padding_mask"].view(-1, *([1] * (output.ndim - 1))), 0
+            )
         return output
 
     def close(self):
