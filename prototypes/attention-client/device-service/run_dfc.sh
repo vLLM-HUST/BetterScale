@@ -1,5 +1,5 @@
 #!/bin/bash
-# One-card native expert control; requires the pinned lab runtime.
+# Two-card native expert control; requires the pinned lab runtime.
 set -euo pipefail
 repo=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)
 devices=${1:-2,3}
@@ -30,5 +30,8 @@ export ASCEND_CUSTOM_OPP_PATH=/workspace/my-ascend-workspace/stateharbor/build/l
 export DFC_EXTENSION=/workspace/my-ascend-workspace/stateharbor/build/lib.linux-aarch64-cpython-312/livemodule/arch/ascend/_native/vllm_ascend_C.cpython-312-aarch64-linux-gnu.so
 export LD_LIBRARY_PATH="$(dirname "$DFC_EXTENSION"):$ASCEND_CUSTOM_OPP_PATH/op_api/lib:$LD_LIBRARY_PATH"
 printf '%s\n' "$ASCEND_CUSTOM_OPP_PATH" > "$capsule/dfc-provider.txt"
+if [[ "${DEVICE_SERVICE_PROFILE:-}" == 1 ]]; then
+    export DEVICE_SERVICE_PROFILE="$capsule/profile"
+fi
 printf '%s\n' "$capsule"
 exec "$runtime/bin/python" "$capsule/source/launch.py" --devices "$devices" --output "$capsule/run" -- "$runtime/bin/python" "$capsule/source/device/dfc_probe.py" --out "$capsule/results"

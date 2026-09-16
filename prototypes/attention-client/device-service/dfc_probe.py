@@ -9,6 +9,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import torch_npu
+import profile_capture
 
 H, M, E, K = 2048, 768, 128, 8
 
@@ -136,6 +137,19 @@ def worker(rank, out):
                 )
             )
             Path(out, f"rank{rank}.json").write_text(json.dumps(results, indent=2))
+            # Capture only a warm broad-hit case; oracle, capture and timing
+            # trials stay outside the profiler so its overhead is not a result.
+            if (
+                pattern == "balanced"
+                and rows == 32
+                and os.environ.get("DEVICE_SERVICE_PROFILE")
+            ):
+                dist.barrier()
+                profiler = profile_capture.start(f"dfc{rank}")
+                for _ in range(8):
+                    graph.replay()
+                torch.npu.synchronize()
+                profile_capture.stop(profiler)
             graph.reset()
     dist.barrier()
     dist.destroy_process_group()

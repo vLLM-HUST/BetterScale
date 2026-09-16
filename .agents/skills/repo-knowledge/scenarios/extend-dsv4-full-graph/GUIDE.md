@@ -480,3 +480,10 @@ keep opt-in. Timing engine2 is urgent work on the SAME AIV cores, not a new team
 subtract its intervals from suspended move envelopes and assert physical-lane
 exclusivity (implemented in persistent_analyze.py). Source retirement and producer
 joins remain mandatory; this is not arbitrary DMA preemption or full DFC fusion.
+
+### Native DFC timeline boundary (2026-09-16)
+
+For broad-hit expert scheduling comparisons, read
+`prototypes/attention-client/device-service/DFC-TIMELINE.md` before interpreting
+a fused DFC envelope as Cube utilization. The two-card capture/export entry is
+recorded there; internal MC2 timing requires separate instrumentation.

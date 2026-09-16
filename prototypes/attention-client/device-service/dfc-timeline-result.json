@@ -1,0 +1,57 @@
+{
+  "run": "runs/dfc-ep2-control-20260916T080421Z",
+  "devices": [
+    5,
+    7
+  ],
+  "scope": "BF16 NZ lab A2 DFC, EP2, H2048 M768 E128 K8, broad32/source; not stock donor; not per-core timing",
+  "ranks": [
+    {
+      "rank": 0,
+      "durations_us": [
+        408.94,
+        412.0,
+        411.58,
+        411.06,
+        408.08,
+        412.8,
+        412.8,
+        411.7
+      ],
+      "steady_median_us": 411.7,
+      "inter_kernel_gaps_us": [
+        5.69999999999942,
+        5.719999999999345,
+        5.840000000000089,
+        5.840000000001453,
+        5.739999999999725,
+        5.580000000001007,
+        5.559999999996933
+      ]
+    },
+    {
+      "rank": 1,
+      "durations_us": [
+        3544.44,
+        412.08,
+        411.74,
+        411.26,
+        407.78,
+        413.3,
+        412.96,
+        411.56
+      ],
+      "steady_median_us": 411.74,
+      "inter_kernel_gaps_us": [
+        5.580000000000382,
+        5.600000000000307,
+        5.819999999999482,
+        5.760000000000446,
+        5.580000000000609,
+        5.619999999998242,
+        5.60000000000133
+      ]
+    }
+  ],
+  "caveat": "First rank1 kernel waits for independently started peer profiler; exclude first pair, retain original evidence."
+}

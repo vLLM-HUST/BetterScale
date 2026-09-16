@@ -28,11 +28,14 @@ def run(command, log, timeout=300):
         )
 
 
-def main(root):
+def main(root, dfc=False):
+    roles = ("dfc0", "dfc1") if dfc else ROLES
+    label = "dfc2" if dfc else "attention2-expert2"
+    normalized = "dfc2" if dfc else "four-device"
     output = root / "analysis"
     output.mkdir(exist_ok=True)
     manifest = []
-    for rank, role in enumerate(ROLES):
+    for rank, role in enumerate(roles):
         paths = list((root / "profile").glob(f"{role}_*"))
         assert len(paths) == 1, (role, paths)
         profile = paths[0]
@@ -75,7 +78,7 @@ def main(root):
             )
         )
         print(f"analyzed {role}", flush=True)
-    partial = output / "four-device-normalized.partial.json.gz"
+    partial = output / f"{normalized}-normalized.partial.json.gz"
     command = [
         str(TOOL),
         "export-perfetto",
@@ -90,13 +93,13 @@ def main(root):
     run(command, output / "export.log", timeout=600)
     with gzip.open(partial, "rt") as stream:
         exported = json.load(stream)
-    partial.rename(output / "four-device-normalized.json.gz")
+    partial.rename(output / f"{normalized}-normalized.json.gz")
     # Native exporter already constructs/labels the event hierarchy. Retain its
     # four distributed lanes, changing ONLY their display translation back to
     # provider timestamps; do not invent collective matches for point-to-point IPC.
     events = [e for e in exported["traceEvents"] if e.get("pid") == 120]
     slices = [e for e in events if e.get("ph") == "X"]
-    assert {e["args"]["rank"] for e in slices} == set(range(4))
+    assert {e["args"]["rank"] for e in slices} == set(range(len(roles)))
     origin = min(e["args"]["source_start_ns"] for e in slices)
     for event in events:
         if event.get("ph") == "X":
@@ -105,26 +108,32 @@ def main(root):
             event["dur"] = (args["source_end_ns"] - args["source_start_ns"]) / 1000
             args["alignment"] = "provider_timestamps_no_additional_calibration"
         elif event.get("name") == "process_name":
-            event["args"]["name"] = "Device expert service · provider clock"
+            event["args"]["name"] = f"{label} · provider clock"
         elif event.get("name") == "thread_name":
-            event["args"]["name"] = ROLES[event["tid"] - 1]
+            event["args"]["name"] = roles[event["tid"] - 1]
     receipt = dict(
         source=str(root),
         roles=manifest,
         time_origin_ns=origin,
         alignment="native provider timestamps; no independently fitted clock",
-        scope="two dummy layers, includes native oracle and startup; not throughput",
+        scope=(
+            "8 warm broad-hit32 DFC graph replays; not throughput"
+            if dfc
+            else "two dummy layers, includes native oracle and startup; not throughput"
+        ),
         event_count=len(slices),
     )
     with gzip.open(
-        output / "attention2-expert2-provider-clock.json.gz", "wt", compresslevel=1
+        output / f"{label}-provider-clock.json.gz", "wt", compresslevel=1
     ) as stream:
         json.dump(dict(traceEvents=events, metadata=receipt), stream)
     (output / "profile-receipt.json").write_text(json.dumps(receipt, indent=2))
-    print(output / "attention2-expert2-provider-clock.json.gz", flush=True)
+    print(output / f"{label}-provider-clock.json.gz", flush=True)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
-    main(parser.parse_args().root.resolve())
+    parser.add_argument("--dfc", action="store_true")
+    args = parser.parse_args()
+    main(args.root.resolve(), dfc=args.dfc)
