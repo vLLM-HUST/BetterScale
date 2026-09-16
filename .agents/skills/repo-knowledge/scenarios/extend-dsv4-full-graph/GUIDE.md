@@ -361,3 +361,17 @@ publish all payloads before DONE (the publication helper reuses its UB). Keep
 native Worker imports out of the expert-only process to avoid the donor's platform
 initialization cycle. New neural policy does not inherit the integer server's
 priority/cancellation qualification merely by using its publication pattern.
+
+
+The device-service continuation in `DFC-ADAPTER.md` replaces serial payload movers
+with16 AIV blocks and reuses native token unpermute. Only the device descriptor
+selector remains one-core; count/prefix/assign avoids O(experts*routes) scans.
+Never publish DONE before all mover blocks finish: graph-node boundaries supply
+those joins. Owner-directed reads allow unowned return slots to remain poisoned,
+not zero-filled. Full dummy output/KV remain exact; final32-row client cost is
+about293us versus the initial1090us, still slower than local FULL MLP156us.
+Those are stage diagnostics, not a serving throughput claim. Preserve mode and
+card-set provenance in the timing receipts.
+Fletcher's2026-09-16 override permits idle subsets without the global tp8 lease;
+this prototype's per-device admission still rejects foreign occupancy. Independent
+TP1 engines need separated rendezvous port ranges, not adjacent base ports.

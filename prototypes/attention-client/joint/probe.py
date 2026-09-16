@@ -18,8 +18,11 @@ def child(rank, device, links, out, ready_queue, start_event):
     # logical device0; rank here denotes the service role, not HCCL world rank.
     os.environ["ASCEND_RT_VISIBLE_DEVICES"] = str(device)
     os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"
-    os.environ["MASTER_PORT"] = str(31540 + rank)
-    os.environ["VLLM_PORT"] = str(31550 + rank)
+    # Each independent TP1 engine allocates additional rendezvous ports.
+    # Adjacent base ports can collide even though the devices are disjoint.
+    port_base = int(os.environ.get("ATTENTION_JOINT_PORT_BASE", "41500")) + 100 * rank
+    os.environ["MASTER_PORT"] = str(port_base + 40)
+    os.environ["VLLM_PORT"] = str(port_base + 50)
     import torch
     import torch_npu
 

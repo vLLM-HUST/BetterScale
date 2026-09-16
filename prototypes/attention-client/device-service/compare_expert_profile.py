@@ -11,6 +11,9 @@ parser = argparse.ArgumentParser(
 )
 parser.add_argument("root", type=pathlib.Path)
 root = parser.parse_args().root.resolve()
+parallel = json.loads((root / "run/measurements/expert0.json").read_text()).get(
+    "parallel_transport", False
+)
 report = {
     "scope": "profiled two-layer dummy correctness fixture; native eager vs device graph; no speedup claim",
     "clients": [],
@@ -76,15 +79,22 @@ for rank in range(2):
         while ss[start]["label"] != "MatMulV2":
             start -= 1
         end = idx + 1
-        while ss[end]["label"] != "ReduceSum":
+        terminal = "MoeTokenUnpermute" if parallel else "ReduceSum"
+        while ss[end]["label"] != terminal:
             end += 1
-        assert ss[end + 1]["label"] == "Cast"
-        end += 1
+        if not parallel:
+            assert ss[end + 1]["label"] == "Cast"
+            end += 1
         remote.append(
             dict(
                 rows=n,
                 span_us=(ss[end]["end_ns"] - ss[start]["start_ns"]) / 1000,
-                client_us=cl["dur_us"],
+                client_us=sum(
+                    e["dur_us"]
+                    for e in ss[idx : end + 1]
+                    if e["label"]
+                    in ("neural_client", "neural_collect", "neural_retire")
+                ),
             )
         )
     aggregates = {}
@@ -101,6 +111,64 @@ for rank in range(2):
         )
     report["clients"].append(
         dict(rank=rank, by_rows=aggregates, native=native, remote=remote)
+    )
+# Server cycles have device-written source generations; use those identities,
+# not nearest timestamps, to bind single-source cost to its actual row count.
+rowmaps = {}
+for rank in (0, 1):
+    record = json.loads((root / f"run/measurements/attention{rank}.json").read_text())
+    rowmaps[rank] = {
+        e["generation"]: e["rows"] for e in record["events"] if e["event"] == "submit"
+    }
+report["servers"] = []
+for rank in (0, 1):
+    connection = sqlite3.connect(root / f"analysis/expert{rank}.db")
+    connection.row_factory = sqlite3.Row
+    events = [
+        dict(e)
+        for e in connection.execute(
+            "select label,dur_us from traceloom_event where source_table='TASK' order by start_ns"
+        )
+    ]
+    starts = [i for i, e in enumerate(events) if e["label"] == "neural_prepare"]
+    traces = json.loads((root / f"run/measurements/expert{rank}.json").read_text())[
+        "trace"
+    ]
+    assert len(starts) == len(traces) == 48
+    buckets = {}
+    for wave, (start, trace) in enumerate(zip(starts, traces)):
+        generations = [(c, trace[c + 2]) for c in (0, 1) if trace[c + 2]]
+        if len(generations) != 1 or generations[0][1] < 13:
+            continue
+        client, generation = generations[0]
+        rows = rowmaps[client][generation]
+        stop = starts[wave + 1] if wave + 1 < len(starts) else len(events)
+        totals = {}
+        for event in events[start:stop]:
+            label = event["label"]
+            if label in (
+                "neural_prepare",
+                "neural_pack",
+                "neural_scatter",
+                "neural_complete",
+                "GroupedMatmul",
+                "SwiGlu",
+            ):
+                totals[label] = totals.get(label, 0) + event["dur_us"]
+        bucket = buckets.setdefault(rows, {})
+        for label, value in totals.items():
+            bucket.setdefault(label, []).append(value)
+    report["servers"].append(
+        dict(
+            rank=rank,
+            by_rows={
+                rows: {
+                    label: statistics.median(values) for label, values in bucket.items()
+                }
+                for rows, bucket in buckets.items()
+            },
+            warning="prepare includes idle polling; single-source sealed waves only",
+        )
     )
 print(json.dumps(report, indent=2))
 (root / "analysis/expert-stage-comparison.json").write_text(

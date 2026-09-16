@@ -8,8 +8,8 @@ extern "C" int load_server(const char *path, const char *symbol, void **binary,
     return rc;
   return aclrtBinaryGetFunction(*binary, symbol, function);
 }
-extern "C" int launch_server(void *fn, void *stream, void *config, void *audit,
-                             void *trace) {
+extern "C" int launch_blocks(void *fn, void *stream, void *config, void *audit,
+                             void *trace, uint32_t blocks) {
   aclrtLaunchKernelAttr attrs[3]{};
   attrs[0].id = ACL_RT_LAUNCH_KERNEL_ATTR_SCHEM_MODE;
   attrs[0].value.schemMode = 1;
@@ -25,7 +25,12 @@ extern "C" int launch_server(void *fn, void *stream, void *config, void *audit,
     void *a;
     void *t;
   } args{config, audit, trace};
-  return aclrtLaunchKernelWithHostArgs(fn, 1, stream, &cfg, &args, sizeof(args),
-                                       nullptr, 0);
+  return aclrtLaunchKernelWithHostArgs(fn, blocks, stream, &cfg, &args,
+                                       sizeof(args), nullptr, 0);
 }
 extern "C" int unload_server(void *binary) { return aclrtBinaryUnLoad(binary); }
+
+extern "C" int launch_server(void *fn, void *stream, void *config, void *a,
+                             void *b) {
+  return launch_blocks(fn, stream, config, a, b, 1);
+}

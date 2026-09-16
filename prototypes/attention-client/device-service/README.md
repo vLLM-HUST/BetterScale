@@ -149,3 +149,16 @@ For the first native FULL-graph versus separated-expert stage comparison, read
 [TIMING.md](TIMING.md). The current remote path is slower, especially at16/32 rows;
 scalar return scatter/zero fill, rather than GMM alone, is a measured bottleneck.
 Do not reuse the eager oracle's host gaps to claim a graph-to-graph speedup.
+
+
+The next opt-in candidate is documented in [DFC-ADAPTER.md](DFC-ADAPTER.md):
+parallel owned-route movement, native unpermute, no zero return slots, and linear
+routing metadata. Original serial results above remain the oracle, not the current
+candidate's performance. Neither mode changes the released worker default.
+
+Fletcher explicitly authorized idle-subset use on2026-09-16 without waiting for
+the global machine lease. These prototype launchers now use `admit_subset.py`:
+ordered per-device locks plus fresh health/occupancy admission and foreign-owner
+monitoring. They never terminate another task. A rejection test on occupiedcard0
+confirmed the workload launch marker was not created. The old queued global-lease
+job was cancelled before any model launched; no duplicate watcher remains.

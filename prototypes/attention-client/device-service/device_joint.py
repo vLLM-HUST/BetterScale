@@ -32,6 +32,7 @@ from common import (
 
 TASKS = 24  # two layers × twelve native forwards per client in the bounded fixture
 WAVES = TASKS * 2
+PARALLEL = os.environ.get("DEVICE_SERVICE_PARALLEL") == "1"
 
 
 class Kernels:
@@ -46,6 +47,7 @@ class Kernels:
             C.POINTER(C.c_void_p),
         ]
         self.lib.launch_server.argtypes = [C.c_void_p] * 5
+        self.lib.launch_blocks.argtypes = [C.c_void_p] * 5 + [C.c_uint32]
         self.lib.unload_server.argtypes = [C.c_void_p]
         self.binaries = []
 
@@ -58,13 +60,14 @@ class Kernels:
         self.binaries.append(binary)
         return fn
 
-    def call(self, fn, config, a, b):
-        rc = self.lib.launch_server(
+    def call(self, fn, config, a, b, blocks=1):
+        rc = self.lib.launch_blocks(
             fn,
             torch.npu.current_stream().npu_stream,
             config.data_ptr(),
             a.data_ptr(),
             b.data_ptr(),
+            blocks,
         )
         assert rc == 0, rc
 
@@ -93,10 +96,12 @@ class ClientBank:
                 0,
                 2000000,
                 *[x.data_ptr() for x in self.raw],
+                int(PARALLEL),
             ],
             device="npu",
             dtype=torch.int64,
         )
+        self.indices = torch.arange(rows * K, dtype=torch.int32, device="npu")
         self.body()
         torch.npu.synchronize()
         self.graph = torch.npu.NPUGraph()
@@ -114,6 +119,16 @@ class ClientBank:
         weights, ids = select_experts(self.input, logits, K, False, True, num_experts=E)
         ids = ids.to(torch.int32)
         self.transport.kernels.call(self.transport.fn, self.config, self.input, ids)
+        if PARALLEL:
+            self.transport.kernels.call(
+                self.transport.collect, self.config, self.input, ids, blocks=16
+            )
+            self.transport.kernels.call(
+                self.transport.retire, self.config, self.input, ids
+            )
+            return torch_npu.npu_moe_token_unpermute(
+                self.raw[0].view(-1, H), self.indices, probs=weights.to(torch.bfloat16)
+            )
         return (
             (
                 (self.raw[0] + self.raw[1]).float()
@@ -162,6 +177,9 @@ class DeviceExperts:
         assert all(recv(p, timeout=300)[0] == "weights_loaded" for p in links)
         self.kernels = Kernels()
         self.fn = self.kernels.load("neural_client")
+        if PARALLEL:
+            self.collect = self.kernels.load("neural_collect")
+            self.retire = self.kernels.load("neural_retire")
         self.counter = torch.zeros(8, dtype=torch.int32, device="npu")
         self.banks = {}
         self.pending = None
@@ -253,6 +271,13 @@ def serve(server_id, links, output_path):
         assert kind == "pid"
         pipe.send(("pid", api.pid()))
         local = api.allocate_staging(ALIGN)
+        if PARALLEL:
+            # Poison unowned slots: owner-directed collection must never read them.
+            poison = torch.full(
+                (ALIGN // 4,), 0x7FC07FC0, dtype=torch.int32, device="npu"
+            )
+            api.copy(stream.npu_stream, local, poison.data_ptr(), ALIGN)
+            stream.synchronize()
         zeros = torch.zeros(8, dtype=torch.int32, device="npu")
         api.copy(stream.npu_stream, local, zeros.data_ptr(), 32)
         stream.synchronize()
@@ -301,6 +326,9 @@ def serve(server_id, links, output_path):
     kernels = Kernels()
     prepare = kernels.load("neural_prepare")
     complete = kernels.load("neural_complete")
+    if PARALLEL:
+        pack = kernels.load("neural_pack")
+        scatter = kernels.load("neural_scatter")
     packed = torch.zeros((2 * CAP * K, H), device="npu", dtype=torch.bfloat16)
     groups = torch.zeros(2 * SHARD, device="npu", dtype=torch.int64)
     groups[-1] = 2 * CAP * K
@@ -319,6 +347,7 @@ def serve(server_id, links, output_path):
             groups.data_ptr(),
             trace.data_ptr(),
             server_id,
+            int(PARALLEL),
         ],
         device="npu",
         dtype=torch.int64,
@@ -327,6 +356,8 @@ def serve(server_id, links, output_path):
     def body():
         packed.zero_()
         kernels.call(prepare, config, packed, state)
+        if PARALLEL:
+            kernels.call(pack, config, packed, state, blocks=16)
         up = torch_npu.npu_grouped_matmul(
             [packed],
             [w13],
@@ -344,6 +375,8 @@ def serve(server_id, links, output_path):
             group_type=0,
             group_list_type=0,
         )[0]
+        if PARALLEL:
+            kernels.call(scatter, config, down, state, blocks=16)
         kernels.call(complete, config, down, state)
 
     body()
@@ -392,6 +425,7 @@ def serve(server_id, links, output_path):
                 host_control=False,
                 graph_replays=1,
                 bounded_waves=WAVES,
+                parallel_transport=PARALLEL,
             ),
             indent=2,
         )

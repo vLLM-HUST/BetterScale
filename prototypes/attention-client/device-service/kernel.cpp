@@ -300,18 +300,44 @@ neural_prepare(GM_ADDR cfgaddr, GM_ADDR packed, GM_ADDR unused) {
     gen[0] = gen[1] = rows[0] = rows[1] = selected = 0;
   }
   int total = 0, ends[GROUPS];
-  for (int g = 0; g < GROUPS; ++g) {
+  if (cfg[12]) {
+    // Count -> prefix -> assign, as in grouped dispatch. Do not rescan every
+    // route once per expert: topology changes need not make metadata O(E*N*K).
+    int counts[GROUPS], cursor[GROUPS];
+    for (int g = 0; g < GROUPS; ++g)
+      counts[g] = 0;
     for (int c = 0; c < 2; ++c)
-      if (gen[c] && layer[c] == g / 64) {
+      if (gen[c])
         for (int i = 0; i < rows[c] * TOPK; ++i)
-          if (ids[c][i] / 64 == cfg[11] && ids[c][i] % 64 == g % 64) {
-            auto src = (__gm__ int32_t *)cfg[2 + c] + 1024 + (i / TOPK) * H / 2;
-            io.Read(src, H / 2);
-            io.Write((__gm__ int32_t *)packed + total * H / 2, H / 2);
-            map[c][i] = total++;
-          }
-      }
-    ends[g] = total;
+          if (ids[c][i] / 64 == cfg[11])
+            ++counts[layer[c] * 64 + ids[c][i] % 64];
+    for (int g = 0; g < GROUPS; ++g) {
+      cursor[g] = total;
+      total += counts[g];
+      ends[g] = total;
+    }
+    for (int c = 0; c < 2; ++c)
+      if (gen[c])
+        for (int i = 0; i < rows[c] * TOPK; ++i)
+          if (ids[c][i] / 64 == cfg[11])
+            map[c][i] = cursor[layer[c] * 64 + ids[c][i] % 64]++;
+  } else {
+    for (int g = 0; g < GROUPS; ++g) {
+      for (int c = 0; c < 2; ++c)
+        if (gen[c] && layer[c] == g / 64) {
+          for (int i = 0; i < rows[c] * TOPK; ++i)
+            if (ids[c][i] / 64 == cfg[11] && ids[c][i] % 64 == g % 64) {
+              auto src =
+                  (__gm__ int32_t *)cfg[2 + c] + 1024 + (i / TOPK) * H / 2;
+              if (!cfg[12]) {
+                io.Read(src, H / 2);
+                io.Write((__gm__ int32_t *)packed + total * H / 2, H / 2);
+              }
+              map[c][i] = total++;
+            }
+        }
+      ends[g] = total;
+    }
   }
   for (int c = 0; c < 2; ++c) {
     for (int j = 0; j < 8; ++j)
@@ -357,7 +383,7 @@ neural_complete(GM_ADDR cfgaddr, GM_ADDR computed, GM_ADDR unused) {
     if (!gen[c])
       continue;
     auto dst = (__gm__ int32_t *)cfg[c] + 64;
-    for (int i = 0; i < n * TOPK; ++i) {
+    for (int i = 0; !cfg[12] && i < n * TOPK; ++i) {
       if (map[i] >= 0)
         io.Read((__gm__ int32_t *)computed + map[i] * H / 2, H / 2);
       else
@@ -400,6 +426,8 @@ neural_client(GM_ADDR cfgaddr, GM_ADDR hidden, GM_ADDR topk) {
     io.ub.SetValue(j, j == 0 ? gen : (j == 1 ? cfg[3] : (j == 2 ? n : 0)));
   io.Write(src + 8);
   io.Publish(src, gen);
+  if (cfg[10])
+    return; // Parallel collect and retirement follow in the graph.
   for (int s = 0; s < 2; ++s) {
     auto remote = (__gm__ int32_t *)cfg[1 + s];
     int polls = 0;
@@ -423,3 +451,105 @@ static const struct FunLevelKType nc_meta
 static const struct FunLevelKType ni_meta
     __attribute__((used, section(".ascend.meta.neural_client"))) = {
         {F_TYPE_KTYPE, sizeof(unsigned int), K_TYPE_AIV}};
+
+// Topology adapter: DFC-like row ownership, with graph kernel boundaries
+// instead of an all-EP wave barrier. The selector writes maps, all AIVs move
+// disjoint rows, then the next graph node may consume/publish. No atomics or
+// zero placeholders.
+extern "C" __global__ __aicore__ void
+neural_pack(GM_ADDR cfgaddr, GM_ADDR packed, GM_ADDR unused) {
+  auto cfg = (__gm__ int64_t *)cfgaddr;
+  if (!cfg[5])
+    return;
+  IO io;
+  io.Init();
+  for (int c = 0; c < 2; ++c) {
+    io.Read((__gm__ int32_t *)cfg[8] + c * MAPSTRIDE, MAPSTRIDE);
+    int generation = io.ub.GetValue(0), n = io.ub.GetValue(1);
+    int map[ROUTES];
+    for (int i = 0; i < ROUTES; ++i)
+      map[i] = io.ub.GetValue(8 + i);
+    if (!generation)
+      continue;
+    for (int i = GetBlockIdx(); i < n * TOPK; i += GetBlockNum())
+      if (map[i] >= 0) {
+        io.Read((__gm__ int32_t *)cfg[2 + c] + 1024 + (i / TOPK) * H / 2,
+                H / 2);
+        io.Write((__gm__ int32_t *)packed + map[i] * H / 2, H / 2);
+      }
+  }
+}
+extern "C" __global__ __aicore__ void
+neural_scatter(GM_ADDR cfgaddr, GM_ADDR computed, GM_ADDR unused) {
+  auto cfg = (__gm__ int64_t *)cfgaddr;
+  if (!cfg[5])
+    return;
+  IO io;
+  io.Init();
+  for (int c = 0; c < 2; ++c) {
+    io.Read((__gm__ int32_t *)cfg[8] + c * MAPSTRIDE, MAPSTRIDE);
+    int generation = io.ub.GetValue(0), n = io.ub.GetValue(1);
+    int map[ROUTES];
+    for (int i = 0; i < ROUTES; ++i)
+      map[i] = io.ub.GetValue(8 + i);
+    if (!generation)
+      continue;
+    for (int i = GetBlockIdx(); i < n * TOPK; i += GetBlockNum())
+      if (map[i] >= 0) {
+        io.Read((__gm__ int32_t *)computed + map[i] * H / 2, H / 2);
+        io.Write((__gm__ int32_t *)cfg[c] + 64 + i * H / 2, H / 2);
+      }
+  }
+}
+// Every core pulls disjoint live routes from their unique owner. Unowned/stale
+// slots are never read; graph completion joins these reads before counter
+// advance.
+extern "C" __global__ __aicore__ void
+neural_collect(GM_ADDR cfgaddr, GM_ADDR unused, GM_ADDR topk) {
+  auto cfg = (__gm__ int64_t *)cfgaddr;
+  if (!cfg[6])
+    return;
+  IO io;
+  io.Init();
+  int gen = io.Flag((__gm__ int32_t *)cfg[0]), n = cfg[4];
+  for (int s = 0; s < 2; ++s) {
+    int polls = 0;
+    while (io.Flag((__gm__ int32_t *)cfg[1 + s]) != gen && ++polls < cfg[7]) {
+    }
+    if (polls >= cfg[7]) {
+      io.Publish((__gm__ int32_t *)cfg[5], -100);
+      return;
+    }
+  }
+  io.Read((__gm__ int32_t *)topk, n * TOPK);
+  int ids[ROUTES];
+  for (int i = 0; i < n * TOPK; ++i)
+    ids[i] = io.ub.GetValue(i);
+  for (int i = GetBlockIdx(); i < n * TOPK; i += GetBlockNum()) {
+    int owner = ids[i] / 64;
+    io.Read((__gm__ int32_t *)cfg[1 + owner] + 64 + i * H / 2, H / 2);
+    io.Write((__gm__ int32_t *)cfg[8] + i * H / 2, H / 2);
+  }
+}
+extern "C" __global__ __aicore__ void
+neural_retire(GM_ADDR cfgaddr, GM_ADDR unused, GM_ADDR unused2) {
+  if (GetBlockIdx() != 0)
+    return;
+  auto cfg = (__gm__ int64_t *)cfgaddr;
+  if (!cfg[6])
+    return;
+  IO io;
+  io.Init();
+  if (io.Flag((__gm__ int32_t *)cfg[5]) < 0)
+    return;
+  int gen = io.Flag((__gm__ int32_t *)cfg[0]);
+  io.Publish((__gm__ int32_t *)cfg[5], gen);
+}
+#define SERVICE_META(name)                                                     \
+  static const struct FunLevelKType name##_meta                                \
+      __attribute__((used, section(".ascend.meta." #name))) = {                \
+          {F_TYPE_KTYPE, sizeof(unsigned int), K_TYPE_AIV}};
+SERVICE_META(neural_pack)
+SERVICE_META(neural_scatter)
+SERVICE_META(neural_collect)
+SERVICE_META(neural_retire)

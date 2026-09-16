@@ -6,7 +6,7 @@ devices=${1:-0,1,2,3}
 set +u; source /usr/local/Ascend/cann-9.0.1/set_env.sh; set -u
 runtime=/workspace/my-ascend-workspace/runs/liveinfer-online/20260908-donor-local-runtime/env
 # Reuse the already-tested fail-closed subset lease/occupancy launcher.
-admission="$repo/runs/attention-client-20260915/v12/launch.py"
+admission="$repo/prototypes/attention-client/device-service/admit_subset.py"
 test -f "$admission"
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 capsule="$repo/runs/attention-device-joint-$stamp"
