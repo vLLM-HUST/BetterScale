@@ -58,6 +58,9 @@ def child(rank, device, links, root):
     service.ClientBank = RoutedBank
     audit = []
     remote = service.DeviceExperts(model, links, audit)
+    from profile_capture import start, stop
+
+    profiler = start(f"attention{rank}")
     results = []
     for pattern in ("balanced", "hot8"):
         for rows in (1, 16, 32):
@@ -111,6 +114,7 @@ def child(rank, device, links, root):
                     )
                 )
     remote.close()
+    stop(profiler)
     Path(root, f"client{rank}.json").write_text(json.dumps(results, indent=2))
 
 

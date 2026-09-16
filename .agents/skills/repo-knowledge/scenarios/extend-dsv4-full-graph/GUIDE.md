@@ -384,3 +384,14 @@ The qualified synthetic controls exclude gate/top-k and use identical routes:
 hot8 favors remote latency, broad128-expert cases16/32 still trail DFC46–52%.
 Different2-card versus4-card topologies and synchronous versus independent batches
 make this a stage-cost diagnostic, not a serving throughput win.
+
+For broad-expert regression attribution, enter device-service/ROUTE-SPREAD.md.
+Join server cycles through recorded source generations, not timestamp proximity.
+The32-row profile puts roughly400us of the spread penalty in the two native GMMs;
+pack/scatter barely change. All warm sampled cycles were single-source, so do not
+claim cross-source batching efficiency from queue capability alone. Opt-in NZ
+passes48 synthetic outputs and cuts broad client latency9–11%, not DFC parity.
+A separate server_ready after conversion/capture is necessary: weights_loaded
+only protects bootstrap ownership, and bounded device polls must not wait for
+host graph preparation. The local GMM-chain NZ control is slower; keep its scope
+separate rather than claiming NZ universally wins or extrapolating the first GEMM.

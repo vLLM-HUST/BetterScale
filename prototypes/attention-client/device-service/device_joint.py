@@ -185,6 +185,7 @@ class DeviceExperts:
         self.pending = None
         self.generation = 0
         self.sealed = False
+        self.server_ready = False
 
     def submit(self, identity, layer_id, layer, pending):
         assert self.pending is None
@@ -194,6 +195,11 @@ class DeviceExperts:
             assert not self.sealed, "unprepared client graph"
             self.banks[key] = ClientBank(self, layer_id, layer, pending.normalized)
         bank = self.banks[key]
+        if not self.server_ready:
+            # Bootstrap acknowledgement only means the weights were copied.
+            # Weight conversion and graph capture must finish before device polls.
+            assert all(recv(p, timeout=300)[0] == "server_ready" for p in self.links)
+            self.server_ready = True
         bank.input.copy_(pending.normalized)
         # External timing brackets only the client graph (input copy excluded).
         # They do not change its publication/completion protocol.
@@ -317,12 +323,20 @@ def serve(server_id, links, output_path):
             dict(pipe=pipe, local=local, key=key, peer=peer, peer_key=peer_key)
         )
         # This acknowledgement releases the source's bootstrap, not a service
-        # completion. Its first client graph may publish and wait while we finish
-        # preparing the server graph. Polls/timeouts bound that startup wait.
+        # completion. A separate server_ready follows conversion and capture;
+        # device timeout budgets must not be spent waiting for host compilation.
         pipe.send(("weights_loaded",))
     w13 = torch.cat([w[0] for w in weights])
     w2 = torch.cat([w[1] for w in weights])
     del weights, current, up, down
+    weight_format = os.environ.get("DEVICE_SERVICE_WEIGHT_FORMAT", "ND")
+    assert weight_format in ("ND", "NZ")
+    if weight_format == "NZ":
+        torch_npu.npu.config.allow_internal_format = True
+        w13 = torch_npu.npu_format_cast(w13, 29)
+        w2 = torch_npu.npu_format_cast(w2, 29)
+        assert torch_npu.get_npu_format(w13) == 29
+        assert torch_npu.get_npu_format(w2) == 29
     kernels = Kernels()
     prepare = kernels.load("neural_prepare")
     complete = kernels.load("neural_complete")
@@ -391,6 +405,8 @@ def serve(server_id, links, output_path):
 
     profiler = start(f"expert{server_id}")
     graph.replay()
+    for c in clients:
+        c["pipe"].send(("server_ready",))
     stream.synchronize()
     status = state.cpu().tolist()
     assert status[:4] == [TASKS, TASKS, WAVES, 0], status
@@ -426,6 +442,7 @@ def serve(server_id, links, output_path):
                 graph_replays=1,
                 bounded_waves=WAVES,
                 parallel_transport=PARALLEL,
+                weight_format=weight_format,
             ),
             indent=2,
         )

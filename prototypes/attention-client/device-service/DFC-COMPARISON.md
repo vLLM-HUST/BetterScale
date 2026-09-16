@@ -33,6 +33,10 @@ changes both expert packing and GEMM work; these measurements alone do not prove
 which particular kernel explains the gap. Do not attribute it to PCIe/HCCS or
 network bandwidth without the corresponding profile.
 
+The subsequent [route-spread investigation](ROUTE-SPREAD.md) attributes the broad
+penalty primarily to native GMM, records the NZ control and startup-readiness fix,
+and preserves the remaining batching/fusion gaps.
+
 ## Fairness boundaries
 
 - DFC has two cards, each both source and expert owner; remote has two attention

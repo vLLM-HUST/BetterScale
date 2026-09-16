@@ -1,0 +1,580 @@
+{
+  "scope": "Synthetic BF16 route-spread diagnostic; no serving or equal-resource throughput claim",
+  "nd_profile": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T043335Z",
+  "nd_profile_summaries": [
+    {
+      "server": 0,
+      "summaries": [
+        {
+          "pattern": "balanced",
+          "rows_per_source": 1,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 2912.1499999999996,
+            "neural_pack": 11.02,
+            "GroupedMatmul": 85.71000000000001,
+            "SwiGlu": 12.65,
+            "neural_scatter": 10.51,
+            "neural_complete": 9.370000000000001
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        },
+        {
+          "pattern": "balanced",
+          "rows_per_source": 16,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 2271.6800000000003,
+            "neural_pack": 22.189999999999998,
+            "GroupedMatmul": 462.36,
+            "SwiGlu": 12.469999999999999,
+            "neural_scatter": 11.83,
+            "neural_complete": 9.41
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        },
+        {
+          "pattern": "balanced",
+          "rows_per_source": 32,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 1496.23,
+            "neural_pack": 35.04,
+            "GroupedMatmul": 463.78999999999996,
+            "SwiGlu": 12.17,
+            "neural_scatter": 13.21,
+            "neural_complete": 9.370000000000001
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        },
+        {
+          "pattern": "hot8",
+          "rows_per_source": 1,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 2262.92,
+            "neural_pack": 10.54,
+            "GroupedMatmul": 65.25,
+            "SwiGlu": 13.14,
+            "neural_scatter": 10.370000000000001,
+            "neural_complete": 9.24
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        },
+        {
+          "pattern": "hot8",
+          "rows_per_source": 16,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 2088.92,
+            "neural_pack": 22.299999999999997,
+            "GroupedMatmul": 65.08,
+            "SwiGlu": 13.25,
+            "neural_scatter": 12.73,
+            "neural_complete": 9.31
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        },
+        {
+          "pattern": "hot8",
+          "rows_per_source": 32,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 2084.4300000000003,
+            "neural_pack": 34.95,
+            "GroupedMatmul": 64.41999999999999,
+            "SwiGlu": 12.18,
+            "neural_scatter": 15.29,
+            "neural_complete": 9.42
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        }
+      ]
+    },
+    {
+      "server": 1,
+      "summaries": [
+        {
+          "pattern": "balanced",
+          "rows_per_source": 1,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 2953.66,
+            "neural_pack": 9.99,
+            "GroupedMatmul": 48.44,
+            "SwiGlu": 11.39,
+            "neural_scatter": 10.04,
+            "neural_complete": 9.19
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        },
+        {
+          "pattern": "balanced",
+          "rows_per_source": 16,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 2278.5699999999997,
+            "neural_pack": 22.22,
+            "GroupedMatmul": 462.08,
+            "SwiGlu": 11.49,
+            "neural_scatter": 11.49,
+            "neural_complete": 9.1
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        },
+        {
+          "pattern": "balanced",
+          "rows_per_source": 32,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 1497.44,
+            "neural_pack": 34.739999999999995,
+            "GroupedMatmul": 463.95,
+            "SwiGlu": 11.7,
+            "neural_scatter": 12.8,
+            "neural_complete": 9.0
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        },
+        {
+          "pattern": "hot8",
+          "rows_per_source": 1,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 2267.1899999999996,
+            "neural_pack": 10.42,
+            "GroupedMatmul": 63.57,
+            "SwiGlu": 10.95,
+            "neural_scatter": 10.11,
+            "neural_complete": 8.93
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        },
+        {
+          "pattern": "hot8",
+          "rows_per_source": 16,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 2095.06,
+            "neural_pack": 21.67,
+            "GroupedMatmul": 63.38,
+            "SwiGlu": 10.88,
+            "neural_scatter": 12.31,
+            "neural_complete": 8.9
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        },
+        {
+          "pattern": "hot8",
+          "rows_per_source": 32,
+          "sources": 1,
+          "waves": 6,
+          "costs_us": {
+            "neural_prepare": 2087.01,
+            "neural_pack": 34.26,
+            "GroupedMatmul": 63.790000000000006,
+            "SwiGlu": 11.940000000000001,
+            "neural_scatter": 15.01,
+            "neural_complete": 8.91
+          },
+          "warning": "neural_prepare includes waiting for source work"
+        }
+      ]
+    }
+  ],
+  "nz_control": {
+    "artifact": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T044052Z",
+    "exact_outputs": 48,
+    "checked_outputs": 48,
+    "cases": [
+      {
+        "pattern": "balanced",
+        "rows_per_source": 1,
+        "warm_us": [
+          351.61998867988586,
+          195.4600065946579,
+          184.00000035762787,
+          351.33999586105347,
+          184.10000205039978,
+          173.12000691890717
+        ],
+        "median_us": 189.78000432252884
+      },
+      {
+        "pattern": "balanced",
+        "rows_per_source": 16,
+        "warm_us": [
+          632.5600147247314,
+          538.2400155067444,
+          545.9200143814087,
+          616.0200238227844,
+          531.9200158119202,
+          530.9399962425232
+        ],
+        "median_us": 542.0800149440765
+      },
+      {
+        "pattern": "balanced",
+        "rows_per_source": 32,
+        "warm_us": [
+          656.8999886512756,
+          587.3799920082092,
+          585.7800245285034,
+          639.680027961731,
+          577.7000188827515,
+          575.9999752044678
+        ],
+        "median_us": 586.5800082683563
+      },
+      {
+        "pattern": "hot8",
+        "rows_per_source": 1,
+        "warm_us": [
+          171.93999886512756,
+          164.58000242710114,
+          165.51999747753143,
+          161.01999580860138,
+          173.19999635219574,
+          160.60000658035278
+        ],
+        "median_us": 165.04999995231628
+      },
+      {
+        "pattern": "hot8",
+        "rows_per_source": 16,
+        "warm_us": [
+          194.36000287532806,
+          204.09999787807465,
+          196.5399980545044,
+          193.32000613212585,
+          195.16000151634216,
+          191.81999564170837
+        ],
+        "median_us": 194.7600021958351
+      },
+      {
+        "pattern": "hot8",
+        "rows_per_source": 32,
+        "warm_us": [
+          236.81999742984772,
+          237.03999817371368,
+          236.4400029182434,
+          233.7000072002411,
+          246.09999358654022,
+          234.13999378681183
+        ],
+        "median_us": 236.63000017404556
+      }
+    ]
+  },
+  "isolated_chain": {
+    "artifact": "/workspace/strengthen-dsv4/runs/gmm-layout-control-20260916T044119Z",
+    "results": [
+      {
+        "mode": "ND",
+        "pattern": "broad",
+        "formats": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "us": 415.16438126564026
+      },
+      {
+        "mode": "ND",
+        "pattern": "hot8",
+        "formats": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "us": 85.12625098228455
+      },
+      {
+        "mode": "ND",
+        "pattern": "padding",
+        "formats": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "us": 79.70374822616577
+      },
+      {
+        "mode": "NZ",
+        "pattern": "broad",
+        "formats": [
+          29,
+          2,
+          2,
+          2
+        ],
+        "us": 493.62748861312866
+      },
+      {
+        "mode": "NZ",
+        "pattern": "hot8",
+        "formats": [
+          29,
+          2,
+          2,
+          2
+        ],
+        "us": 97.25187718868256
+      },
+      {
+        "mode": "NZ",
+        "pattern": "padding",
+        "formats": [
+          29,
+          2,
+          2,
+          2
+        ],
+        "us": 83.07500183582306
+      },
+      {
+        "mode": "NZ_T",
+        "pattern": "broad",
+        "formats": [
+          29,
+          2,
+          2,
+          2
+        ],
+        "us": 500.4993677139282
+      },
+      {
+        "mode": "NZ_T",
+        "pattern": "hot8",
+        "formats": [
+          29,
+          2,
+          2,
+          2
+        ],
+        "us": 95.04187852144241
+      },
+      {
+        "mode": "NZ_T",
+        "pattern": "padding",
+        "formats": [
+          29,
+          2,
+          2,
+          2
+        ],
+        "us": 79.33250069618225
+      }
+    ]
+  },
+  "nz_profile": {
+    "artifact": "/workspace/strengthen-dsv4/runs/remote-dfc-control-20260916T044206Z",
+    "summaries": [
+      {
+        "server": 0,
+        "summaries": [
+          {
+            "pattern": "balanced",
+            "rows_per_source": 1,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 2470.1800000000003,
+              "neural_pack": 10.86,
+              "GroupedMatmul": 87.59,
+              "SwiGlu": 12.379999999999999,
+              "neural_scatter": 10.05,
+              "neural_complete": 9.61
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          },
+          {
+            "pattern": "balanced",
+            "rows_per_source": 16,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 2210.99,
+              "neural_pack": 22.14,
+              "GroupedMatmul": 399.07,
+              "SwiGlu": 13.120000000000001,
+              "neural_scatter": 11.26,
+              "neural_complete": 9.370000000000001
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          },
+          {
+            "pattern": "balanced",
+            "rows_per_source": 32,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 1520.97,
+              "neural_pack": 34.96,
+              "GroupedMatmul": 401.67,
+              "SwiGlu": 12.190000000000001,
+              "neural_scatter": 12.6,
+              "neural_complete": 9.2
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          },
+          {
+            "pattern": "hot8",
+            "rows_per_source": 1,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 2173.2200000000003,
+              "neural_pack": 9.98,
+              "GroupedMatmul": 66.84,
+              "SwiGlu": 13.13,
+              "neural_scatter": 9.79,
+              "neural_complete": 9.24
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          },
+          {
+            "pattern": "hot8",
+            "rows_per_source": 16,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 2001.5700000000002,
+              "neural_pack": 22.11,
+              "GroupedMatmul": 65.39,
+              "SwiGlu": 11.96,
+              "neural_scatter": 12.19,
+              "neural_complete": 9.29
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          },
+          {
+            "pattern": "hot8",
+            "rows_per_source": 32,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 2111.04,
+              "neural_pack": 34.75,
+              "GroupedMatmul": 65.46,
+              "SwiGlu": 12.399999999999999,
+              "neural_scatter": 15.01,
+              "neural_complete": 9.05
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          }
+        ]
+      },
+      {
+        "server": 1,
+        "summaries": [
+          {
+            "pattern": "balanced",
+            "rows_per_source": 1,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 2499.8999999999996,
+              "neural_pack": 9.96,
+              "GroupedMatmul": 55.6,
+              "SwiGlu": 11.89,
+              "neural_scatter": 9.98,
+              "neural_complete": 9.18
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          },
+          {
+            "pattern": "balanced",
+            "rows_per_source": 16,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 2213.72,
+              "neural_pack": 21.47,
+              "GroupedMatmul": 397.65,
+              "SwiGlu": 11.780000000000001,
+              "neural_scatter": 11.45,
+              "neural_complete": 8.98
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          },
+          {
+            "pattern": "balanced",
+            "rows_per_source": 32,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 1538.85,
+              "neural_pack": 34.459999999999994,
+              "GroupedMatmul": 398.36,
+              "SwiGlu": 10.99,
+              "neural_scatter": 12.79,
+              "neural_complete": 9.01
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          },
+          {
+            "pattern": "hot8",
+            "rows_per_source": 1,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 2173.55,
+              "neural_pack": 10.36,
+              "GroupedMatmul": 67.44,
+              "SwiGlu": 11.96,
+              "neural_scatter": 9.99,
+              "neural_complete": 8.98
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          },
+          {
+            "pattern": "hot8",
+            "rows_per_source": 16,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 2001.24,
+              "neural_pack": 21.73,
+              "GroupedMatmul": 66.95,
+              "SwiGlu": 11.03,
+              "neural_scatter": 12.370000000000001,
+              "neural_complete": 8.98
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          },
+          {
+            "pattern": "hot8",
+            "rows_per_source": 32,
+            "sources": 1,
+            "waves": 6,
+            "costs_us": {
+              "neural_prepare": 2111.1000000000004,
+              "neural_pack": 34.14,
+              "GroupedMatmul": 67.02000000000001,
+              "SwiGlu": 11.67,
+              "neural_scatter": 14.95,
+              "neural_complete": 8.95
+            },
+            "warning": "neural_prepare includes waiting for source work"
+          }
+        ]
+      }
+    ]
+  }
+}
