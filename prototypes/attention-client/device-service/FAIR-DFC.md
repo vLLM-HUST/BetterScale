@@ -108,3 +108,6 @@ sibling library and PREPEND the capsule source to the sourced CANN PYTHONPATH;
 do not install a different compiler/runtime to repair that path mistake. Admission
 changes cwd, so all executable/output paths passed to it must be absolute.
 
+
+For the address-level return-path audit and redundant internal-mode catalogs,
+continue with [PREPARATION-RETURN.md](PREPARATION-RETURN.md).

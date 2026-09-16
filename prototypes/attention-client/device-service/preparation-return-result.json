@@ -1,0 +1,28 @@
+[
+  {
+    "waves": 24,
+    "medians": {
+      "fetch_to_return_us": 610.24,
+      "post_fetch_preparation_us": 19.009999999999998,
+      "first_fetch_to_up_us": 66.38,
+      "up_down_gap_us": 0.26,
+      "return_tail_us": 24.560000000000002
+    },
+    "next_fetch_signed_gap_median_us": 67.82,
+    "overlapping_preparation_transitions": 0,
+    "scope": "server-local coordinator intervals; not client or wire latency"
+  },
+  {
+    "waves": 24,
+    "medians": {
+      "fetch_to_return_us": 562.52,
+      "post_fetch_preparation_us": 19.04,
+      "first_fetch_to_up_us": 66.33,
+      "up_down_gap_us": 0.35,
+      "return_tail_us": 23.25
+    },
+    "next_fetch_signed_gap_median_us": 110.5,
+    "overlapping_preparation_transitions": 0,
+    "scope": "server-local coordinator intervals; not client or wire latency"
+  }
+]
