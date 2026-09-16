@@ -23,7 +23,11 @@ def census(directory):
             kind = (
                 "routed"
                 if ".experts." in name
-                else "shared" if "shared_experts" in name else "other"
+                else (
+                    "shared"
+                    if ".shared_experts." in name or ".shared_expert." in name
+                    else "other"
+                )
             )
             start, end = tensor["data_offsets"]
             totals[f"{role}/{kind}"] += end - start

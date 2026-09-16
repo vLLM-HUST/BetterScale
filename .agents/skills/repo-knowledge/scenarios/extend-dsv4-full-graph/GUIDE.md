@@ -482,3 +482,9 @@ alone is258.67GiB: E4 on64GiB cannot fit. The0731 checkpoint adds THREE DSpark
 expert layers; older W8A8 adds one. Config expert_dtype=fp4 is misleading for these
 INT8 checkpoint tensors. E6 needs uneven43/42 ownership, not native integer-floor
 EP placement. Capacity evidence is checkpoint headers, not a runtime peak gate.
+
+For a smaller shared-expert separation candidate, read roles/QWEN-NEXT-PLAN.md.
+Local Qwen3-Next80B is BF16:144GiB target routed weights plus3GiB MTP. E2 does
+NOT fit64GiB devices; E3 or E4 does on weight accounting. Its gated shared expert
+is one same-width MLP versus top-k10 routed MLPs; overlap opportunity is real but
+coverage is unmeasured. Preserve native36GDN/12full-attention state management.
