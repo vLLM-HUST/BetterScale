@@ -1,9 +1,14 @@
 # Native FIA with an owned ACLGraph boundary
 
+For the current **native host plan per wave** (FD included), start at
+[the host metadata protocol](HOST-METADATA.zh-CN.md). The static non-FD
+path below remains the explicit `OWNED_HOST_FIA=0` control, not the current
+default planner. The native adapter now admits the exact FD variant too.
+
 This is a **pinned experimental adapter**, not a new attention kernel or a
 portable public ACLNN API. `static_plan.cpp` bootstraps a native launch in an
-isolated preloaded process, admits only the installed BF16 paged causal non-FD
-binary variant, retains its function handle/configuration/opaque tiling bytes,
+isolated preloaded process. Its original static mode selects the installed BF16
+paged causal non-FD variant; the host-metadata mode also admits FD. It retains its function handle/configuration/opaque tiling bytes,
 and substitutes owned device length buffers. No installed runtime is modified.
 
 The installed mixed kernel prepends an FFTS address. The query is therefore at

@@ -229,3 +229,36 @@ split/core/reduction metadata at wave granularity before claiming30B optimizatio
 Baseline was reused, not rerun; no FD repair has yet been qualified. The1K short
 profile is insufficient for attributing the full-trace regression. Reuse the
 matched four-step capsules and dispatch snapshots instead of profiling full runs.
+
+### Native host attention metadata per wave (FD repair)
+
+Enter `fia-plan/HOST-METADATA.zh-CN.md` under `prototypes/owned-wave/` for the
+superseding default `OWNED_HOST_FIA=1`. The installed ACLNN host planner executes
+once per wave, with its numerical launch suppressed; banked2528B GM tiling is
+shared across all48 layers. Preserve native FD selection, splits and reduction;
+some skewed long/short batches select non-FD, so do not replace dispatch with a
+length threshold. Fixed24-block graphs add empty core entries to native FD plans,
+not new split boundaries. Keep ABI/layout/scratch guards and exact kernel names.
+
+Decode4row and prefill widths1/2/4/8/16/128/1024, changing pages/lengths through32K,
+pass leaf checks with max_error0; the multi-process prefill capsule was interrupted
+by occupancy policing, and final single-process leaf exits0. Whole30B TP2/EP2
+`swe-host-candidate2` passes three fullSWE rounds: retained89.468s vs frozen
+non-FD95.827s (6.64% shorter), still2.18% slower than reused native87.561s.
+Do not repeat baseline or claim a native win. WarmAPC625664/3843waves unchanged.
+
+Two integration seams matter: projected terminal-drain attention rows must be
+length1 just like device State; same-shape/same-bank FD variants share the existing
+LiveInference serial graph pool to avoid expandable virtual-address reservation
+failure seen in candidate1. Preserve one compute stream across rounds for that
+pool contract; cross-call values live outside transient scratch. No allocator or
+installed runtime changes were needed.
+
+The matched40-warmup/4-step TraceLoom window has192 graphFD FIA+4graphArgMax perrank,
+zero task updates, and exactly4host FIA execute/GetWorkspaceSize/tiling calls.
+Host API zero is no longer the right gate: the planner is once/wave, not perlayer,
+and no numerical attention launches occur outside graph. Device attention falls
+70.52->62.45us/layer, still above historical oldowned58.54us. Do not attribute the
+whole-trace gain solely from four early steps or add nested host tiling durations.
+Native host API semantics/descriptor cleanup follow the installed op-plugin ABI;
+newer upstream structs/heuristics are not substituted for the installed planner.

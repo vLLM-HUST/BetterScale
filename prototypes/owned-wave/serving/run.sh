@@ -4,8 +4,10 @@ repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)
 runtime=/workspace/my-ascend-workspace/runs/liveinfer-online/20260908-donor-local-runtime/env
 : "${PROBE_CAPSULE:?fresh absolute capsule required}"
 export OWNED_STATIC_FIA=${OWNED_STATIC_FIA:-1}
+export OWNED_HOST_FIA=${OWNED_HOST_FIA:-1}
 export BENCH_ARM=${BENCH_ARM:-owned}
 case "$OWNED_STATIC_FIA" in 0|1) ;; *) echo "OWNED_STATIC_FIA must be 0 or 1" >&2; exit 2 ;; esac
+case "$OWNED_HOST_FIA" in 0|1) ;; *) echo "OWNED_HOST_FIA must be 0 or 1" >&2; exit 2 ;; esac
 export SWE_TRACE=${SWE_TRACE:-$repo/runs/owned-wave/swe-trace-v2/trace.json}
 export HCCL_DETERMINISTIC=strict PYTHONHASHSEED=0
 mkdir -p "$(dirname "$PROBE_CAPSULE")"
@@ -30,9 +32,15 @@ export PYTHONPATH="$PROBE_CAPSULE/source:$repo/src${PYTHONPATH:+:$PYTHONPATH}" P
 export ASCEND_CUSTOM_OPP_PATH="$runtime/lib/python3.12/site-packages/vllm_ascend/_cann_ops_custom/vendors/custom_transformer"
 export LD_LIBRARY_PATH="$ASCEND_CUSTOM_OPP_PATH/op_api/lib:${LD_LIBRARY_PATH:-}"
 if [[ ${OWNED_STATIC_FIA:-0} == 1 ]]; then
-  cp "$repo/prototypes/owned-wave/fia-plan/static_plan.cpp" "$PROBE_CAPSULE/source/"
+  cp "$repo/prototypes/owned-wave/fia-plan/"{static_plan,host_metadata}.cpp "$PROBE_CAPSULE/source/"
+  plan_source=static_plan.cpp
+  plan_libs=()
+  if [[ ${OWNED_HOST_FIA:-0} == 1 ]]; then
+    plan_source=host_metadata.cpp
+    plan_libs=(-L/usr/local/Ascend/cann-9.0.1/aarch64-linux/lib64 -lopapi)
+  fi
   c++ -shared -fPIC -O2 -std=c++17 -I/usr/local/Ascend/cann-9.0.1/aarch64-linux/include \
-    "$PROBE_CAPSULE/source/static_plan.cpp" -ldl -o "$PROBE_CAPSULE/source/static_plan.so"
+    "$PROBE_CAPSULE/source/$plan_source" "${plan_libs[@]}" -ldl -o "$PROBE_CAPSULE/source/static_plan.so"
   export FIA_PLAN_LIBRARY="$PROBE_CAPSULE/source/static_plan.so"
   export LD_PRELOAD="$FIA_PLAN_LIBRARY${LD_PRELOAD:+:$LD_PRELOAD}"
 fi

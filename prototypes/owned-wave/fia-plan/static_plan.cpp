@@ -8,10 +8,12 @@
 #include <cstdio>
 #include <memory>
 #include <vector>
+#include <string>
 
 struct Plan {
   aclrtFuncHandle fn;
   uint32_t blocks;
+  bool fd = false;
   std::vector<unsigned char> args;
   std::vector<aclrtPlaceHolderInfo> placeholders;
   std::vector<aclrtLaunchKernelAttr> attrs;
@@ -19,6 +21,7 @@ struct Plan {
 };
 static std::atomic<uint64_t> selected{0};
 static std::unique_ptr<Plan> pending;
+static thread_local bool metadata_only = false;
 static std::vector<std::unique_ptr<Plan>> plans;
 using Launch = decltype(&aclrtLaunchKernelWithHostArgs);
 static Launch original() {
@@ -38,9 +41,11 @@ extern "C" int plan_begin(uint64_t query) {
 extern "C" aclError aclrtLaunchKernelWithHostArgs(aclrtFuncHandle fn, uint32_t blocks,
  aclrtStream stream, aclrtLaunchKernelCfg *cfg, void *args, size_t size,
  aclrtPlaceHolderInfo *ph, size_t nph) {
+  bool intercepted=false;
   uint64_t q=0;
   if (size >= 16) memcpy(&q, static_cast<char*>(args)+8, 8);
   if (selected.load() && q==selected.load() && size>=296) {
+    intercepted=true;
     auto p=std::make_unique<Plan>(); p->fn=fn; p->blocks=blocks;
     p->args.assign(static_cast<unsigned char*>(args),static_cast<unsigned char*>(args)+size);
     p->placeholders.assign(ph,ph+nph);
@@ -48,12 +53,15 @@ extern "C" aclError aclrtLaunchKernelWithHostArgs(aclrtFuncHandle fn, uint32_t b
     char name[512]{};
     auto getname=reinterpret_cast<decltype(&aclrtGetFunctionName)>(dlsym(RTLD_NEXT,"aclrtGetFunctionName"));
     int rc=getname(fn,sizeof(name),name);
-    fprintf(stderr,"FIA_PLAN name=%s rc=%d blocks=%u placeholders=%zu\n",name,rc,blocks,nph);
-    for (auto h:p->placeholders) fprintf(stderr,"FIA_BIND addr=%u data=%u\n",h.addrOffset,h.dataOffset);
-    // Exact qualified binary variant only; reject generic/FD dispatch.
-    if (rc==0 && strcmp(name,"FusedInferAttentionScore_3b093497fc536d61a77a7a3293a524da_5000000000010200203")==0) pending=std::move(p);
+    if (!metadata_only) fprintf(stderr,"FIA_PLAN name=%s rc=%d blocks=%u placeholders=%zu\n",name,rc,blocks,nph);
+    if (!metadata_only) for (auto h:p->placeholders) fprintf(stderr,"FIA_BIND addr=%u data=%u\n",h.addrOffset,h.dataOffset);
+    const char *prefix="FusedInferAttentionScore_3b093497fc536d61a77a7a3293a524da_";
+    std::string variant = rc == 0 ? name : "";
+    p->fd = variant == std::string(prefix)+"5100000000010200203";
+    if (p->fd || variant == std::string(prefix)+"5000000000010200203") pending=std::move(p);
     selected.store(0);
   }
+  if (metadata_only) return intercepted && pending ? ACL_SUCCESS : ACL_ERROR_INVALID_PARAM;
   return original()(fn,blocks,stream,cfg,args,size,ph,nph);
 }
 // Call only after synchronizing bootstrap's stream. Device memory is never borrowed.
@@ -86,6 +94,12 @@ extern "C" int plan_finish() {
     auto n = word(p,p.tiling+off);
     if (n > (112ULL<<20)) return -7;
     sum += n;
+  }
+  if (p.fd) {
+    if (p.tiling+168 > p.args.size()) return -7;
+    auto lse=word(p,p.tiling+152), out=word(p,p.tiling+160);
+    if(lse>(112ULL<<20) || out>(112ULL<<20)) return -7;
+    sum += lse + out;
   }
   if (!sum || sum > (112ULL<<20) || sum != word(p,p.tiling+88)) return -7;
   std::vector<aclrtPlaceHolderInfo> kept;
@@ -122,4 +136,54 @@ extern "C" int plan_clone(int id) {
 extern "C" int plan_release(int id) {
   if(id<0 || size_t(id)>=plans.size() || !plans[id]) return -1;
   plans[id].reset(); return 0;
+}
+
+// Exact installed tiling payload through the next inline descriptor. Export
+// baseline's plan unchanged; callers must retain native block count and variant.
+extern "C" int plan_metadata(int id, void *dst, size_t capacity) {
+  if(id<0 || size_t(id)>=plans.size() || !plans[id]) return -1;
+  auto &p=*plans[id];
+  if(p.key_desc<=p.tiling || p.key_desc-p.tiling>capacity) return -2;
+  size_t bytes=p.key_desc-p.tiling;
+  memcpy(dst,p.args.data()+p.tiling,bytes);
+  return int(bytes);
+}
+extern "C" int plan_blocks(int id) {
+  if(id<0 || size_t(id)>=plans.size() || !plans[id]) return -1;
+  return plans[id]->blocks;
+}
+extern "C" int plan_is_fd(int id) {
+  if(id<0 || size_t(id)>=plans.size() || !plans[id]) return -1;
+  return plans[id]->fd;
+}
+extern "C" int plan_bind_metadata(int id, uint64_t address) {
+  if(id<0 || size_t(id)>=plans.size() || !plans[id] || !address) return -1;
+  auto &p=*plans[id];
+  std::vector<aclrtPlaceHolderInfo> kept;
+  for(auto h:p.placeholders) if(h.addrOffset!=280) kept.push_back(h);
+  p.placeholders=std::move(kept); put(p,280,address); return 0;
+}
+
+// Keep native split boundaries/reduction exactly; add only empty main-loop
+// entries for extra launch blocks. Installed FAInfer coreInfo starts at200,
+// with26-element arrays. CombineScale strides by actual launch block count.
+// Scratch base is provisioned for all24 physical Cube cores by native tiling.
+extern "C" int plan_pad_blocks(int id) {
+  if(id<0 || size_t(id)>=plans.size() || !plans[id]) return -1;
+  auto &p=*plans[id];
+  if(!p.fd) return p.blocks==24 ? 0 : -2;
+  auto u32=[&](size_t off) { uint32_t x; memcpy(&x,p.args.data()+p.tiling+off,4);return x; };
+  if(p.key_desc-p.tiling!=2528 || p.blocks<1 || p.blocks>24 ||
+     u32(172)!=p.blocks || u32(168)>26 || u32(32)==0) return -3;
+  if(word(p,p.tiling+56)!=18874368 || word(p,p.tiling+64)!=9437184 ||
+     word(p,p.tiling+72)!=18874368 || word(p,p.tiling+80)!=18874368) return -5;
+  for(uint32_t core=0;core<p.blocks;++core) {
+    if(u32(200+4*core)>u32(616+4*core) || u32(616+4*core)>=u32(32)) return -4;
+  }
+  for(uint32_t core=p.blocks;core<24;++core) {
+    uint32_t start=1,end=0;
+    memcpy(p.args.data()+p.tiling+200+4*core,&start,4);
+    memcpy(p.args.data()+p.tiling+616+4*core,&end,4);
+  }
+  p.blocks=24; return 0;
 }

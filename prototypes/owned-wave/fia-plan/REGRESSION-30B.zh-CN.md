@@ -1,5 +1,8 @@
 # 30B candidate：回退定位与静态计划缺口
 
+这是 frozen non-FD candidate 的历史定位。后续修复进入
+[host attention metadata](HOST-METADATA.zh-CN.md)，不要把历史缺口描述当成当前实现。
+
 **当前结论：host更新确实消除了，但30B TP2上的attention设备执行更慢。
 不能把这版候选称为已经验证的30B提速版。** 不改变已发布的DSV4/PyPI Worker。
 

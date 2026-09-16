@@ -1,3 +1,9 @@
+> Current candidate: `OWNED_HOST_FIA=1` reuses the installed native FIA host
+> planner once per wave and shares banked GM tiling across layers (including FD).
+> See [host attention metadata](../fia-plan/HOST-METADATA.zh-CN.md).
+> `OWNED_HOST_FIA=0` selects the older frozen non-FD control described below;
+> `OWNED_STATIC_FIA=0` retains the original per-layer update rollback.
+
 # Concurrent original-trace replay with native APC and owned N+2
 
 This is the successor to the fixed32-token gate. It admits multiple resident

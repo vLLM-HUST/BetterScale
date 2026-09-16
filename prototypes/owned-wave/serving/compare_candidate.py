@@ -28,6 +28,17 @@ def compare_candidate(candidate, baselines):
     ]
     if not all(x["status"] == "PASS" and not x["runner_calls"] for x in owned):
         raise ValueError("candidate protocol failed")
+    for rank in owned:
+        attention = rank.get("static_fia") or {}
+        if attention.get("protocol") == "native-host-wave":
+            waves = sum(row["waves"] for row in rank["rounds"])
+            if (
+                attention["wave_plans"] != waves
+                or sum(attention["dispatches"].values()) != waves
+            ):
+                raise ValueError(
+                    "native attention metadata was not planned once per wave"
+                )
     expected = {
         (s, t): (len(call["prompt_ids"]), call["output_tokens"])
         for s, session in enumerate(trace["sessions"])

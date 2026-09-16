@@ -61,7 +61,11 @@ class SchedulerTests(unittest.TestCase):
                     if p["kind"] == "p":
                         cursor = p["lengths"][0]
                     else:
-                        cursor += int(generated < r.call["output_tokens"])
+                        active = generated < r.call["output_tokens"]
+                        cursor += int(active)
+                        self.assertEqual(
+                            p["lengths"][r.lease.slot], cursor if active else 1
+                        )
                     count = int(
                         (p["kind"] == "d" or cursor == len(r.call["prompt_ids"]))
                         and generated < r.call["output_tokens"]

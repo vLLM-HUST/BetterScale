@@ -34,5 +34,20 @@ int main() {
   fixture(); put(*pending,296+88,4097);
   assert(plan_finish()==-7 && !pending);
   fixture(); id=plan_finish(); assert(id>=0); assert(plan_release(id)==0);
+  fixture(); pending->fd=true; pending->blocks=23;
+  auto set32=[](size_t off,uint32_t x) { memcpy(pending->args.data()+296+off,&x,4); };
+  set32(32,4); set32(168,8); set32(172,23);
+  put(*pending,296+152,128); put(*pending,296+160,16384);
+  for(size_t off:{56,72,80}) put(*pending,296+off,18874368);
+  put(*pending,296+64,9437184);
+  put(*pending,296+88,66060288+128+16384);
+  id=plan_finish(); assert(id>=0 && plan_is_fd(id)==1);
+  assert(plan_pad_blocks(id)==0 && plan_blocks(id)==24);
+  unsigned char tiling[2528]; assert(plan_metadata(id,tiling,sizeof(tiling))==2528);
+  uint32_t start,end; memcpy(&start,tiling+200+23*4,4); memcpy(&end,tiling+616+23*4,4);
+  assert(start==1 && end==0);
+  assert(plan_bind_metadata(id,1234)==0 && plans[id]->placeholders.size()==2);
+  assert(word(*plans[id],280)==1234);
+  assert(plan_release(id)==0);
   puts("native FIA CPU admission/lifecycle PASS");
 }

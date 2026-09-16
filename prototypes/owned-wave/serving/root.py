@@ -1,6 +1,7 @@
 """Fixed graph portfolio, variable resident State, native Qwen numerical bodies."""
 
 from contextlib import contextmanager, nullcontext
+from dataclasses import dataclass
 import os
 from functools import partial
 import torch
@@ -16,6 +17,13 @@ from livemodule.runtime.phase import LivePhase, current_live_phase
 from live_root import OwnedRoot, WaveSchema
 from vllm_ascend.compilation import acl_graph
 from vllm_ascend.attention import attention_v1
+
+
+@dataclass(frozen=True)
+class AttentionWaveSchema(WaveSchema):
+    # Only same-bank/same-shape FD variants share transient allocation. All
+    # cross-wave values already live in retained State or frame ingress/metadata.
+    graph_pool_key: object
 
 
 class Lengths(MetaTensor):
@@ -63,14 +71,30 @@ class ServingRoot(OwnedRoot):
         if os.environ.get("OWNED_STATIC_FIA", "1") == "1":
             from static_attention import StaticAttention
 
-            self.static_attention = StaticAttention(self)
+            if os.environ.get("OWNED_HOST_FIA", "0") == "1":
+                from host_attention import HostAttention
+
+                self.static_attention = HostAttention(self)
+            else:
+                self.static_attention = StaticAttention(self)
         self.update_stream = (
             torch.npu.Stream() if self.static_attention is None else None
         )
+        self.execution_stream = (
+            torch.npu.Stream() if hasattr(self.static_attention, "prepare") else None
+        )
+        capture_pools = {}
         self.forward_calls = self.shadow_actions = 0
+        entries = []
         for kind, count in [("p", q) for q in chunks] + [("d", residents)]:
+            entries.append((kind, count, False))
+            if hasattr(
+                self.static_attention, "fd_eligible"
+            ) and self.static_attention.fd_eligible(kind, count):
+                entries.append((kind, count, True))
+        for kind, count, fd in entries:
             for bank in range(2):
-                key = f"{kind}{count}b{bank}"
+                key = f"{kind}{count}b{bank}" + ("fd" if fd else "")
                 m = self.make_metadata(count, count, decode=kind == "d")
                 rows = residents if kind == "d" else 1
                 m.block_tables = torch.zeros(
@@ -92,6 +116,7 @@ class ServingRoot(OwnedRoot):
                     m.actual_seq_lengths_q = list(range(1, residents + 1))
                 frame = dict(
                     kind=kind,
+                    fd=fd,
                     count=count,
                     bank=bank,
                     metadata=m,
@@ -112,15 +137,22 @@ class ServingRoot(OwnedRoot):
                 frame["device_kv_lengths"] = torch.ones(
                     rows, dtype=torch.int64, device=dev
                 )
+                if hasattr(self.static_attention, "prepare"):
+                    frame["tiling"] = torch.zeros(2528, dtype=torch.uint8, device=dev)
                 self.frames[key] = frame
                 self.params[key] = acl_graph.GraphParams(
                     {count: []}, {count: None}, {count: []}, {count: []}
                 )
                 self.actions[key] = partial(self.construct, key)
+                schema = WaveSchema((key,), {}, {self.domain: (0,)})
+                if hasattr(self.static_attention, "prepare"):
+                    base = key.removesuffix("fd")
+                    owner = capture_pools.setdefault(base, object())
+                    schema = AttentionWaveSchema((key,), {}, {self.domain: (0,)}, owner)
                 self.register_graph(
                     key,
                     entry=self.prefill if kind == "p" else self.decode,
-                    schema=WaveSchema((key,), {}, {self.domain: (0,)}),
+                    schema=schema,
                 )
 
     def construct(self, key, context):

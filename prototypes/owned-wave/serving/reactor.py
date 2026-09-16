@@ -22,7 +22,7 @@ class Reactor:
         self.pending = deque()
         self.previous = [None, None]
         self.ingress = torch.npu.Stream()
-        self.compute = torch.npu.Stream()
+        self.compute = root.execution_stream or torch.npu.Stream()
         self.copy = torch.npu.Stream()
         self.sequence = 0
         self.failed = False
@@ -37,6 +37,11 @@ class Reactor:
         root = self.root
         bank = self.sequence % 2
         key = plan["key"]
+        attention_metadata = None
+        if hasattr(root.static_attention, "prepare"):
+            key, attention_metadata = root.static_attention.prepare(
+                key, plan["lengths"]
+            )
         f = root.frames[key]
         if f["bank"] != bank:
             raise ValueError("wrong graph bank")
@@ -47,6 +52,9 @@ class Reactor:
             with torch.npu.stream(self.ingress):
                 if old is not None:
                     self.ingress.wait_event(old.done)
+                if attention_metadata is not None:
+                    f["tiling"].copy_(attention_metadata, non_blocking=True)
+                    pinned.append(attention_metadata)
                 for name, values in plan["inputs"].items():
                     dst = f[name]
                     host = torch.tensor(values, dtype=dst.dtype, pin_memory=True)

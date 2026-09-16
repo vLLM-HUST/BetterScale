@@ -81,6 +81,17 @@ class ReusedBaselineTests(unittest.TestCase):
                 (capsule / "run/exit.txt").write_text("0\n")
             result = compare_candidate(candidate, [baseline])
             self.assertEqual(result["rounds"][0]["reused_native_samples"], 1)
+            receipt_path = candidate / "engine/candidate-rank0.json"
+            receipt = json.loads(receipt_path.read_text())
+            receipt["static_fia"] = dict(
+                protocol="native-host-wave", wave_plans=2, dispatches={"1:23": 2}
+            )
+            receipt_path.write_text(json.dumps(receipt))
+            with self.assertRaisesRegex(ValueError, "once per wave"):
+                compare_candidate(candidate, [baseline])
+            receipt["static_fia"].update(wave_plans=1, dispatches={"1:23": 1})
+            receipt_path.write_text(json.dumps(receipt))
+            self.assertEqual(compare_candidate(candidate, [baseline])["status"], "PASS")
             path = baseline / "engine/config.json"
             path.write_text(json.dumps(dict(model="different", tensor_parallel_size=1)))
             with self.assertRaisesRegex(ValueError, "configuration/trace differs"):

@@ -120,11 +120,12 @@ class SessionScheduler:
             lengths = [1] * len(self.slots)
             gens = [0] * len(self.slots)
             for r in decodes:
-                r.projected = min(
-                    r.projected + 1,
-                    len(r.call["prompt_ids"]) + r.call["output_tokens"] - 1,
-                )
-                lengths[r.lease.slot] = r.projected
+                last = len(r.call["prompt_ids"]) + r.call["output_tokens"] - 1
+                active = r.projected < last
+                r.projected = min(r.projected + 1, last)
+                # N+1 can be an already-authorized terminal drain. Its actual
+                # attention row is length1, not the completed resident's length.
+                lengths[r.lease.slot] = r.projected if active else 1
                 gens[r.lease.slot] = r.lease.generation
             plan = dict(
                 sequence=seq,

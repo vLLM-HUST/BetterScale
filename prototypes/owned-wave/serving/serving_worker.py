@@ -207,13 +207,22 @@ class ServingWorker(NPUWorker):
                 receipt.update(
                     status="PASS",
                     runner_calls=calls,
-                    graphs=2 * (len(chunks) + 1),
+                    graphs=len(root.frames),
                     forward_calls=root.forward_calls,
                     static_fia=(
                         dict(
+                            protocol=(
+                                "native-host-wave"
+                                if hasattr(root.static_attention, "prepare")
+                                else "static-non-fd"
+                            ),
                             bootstrap_calls=root.static_attention.bootstrap_calls,
                             launch_calls=root.static_attention.launch_calls,
                             plans=len(root.static_attention.plans),
+                            wave_plans=getattr(root.static_attention, "wave_plans", 0),
+                            dispatches=dict(
+                                getattr(root.static_attention, "dispatches", {})
+                            ),
                         )
                         if root.static_attention
                         else None

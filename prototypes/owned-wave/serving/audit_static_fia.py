@@ -24,6 +24,9 @@ for entry in exports:
             join STRING_IDS s on s.id=i.opType
             where lower(s.value) like '%fusedinferattention%' or lower(s.value) like '%argmax%'
             group by s.value,t.modelId""").fetchall()
+        outside_compute = db.execute("""select count(*) from TASK t
+            join COMPUTE_TASK_INFO i using(globalTaskId)
+            where t.modelId is null or t.modelId in (-1,4294967295)""").fetchone()[0]
         provider_calls = dict(db.execute("""select s.value,count(*) from CANN_API a
             join STRING_IDS s on s.id=a.name group by s.value"""))
     names = [
@@ -40,8 +43,18 @@ for entry in exports:
     attention = [r for r in kernels if "fusedinferattention" in r[0].lower()]
     assert replays and sum(r[2] for r in attention) == a.layers * replays
     assert all(r[1] not in (-1, 4294967295) for r in attention)
+    protocol = "native"
     if entry["arm"] == "owned":
-        assert all(counts[n] == 0 for n in names[1:])
+        receipt = json.loads(
+            (a.capsule / "engine" / f"candidate-rank{entry['rank']}.json").read_text()
+        )
+        protocol = (receipt.get("static_fia") or {}).get("protocol", "static-non-fd")
+        if protocol == "native-host-wave":
+            assert outside_compute == 0
+            assert all(counts[n] == 0 for n in names[1:3])
+            assert all(counts[n] == replays for n in names[3:])
+        else:
+            assert all(counts[n] == 0 for n in names[1:])
         assert all(r[1] not in (-1, 4294967295) for r in kernels)
     else:
         assert counts["aclmdlRICaptureTaskUpdateBegin"] == a.layers * replays
@@ -49,6 +62,8 @@ for entry in exports:
         dict(
             arm=entry["arm"],
             rank=entry["rank"],
+            protocol=protocol,
+            outside_graph_compute_tasks=outside_compute,
             host_api_counts=counts,
             graph_tasks=[dict(op=r[0], model_id=r[1], count=r[2]) for r in kernels],
             analysis=entry["analysis"],
