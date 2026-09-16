@@ -8,6 +8,8 @@ runtime=/workspace/my-ascend-workspace/runs/liveinfer-online/20260908-donor-loca
 # Reuse the already-tested fail-closed subset lease/occupancy launcher.
 admission="$repo/prototypes/attention-client/device-service/admit_subset.py"
 test -f "$admission"
+probe=${ACTUAL_GMM_PROBE:-actual_gmm_probe.py}
+case "$probe" in actual_gmm_probe.py|gmm_schedule_probe.py) ;; *) echo "unsupported probe: $probe" >&2; exit 2;; esac
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 capsule="$repo/runs/actual-gmm-control-$stamp"
 mkdir -p "$capsule/source/joint" "$capsule/source/device" "$capsule/build"
@@ -34,4 +36,4 @@ export PYTORCH_NPU_ALLOC_CONF=expandable_segments:True VLLM_ASCEND_ENABLE_FLASHC
 export PROBE_HELPERS=/workspace/my-ascend-workspace/runs/query-gang/20260911-lhtb-long-real-gang-v1/harness
 export LOCAL_EXPERT_RESULT="$capsule/result.json"
 printf '%s\n' "$capsule"
-exec "$runtime/bin/python" "$capsule/source/launch.py" --devices "$devices" --output "$capsule/run" -- "$runtime/bin/python" "$capsule/source/device/actual_gmm_probe.py"
+exec "$runtime/bin/python" "$capsule/source/launch.py" --devices "$devices" --output "$capsule/run" -- "$runtime/bin/python" "$capsule/source/device/$probe"

@@ -175,3 +175,8 @@ For the EP2 fused-DFC target rather than TP1 local MLP, read
 conditional parity: concentrated routing favors the remote stage; broad128-expert
 routing at16/32 tokens is still46–52% slower. The910B DFC provider is a lab A2 port
 with a different BF16 ABI, not the stock pinned donor operator package.
+
+For the checkpoint and small-row/many-expert GEMM investigation, read
+[GMM-SCHEDULING.md](GMM-SCHEDULING.md). It separates isolated warm-cache GEMM
+numbers from whole-chain cost and distinguishes request double buffering from
+DFC's segmented up/SwiGLU/down pipeline.

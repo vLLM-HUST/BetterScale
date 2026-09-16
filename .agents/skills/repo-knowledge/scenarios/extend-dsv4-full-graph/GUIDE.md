@@ -426,3 +426,16 @@ latency still trails DFC. Do not confuse persistent residency with guaranteed
 batching, overlap, DFC parity or unlimited service. Capture raw ACL launches on
 torch.npu.current_stream() INSIDE the graph context: an enclosing stream can
 differ from the graph's internal stream and silently produce an empty graph.
+
+
+### Small-row expert GEMM cache and phase scheduling (2026-09-16)
+
+For persistent expert service scheduling, read
+`prototypes/attention-client/device-service/GMM-SCHEDULING.md` and its runnable
+`gmm_schedule_probe.py`. Same-card broad64-expert down changes from61us repeated
+alone to149us with alternating weight catalogs; whole math is455–462us for2–8
+rows/expert. Do not compare isolated warm down to full service or call this an
+HBM roofline. Existing CATLASS already stripes tiles and preloads/double-buffers;
+DFC additionally segments up/SwiGLU readiness. Two request slots alone do not
+provide that intra-wave pipeline. Under interleaved slots, join command generation
+to stage events; odd/even command IDs are not a valid up/down classifier.
