@@ -67,3 +67,32 @@ validate_config(c)
 assert "betterscale.patches.qwen_layout" not in sys.modules
 """
         subprocess.run([sys.executable, "-c", code], check=True)
+
+    def test_weight_packing_preserves_parameter_identity_and_values(self):
+        code = r"""
+import sys, types, torch
+from torch import nn
+q = types.ModuleType("vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn")
+a = types.ModuleType("vllm_ascend.ops.gdn")
+def forward_core(self): pass
+class Qwen(nn.Module):
+    _forward_core = forward_core
+    def __init__(self):
+        super().__init__()
+        self.conv1d = nn.Conv1d(5120,5120,4,groups=5120,bias=False,dtype=torch.bfloat16)
+class Ascend:
+    _forward_core = forward_core
+q.QwenGatedDeltaNetAttention = Qwen
+a.AscendGatedDeltaNetAttention = Ascend
+sys.modules[q.__name__]=q; sys.modules[a.__name__]=a
+from betterscale.patches.qwen_layout import pack_conv_weights
+model=nn.ModuleList([Qwen() for _ in range(48)])
+refs=[(x.conv1d.weight, x.conv1d.weight.detach().clone()) for x in model]
+for repeat in range(2):
+    assert pack_conv_weights(model)==48
+    for layer,(parameter,values) in zip(model,refs):
+        assert layer.conv1d.weight is parameter
+        assert torch.equal(parameter,values)
+        assert parameter.view(5120,4).T.is_contiguous()
+"""
+        subprocess.run([sys.executable, "-c", code], check=True)
