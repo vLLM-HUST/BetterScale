@@ -25,6 +25,12 @@ def normalize(builder, metadata, bucket):
     metadata.non_spec_prefill_metadata.chunk = chunk
     metadata.chunk_indices = chunk.chunk_indices_chunk64
     metadata.chunk_offsets = chunk.chunk_offsets_chunk64
+    # These belong to the alternative Triton causal-convolution implementation;
+    # this pinned Ascend GDN core never reads them. Its native conv consumes the
+    # real tensor endpoints in non_spec_prefill_metadata.causal_conv1d instead.
+    metadata.nums_dict = None
+    metadata.batch_ptr = None
+    metadata.token_chunk_offset_ptr = None
     metadata.num_actual_tokens = bucket
     metadata.num_prefill_tokens = bucket
     return metadata
