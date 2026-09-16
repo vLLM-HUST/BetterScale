@@ -1,4 +1,4 @@
-"""The only public entry: vllm serve ... --worker-cls betterscale.worker.Worker."""
+"""DSV4 entry: vllm serve ... --worker-cls betterscale.worker.Worker."""
 
 import logging
 

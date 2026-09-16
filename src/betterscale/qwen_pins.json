@@ -70,6 +70,16 @@
       "distribution": "vllm-ascend",
       "path": "vllm_ascend/attention/attention_v1.py",
       "sha256": "96d36dbd87fd422b8a4928b136b334209510cd321e0d7d2b2e5bdd7a3e259d9e"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+      "sha256": "97faa7eeb0c2a3ea0c51330a45c038d8c644c57da52946692168019585c6cee6"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/patch/worker/patch_qwen3_5.py",
+      "sha256": "97ff11df1d7db0930d5742cfc6020e5ec425064bd37ea5d17e5089712f5fcdae"
     }
   ]
 }
