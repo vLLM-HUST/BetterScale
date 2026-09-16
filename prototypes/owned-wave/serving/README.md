@@ -171,3 +171,9 @@ the actual query count separately;70 tokens replay128 once, not64+4+2. Padding
 has no KV/cursor/sampler authority. See
 [the planner boundary and qualification](../fia-plan/CEILING-PREFILL.zh-CN.md).
 The old frozen-plan switches retain exact-size tail splitting.
+
+For step-boundary rather than whole-trace performance, see
+[the ceiling candidate timeline and scheduler audit](../fia-plan/STEP-GAPS.zh-CN.md).
+Profile-only scheduler events are exported by `export_schedule.py` after
+TraceLoom. It verifies host-clock/API containment before adding lanes to a
+separate file; the original TraceLoom timeline remains unchanged.
