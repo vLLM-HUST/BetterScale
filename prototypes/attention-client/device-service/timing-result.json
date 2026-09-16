@@ -1,0 +1,41 @@
+{
+  "local_artifact": "runs/local-expert-control-20260916T033314Z",
+  "remote_artifact": "runs/attention-device-joint-20260916T033412Z",
+  "scope": "Same host, full Qwen layer dimensions, two dummy BF16 layers; no profiler",
+  "local": "TP1 native full MLP graph; each trial averages64 prequeued replays",
+  "remote": "Attention2+Expert2; gate through returned result reduction; individual graph events",
+  "limitations": [
+    "Different request scheduling; not an equal-resource throughput comparison",
+    "Local repeated input; remote live layer inputs; dummy routing only",
+    "Remote fixture retains host oracle gaps; asynchronous other-request progress not benchmarked"
+  ],
+  "table": [
+    {
+      "rows": 1,
+      "local_graph_median_us": 119.45874989032745,
+      "remote_graph_median_us": 211.1399993300438,
+      "remote_min_us": 204.42000031471252,
+      "remote_max_us": 222.47999906539917,
+      "local_trial_count": 10,
+      "remote_invocations": 16
+    },
+    {
+      "rows": 16,
+      "local_graph_median_us": 136.79827749729156,
+      "remote_graph_median_us": 665.3900146484375,
+      "remote_min_us": 657.4400067329407,
+      "remote_max_us": 668.6999797821045,
+      "local_trial_count": 10,
+      "remote_invocations": 4
+    },
+    {
+      "rows": 32,
+      "local_graph_median_us": 155.65531700849533,
+      "remote_graph_median_us": 1089.8200273513794,
+      "remote_min_us": 1077.7599811553955,
+      "remote_max_us": 1092.2800302505493,
+      "local_trial_count": 10,
+      "remote_invocations": 4
+    }
+  ]
+}

@@ -144,3 +144,8 @@ clones, comparisons and host coroutine polling also remain. Each client's12
 `neural_client` invocations total about4ms, including wait and transfer. These
 profiled diagnostic sums are not latency/speedup claims. Use a separate
 oracle-free load fixture before judging service throughput or batching policy.
+
+For the first native FULL-graph versus separated-expert stage comparison, read
+[TIMING.md](TIMING.md). The current remote path is slower, especially at16/32 rows;
+scalar return scatter/zero fill, rather than GMM alone, is a measured bottleneck.
+Do not reuse the eager oracle's host gaps to claim a graph-to-graph speedup.

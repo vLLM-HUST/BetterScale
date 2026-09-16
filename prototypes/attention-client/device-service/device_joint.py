@@ -177,9 +177,16 @@ class DeviceExperts:
             self.banks[key] = ClientBank(self, layer_id, layer, pending.normalized)
         bank = self.banks[key]
         bank.input.copy_(pending.normalized)
+        # External timing brackets only the client graph (input copy excluded).
+        # They do not change its publication/completion protocol.
+        timing = bool(os.environ.get("DEVICE_SERVICE_TIMING"))
+        start = torch.npu.Event(enable_timing=True) if timing else None
+        if start is not None:
+            start.record()
         bank.graph.replay()
-        event = torch.npu.Event()
+        event = torch.npu.Event(enable_timing=timing)
         event.record()
+        self.pending_timing = start, rows
         self.generation += 1
         self.pending = bank, event, pending, time.monotonic()
         # Host records only the invocation envelope, never materializes routing.
@@ -204,14 +211,17 @@ class DeviceExperts:
             return None
         torch.npu.current_stream().wait_event(event)
         self.pending = None
-        self.audit.append(
-            dict(
-                event="retire",
-                generation=handle,
-                time=time.monotonic(),
-                completion_device=True,
-            )
+        start, rows = self.pending_timing
+        record = dict(
+            event="retire",
+            generation=handle,
+            rows=rows,
+            time=time.monotonic(),
+            completion_device=True,
         )
+        if start is not None:
+            record["client_graph_us"] = start.elapsed_time(event) * 1000
+        self.audit.append(record)
         return bank.output
 
     def close(self):
