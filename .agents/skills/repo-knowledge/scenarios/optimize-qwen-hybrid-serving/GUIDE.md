@@ -101,3 +101,58 @@ oracle at512/513/1024/1536/2048/2051 tokens, plus C4/C8 mixed fallback transport
 FULL mean TTFT at513/2051 was270.67/552.86ms; same-run padded NONE407.81/857.93ms.
 This qualifies the bounded non-speculative single-prefill mechanism only. MTP
 composition and general mixed/full/prefix-cache coverage require their own evidence.
+
+## MTP composition: distinguish padding from capture and prompt sensitivity
+
+Native async/MTP2 service frontiers use64outputs,C1/C4/C8,two cohorts each,APCoff,
+6GiBKV on the same local TP2 host (separate runs, not interleaved causal A/B).
+Native sync22.03/59.67/91.53tok/s; async26.53/68.24/101.88; MTP2
+40.76/81.56/116.02. Exact native sync→async decode graph bodies stay~34.7ms,
+intergraph gaps~8.8→1.4ms. MTP2 profile originally underfilled:20outputs exhausted
+before8warmup+4active model iterations. Use64output budget, still only4active steps;
+empty exact-graph export from that old capsule is not evidence of absent graphs.
+
+`full-mtp2-3` apparent55.96/92.63/117.81tok/s is **not a qualified combined speedup**:
+its repeated-English synthetic512prompt produced a repetitive continuation, changing
+speculative acceptance. `spec-shadow1` proves target512prefill plus first3-token
+verification FULL/NONE validhidden/allcache max_abs0 under identical paddedmetadata.
+`spec-policy1` then shows512→513 padding changes the output even with FULL disabled;
+exact513 does not. Thus this discrepancy is not specific to graph replay.
+
+`padding-kernel2` isolates actualTP2 q/k8,v24,K/V128. Nativeconv validoutput/cache
+are exact for512 vs513/576/1024 with initialstate false/true. Chunk validoutputs
+are exact; finalFP32state has small finite delta~.0032/.0020, equal across padded
+sizes. Do not assert a special513partialchunk bug or repair it with untested alignment.
+`logical-state1` wholemodel cold512 comparison shows differences already inlayer0
+conv cache before recurrence, amplified acrosslayers; FULL and paddedNONE stats
+agree. A physicalshape-dependent arithmetic perturbation is plausible, not proved
+as the only cause. `spec-policy2`192-alignment(576/1152) yields coherent but different
+continuations in both paddedNONE/FULL, not exact native recovery.
+
+`chat-policy1` uses4authored nonrepetitive chat prompts84/94/99/101tokens,128outputs,
+native/FULL/FULL/native, MTP2 with native3-token bucket alignment. All16requests
+complete and inspected continuations are coherent; some texts differ, no observed
+synthetic repeated-prompt loop. This bounded smoke evidence is not a quality
+benchmark and does not establish population-wide MTP speedup. Do not demand
+bitwise equality where native shape/batching is already numerical, but don't count
+changed speculative acceptance as a graph kernel improvement either.
+
+## Independent package integration
+
+`betterscale.qwen_worker.Worker` is the bounded **nonSpec/APC-off** opt-in entry,
+separate from DSV4 and from the older owned-Qwen reactor. Patch README owns its
+native command and admission. It strips prototype RPC/profiling/source-path imports;
+MTP composition remains experimental. NPU acceptance uses a frozen package snapshot
+through `package_probe.py`, then a fresh wheel/sdist build verifies package delivery.
+Do not call the source addition a PyPI release.
+
+Editable vLLM source may not live beneath distribution.locate_file(). Qwen's own
+pin check validates find_spec(package).origin roots, actual imported files and
+versions. Initial `package1` correctly failed closed before model load on missing
+legacy distribution-relative files; `package2` tests the corrected independent gate.
+Do not silently weaken content pins or modify the DSV4 Worker to fix this route.
+
+The existing CPU suite needs the pinned Ascend submodule populated. A new parent
+worktree initially has empty submodule directories; use a detached worktree at the
+pinned donor commit in its upstream/vllm-ascend slot. Mere directory existence does
+not mean the fixture exists.69tests pass after supplying that unmodified fixture.
