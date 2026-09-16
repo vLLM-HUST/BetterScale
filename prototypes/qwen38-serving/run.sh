@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-: "${CAPSULE:?fresh absolute capsule}" "${ARM:?sync/async/mtp1/mtp2/mtp3}"
+: "${CAPSULE:?fresh absolute capsule}" "${ARM:?sync/async/mtp1/mtp2/mtp3/fixed-full}"
 source_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 repo=$(git -C "$source_dir" rev-parse --show-toplevel)
 runtime=/workspace/my-ascend-workspace/runs/rp-legacy/20260903T155041Z-layout/rp-upstream-0.25.1/.venv
@@ -24,6 +24,11 @@ export HCCL_NPU_SOCKET_PORT_RANGE=29664-29727
 unset ASCEND_CUSTOM_OPP_PATH
 profile=()
 if [[ ${PROFILE:-0} == 1 ]]; then profile=(--profile); fi
+command=("$runtime/bin/python" "$CAPSULE/source/service_probe.py" --capsule "$CAPSULE" --arm "$ARM" "${profile[@]}")
+if [[ $ARM == fixed-full ]]; then
+  export CAPSULE VLLM_SERVER_DEV_MODE=1 FIXED_PREFILL_TOKENS=${FIXED_PREFILL_TOKENS:-512}
+  command=("$runtime/bin/python" "$CAPSULE/source/fixed_full_probe.py")
+fi
 exec "$runtime/bin/python" /workspace/strengthen-dsv4/prototypes/attention-client/device-service/admit_subset.py \
  --devices "$ASCEND_RT_VISIBLE_DEVICES" --wait-seconds 1800 --output "$CAPSULE/admission" -- \
- "$runtime/bin/python" "$CAPSULE/source/service_probe.py" --capsule "$CAPSULE" --arm "$ARM" "${profile[@]}"
+ "${command[@]}"
