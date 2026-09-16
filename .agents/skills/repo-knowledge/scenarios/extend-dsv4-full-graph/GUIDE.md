@@ -333,3 +333,16 @@ INT32 plans, exact top-k CPU retirement; this is separate from neural inference.
 ACL binary loading requires the named AIV `.ascend.meta` section, not only a
 successfully linked ELF. Real BF16 route production/reduction and expert GEMM
 remain the joint integration boundary; do not overstate these two separate gates.
+
+For the subsequent real BF16 **Attention2 + Expert2** reference, enter
+`attention-client/joint/README.md`. Full Qwen3-30B-A3B layer dimensions/two dummy
+layers pass exact native output/KV checks on four cards. This consumer is
+host-driven (IPC data, CPU descriptors/completions), not an extension of the
+persistent INT32 server. It qualifies true remote GEMM and two-owner retirement,
+not cross-source neural batching or production performance. Its KV shadow restores
+the pre-forward state before candidate execution; reference writes left in place
+can hide a missing KV update. Import the worker via native initialization, not
+attention_v1 before donor device initialization, to avoid its circular import.
+Align only episode startup after both clients prewarm: otherwise one client may
+finish the bounded fixture before the second finishes loading, yielding no useful
+concurrent-ownership coverage despite a four-card run.

@@ -1,0 +1,51 @@
+{
+  "status": "pass",
+  "attention": 2,
+  "experts": 2,
+  "model": "Qwen3-30B-A3B",
+  "layers": 2,
+  "full_layer_dimensions": true,
+  "dummy_weights": true,
+  "host_control": true,
+  "performance_claim": false,
+  "clients": [
+    {
+      "client": 0,
+      "forward_checks": 12,
+      "sealed_checks": 6,
+      "attention_graphs": 6,
+      "attention_replays": 24,
+      "output_exact": true,
+      "kv_exact": true,
+      "max_abs": 0.0,
+      "relative_l2": 0.0
+    },
+    {
+      "client": 1,
+      "forward_checks": 12,
+      "sealed_checks": 6,
+      "attention_graphs": 6,
+      "attention_replays": 24,
+      "output_exact": true,
+      "kv_exact": true,
+      "max_abs": 0.0,
+      "relative_l2": 0.0
+    }
+  ],
+  "servers": [
+    {
+      "server": 0,
+      "shared_graphs": 2,
+      "jobs": 48,
+      "routed_rows": 1676
+    },
+    {
+      "server": 1,
+      "shared_graphs": 2,
+      "jobs": 48,
+      "routed_rows": 1652
+    }
+  ],
+  "client0_sealed_inflight_intervals_overlapping_client1": 9,
+  "overlap_is_host_ownership_not_device_timing": true
+}

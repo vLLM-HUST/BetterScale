@@ -148,3 +148,17 @@ weights → device packet producer → real routed-expert GEMM → device weight
 reduction → next attention-layer replay. The server currently has no real GEMM
 consumer or BF16 contract. Neither the exact native reference test nor the integer
 IPC test may be reported as that end-to-end path already working.
+
+### Four-card BF16 neural closure (September16)
+
+The next gate now passes in [`joint/`](joint/README.md): two independent native
+attention engines plus two64-expert shards, full Qwen3-30B-A3B layer dimensions,
+two layers and dummy BF16 weights. Both clients' prefill/decode output/KV shadows
+are exact, with same-pre-forward KV restored before candidate execution. The
+sealed episode has overlapping client lifetimes and no layer-global rendezvous.
+
+This is a NEW host-driven reference consumer, not an upgrade of the persistent
+integer server: IPC carries real device tensors, but CPU route descriptors and
+completion messages remain. Real remote GEMM and two-owner retirement are now
+qualified; persistent neural service, cross-source GEMM batching, full-model
+real-weight quality and production performance are still not claimed.

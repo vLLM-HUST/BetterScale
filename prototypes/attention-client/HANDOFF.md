@@ -43,3 +43,17 @@ Qwen3-30B-A3B has no shared expert: local shared hiding is not measured here.
 
 Release defaults and installed donor runtime were not modified. The prototype
 uses bounded local single/two-card leases and leaves foreign tasks untouched.
+
+## Follow-up September16: actual BF16 four-card closure
+
+The earlier "no real remote expert GEMM" boundary above described September15.
+See [`joint/README.md`](joint/README.md) and `joint/result.json` for the now-passing
+Attention2 + Expert2 reference: full Qwen layer dimensions, two dummy layers,
+24 combined native forward checks with exact outputs/KV,48 attention replays,
+and48 remote jobs per expert rank. Each expert shard is shared by both clients.
+Both expert receipts are required before source reuse. The final test seals all
+attention graphs before the concurrent episode and restores pre-forward KV for
+its native/candidate comparison.
+
+This follow-up is host-controlled, not the persistent server's real-GEMM successor.
+It does not yet qualify cross-source GEMM batching or production throughput.
