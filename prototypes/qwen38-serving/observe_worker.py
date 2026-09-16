@@ -8,6 +8,19 @@ from vllm_ascend.worker.worker import NPUWorker
 class Worker(NPUWorker):
     window = None
 
+    def load_model(self, *args, **kwargs):
+        result = super().load_model(*args, **kwargs)
+        if os.environ.get("SERVING_PACK_CONV") == "1":
+            from conv_layout import pack_conv_weights
+
+            count = pack_conv_weights(self.model_runner.model)
+            from vllm.logger import init_logger
+
+            init_logger(__name__).info(
+                "Packed %d immutable GDN convolution weights", count
+            )
+        return result
+
     def profile(self, is_start=True, profile_prefix=None):
         from profiling import ProfileWindow
 
