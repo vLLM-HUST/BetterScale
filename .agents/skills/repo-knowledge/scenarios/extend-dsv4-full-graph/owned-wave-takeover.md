@@ -292,3 +292,17 @@ SWE rounds. Hot prefill154->44, totalwaves3843->3703; actual2698/APC625664 uncha
 native87.561s is reused, not a freshA/B; cold95.138s still above native94.413s.
 No new profile was collected; do not attach old four-step kernel totals to the
 new scheduling policy. See the linked note for exact source capsules and bounds.
+
+For actual step gaps after ceiling prefill, enter `fia-plan/STEP-GAPS.zh-CN.md`.
+`swe-ceiling-profile1` records26warmup+4decode waves with host scheduling lanes;
+old step40 is no longer the same phase. New61.9–62.9us compute-body boundaries
+match old-owned steady62–63us; the tail fix reduced wave count, not this gap.
+390 MEM_WRITE_VALUE tasks on the old graph stream span~57us of each boundary:
+uncovered compute/comm is NOT idle. Addresses/dependencies are not established.
+Historical native raw711–735us includes~452us head/sample/input compute and~48us
+comm; remaining208–233us is still not all-engine idle. Native repeats graph IDs:
+use inspect_step_gaps.py's first-task anchors and48FIA/replay-count guards, not
+contiguous modelId grouping. export_schedule.py gates host overlays on every
+CANN replay falling inside its recorded submission; profile stop creates a
+rank-skewed25ms quorum wait, not a serving stall. Do not rerun baseline or confuse
+this four-step first-prompt window with the complete hot-APC trace.

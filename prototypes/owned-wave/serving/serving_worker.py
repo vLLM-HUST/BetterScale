@@ -171,16 +171,26 @@ class ServingWorker(NPUWorker):
                     start = time.perf_counter()
                     while not scheduler.done:
                         while (plan := scheduler.next_plan()) is not None:
+                            if profile_steps:
+                                window.mark("submit_begin", plan)
                             reactor.submit(plan)
+                            if profile_steps:
+                                window.mark("submit_end", plan)
                             window.step()
                         if not reactor.pending:
                             raise RuntimeError(
                                 "no runnable work: finite KV capacity exhausted"
                             )
+                        if profile_steps:
+                            window.mark("receive_begin", reactor.pending[0].plan)
                         plan, rows = reactor.receive()
+                        if profile_steps:
+                            window.mark("receive_end", plan)
                         quorum = [None] * group.world_size
                         dist.all_gather_object(quorum, rows, group=group.cpu_group)
                         scheduler.receive(plan, quorum)
+                        if profile_steps:
+                            window.mark("quorum", plan)
                     torch.npu.synchronize()
                     elapsed = time.perf_counter() - start
                     window.close()
