@@ -10,10 +10,39 @@ import torch_npu
 
 
 class PersistentEngine:
-    def __init__(self, sources, outputs, up, down, owner, tasks=24):
-        assert len(sources) == len(outputs) == 2 and owner in (0, 1)
-        assert 1 <= tasks <= 24
-        assert up.shape == (128, 2048, 1536) and down.shape == (128, 768, 2048)
+    def __init__(
+        self,
+        sources,
+        outputs,
+        up,
+        down,
+        owner,
+        tasks=24,
+        open_service=False,
+        weight_table=None,
+    ):
+        next_model = weight_table is not None
+        inner, topk = (512, 10) if next_model else (768, 8)
+        capacity, map_size = 64 * topk, 32 * topk + 8
+        self.open_service = open_service
+        self.weight_table = weight_table
+        if next_model:
+            assert (
+                weight_table.dtype == torch.int64
+                and weight_table.ndim == 2
+                and weight_table.shape[1] == 2
+            )
+            assert 1 <= weight_table.shape[0] <= 48
+        assert len(sources) == len(outputs) == 2 and 0 <= owner < (
+            4 if next_model else 2
+        )
+        assert 1 <= tasks <= 32
+        if (
+            not open_service
+            and os.environ.get("DEVICE_SERVICE_INTERNAL_PIPELINE") == "1"
+        ):
+            assert tasks <= 24
+        assert up.shape == (128, 2048, inner * 2) and down.shape == (128, inner, 2048)
         assert up.dtype == down.dtype == torch.bfloat16
         assert (
             int(torch_npu.get_npu_format(up))
@@ -23,6 +52,9 @@ class PersistentEngine:
         self.resident_moves = os.environ.get("DEVICE_SERVICE_RESIDENT_MOVES") == "1"
         self.move_quantum = int(os.environ.get("DEVICE_SERVICE_MOVE_QUANTUM", "0"))
         assert self.move_quantum in (0, 128, 256)
+        assert not next_model or not (
+            self.move_quantum or self.resident_moves
+        ), "Next uses expert boundaries, not legacy K8 move quanta"
         self.tail_experts = int(
             os.environ.get("DEVICE_SERVICE_SEGMENT_TAIL_EXPERTS", "0")
         )
@@ -49,17 +81,20 @@ class PersistentEngine:
         self.events = torch.zeros((512, 8), dtype=torch.int64, device="npu")
         self.work_times = (
             torch.zeros((3, 512, 24, 8), dtype=torch.int64, device="npu")
-            if os.environ.get("DEVICE_SERVICE_INTERNAL_TIMING") == "1"
+            if not open_service
+            and os.environ.get("DEVICE_SERVICE_INTERNAL_TIMING") == "1"
             else None
         )
-        pack_timing = os.environ.get("DEVICE_SERVICE_PACK_TIMING") == "1"
+        pack_timing = (
+            not open_service and os.environ.get("DEVICE_SERVICE_PACK_TIMING") == "1"
+        )
         assert not pack_timing or (
             self.work_times is not None
             and not self.move_quantum
             and not self.resident_moves
         )
         self.pack_times = (
-            torch.zeros((512, 512, 8), dtype=torch.int64, device="npu")
+            torch.zeros((512, capacity, 8), dtype=torch.int64, device="npu")
             if pack_timing
             else None
         )
@@ -68,7 +103,7 @@ class PersistentEngine:
             self.internal_pipeline and not self.move_quantum and not self.resident_moves
         )
         self.pack_ready = (
-            torch.zeros((2, 512, 16), dtype=torch.int32, device="npu")
+            torch.zeros((2, capacity, 16), dtype=torch.int32, device="npu")
             if self.fine_pack
             else None
         )
@@ -82,17 +117,17 @@ class PersistentEngine:
         for _ in range(2):
             slot = [
                 torch.empty((2, 32, 2048), dtype=torch.bfloat16, device="npu"),
-                torch.empty((512, 2048), dtype=torch.bfloat16, device="npu"),
-                torch.empty((512, 1536), dtype=torch.bfloat16, device="npu"),
-                torch.empty((512, 768), dtype=torch.bfloat16, device="npu"),
-                torch.empty((512, 2048), dtype=torch.bfloat16, device="npu"),
-                torch.zeros((2, 264), dtype=torch.int32, device="npu"),
+                torch.empty((capacity, 2048), dtype=torch.bfloat16, device="npu"),
+                torch.empty((capacity, inner * 2), dtype=torch.bfloat16, device="npu"),
+                torch.empty((capacity, inner), dtype=torch.bfloat16, device="npu"),
+                torch.empty((capacity, 2048), dtype=torch.bfloat16, device="npu"),
+                torch.zeros((2, map_size), dtype=torch.int32, device="npu"),
                 torch.zeros(128, dtype=torch.int64, device="npu"),
             ]
-            for w, k, n in ((up, 2048, 1536), (down, 768, 2048)):
+            for w, k, n in ((up, 2048, inner * 2), (down, inner, 2048)):
                 slot.append(
                     torch.tensor(
-                        [k, n, 128, w.data_ptr(), slot[6].data_ptr(), 512],
+                        [k, n, 128, w.data_ptr(), slot[6].data_ptr(), capacity],
                         dtype=torch.int64,
                         device="npu",
                     )
@@ -103,7 +138,7 @@ class PersistentEngine:
                 slot.extend(
                     torch.zeros(128, dtype=torch.int64, device="npu") for _ in range(2)
                 )
-                for w, k, n in ((up, 2048, 1536), (down, 768, 2048)):
+                for w, k, n in ((up, 2048, inner * 2), (down, inner, 2048)):
                     for part in range(2):
                         slot.append(
                             torch.tensor(
@@ -113,7 +148,7 @@ class PersistentEngine:
                                     128,
                                     w.data_ptr(),
                                     slot[9 + part].data_ptr(),
-                                    512,
+                                    capacity,
                                 ],
                                 dtype=torch.int64,
                                 device="npu",
@@ -146,6 +181,9 @@ class PersistentEngine:
                 self.issue_times.data_ptr() if self.issue_times is not None else 0,
                 int(self.early_return),
                 int(self.route_pull),
+                int(open_service),
+                weight_table.data_ptr() if next_model else 0,
+                weight_table.shape[0] if next_model else 2,
             ],
             dtype=torch.int64,
             device="npu",
@@ -219,7 +257,10 @@ class PersistentEngine:
             early_down=self.early_down,
             fine_pack=self.fine_pack,
             early_return=self.early_return,
-            waves=len(records),
+            waves=ctrl[43][1],
+            open_service=self.open_service,
+            completed_counts=ctrl[43][4:6],
+            rolling_trace=ctrl[43][1] > self.trace.shape[0],
             pulls_during_cube=ctrl[43][2],
             trace=records,
             events=self.events[: ctrl[43][3]].cpu().tolist(),
@@ -270,7 +311,7 @@ class PersistentEngine:
             assert self.lib.unload_server(binary) == 0
 
 
-def serve(api, clients, up, down, owner, output_path):
+def serve(api, clients, up, down, owner, output_path, tasks=24):
     from common import INPUT_OFFSET, recv
     from profile_capture import start, stop
 
@@ -280,6 +321,7 @@ def serve(api, clients, up, down, owner, output_path):
         up,
         down,
         owner,
+        tasks=tasks,
     )
     for c in clients:
         c["pipe"].send(("server_ready",))
@@ -291,7 +333,7 @@ def serve(api, clients, up, down, owner, output_path):
     receipt = engine.finish()
     for source in range(2):
         seen = [r[source] for r in receipt["trace"] if r[source]]
-        assert seen == list(range(1, 25)), seen
+        assert seen == list(range(1, tasks + 1)), seen
     for c in clients:
         pipe = c["pipe"]
         assert recv(pipe)[0] == "stop"

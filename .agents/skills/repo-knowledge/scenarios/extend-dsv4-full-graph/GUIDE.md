@@ -508,3 +508,108 @@ device-service/ROUTE-PULL.md. It records the generation/retirement contract,
 mode2 catalog cleanup, same-work controls, paced polling and zero-owner/weighted
 gates. Early token reduction is not permission to reuse exports or advance
 attention before full-wave drain; independent client clocks are not aligned traces.
+
+For native model generation with the persistent expert backend, enter
+`prototypes/attention-client/device-service/SERVING.md` and use serving_receipt.py,
+not the older unrolled-service summarizer. Four-card two-layer dummy shadow gates
+match native outputs/KV; no-shadow generation uses zero reference calls and a
+raising local-expert guard. A matched32-job shadow run reproduces generated tokens.
+The explicit1–32-job unsegmented budget is still bounded/exact, not online EOF or
+unlimited service. Full48-layer BF16 needs role-specific weight loading: current
+client staging alone would be54GiB plus54GiB local experts. Do not scale the dummy
+bootstrap and blame its OOM on the expert transport. This is separate from the
+operator worker's evolving GEMM implementation and changes no released defaults.
+
+
+For independent expert roles and native forward without shadow, enter
+`prototypes/attention-client/roles/README.md`. Four-card two-layer dummy sources
+retire unequal 44/66 jobs using device EOF, not a predeclared job budget. Clients
+allocate no routed weights; servers independently own shards. Initialize remote
+Session at load_model completion: native memory profiling precedes warmup. Share
+MoE graph scratch pools, but keep returned outputs outside that pool for native
+residual lifetimes. Otherwise many tiny private pools can exhaust virtual address
+reservations, not physical expert storage. This gate uses eager native attention
+and captured MoE, not full-model graph composition or real-weight qualification.
+Host teardown remains session-wide, with failure recovery unsupported. Keep
+persistent binaries and the extended configuration ABI from the same source.
+
+For scaling independent roles to DSV4, read roles/DSV4-PLAN.md and use
+roles/weight_census.py before choosing ranks. Local W8A8 target routed payload
+alone is258.67GiB: E4 on64GiB cannot fit. The0731 checkpoint adds THREE DSpark
+expert layers; older W8A8 adds one. Config expert_dtype=fp4 is misleading for these
+INT8 checkpoint tensors. E6 needs uneven43/42 ownership, not native integer-floor
+EP placement. Capacity evidence is checkpoint headers, not a runtime peak gate.
+
+For a smaller shared-expert separation candidate, read roles/QWEN-NEXT-PLAN.md.
+Local Qwen3-Next80B is BF16:144GiB target routed weights plus3GiB MTP. E2 does
+NOT fit64GiB devices; E3 or E4 does on weight accounting. Its gated shared expert
+is one same-width MLP versus top-k10 routed MLPs; overlap opportunity is real but
+coverage is unmeasured. Preserve native36GDN/12full-attention state management.
+
+Qwen3-Next A2/E4 implementation lives in `attention-client/qwen-next/README.md`.
+Four-layer dummy native hybrid generation and independent MoE oracle pass in
+131201 (30/54 calls, relL2<=0.000255). A2 inputs retain gated shared compute
+between submit/collect; this is not a measured overlap speedup. Compile QWEN_NEXT
+for top-k10/512 experts and single-layer slot catalogs; legacy shape remains the
+default. Layerwise weight pointer lookup preserves two reusable workspaces, not
+48 full group catalogs. Set persistent server device execution timeout explicitly
+for cold compilation; retain a bounded supervisor. An arm with a daemon device-snapshot thread
+had an unclean teardown; the observer was removed rather than accepting that arm. Never report audit
+weight reconstruction memory as ordinary client peak. Full-model evidence remains
+separate from these fixture gates.
+
+Full48 BF16 real-weight A2/E4 passed132952; see `qwen-next/real-result.json` beside
+the fixture evidence. All six roles exited0 and matched242/1010 calls; oracle
+layer0/3 relL2<=0.000158. Prepare reference weights/results BEFORE registering IPC,
+not while persistent service is live. Earlier real arms generated successfully
+but failed during post-generation reference construction; causality is unresolved.
+Clients retain no routed weights; E4 each holds36GiB. Five short requests and1252
+waves for1252 calls do not demonstrate batching/throughput or full quality. The
+1GiB fixture KV budget avoids the observed128MiB smoke-test preemption. Report
+Torch allocated peak separately from device residency and diagnostic allocations.
+
+Qwen Next six-role profiling: `NEXT_PROFILE=1`, then the shared profile_export.py
+with explicit six `--roles` and `--label attention2-expert4`; see the Next README.
+134603 passes all role exits. IPC has no HCCL clock-fit markers: provider-clock
+translation is not independent calibration. Persistent E bars include waits and
+do not expose inner GEMM phases; never count their entire duration as useful work.
+
+Next FULL decode gate141742: see qwen-next README/export_attention.py. Use mode0
+plus native runner.use_aclgraph metadata initialization; Dynamo cannot trace the
+ctypes kernel calls. Inline remote nodes into outer capture, not nested replay.
+17 native RI replays contain816 submit/collect calls in one graph model. Prefill
+remains eager (GDN UNIFORM_BATCH). Export one native attention hierarchy, not only
+flattened distributed lanes; server persistent bars are uninformative internally.
+Collect214us under FULL versus eager7.7us does not prove slower experts: eager host
+supply changes how much wait remains at collect. Retain that attribution boundary.
+
+### A2/E4 efficient-server confluence and long-lifetime completion race
+
+The qwen-next tree combines layer-addressed open service with continuous GEMM,
+fine pack, early return and token-owned route pull/reduce. Enter its README's
+confluence section before reusing builds: server config slots24–26 now own open
+service/weight table/layer count; earlier serving slots16–18 collided with the
+fine scheduler. Launcher requires one fresh `abi.json`-qualified binary closure.
+Open service disables bounded generation-indexed work observers; cross-layer
+weights override both whole and continuous GEMM addresses. K10/E4 geometry differs
+from the older K8/E2 leaf; do not copy raw export offsets or move quanta.
+
+Observed in failed `qwen-next-20260916T153945Z`: server3 slot1 full down completion
+2322 with prefix readiness stuck at2318; preceding full48 run153434 hung during
+third-request decode. Inference supported by source ordering: completion can occur
+between the prefix and full readiness polls, and clearing the active Cube slot
+then loses the prefix publication forever. The full-completion branch must also
+publish prefix readiness. General invariant: a stronger completion observation
+must satisfy all still-required weaker notifications before its owner retires.
+Use `NEXT_WIRE_STRESS=1 NEXT_WIRE_ONLY=1` for a cheap unequal-source/EOF/long-generation
+gate; optional control snapshots are diagnostic, not valid performance evidence.
+
+The fixed confluence passed wire154246 (290/1058 calls), full48 real154330 and
+same-host old-path control155142. Source1 FULL graph median20.07124→18.91032ms
+(17 steps each; same output IDs). See qwen-next/confluence-result.json, not older
+A2/E2 DFC numbers, for this specific scope. Concurrency155704 showed zero paired
+waves even for nominally simultaneous same-layer sources. Prepublished-source
+leaf160001 did pair:797.67us same-layer versus1112.53us different-layer median.
+This distinction is preserved in qwen-next/CONCURRENCY.md: admission can batch,
+but independent-client arrival/early-slot assignment can miss the opportunity;
+no waiting-for-batch policy was added or uniquely blamed by that observation.

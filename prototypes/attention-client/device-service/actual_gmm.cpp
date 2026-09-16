@@ -79,7 +79,8 @@ struct ActualGmmTypes {
 // The producer guarantees monotone ends in [0,capacity]. Only live rows are
 // computed; inactive output rows are untouched, not synthetic expert work.
 __aicore__ inline void RunActualGmm(GM_ADDR config, GM_ADDR input,
-                                    GM_ADDR output) {
+                                    GM_ADDR output,
+                                    uint64_t weightAddress = 0) {
   auto cfg = (__gm__ int64_t *)config;
   uint32_t k = cfg[0], n = cfg[1], groups = cfg[2], capacity = cfg[5];
   GlobalTensor<int64_t> ends;
@@ -104,7 +105,8 @@ __aicore__ inline void RunActualGmm(GM_ADDR config, GM_ADDR input,
       (GM_ADDR)(cfg[4] + first * 8),
       input,
       layout::RowMajor{capacity, k},
-      (GM_ADDR)(cfg[3] + uint64_t(first) * k * n * 2),
+      (GM_ADDR)((weightAddress ? weightAddress : cfg[3]) +
+                uint64_t(first) * k * n * 2),
       layout::zN::MakeLayout<bfloat16_t>(k, n),
       output,
       layout::RowMajor{capacity, n}};

@@ -75,8 +75,12 @@ def inspect(owned=None):
             and re.fullmatch(r"\d+\s+\d+", cells[0])
             and int(cells[0].split()[0]) in devices
         ):
-            assert len(cells) >= 5 and cells[4].isdigit()
-            host_pid, local_pid = int(cells[1]), int(cells[4])
+            assert len(cells) >= 5 and cells[1].isdigit(), cells
+            host_pid = int(cells[1])
+            # Container PID can disappear before the driver removes its row.
+            # Only the existing host-PID/start-time lease can recognize it;
+            # an unknown host PID remains foreign, never implicitly idle.
+            local_pid = int(cells[4]) if cells[4].isdigit() else 0
             start = process_start(
                 local_pid or known_host_owners.get(host_pid, (0, None, 0))[0]
             )

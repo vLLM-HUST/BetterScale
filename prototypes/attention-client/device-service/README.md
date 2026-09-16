@@ -1,5 +1,10 @@
 # Device-driven neural expert service (bounded prototype)
 
+For the latest native-generation integration with the persistent BF16 server,
+read [the serving checkpoint](SERVING.md). It includes no-shadow generation and
+explicit remaining full-model/online-lifetime boundaries; older gates below
+retain their original scope.
+
 This is the next gate after [the host-controlled four-card reference](../joint/README.md).
 It replaces CPU route extraction, host expert batch selection, and pipe completion
 messages with device publication, cross-source selection, and completion. It does

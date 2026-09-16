@@ -1,7 +1,6 @@
 #include "persistent_protocol.hpp"
 using namespace AscendC;
 using namespace Persistent;
-constexpr int HIDDEN = 2048, INNER = 768, ROUTES = 256, GROUPS = 128;
 
 __aicore__ inline int ScalarMin(int a, int b) { return a < b ? a : b; }
 __aicore__ inline int ScalarMax(int a, int b) { return a > b ? a : b; }
@@ -108,7 +107,7 @@ __aicore__ inline void ReturnStreaming(__gm__ int64_t *cfg, Transfer &io,
     for (int c = 0; c < 2; ++c) {
       if (!sources[c])
         continue;
-      for (int route = worker; route < rows[c] * 8; route += VW) {
+      for (int route = worker; route < rows[c] * TOPK; route += VW) {
         int row = maps[c][route];
         if (row < 0 || (row >= boundary) != bool(pass))
           continue;
@@ -124,7 +123,7 @@ __aicore__ inline void ReturnStreaming(__gm__ int64_t *cfg, Transfer &io,
         if (cfg[23]) {
           // Copy has retired MTE3. The flag belongs to this route's sole mover;
           // never publish a generation before the exported payload is visible.
-          Store((__gm__ int32_t *)cfg[2 + c] + 64 + 256 * HIDDEN / 2 +
+          Store((__gm__ int32_t *)cfg[2 + c] + 64 + ROUTES * HIDDEN / 2 +
                     route * LINE,
                 sources[c]);
         }
@@ -169,7 +168,7 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
     Urgent(cfg, io, worker, urgentSeen);
     int next = Load(ctrl + VCMD * LINE);
     if (next == seen) {
-      if (++idle >= cfg[9]) {
+      if (!cfg[24] && ++idle >= cfg[9]) {
         Store(ctrl + STOP * LINE, -21);
         break;
       }
@@ -200,8 +199,8 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
         for (int i = 0; i < ROUTES; ++i)
           map[i] = io.words.GetValue(8 + i);
         int base = sourceBase;
-        sourceBase += kind == FETCH ? n : n * 8;
-        int first = 0, limit = kind == FETCH ? n : n * 8;
+        sourceBase += kind == FETCH ? n : n * TOPK;
+        int first = 0, limit = kind == FETCH ? n : n * TOPK;
         if (cfg[16] && (kind == FETCH || kind == REPACK)) {
           first = ScalarMax(0, ctrl[VCMD * LINE + 4] - base);
           limit = ScalarMin(limit, ctrl[VCMD * LINE + 5] - base);
@@ -224,7 +223,7 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
                 Urgent(cfg, io, worker, urgentSeen);
               if (kind == REPACK) {
                 io.Copy((__gm__ int32_t *)ptr[0] +
-                            (c * 32 + route / 8) * HIDDEN / 2,
+                            (c * 32 + route / TOPK) * HIDDEN / 2,
                         (__gm__ int32_t *)ptr[1] + map[route] * HIDDEN / 2,
                         HIDDEN / 2);
                 if (cfg[19]) {
@@ -276,24 +275,34 @@ __aicore__ inline void Descriptor(Transfer &io, __gm__ int64_t *ptr, Slot &s) {
   }
 }
 __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
-                             int *claimed, int *finished) {
+                             int *claimed, int *finished, int *closed) {
   int mask = 0;
   for (int c = 0; c < 2; ++c) {
-    if (claimed[c] || finished[c] >= cfg[6])
+    if (claimed[c] || closed[c] || (!cfg[24] && finished[c] >= cfg[6]))
       continue;
     auto src = (__gm__ int32_t *)cfg[4 + c];
     int gen = io.Flag(src);
+    if (cfg[24] && gen < 0) {
+      if (gen != -(finished[c] + 1))
+        return -1;
+      closed[c] = 1;
+      continue;
+    }
     if (gen != finished[c] + 1)
       continue;
     io.Read(src + 8, 8);
     int desc = io.words.GetValue(0), layer = io.words.GetValue(1),
         n = io.words.GetValue(2);
-    if (desc != gen || layer < 0 || layer >= 2 || n < 1 || n > 32)
+    if (desc != gen || layer < 0 || layer >= LAYERS ||
+        (SINGLE_LAYER && layer >= cfg[26]) || n < 1 || n > 32)
       return -1;
-    io.Read(src + 64, n * 8);
-    for (int i = 0; i < n * 8; ++i) {
+    if (SINGLE_LAYER && ((s.gen[0] && s.layer[0] != layer) ||
+                         (s.gen[1] && s.layer[1] != layer)))
+      continue;
+    io.Read(src + 64, (n * TOPK + 7) / 8 * 8);
+    for (int i = 0; i < n * TOPK; ++i) {
       s.ids[c][i] = io.words.GetValue(i);
-      if (s.ids[c][i] < 0 || s.ids[c][i] >= 128)
+      if (s.ids[c][i] < 0 || s.ids[c][i] >= EXPERTS)
         return -1;
     }
     claimed[c] = gen;
@@ -312,9 +321,10 @@ __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
     count[g] = 0;
   for (int c = 0; c < 2; ++c)
     if (s.gen[c])
-      for (int i = 0; i < s.rows[c] * 8; ++i)
-        if (s.ids[c][i] / 64 == owner)
-          ++count[s.layer[c] * 64 + s.ids[c][i] % 64];
+      for (int i = 0; i < s.rows[c] * TOPK; ++i)
+        if (s.ids[c][i] / LOCAL_EXPERTS == owner)
+          ++count[(SINGLE_LAYER ? 0 : s.layer[c] * LOCAL_EXPERTS) +
+                  s.ids[c][i] % LOCAL_EXPERTS];
   s.live = 0;
   for (int g = 0; g < GROUPS; ++g) {
     cursor[g] = s.live;
@@ -366,10 +376,11 @@ __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
     io.words.SetValue(1, s.rows[c]);
     io.words.SetValue(2, s.layer[c]);
     if (s.gen[c])
-      for (int i = 0; i < s.rows[c] * 8; ++i)
-        if (s.ids[c][i] / 64 == owner)
-          io.words.SetValue(8 + i,
-                            cursor[s.layer[c] * 64 + s.ids[c][i] % 64]++);
+      for (int i = 0; i < s.rows[c] * TOPK; ++i)
+        if (s.ids[c][i] / LOCAL_EXPERTS == owner)
+          io.words.SetValue(
+              8 + i, cursor[(SINGLE_LAYER ? 0 : s.layer[c] * LOCAL_EXPERTS) +
+                            s.ids[c][i] % LOCAL_EXPERTS]++);
     io.Write((__gm__ int32_t *)ptr[5] + c * MAP, MAP);
   }
 }
@@ -400,7 +411,7 @@ __aicore__ inline void MoveCommand(__gm__ int32_t *ctrl, int gen, int id,
 __aicore__ inline void Record(__gm__ int64_t *cfg, int &count, int engine,
                               int kind, int slot, uint64_t begin, int rows,
                               int part = 0) {
-  auto record = (__gm__ int64_t *)cfg[11] + count * 8;
+  auto record = (__gm__ int64_t *)cfg[11] + (count % 512) * 8;
   record[0] = engine;
   record[1] = kind;
   record[2] = slot;
@@ -417,7 +428,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
   auto slots = (__gm__ int64_t *)cfg[1];
   Slot s[2];
   int parts = cfg[14] ? 2 : 1, vpart = 0, cpart = 0;
-  int claimed[2] = {0, 0}, finished[2] = {0, 0};
+  int claimed[2] = {0, 0}, finished[2] = {0, 0}, closed[2] = {0, 0};
   int vgen = 0, cgen = 0, vs = -1, cs = -1, waves = 0, idle = 0;
   int pullsDuringCube = 0, eventCount = 0, vkind = 0, ckind = 0;
   uint64_t vbegin = 0, cbegin = 0;
@@ -451,8 +462,15 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
         s[cs].upDone = streaming ? parts : s[cs].upDone + 1;
       else {
         s[cs].downDone = streaming ? parts : s[cs].downDone + 1;
-        if (cfg[22])
+        if (cfg[22]) {
+          // A prefix poll can miss a core that finishes before the following
+          // full-completion poll. Full completion implies prefix completion;
+          // publish both before clearing cs, otherwise SEND waits forever for
+          // a prefix generation that the coordinator will never revisit.
+          s[cs].downPrefix = 1;
+          Store(ctrl + (DOWN_RANGE_READY + cs) * LINE, cgen);
           Store(ctrl + (DOWN_ALL_READY + cs) * LINE, cgen);
+        }
       }
       cs = -1;
       progress = true;
@@ -470,7 +488,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
                                     int(fetch ? cfg[16] / 8 : cfg[16]));
         if (slot.moveCursor == slot.moveEnd) {
           if (fetch) {
-            int added = Accept(io, cfg, slot, claimed, finished);
+            int added = Accept(io, cfg, slot, claimed, finished, closed);
             if (added < 0) {
               Store(ctrl + STOP * LINE, -31);
               break;
@@ -482,7 +500,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
               Group(io, ptr, slot, cfg[7], cfg[14], cfg[15]);
               slot.stage = PACK;
               slot.moveCursor = 0;
-              slot.moveEnd = (slot.rows[0] + slot.rows[1]) * 8;
+              slot.moveEnd = (slot.rows[0] + slot.rows[1]) * TOPK;
             }
           } else {
             slot.stage = READY_UP;
@@ -492,7 +510,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
         vs = -1;
       } else if (slot.stage == PULL) {
         // No wait-to-coalesce: one snapshot after useful DMA completes.
-        int added = Accept(io, cfg, slot, claimed, finished);
+        int added = Accept(io, cfg, slot, claimed, finished, closed);
         if (added < 0) {
           Store(ctrl + STOP * LINE, -31);
           break;
@@ -535,10 +553,10 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
                             pullsDuringCube,
                             vgen,
                             cgen,
-                            0,
-                            0,
-                            0,
-                            0,
+                            slot.gen[0] ? slot.layer[0] : -1,
+                            slot.gen[1] ? slot.layer[1] : -1,
+                            slot.rows[0],
+                            slot.rows[1],
                             0,
                             0,
                             0,
@@ -546,7 +564,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
                             0};
           for (int i = 0; i < 16; ++i)
             io.words.SetValue(i, fields[i]);
-          io.Write((__gm__ int32_t *)cfg[8] + waves * 16, 16);
+          io.Write((__gm__ int32_t *)cfg[8] + (waves % (cfg[6] * 2)) * 16, 16);
           ++waves;
           slot.gen[0] = slot.gen[1] = slot.rows[0] = slot.rows[1] = 0;
           slot.stage = EMPTY;
@@ -557,10 +575,13 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       }
       progress = true;
     }
-    if (finished[0] == cfg[6] && finished[1] == cfg[6]) {
+    if (cfg[24] ? (closed[0] && closed[1])
+                : (finished[0] == cfg[6] && finished[1] == cfg[6])) {
       ctrl[STATUS * LINE + 1] = waves;
       ctrl[STATUS * LINE + 2] = pullsDuringCube;
       ctrl[STATUS * LINE + 3] = eventCount;
+      ctrl[STATUS * LINE + 4] = finished[0];
+      ctrl[STATUS * LINE + 5] = finished[1];
       Store(ctrl + STATUS * LINE, 1);
       Store(ctrl + STOP * LINE, 1);
       break;
@@ -657,7 +678,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       }
       for (int i = 0; i < 2 && vs < 0; ++i)
         if (s[i].stage == EMPTY) {
-          int mask = Accept(io, cfg, s[i], claimed, finished);
+          int mask = Accept(io, cfg, s[i], claimed, finished, closed);
           if (mask < 0) {
             Store(ctrl + STOP * LINE, -32);
             break;
@@ -681,8 +702,8 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           }
         }
     }
-    idle = progress ? 0 : idle + 1;
-    if (idle >= cfg[9]) {
+    idle = (progress || cfg[24]) ? 0 : idle + 1;
+    if (!cfg[24] && idle >= cfg[9]) {
       Store(ctrl + STOP * LINE, -33);
       break;
     }

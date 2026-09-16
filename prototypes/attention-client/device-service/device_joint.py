@@ -30,7 +30,11 @@ from common import (
     recv,
 )
 
-TASKS = 24  # two layers × twelve native forwards per client in the bounded fixture
+# Explicit bounded episode admission; not an implicit server EOF convention.
+TASKS = int(os.environ.get("DEVICE_SERVICE_TASKS", "24"))
+assert 1 <= TASKS <= 32
+if TASKS != 24:
+    assert os.environ.get("DEVICE_SERVICE_PERSISTENT") == "1"
 WAVES = TASKS * 2
 PARALLEL = os.environ.get("DEVICE_SERVICE_PARALLEL") == "1"
 
@@ -392,7 +396,7 @@ def serve(server_id, links, output_path):
         assert os.environ.get("DEVICE_SERVICE_PAIRED_CONTROL") != "1"
         from persistent_service import serve as persistent_serve
 
-        persistent_serve(api, clients, w13, w2, server_id, output_path)
+        persistent_serve(api, clients, w13, w2, server_id, output_path, tasks=TASKS)
         return
     kernels = Kernels()
     prepare = kernels.load("neural_prepare")
