@@ -142,10 +142,40 @@ def main():
             "--speculative-config",
             json.dumps(dict(method="mtp", num_speculative_tokens=int(a.arm[-1]))),
         ]
+    if os.environ.get("FULL_MTP"):
+        assert a.arm == "mtp" + os.environ["FULL_MTP"]
+        command[command.index("observe_worker.Worker")] = "bucket_full_worker.Worker"
+        q = int(os.environ["FULL_MTP"]) + 1
+        command += [
+            "--limit-mm-per-prompt",
+            '{"image":0,"video":0}',
+            "--compilation-config",
+            json.dumps(
+                dict(
+                    cudagraph_mode="FULL_AND_PIECEWISE",
+                    cudagraph_capture_sizes=[
+                        q,
+                        q * 2,
+                        q * 4,
+                        q * 8,
+                        64,
+                        128,
+                        256,
+                        512,
+                        1024,
+                        1536,
+                        2048,
+                    ],
+                    max_cudagraph_capture_size=2048,
+                )
+            ),
+        ]
     receipt = dict(
         status="STARTED",
         arm=a.arm,
         pack_conv=os.environ.get("SERVING_PACK_CONV") == "1",
+        full_mtp=os.environ.get("FULL_MTP"),
+        padded_gdn=os.environ.get("PADDED_PREFILL") == "1",
         command=command,
         cohorts=[],
         scope="HTTP SSE fixed English prompt; not SWE task accuracy",

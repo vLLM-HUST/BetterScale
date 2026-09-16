@@ -13,8 +13,15 @@ import os
 from pathlib import Path
 
 PADDED = os.environ.get("PADDED_PREFILL") == "1"
+SPEC = int(os.environ.get("FULL_MTP", "0"))
 PREFILLS = (
-    (16, 32, 64, 128, 256, 512, 1024, 1536, 2048) if PADDED else (512, 1024, 1536, 2048)
+    (64, 128, 256, 512, 1024, 1536, 2048)
+    if SPEC
+    else (
+        (16, 32, 64, 128, 256, 512, 1024, 1536, 2048)
+        if PADDED
+        else (512, 1024, 1536, 2048)
+    )
 )
 
 
@@ -144,14 +151,30 @@ def install():
         pure_decode = num_tokens == num_reqs and bool(
             (num_scheduled_tokens_np == 1).all()
         )
+        prompting = True
+        if SPEC and not getattr(self, "_bucket_dummy_active", False):
+            computed = self.input_batch.num_computed_tokens_cpu[:num_reqs]
+            prompts = self.input_batch.num_prompt_tokens_cpu_tensor[:num_reqs].numpy()
+            prompting = bool((computed < prompts).any())
+            pure_decode = not prompting and max_num_scheduled_tokens <= SPEC + 1
         eligible = (
-            not pure_decode and num_reqs == 1 and prefill_bucket(num_tokens) is not None
+            prompting
+            and not pure_decode
+            and num_reqs == 1
+            and prefill_bucket(num_tokens) is not None
+        )
+        from vllm.config import CUDAGraphMode
+
+        piecewise_capture = (
+            getattr(self, "_bucket_dummy_mode", None) == CUDAGraphMode.PIECEWISE
         )
         dispatch_tokens = (
             prefill_bucket(num_tokens) if PADDED and eligible else num_tokens
         )
-        if not pure_decode and (
-            not eligible or not getattr(self, "_prefill_full", True)
+        if (
+            not piecewise_capture
+            and not pure_decode
+            and (not eligible or not getattr(self, "_prefill_full", True))
         ):
             kwargs["force_eager"] = True
         result = old_determine(
@@ -197,6 +220,23 @@ def install():
         return result
 
     CudagraphDispatcher._create_padded_batch_descriptor = descriptor
+
+    if SPEC:
+        # Keep native uniform speculative decode keys and add distinct prefill keys.
+        old_initialize = CudagraphDispatcher.initialize_cudagraph_keys
+
+        def initialize(self, *args, **kwargs):
+            from vllm.config import CUDAGraphMode
+
+            result = old_initialize(self, *args, **kwargs)
+            for n in PREFILLS:
+                if n in self.compilation_config.cudagraph_capture_sizes:
+                    self.cudagraph_keys[CUDAGraphMode.FULL].add(
+                        self._create_padded_batch_descriptor(n, False, False)
+                    )
+            return result
+
+        CudagraphDispatcher.initialize_cudagraph_keys = initialize
     old_dummy = NPUModelRunner._dummy_run
 
     def dummy(self, num_tokens, *args, **kwargs):
@@ -210,6 +250,7 @@ def install():
         )
         old_seats = self.scheduler_config.max_num_seqs
         self._bucket_dummy_active = True
+        self._bucket_dummy_mode = kwargs.get("cudagraph_runtime_mode")
         try:
             if single:
                 self.scheduler_config.max_num_seqs = 1
@@ -217,6 +258,7 @@ def install():
         finally:
             self.scheduler_config.max_num_seqs = old_seats
             self._bucket_dummy_active = False
+            self._bucket_dummy_mode = None
 
     NPUModelRunner._dummy_run = dummy
     NPUModelRunner._determine_batch_execution_and_padding = determine
@@ -230,7 +272,12 @@ def install():
 class Worker(NPUWorker):
     def __init__(self, vllm_config, *args, **kwargs):
         assert vllm_config.scheduler_config.max_num_seqs == 8
-        assert vllm_config.speculative_config is None
+        if SPEC:
+            assert vllm_config.speculative_config is not None
+            assert vllm_config.speculative_config.num_speculative_tokens == SPEC
+            assert vllm_config.speculative_config.method == "mtp"
+        else:
+            assert vllm_config.speculative_config is None
         assert vllm_config.parallel_config.tensor_parallel_size == 2
         install()
         super().__init__(vllm_config, *args, **kwargs)
