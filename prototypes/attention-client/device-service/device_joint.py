@@ -187,6 +187,18 @@ class DeviceExperts:
         self.sealed = False
         self.server_ready = False
 
+    def activate(self, enqueue=None):
+        if self.server_ready:
+            return
+        # Host initialization rendezvous only: no device polls cover compilation.
+        assert all(recv(p, timeout=300)[0] == "server_ready" for p in self.links)
+        if enqueue is not None:
+            enqueue()
+        for p in self.links:
+            p.send(("client_ready",))
+        assert all(recv(p, timeout=300)[0] == "server_started" for p in self.links)
+        self.server_ready = True
+
     def submit(self, identity, layer_id, layer, pending):
         assert self.pending is None
         rows = pending.normalized.shape[0]
@@ -195,11 +207,7 @@ class DeviceExperts:
             assert not self.sealed, "unprepared client graph"
             self.banks[key] = ClientBank(self, layer_id, layer, pending.normalized)
         bank = self.banks[key]
-        if not self.server_ready:
-            # Bootstrap acknowledgement only means the weights were copied.
-            # Weight conversion and graph capture must finish before device polls.
-            assert all(recv(p, timeout=300)[0] == "server_ready" for p in self.links)
-            self.server_ready = True
+        self.activate()
         bank.input.copy_(pending.normalized)
         # External timing brackets only the client graph (input copy excluded).
         # They do not change its publication/completion protocol.
@@ -329,7 +337,11 @@ def serve(server_id, links, output_path):
     w13 = torch.cat([w[0] for w in weights])
     w2 = torch.cat([w[1] for w in weights])
     del weights, current, up, down
-    weight_format = os.environ.get("DEVICE_SERVICE_WEIGHT_FORMAT", "ND")
+    actual_counts = os.environ.get("DEVICE_SERVICE_ACTUAL_COUNTS") == "1"
+    weight_format = os.environ.get(
+        "DEVICE_SERVICE_WEIGHT_FORMAT", "NZ" if actual_counts else "ND"
+    )
+    assert not actual_counts or (PARALLEL and weight_format == "NZ")
     assert weight_format in ("ND", "NZ")
     if weight_format == "NZ":
         torch_npu.npu.config.allow_internal_format = True
@@ -351,6 +363,9 @@ def serve(server_id, links, output_path):
     trace = torch.full((WAVES, 8), -991, device="npu", dtype=torch.int32)
     paired_control = os.environ.get("DEVICE_SERVICE_PAIRED_CONTROL") == "1"
     assert not paired_control or PARALLEL
+    coalesce_polls = int(os.environ.get("DEVICE_SERVICE_COALESCE_POLLS", "0"))
+    assert 0 <= coalesce_polls <= 128
+    assert not coalesce_polls or (PARALLEL and not paired_control)
     config = torch.tensor(
         [
             *[c["local"] for c in clients],
@@ -363,34 +378,54 @@ def serve(server_id, links, output_path):
             groups.data_ptr(),
             trace.data_ptr(),
             server_id,
-            int(PARALLEL) | (2 if paired_control else 0),
+            int(PARALLEL)
+            | (2 if paired_control else 0)
+            | (4 if actual_counts else 0)
+            | (8 if coalesce_polls else 0),
+            coalesce_polls,
         ],
         device="npu",
         dtype=torch.int64,
     )
 
+    if actual_counts:
+        from actual_gmm import ActualGmm
+
+        actual_up = ActualGmm(w13, groups)
+        actual_down = ActualGmm(w2, groups)
+        up_buffer = torch.empty(
+            (2 * CAP * K, 2 * M), device="npu", dtype=torch.bfloat16
+        )
+        down_buffer = torch.empty_like(packed)
+
     def body():
-        packed.zero_()
+        if not actual_counts:
+            packed.zero_()
         kernels.call(prepare, config, packed, state)
         if PARALLEL:
             kernels.call(pack, config, packed, state, blocks=16)
-        up = torch_npu.npu_grouped_matmul(
-            [packed],
-            [w13],
-            split_item=2,
-            group_list=groups,
-            group_type=0,
-            group_list_type=0,
-        )[0]
-        act = torch_npu.npu_swiglu(up)
-        down = torch_npu.npu_grouped_matmul(
-            [act],
-            [w2],
-            split_item=2,
-            group_list=groups,
-            group_type=0,
-            group_list_type=0,
-        )[0]
+        if actual_counts:
+            up = actual_up(packed, up_buffer)
+            act = torch_npu.npu_swiglu(up)
+            down = actual_down(act, down_buffer)
+        else:
+            up = torch_npu.npu_grouped_matmul(
+                [packed],
+                [w13],
+                split_item=2,
+                group_list=groups,
+                group_type=0,
+                group_list_type=0,
+            )[0]
+            act = torch_npu.npu_swiglu(up)
+            down = torch_npu.npu_grouped_matmul(
+                [act],
+                [w2],
+                split_item=2,
+                group_list=groups,
+                group_type=0,
+                group_list_type=0,
+            )[0]
         if PARALLEL:
             kernels.call(scatter, config, down, state, blocks=16)
         kernels.call(complete, config, down, state)
@@ -405,15 +440,29 @@ def serve(server_id, links, output_path):
     config[5] = 1
     from profile_capture import start, stop
 
+    for c in clients:
+        c["pipe"].send(("server_ready",))
+    assert all(recv(c["pipe"], timeout=300)[0] == "client_ready" for c in clients)
     profiler = start(f"expert{server_id}")
     graph.replay()
     for c in clients:
-        c["pipe"].send(("server_ready",))
+        c["pipe"].send(("server_started",))
     stream.synchronize()
     status = state.cpu().tolist()
     assert status[:4] == [TASKS, TASKS, WAVES, 0], status
     records = trace.cpu().tolist()
     assert sum(r[0] for r in records) == TASKS * 2
+    if actual_counts or coalesce_polls:
+        # New modes must not silently run an older captured queue binary.
+        expected_flags = (
+            int(PARALLEL)
+            | (2 if paired_control else 0)
+            | (4 if actual_counts else 0)
+            | (8 if coalesce_polls else 0)
+        )
+        assert all(
+            r[6] == expected_flags and 0 <= r[5] <= coalesce_polls for r in records
+        )
     if paired_control:
         # Reject a stale binary or accidentally unpaired execution, not merely
         # successful client outputs from a different batch organization.
@@ -438,6 +487,9 @@ def serve(server_id, links, output_path):
         pipe.send(("unmapped",))
     stop(profiler)
     graph.reset()
+    if actual_counts:
+        actual_up.close()
+        actual_down.close()
     kernels.close()
     Path(output_path).write_text(
         json.dumps(
@@ -452,6 +504,8 @@ def serve(server_id, links, output_path):
                 parallel_transport=PARALLEL,
                 weight_format=weight_format,
                 paired_control=paired_control,
+                actual_counts=actual_counts,
+                coalesce_polls=coalesce_polls,
             ),
             indent=2,
         )

@@ -263,20 +263,28 @@ neural_prepare(GM_ADDR cfgaddr, GM_ADDR packed, GM_ADDR unused) {
       ids[c][i] = -1;
       map[c][i] = -1;
     }
-  int selected = 0;
+  int selected = 0, batchPolls = 0;
   if (cfg[5] && !status) {
     for (int poll = 0; poll < cfg[6]; ++poll) {
-      // Diagnostic paired-batch gate, not an online scheduling policy. Wait
-      // without consuming either descriptor, so each source is selected once.
-      // Bit0 retains parallel transport; bit1 requests this equal-work control.
-      if (cfg[12] & 2) {
-        bool allReady = true;
+      // Bit1 is the forced diagnostic barrier. Bit3 is bounded coalescing:
+      // its budget starts only after work exists; an absent source cannot
+      // hold a ready source indefinitely. Finished sources need no wait.
+      if (cfg[12] & (2 | 8)) {
+        int ready = 0, remaining = 0;
         for (int c = 0; c < 2; ++c)
-          if (finished[c] < cfg[4] &&
-              io.Flag((__gm__ int32_t *)cfg[2 + c]) != finished[c] + 1)
-            allReady = false;
-        if (!allReady)
-          continue;
+          if (finished[c] < cfg[4]) {
+            ++remaining;
+            if (io.Flag((__gm__ int32_t *)cfg[2 + c]) == finished[c] + 1)
+              ++ready;
+          }
+        if (ready < remaining) {
+          if ((cfg[12] & 2) || ready == 0)
+            continue;
+          if (batchPolls < cfg[13]) {
+            ++batchPolls;
+            continue;
+          }
+        }
       }
       for (int c = 0; c < 2; ++c) {
         if (finished[c] >= cfg[4])
@@ -359,12 +367,13 @@ neural_prepare(GM_ADDR cfgaddr, GM_ADDR packed, GM_ADDR unused) {
     io.Write(batch + c * MAPSTRIDE, MAPSTRIDE);
   }
   for (int g = 0; g < GROUPS; ++g) {
-    io.ub.SetValue(2 * g, g == GROUPS - 1 ? 2 * ROUTES : ends[g]);
+    io.ub.SetValue(2 * g,
+                   g == GROUPS - 1 && !(cfg[12] & 4) ? 2 * ROUTES : ends[g]);
     io.ub.SetValue(2 * g + 1, 0);
   }
   io.Write(groups, 2 * GROUPS);
-  int fields[8] = {finished[0], finished[1], wave, status,
-                   selected,    total,       0,    0};
+  int fields[8] = {finished[0], finished[1], wave,       status,
+                   selected,    total,       batchPolls, 0};
   for (int j = 0; j < 8; ++j)
     io.ub.SetValue(j, fields[j]);
   io.Write(state);
@@ -408,7 +417,8 @@ neural_complete(GM_ADDR cfgaddr, GM_ADDR computed, GM_ADDR unused) {
   for (int c = 0; c < 2; ++c)
     if (gen[c])
       io.Publish((__gm__ int32_t *)cfg[c], gen[c]);
-  int record[8] = {fields[4], fields[5], gen[0], gen[1], fields[3], 0, 0, 0};
+  int record[8] = {fields[4], fields[5], gen[0], gen[1],
+                   fields[3], fields[6], int(cfg[12]), 0};
   for (int j = 0; j < 8; ++j)
     io.ub.SetValue(j, record[j]);
   io.Write((__gm__ int32_t *)cfg[10] + fields[2] * 8);

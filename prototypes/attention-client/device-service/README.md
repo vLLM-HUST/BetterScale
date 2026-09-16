@@ -5,6 +5,9 @@ It replaces CPU route extraction, host expert batch selection, and pipe completi
 messages with device publication, cross-source selection, and completion. It does
 **not** replace the published BetterScale worker or modify the installed donor.
 
+For the newer opt-in coalescing/live-row path and its performance limits, see
+[Actual counts](ACTUAL-COUNTS.md). The original native path below remains default.
+
 ## The small route: reuse the mature GEMM
 
 The pinned donor's

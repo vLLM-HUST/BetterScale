@@ -404,3 +404,14 @@ latency guarantee. The native128-group/padded chain also carries measured costs
 relative to64 live groups. Capacity-only group sums passed this binary but violate
 the installed GMM group-sum == input-M contract; never silently enable them.
 The paired selector is an explicit experimental gate, not a deployed scheduler.
+
+
+### Independent-source actual-count expert service (2026-09-16)
+
+See `prototypes/attention-client/device-service/ACTUAL-COUNTS.md` for bounded
+coalescing, live-row CATLASS/DFC adapters, common-burst and late-source gates.
+Native GMM final group end must equal input M; do not use short group ends as
+a production capacity trick. Explicit custom capacity/live semantics passed
+leaf canaries and joint dummy checks, but broad tiny-expert GEMM remains slower
+than native NZ. Common startup produced24/24 paired cycles; unaligned source
+arrivals produced none. Do not infer online batching or DFC parity from support.

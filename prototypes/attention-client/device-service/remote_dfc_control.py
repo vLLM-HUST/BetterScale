@@ -56,6 +56,11 @@ def child(rank, device, links, root):
             )
 
     service.ClientBank = RoutedBank
+    if os.environ.get("DEVICE_SERVICE_BURST") == "1":
+        from burst_control import run
+
+        run(service, model, links, root, rank, base_up, base_down, RoutedBank)
+        return
     audit = []
     remote = service.DeviceExperts(model, links, audit)
     from profile_capture import start, stop

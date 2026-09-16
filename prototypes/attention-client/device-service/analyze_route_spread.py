@@ -45,6 +45,7 @@ for server in (0, 1):
                 "neural_scatter",
                 "neural_complete",
                 "GroupedMatmul",
+                "actual_gmm",
                 "SwiGlu",
             ):
                 costs[e["label"]] = costs.get(e["label"], 0) + e["dur_us"]
