@@ -152,6 +152,24 @@ def export(capsule, rank):
                 association="ordered bodies + replay API host bracket; not exact replay partition",
             ),
         )
+    transport_path = out / "transport-audit.json"
+    if transport_path.exists():
+        transport = json.loads(transport_path.read_text())[rank]
+        for tid, name in [
+            (8, "H2D DMA · provider connectionId joined"),
+            (9, "D2H DMA · provider connectionId joined"),
+        ]:
+            events.append(
+                dict(ph="M", pid=pid, tid=tid, name="thread_name", args=dict(name=name))
+            )
+        for transfer in transport["transfers"]:
+            span(
+                f"step{transfer['sequence']} {transfer['direction']}",
+                8 if transfer["direction"] == "H2D" else 9,
+                transfer["start_ns"],
+                transfer["end_ns"],
+                transfer,
+            )
     # Keep the original TraceLoom-only file; offer a separate all-host schedule
     # and an overlay restricted to sampled waves so warmup does not drown it out.
     full = dict(

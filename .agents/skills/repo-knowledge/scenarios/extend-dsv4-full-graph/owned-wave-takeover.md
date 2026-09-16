@@ -306,3 +306,13 @@ contiguous modelId grouping. export_schedule.py gates host overlays on every
 CANN replay falling inside its recorded submission; profile stop creates a
 rank-skewed25ms quorum wait, not a serving stall. Do not rerun baseline or confuse
 this four-step first-prompt window with the complete hot-APC trace.
+
+Before proposing another async H2D/D2H transplant, enter
+`fia-plan/ASYNC-TRANSPORT.zh-CN.md`. Current Reactor already matches the pinned
+LiveInference Ascend executor's three-stream/two-bank wait graph. Provider
+connectionId-joined DMA proves later H2D fully inside the previous body;
+256B D2H takes~2us between bodies, not compute overlap, but next-wave compute
+has no current-wave copy dependency. Earlier egress publication would break
+copy_done-implies-graph_done and needs a different retirement proof; do not
+claim non_blocking guarantees overlap or redesign ownership merely to move
+these2us visually. Reuse inspect_transport.py on the existing four-step DBs.
