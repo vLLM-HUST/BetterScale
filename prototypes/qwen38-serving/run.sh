@@ -34,6 +34,10 @@ if [[ $ARM == fixed-full || $ARM == bucket-full || $ARM == shadow || $ARM == spe
   if [[ $ARM == spec-policy ]]; then probe=spec_policy_probe.py; fi
   command=("$runtime/bin/python" "$CAPSULE/source/$probe")
 fi
+if [[ $ARM == padding-kernel ]]; then
+  export CAPSULE
+  command=("$runtime/bin/python" "$CAPSULE/source/padding_kernel_probe.py")
+fi
 exec "$runtime/bin/python" /workspace/strengthen-dsv4/prototypes/attention-client/device-service/admit_subset.py \
  --devices "$ASCEND_RT_VISIBLE_DEVICES" --wait-seconds 1800 --output "$CAPSULE/admission" -- \
  "${command[@]}"
