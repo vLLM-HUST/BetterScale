@@ -145,6 +145,7 @@ def main():
     receipt = dict(
         status="STARTED",
         arm=a.arm,
+        pack_conv=os.environ.get("SERVING_PACK_CONV") == "1",
         command=command,
         cohorts=[],
         scope="HTTP SSE fixed English prompt; not SWE task accuracy",
