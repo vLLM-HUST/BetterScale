@@ -102,7 +102,9 @@ def install():
         use_cascade_attn,
         **kwargs,
     ):
-        pure_decode = max_num_scheduled_tokens == 1
+        pure_decode = num_tokens == num_reqs and bool(
+            (num_scheduled_tokens_np == 1).all()
+        )
         eligible = num_reqs == 1 and num_tokens in PREFILLS
         if not pure_decode and (
             not eligible or not getattr(self, "_prefill_full", True)
@@ -122,6 +124,19 @@ def install():
         if not hasattr(self, "_dispatch_counts"):
             self._dispatch_counts = Counter()
         self._dispatch_counts[(str(result[0]), num_tokens, num_reqs)] += 1
+        if getattr(self, "_bucket_dummy_active", False):
+            print(
+                "BUCKET_CAPTURE_DISPATCH",
+                dict(
+                    tokens=num_tokens,
+                    requests=num_reqs,
+                    scheduled=num_scheduled_tokens_np.tolist(),
+                    eligible=eligible,
+                    force_eager=kwargs.get("force_eager"),
+                    mode=str(result[0]),
+                ),
+                flush=True,
+            )
         return result
 
     old_dummy = NPUModelRunner._dummy_run
@@ -136,12 +151,14 @@ def install():
             and kwargs.get("cudagraph_runtime_mode") == CUDAGraphMode.FULL
         )
         old_seats = self.scheduler_config.max_num_seqs
+        self._bucket_dummy_active = True
         try:
             if single:
                 self.scheduler_config.max_num_seqs = 1
             return old_dummy(self, num_tokens, *args, **kwargs)
         finally:
             self.scheduler_config.max_num_seqs = old_seats
+            self._bucket_dummy_active = False
 
     NPUModelRunner._dummy_run = dummy
     NPUModelRunner._determine_batch_execution_and_padding = determine
