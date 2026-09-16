@@ -43,7 +43,7 @@ command = [
     "--max-num-batched-tokens",
     str(width),
     "--kv-cache-memory-bytes",
-    str(6 * 1024**3),
+    str(1024**3),
     "--seed",
     "17",
     "--no-enable-prefix-caching",
@@ -58,12 +58,8 @@ command = [
     json.dumps(
         dict(
             cudagraph_mode="FULL",
-            cudagraph_capture_sizes=(
-                [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 1536, 2048]
-                if os.environ.get("PADDED_PREFILL") == "1"
-                else [1, 2, 4, 8, 512, 1024, 1536, 2048]
-            ),
-            max_cudagraph_capture_size=width,
+            cudagraph_capture_sizes=[1, 2, 4, 8, 512, 1024],
+            max_cudagraph_capture_size=1024,
         )
     ),
 ]
