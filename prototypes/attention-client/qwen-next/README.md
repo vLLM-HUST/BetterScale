@@ -39,8 +39,8 @@ There is no host completion polling or per-forward socket RPC.
 - Hidden2048/intermediate512/top-k10; two sources/four equal owners;1–32 rows.
 - Four-layer dummy fixture covers three GDN layers and one full-attention layer.
 - Full target is48 layers; MTP is deliberately off.
-- Native model remains eager; only submit/collect are captured. Whole-model FULL
-  graph integration has not been qualified.
+- Default native model remains eager. Opt-in `NEXT_FULL_GRAPH=1` qualifies native
+  FULL decode only (below); prefill remains eager. No FULL prefill claim.
 - Probabilities are converted to BF16 at the remote weighted-reduce boundary,
   as in the preceding prototype; independent numerical checks use that explicit
   arithmetic. This is not bitwise parity with every native MoE implementation.
@@ -165,3 +165,54 @@ wait remains when that kernel executes; this is NOT total remote-expert latency.
 Instrumentation and eager host supply also affect this short run. Use it to inspect
 the actual client graph boundaries, shared MLP and waits, not to claim throughput
 or quantify hidden compute from the long server bars.
+
+
+## FULL decode and the useful single-attention view
+
+`NEXT_FULL_GRAPH=1 NEXT_PROFILE=1` now uses native `FULL_DECODE_ONLY`, capture
+bucket1, TP1 target-only. GDN advertises UNIFORM_BATCH, not general FULL prefill.
+Do not claim that setting this flag graphs prefills. The remote submit/collect
+nodes are inlined into the outer model capture rather than replaying child banks;
+shared MLP remains between them. Copies, layer publication, remote retirement and
+weighted reduction all belong to that same outer graph.
+
+Use compilation mode0 (native ACL capture without Dynamo): ctypes launches cannot
+be traced by Dynamo. The prototype sets runner.use_aclgraph for native metadata
+registry initialization and replay updates; upstream otherwise couples this flag
+to VLLM_COMPILE. Installed donor files remain untouched. Failed140655 retains the
+Dynamo `_FuncPtr` trace error;140855 retains the missing graph workspace registry
+before this hook. Neither is a passing graph gate.
+
+Four-layer dummy141043 passes generation, MoE samples and clean drain. All generated
+IDs match the earlier eager131201 fixture; this is not a whole-state oracle.
+Full48 real141742 also passes all six exits, MoE samples (max relL2 0.000157574),
+and the same five short generated outputs as132952. Sources retire290/1058 calls,
+including startup/audit; all four servers agree. The intervening141147 queued
+launch was cancelled to avoid occupied4/5;141533 was rejected after foreign
+occupancy appeared on0 during loading. No timings from those arms are accepted.
+
+For a usable view, parse/export only attention1, which has the longer decode:
+
+```bash
+PYTHONPATH=prototypes/attention-client/device-service:$PYTHONPATH \
+  python prototypes/attention-client/qwen-next/export_attention.py CAPSULE
+```
+
+The pinned donor Python and CANN environment are required for offline parsing.
+The exporter retains TraceLoom's native execution hierarchy AND raw provider
+tracks, not the flattened distributed view; it omits all server residency bars.
+`runs/qwen-next-20260916T141742Z/analysis/attention1-full-decode.json.gz` is about
+4.4MiB. It includes explicitly eager prefills as well as FULL decode.
+Native evidence:17 `aclmdlRIExecuteAsync` calls and816 instances each of submit,
+collect and retire inside graph model85 (17 steps ×48 layers). There are144 eager
+instances of each from the three prefills. `full-decode-result.json` retains the
+bounded receipt. Model IDs are run-local, never an API contract.
+
+FULL decode collect median is214.29us, versus the earlier eager generation trace's
+7.68us across mixed query sizes. They are not equivalent stage-latency controls:
+collect measures remaining wait PLUS data gathering, and eager host supply can
+hide remote progress before collect starts. The comparison motivates inspection,
+not a quantified regression or a claim that shared MLP hides remote experts.
+CPU coverage protects direct submit→shared→collect→retire ordering and independent
+returned output storage. Full-state graph/eager equivalence and load performance
+remain outside this profiling gate.

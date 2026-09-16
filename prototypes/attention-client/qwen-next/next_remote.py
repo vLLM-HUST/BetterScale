@@ -108,10 +108,27 @@ class Session:
         bank.x.copy_(hidden)
         bank.ids.copy_(ids)
         bank.probs.copy_(probs)
-        bank.submit_graph.replay()
+        inline = os.environ.get("NEXT_FULL_GRAPH") == "1"
+        if inline:
+            # Outer native model graph owns these nodes. Replaying a prebuilt
+            # child graph here would not capture its IO/layer protocol reliably.
+            self.kernels.call(self.submit, bank.config, bank.x, bank.id_storage)
+        else:
+            bank.submit_graph.replay()
         # No device polling kernel is queued ahead of local useful work.
         shared_output = shared(hidden)
-        bank.collect_graph.replay()
+        if inline:
+            self.kernels.call(
+                self.collect, bank.config, bank.x, bank.id_storage, blocks=16
+            )
+            self.kernels.call(self.retire, bank.config, bank.x, bank.id_storage)
+            bank.output.copy_(
+                torch_npu.npu_moe_token_unpermute(
+                    bank.raw, bank.indices, probs=bank.probs
+                )
+            )
+        else:
+            bank.collect_graph.replay()
         # Return independent storage: bank output is reused by the next layer.
         return bank.output + shared_output
 

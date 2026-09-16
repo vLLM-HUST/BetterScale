@@ -516,3 +516,12 @@ with explicit six `--roles` and `--label attention2-expert4`; see the Next READM
 134603 passes all role exits. IPC has no HCCL clock-fit markers: provider-clock
 translation is not independent calibration. Persistent E bars include waits and
 do not expose inner GEMM phases; never count their entire duration as useful work.
+
+Next FULL decode gate141742: see qwen-next README/export_attention.py. Use mode0
+plus native runner.use_aclgraph metadata initialization; Dynamo cannot trace the
+ctypes kernel calls. Inline remote nodes into outer capture, not nested replay.
+17 native RI replays contain816 submit/collect calls in one graph model. Prefill
+remains eager (GDN UNIFORM_BATCH). Export one native attention hierarchy, not only
+flattened distributed lanes; server persistent bars are uninformative internally.
+Collect214us under FULL versus eager7.7us does not prove slower experts: eager host
+supply changes how much wait remains at collect. Retain that attribution boundary.

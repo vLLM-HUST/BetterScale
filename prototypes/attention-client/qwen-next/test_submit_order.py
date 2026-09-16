@@ -10,6 +10,12 @@ from unittest.mock import Mock, patch
 
 class SubmitOrder(unittest.TestCase):
     def test_useful_work_precedes_collect_and_output_is_not_bank_alias(self):
+        self.check_order(False)
+
+    def test_outer_graph_inlines_nodes_instead_of_replaying_child_graphs(self):
+        self.check_order(True)
+
+    def check_order(self, inline):
         events = []
         fake = types.ModuleType("fake")
         deps = {
@@ -25,6 +31,7 @@ class SubmitOrder(unittest.TestCase):
         }
         fake.acl_api = fake.connect = fake.Kernels = Mock()
         fake.ALIGN = 2**21
+        fake.npu_moe_token_unpermute = Mock(return_value="reduced")
         fake.CONTRACT = {}
         fake.LAYERS = 4
         selector = types.ModuleType("vllm_ascend.ops.fused_moe.experts_selector")
@@ -34,7 +41,10 @@ class SubmitOrder(unittest.TestCase):
             "next_remote_test", Path(__file__).with_name("next_remote.py")
         )
         module = importlib.util.module_from_spec(spec)
-        with patch.dict(sys.modules, deps):
+        with (
+            patch.dict(sys.modules, deps),
+            patch.dict("os.environ", {"NEXT_FULL_GRAPH": "1" if inline else "0"}),
+        ):
             spec.loader.exec_module(module)
             session = module.Session.__new__(module.Session)
             output = Mock()
@@ -51,8 +61,19 @@ class SubmitOrder(unittest.TestCase):
                     replay=lambda: events.append("collect")
                 ),
                 output=output,
+                raw="raw",
+                indices="indices",
+                id_storage="id_storage",
             )
             session.banks = {3: bank}
+            session.submit, session.collect, session.retire = (
+                "submit",
+                "collect",
+                "retire",
+            )
+            session.kernels = types.SimpleNamespace(
+                call=lambda fn, *args, **kwargs: events.append(fn)
+            )
 
             def shared(x):
                 events.append("shared")
@@ -61,7 +82,9 @@ class SubmitOrder(unittest.TestCase):
             result = session.forward(
                 17, types.SimpleNamespace(shape=(3, 2048)), "logits", shared
             )
-        self.assertEqual(events, ["submit", "shared", "collect"])
+        self.assertEqual(
+            events, ["submit", "shared", "collect"] + (["retire"] if inline else [])
+        )
         self.assertEqual(bank.config[5], 17)
         self.assertEqual(result, "independent_result")
         output.__add__.assert_called_once_with("shared_output")

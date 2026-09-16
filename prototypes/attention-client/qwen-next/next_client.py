@@ -9,6 +9,7 @@ from vllm import LLM, SamplingParams
 from settings import MODEL, LAYERS, REAL
 from profile_capture import start as start_profile, stop as stop_profile
 
+full_graph = os.environ.get("NEXT_FULL_GRAPH") == "1"
 source = int(os.environ["EXPERT_SOURCE_ID"])
 llm = LLM(
     model=MODEL,
@@ -18,7 +19,17 @@ llm = LLM(
     tensor_parallel_size=1,
     distributed_executor_backend="uni",
     worker_cls="next_worker.Worker",
-    enforce_eager=True,
+    enforce_eager=not full_graph,
+    compilation_config=(
+        dict(
+            mode=0,  # Native ACL capture, not Dynamo tracing of ctypes launches.
+            cudagraph_mode="FULL_DECODE_ONLY",
+            cudagraph_capture_sizes=[1],
+            max_cudagraph_capture_size=1,
+        )
+        if full_graph
+        else None
+    ),
     max_model_len=256,
     max_num_batched_tokens=32,
     max_num_seqs=1,
@@ -26,7 +37,12 @@ llm = LLM(
     enable_prefix_caching=False,
     skip_tokenizer_init=not REAL,
     async_scheduling=False,
-    additional_config=dict(enable_cpu_binding=False),
+    additional_config=dict(
+        enable_cpu_binding=False,
+        ascend_compilation_config=dict(
+            enable_npugraph_ex=False, enable_static_kernel=False
+        ),
+    ),
 )
 profiler = start_profile(f"attention{source}")
 outputs = []

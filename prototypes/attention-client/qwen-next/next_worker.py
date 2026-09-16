@@ -69,6 +69,12 @@ class Worker(NPUWorker):
         if os.environ.get("EXPERT_ROLE_AUDIT") == "1":
             self.prepare_audit()
         SESSION = Session()
+        if os.environ.get("NEXT_FULL_GRAPH") == "1":
+            # Native runner gates metadata initialization/updates on Dynamo mode,
+            # although ACL graph capture itself does not require torch.compile.
+            # Our ctypes remote kernels are captured directly by ACL, not Dynamo.
+            assert self.vllm_config.compilation_config.mode == 0
+            self.model_runner.use_aclgraph = True
         return result
 
     @torch.inference_mode()
