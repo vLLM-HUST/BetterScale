@@ -20,6 +20,16 @@
 #ifndef ACTUAL_GMM_TILE_M
 #define ACTUAL_GMM_TILE_M 128
 #endif
+#ifndef ACTUAL_GMM_TILE_N
+#define ACTUAL_GMM_TILE_N 256
+#endif
+#ifndef ACTUAL_GMM_TILE_K
+#define ACTUAL_GMM_TILE_K 256
+#endif
+
+#ifndef ACTUAL_GMM_L0_K
+#define ACTUAL_GMM_L0_K 64
+#endif
 
 using namespace Catlass;
 using namespace AscendC;
@@ -46,8 +56,8 @@ template <class Base> struct DfcBf16Tile : Base {
 // cfg: K,N,group_count,weight_address,group_list_address,capacity.
 // The producer guarantees monotone ends in [0,capacity]. Only live rows are
 // computed; inactive output rows are untouched, not synthetic expert work.
-extern "C" __global__ __aicore__ void actual_gmm(GM_ADDR config, GM_ADDR input,
-                                                 GM_ADDR output) {
+__aicore__ inline void RunActualGmm(GM_ADDR config, GM_ADDR input,
+                                    GM_ADDR output) {
   auto cfg = (__gm__ int64_t *)config;
   uint32_t k = cfg[0], n = cfg[1], groups = cfg[2], capacity = cfg[5];
   GlobalTensor<int64_t> ends;
@@ -71,9 +81,11 @@ extern "C" __global__ __aicore__ void actual_gmm(GM_ADDR config, GM_ADDR input,
   using A = Gemm::GemmType<bfloat16_t, layout::RowMajor>;
   using B = Gemm::GemmType<bfloat16_t, layout::zN>;
   using C = Gemm::GemmType<bfloat16_t, layout::RowMajor>;
-  using BaseMmad =
-      Gemm::Block::BlockMmad<Policy, GemmShape<ACTUAL_GMM_TILE_M, 256, 256>,
-                             GemmShape<ACTUAL_GMM_TILE_M, 256, 64>, A, B, C>;
+  using BaseMmad = Gemm::Block::BlockMmad<
+      Policy,
+      GemmShape<ACTUAL_GMM_TILE_M, ACTUAL_GMM_TILE_N, ACTUAL_GMM_TILE_K>,
+      GemmShape<ACTUAL_GMM_TILE_M, ACTUAL_GMM_TILE_N, ACTUAL_GMM_L0_K>, A, B,
+      C>;
 #if ACTUAL_GMM_DFC
   using Mmad = DfcBf16Tile<BaseMmad>;
 #else
@@ -94,6 +106,10 @@ extern "C" __global__ __aicore__ void actual_gmm(GM_ADDR config, GM_ADDR input,
       layout::RowMajor{capacity, n}};
   Kernel kernel;
   kernel(params);
+}
+extern "C" __global__ __aicore__ void actual_gmm(GM_ADDR config, GM_ADDR input,
+                                                 GM_ADDR output) {
+  RunActualGmm(config, input, output);
 }
 static const struct FunLevelKType actual_gmm_meta
     __attribute__((used, section(".ascend.meta.actual_gmm"))) = {

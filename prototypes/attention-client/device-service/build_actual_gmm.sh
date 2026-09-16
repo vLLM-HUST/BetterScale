@@ -14,9 +14,10 @@ esac
 
 CCEC="$CANN_ROOT/tools/ccec_compiler/bin/ccec"
 LD_LLD="$CANN_ROOT/tools/ccec_compiler/bin/ld.lld"
-SOURCE="$ROOT/prototypes/attention-client/device-service/actual_gmm.cpp"
-TMP_OBJECT="$OUTPUT_DIR/actual_gmm_tmp.o"
-OBJECT="$OUTPUT_DIR/actual_gmm.o"
+SOURCE=${SOURCE:-"$ROOT/prototypes/attention-client/device-service/actual_gmm.cpp"}
+OBJECT_NAME=${OBJECT_NAME:-actual_gmm}
+TMP_OBJECT="$OUTPUT_DIR/${OBJECT_NAME}_tmp.o"
+OBJECT="$OUTPUT_DIR/${OBJECT_NAME}.o"
 
 test -x "$CCEC"
 test -x "$LD_LLD"
@@ -26,6 +27,9 @@ mkdir -p "$OUTPUT_DIR"
     -DCATLASS_ARCH=2201 \
     -DACTUAL_GMM_DFC=${ACTUAL_GMM_DFC:-0} \
     -I"$ROOT/upstream/vllm-ascend/csrc/mc2/dispatch_ffn_combine_bf16/op_kernel" \
+    -DACTUAL_GMM_L0_K=${ACTUAL_GMM_L0_K:-64} \
+    -DACTUAL_GMM_TILE_N=${ACTUAL_GMM_TILE_N:-256} \
+    -DACTUAL_GMM_TILE_K=${ACTUAL_GMM_TILE_K:-256} \
     -DACTUAL_GMM_TILE_M=${ACTUAL_GMM_TILE_M:-128} \
     -DASCNEDC_DUMP \
     --cce-aicore-arch=dav-c220-cube \
@@ -57,6 +61,7 @@ test -s "$TMP_OBJECT"
 "$LD_LLD" -m aicorelinux -Ttext=0 "$TMP_OBJECT" -static -o "$OBJECT"
 test -s "$OBJECT"
 file "$OBJECT"
-g++ -shared -fPIC -O2 -std=c++17 "$ROOT/prototypes/attention-client/device-service/launch.cpp" \
+LAUNCH_SOURCE=${LAUNCH_SOURCE:-"$ROOT/prototypes/attention-client/device-service/launch.cpp"}
+g++ -shared -fPIC -O2 -std=c++17 "$LAUNCH_SOURCE" \
  -I"$CANN_ROOT/include" -L"$CANN_ROOT/lib64" -lascendcl \
  -Wl,-rpath,"$CANN_ROOT/lib64" -o "$OUTPUT_DIR/launch.so"

@@ -29,6 +29,16 @@ if [[ -n "${ACTUAL_GMM_BUILD:-}" ]]; then
   export ACTUAL_GMM_BUILD="$capsule/actual-build"
   (cd "$ACTUAL_GMM_BUILD" && sha256sum actual_gmm.o launch.so) > "$capsule/actual-build/objects.sha256"
 fi
+if [[ -n "${PERSISTENT_BUILD:-}" ]]; then
+  mkdir -p "$capsule/persistent-build"
+  cp "$PERSISTENT_BUILD/"{persistent_cube.o,persistent_vector.o,launch.so} "$capsule/persistent-build/"
+  if [[ -d "$PERSISTENT_BUILD/source" ]]; then
+    cp -r "$PERSISTENT_BUILD/source" "$capsule/persistent-build/"
+    cp "$PERSISTENT_BUILD/build-options.txt" "$capsule/persistent-build/"
+  fi
+  export PERSISTENT_BUILD="$capsule/persistent-build"
+  (cd "$PERSISTENT_BUILD" && sha256sum *.o launch.so) > "$capsule/persistent-build/objects.sha256"
+fi
 git -C "$repo" rev-parse HEAD > "$capsule/base-commit.txt"
 export ASCEND_RT_VISIBLE_DEVICES="$devices" OMP_NUM_THREADS=2 TASK_QUEUE_ENABLE=0
 export HCCL_CONNECT_TIMEOUT=120 HCCL_EXEC_TIMEOUT=120 HCCL_BUFFSIZE=256 HCCL_OP_EXPANSION_MODE=AIV

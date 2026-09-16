@@ -14,6 +14,8 @@ from types import SimpleNamespace
 
 def child(rank, device, links, root):
     os.environ["ASCEND_RT_VISIBLE_DEVICES"] = str(device)
+    # Non-burst controls consume client_graph_us; make their timing contract explicit.
+    os.environ.setdefault("DEVICE_SERVICE_TIMING", "1")
     import torch
     import torch_npu
     import device_joint as service

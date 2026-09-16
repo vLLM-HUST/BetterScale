@@ -5,6 +5,10 @@ It replaces CPU route extraction, host expert batch selection, and pipe completi
 messages with device publication, cross-source selection, and completion. It does
 **not** replace the published BetterScale worker or modify the installed donor.
 
+For the work-conserving persistent AIV/AIC successor, see
+[Persistent service](PERSISTENT.md): it prepares while computing, rather than
+waiting to grow a batch. It is a bounded prototype, not DFC parity.
+
 For the newer opt-in coalescing/live-row path and its performance limits, see
 [Actual counts](ACTUAL-COUNTS.md). The original native path below remains default.
 

@@ -1,0 +1,394 @@
+#include "persistent_protocol.hpp"
+using namespace AscendC;
+using namespace Persistent;
+constexpr int HIDDEN = 2048, INNER = 768, ROUTES = 256, GROUPS = 128;
+
+// MTE completion precedes every flag publication. Control lines use scalar
+// DCCI; payload reads/writes use DMA, not scalar cache.
+struct Transfer {
+  TPipe pipe;
+  TBuf<TPosition::VECCALC> buf;
+  LocalTensor<int32_t> words;
+  __aicore__ inline void Init() {
+    pipe.InitBuffer(buf, 32768);
+    words = buf.Get<int32_t>();
+  }
+  __aicore__ inline void Read(__gm__ int32_t *p, int n) {
+    GlobalTensor<int32_t> g;
+    g.SetGlobalBuffer(p);
+    DataCopy(words, g, n);
+    SetFlag<HardEvent::MTE2_S>(EVENT_ID0);
+    WaitFlag<HardEvent::MTE2_S>(EVENT_ID0);
+  }
+  __aicore__ inline void Write(__gm__ int32_t *p, int n) {
+    SetFlag<HardEvent::S_MTE3>(EVENT_ID0);
+    WaitFlag<HardEvent::S_MTE3>(EVENT_ID0);
+    GlobalTensor<int32_t> g;
+    g.SetGlobalBuffer(p);
+    DataCopy(g, words, n);
+    SetFlag<HardEvent::MTE3_S>(EVENT_ID0);
+    WaitFlag<HardEvent::MTE3_S>(EVENT_ID0);
+  }
+  __aicore__ inline int Flag(__gm__ int32_t *p) {
+    Read(p, 8);
+    return words.GetValue(0);
+  }
+  __aicore__ inline void Publish(__gm__ int32_t *p, int gen) {
+    for (int i = 0; i < 8; ++i)
+      words.SetValue(i, i ? 0 : gen);
+    Write(p, 8);
+  }
+  __aicore__ inline void Copy(__gm__ int32_t *src, __gm__ int32_t *dst, int n) {
+    Read(src, n);
+    Write(dst, n);
+  }
+  __aicore__ inline void Activation(__gm__ bfloat16_t *src,
+                                    __gm__ bfloat16_t *dst) {
+    GlobalTensor<bfloat16_t> in, out;
+    in.SetGlobalBuffer(src);
+    out.SetGlobalBuffer(dst);
+    auto b = buf.Get<bfloat16_t>();
+    auto f = buf.Get<float>();
+    // Input occupies0..3072 bytes; float temporaries start at4096.
+    auto gate = f[1024], value = f[1792], tmp = f[2560];
+    DataCopy(b, in, INNER * 2);
+    SetFlag<HardEvent::MTE2_V>(EVENT_ID0);
+    WaitFlag<HardEvent::MTE2_V>(EVENT_ID0);
+    Cast(gate, b, RoundMode::CAST_NONE, INNER);
+    Cast(value, b[INNER], RoundMode::CAST_NONE, INNER);
+    PipeBarrier<PIPE_V>();
+    Muls(tmp, gate, -1.0f, INNER);
+    PipeBarrier<PIPE_V>();
+    Exp(tmp, tmp, INNER);
+    PipeBarrier<PIPE_V>();
+    Adds(tmp, tmp, 1.0f, INNER);
+    PipeBarrier<PIPE_V>();
+    Div(gate, gate, tmp, INNER);
+    PipeBarrier<PIPE_V>();
+    Mul(gate, gate, value, INNER);
+    PipeBarrier<PIPE_V>();
+    Cast(b, gate, RoundMode::CAST_RINT, INNER);
+    SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
+    WaitFlag<HardEvent::V_MTE3>(EVENT_ID0);
+    DataCopy(out, b, INNER);
+    SetFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
+    WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID0);
+  }
+};
+
+__aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
+  auto ctrl = (__gm__ int32_t *)cfg[0];
+  int seen = 0, idle = 0, worker = GetBlockIdx() - 1;
+  while (!Load(ctrl + STOP * LINE)) {
+    int next = Load(ctrl + VCMD * LINE);
+    if (next == seen) {
+      if (++idle >= cfg[9]) {
+        Store(ctrl + STOP * LINE, -21);
+        break;
+      }
+      continue;
+    }
+    idle = 0;
+    int kind = ctrl[VCMD * LINE + 1], slot = ctrl[VCMD * LINE + 2];
+    int extra = ctrl[VCMD * LINE + 3];
+    if (next != seen + 1 || slot < 0 || slot > 1 || kind < 1 || kind > 4) {
+      Store(ctrl + STOP * LINE, -22);
+      break;
+    }
+    auto ptr = (__gm__ int64_t *)cfg[1] + slot * 16;
+    uint64_t begin = GetSystemCycle();
+    if (kind == ACTIVATE) {
+      for (int row = worker; row < extra; row += VW)
+        io.Activation((__gm__ bfloat16_t *)ptr[2] + row * INNER * 2,
+                      (__gm__ bfloat16_t *)ptr[3] + row * INNER);
+    } else {
+      for (int c = 0; c < 2; ++c) {
+        io.Read((__gm__ int32_t *)ptr[5] + c * MAP, MAP);
+        int gen = io.words.GetValue(0), n = io.words.GetValue(1);
+        int map[ROUTES];
+        for (int i = 0; i < ROUTES; ++i)
+          map[i] = io.words.GetValue(8 + i);
+        if (!gen)
+          continue;
+        if (kind == FETCH) {
+          if (!(extra & (1 << c)))
+            continue;
+          for (int row = worker; row < n; row += VW)
+            io.Copy((__gm__ int32_t *)cfg[4 + c] + 1024 + row * HIDDEN / 2,
+                    (__gm__ int32_t *)ptr[0] + (c * 32 + row) * HIDDEN / 2,
+                    HIDDEN / 2);
+        } else {
+          for (int route = worker; route < n * 8; route += VW)
+            if (map[route] >= 0) {
+              if (kind == REPACK)
+                io.Copy((__gm__ int32_t *)ptr[0] +
+                            (c * 32 + route / 8) * HIDDEN / 2,
+                        (__gm__ int32_t *)ptr[1] + map[route] * HIDDEN / 2,
+                        HIDDEN / 2);
+              else
+                io.Copy((__gm__ int32_t *)ptr[4] + map[route] * HIDDEN / 2,
+                        (__gm__ int32_t *)cfg[2 + c] + 64 + route * HIDDEN / 2,
+                        HIDDEN / 2);
+            }
+        }
+      }
+    }
+    PipeBarrier<PIPE_ALL>();
+    WorkTime(cfg, 0, next, worker, begin);
+    seen = next;
+    Store(ctrl + (VDONE + worker) * LINE, seen);
+  }
+}
+
+struct Slot {
+  int stage = EMPTY, gen[2] = {0, 0}, rows[2] = {0, 0}, layer[2] = {0, 0};
+  int ids[2][ROUTES], live = 0;
+};
+__aicore__ inline void Descriptor(Transfer &io, __gm__ int64_t *ptr, Slot &s) {
+  for (int c = 0; c < 2; ++c) {
+    for (int j = 0; j < MAP; ++j)
+      io.words.SetValue(
+          j, j == 0 ? s.gen[c]
+                    : (j == 1 ? s.rows[c] : (j == 2 ? s.layer[c] : -1)));
+    io.Write((__gm__ int32_t *)ptr[5] + c * MAP, MAP);
+  }
+}
+__aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
+                             int *claimed, int *finished) {
+  int mask = 0;
+  for (int c = 0; c < 2; ++c) {
+    if (claimed[c] || finished[c] >= cfg[6])
+      continue;
+    auto src = (__gm__ int32_t *)cfg[4 + c];
+    int gen = io.Flag(src);
+    if (gen != finished[c] + 1)
+      continue;
+    io.Read(src + 8, 8);
+    int desc = io.words.GetValue(0), layer = io.words.GetValue(1),
+        n = io.words.GetValue(2);
+    if (desc != gen || layer < 0 || layer >= 2 || n < 1 || n > 32)
+      return -1;
+    io.Read(src + 64, n * 8);
+    for (int i = 0; i < n * 8; ++i) {
+      s.ids[c][i] = io.words.GetValue(i);
+      if (s.ids[c][i] < 0 || s.ids[c][i] >= 128)
+        return -1;
+    }
+    claimed[c] = gen;
+    s.gen[c] = gen;
+    s.rows[c] = n;
+    s.layer[c] = layer;
+    mask |= 1 << c;
+  }
+  return mask;
+}
+__aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
+                             int owner) {
+  int count[GROUPS], cursor[GROUPS];
+  for (int g = 0; g < GROUPS; ++g)
+    count[g] = 0;
+  for (int c = 0; c < 2; ++c)
+    if (s.gen[c])
+      for (int i = 0; i < s.rows[c] * 8; ++i)
+        if (s.ids[c][i] / 64 == owner)
+          ++count[s.layer[c] * 64 + s.ids[c][i] % 64];
+  s.live = 0;
+  for (int g = 0; g < GROUPS; ++g) {
+    cursor[g] = s.live;
+    s.live += count[g];
+    io.words.SetValue(g * 2, s.live);
+    io.words.SetValue(g * 2 + 1, 0);
+  }
+  io.Write((__gm__ int32_t *)ptr[6], GROUPS * 2);
+  for (int c = 0; c < 2; ++c) {
+    for (int i = 0; i < MAP; ++i)
+      io.words.SetValue(i, -1);
+    io.words.SetValue(0, s.gen[c]);
+    io.words.SetValue(1, s.rows[c]);
+    io.words.SetValue(2, s.layer[c]);
+    if (s.gen[c])
+      for (int i = 0; i < s.rows[c] * 8; ++i)
+        if (s.ids[c][i] / 64 == owner)
+          io.words.SetValue(8 + i,
+                            cursor[s.layer[c] * 64 + s.ids[c][i] % 64]++);
+    io.Write((__gm__ int32_t *)ptr[5] + c * MAP, MAP);
+  }
+}
+__aicore__ inline void Command(__gm__ int32_t *ctrl, int line, int gen,
+                               int kind, int slot, int extra = 0) {
+  ctrl[line * LINE + 1] = kind;
+  ctrl[line * LINE + 2] = slot;
+  ctrl[line * LINE + 3] = extra;
+  Store(ctrl + line * LINE, gen);
+}
+// Coordinator-observed command intervals, not exact instruction timestamps.
+__aicore__ inline void Record(__gm__ int64_t *cfg, int &count, int engine,
+                              int kind, int slot, uint64_t begin, int rows) {
+  auto record = (__gm__ int64_t *)cfg[11] + count * 8;
+  record[0] = engine;
+  record[1] = kind;
+  record[2] = slot;
+  record[3] = begin;
+  record[4] = GetSystemCycle();
+  record[5] = rows;
+  record[6] = count;
+  record[7] = 0;
+  Refresh((__gm__ int32_t *)record);
+  ++count;
+}
+__aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
+  auto ctrl = (__gm__ int32_t *)cfg[0];
+  auto slots = (__gm__ int64_t *)cfg[1];
+  Slot s[2];
+  int claimed[2] = {0, 0}, finished[2] = {0, 0};
+  int vgen = 0, cgen = 0, vs = -1, cs = -1, waves = 0, idle = 0;
+  int pullsDuringCube = 0, eventCount = 0, vkind = 0, ckind = 0;
+  uint64_t vbegin = 0, cbegin = 0;
+  while (!Load(ctrl + STOP * LINE)) {
+    bool progress = false;
+    if (cs >= 0 && Joined(ctrl, CDONE, CW, cgen)) {
+      Record(cfg, eventCount, 1, ckind, cs, cbegin, s[cs].live);
+      s[cs].stage = s[cs].stage == UP ? READY_ACT : READY_RETURN;
+      cs = -1;
+      progress = true;
+    }
+    if (vs >= 0 && Joined(ctrl, VDONE, VW, vgen)) {
+      auto &slot = s[vs];
+      auto ptr = slots + vs * 16;
+      Record(cfg, eventCount, 0, vkind, vs, vbegin, slot.live);
+      if (slot.stage == PULL) {
+        // No wait-to-coalesce: one snapshot after useful DMA completes.
+        int added = Accept(io, cfg, slot, claimed, finished);
+        if (added < 0) {
+          Store(ctrl + STOP * LINE, -31);
+          break;
+        }
+        if (added) {
+          Descriptor(io, ptr, slot);
+          vkind = FETCH;
+          vbegin = GetSystemCycle();
+          Command(ctrl, VCMD, ++vgen, FETCH, vs, added);
+          if (cs >= 0)
+            ++pullsDuringCube;
+        } else {
+          Group(io, ptr, slot, cfg[7]);
+          slot.stage = PACK;
+          vkind = REPACK;
+          vbegin = GetSystemCycle();
+          Command(ctrl, VCMD, ++vgen, REPACK, vs);
+        }
+      } else {
+        if (slot.stage == PACK)
+          slot.stage = READY_UP;
+        else if (slot.stage == ACT)
+          slot.stage = READY_DOWN;
+        else if (slot.stage == RETURN) {
+          for (int c = 0; c < 2; ++c)
+            if (slot.gen[c]) {
+              io.Publish((__gm__ int32_t *)cfg[2 + c], slot.gen[c]);
+              finished[c] = slot.gen[c];
+              claimed[c] = 0;
+            }
+          int fields[16] = {slot.gen[0],
+                            slot.gen[1],
+                            slot.live,
+                            vs,
+                            pullsDuringCube,
+                            vgen,
+                            cgen,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0,
+                            0};
+          for (int i = 0; i < 16; ++i)
+            io.words.SetValue(i, fields[i]);
+          io.Write((__gm__ int32_t *)cfg[8] + waves * 16, 16);
+          ++waves;
+          slot.gen[0] = slot.gen[1] = slot.rows[0] = slot.rows[1] = 0;
+          slot.stage = EMPTY;
+        }
+        vs = -1;
+      }
+      progress = true;
+    }
+    if (finished[0] == cfg[6] && finished[1] == cfg[6]) {
+      ctrl[STATUS * LINE + 1] = waves;
+      ctrl[STATUS * LINE + 2] = pullsDuringCube;
+      ctrl[STATUS * LINE + 3] = eventCount;
+      Store(ctrl + STATUS * LINE, 1);
+      Store(ctrl + STOP * LINE, 1);
+      break;
+    }
+    if (cs < 0) {
+      // Complete a batch before starting another up projection when both ready.
+      for (int phase = 0; phase < 2 && cs < 0; ++phase)
+        for (int i = 0; i < 2 && cs < 0; ++i)
+          if (s[i].stage == (phase == 0 ? READY_DOWN : READY_UP)) {
+            cs = i;
+            s[i].stage = phase == 0 ? DOWN : UP;
+            ckind = phase == 0 ? 2 : 1;
+            cbegin = GetSystemCycle();
+            Command(ctrl, CCMD, ++cgen, ckind, i);
+            progress = true;
+          }
+    }
+    if (vs < 0) {
+      // Return/activation are progress-critical; prepare the next slot
+      // otherwise.
+      for (int phase = 0; phase < 2 && vs < 0; ++phase)
+        for (int i = 0; i < 2 && vs < 0; ++i)
+          if (s[i].stage == (phase == 0 ? READY_RETURN : READY_ACT)) {
+            vs = i;
+            s[i].stage = phase == 0 ? RETURN : ACT;
+            vkind = phase == 0 ? SEND : ACTIVATE;
+            vbegin = GetSystemCycle();
+            Command(ctrl, VCMD, ++vgen, vkind, i, s[i].live);
+            progress = true;
+          }
+      for (int i = 0; i < 2 && vs < 0; ++i)
+        if (s[i].stage == EMPTY) {
+          int mask = Accept(io, cfg, s[i], claimed, finished);
+          if (mask < 0) {
+            Store(ctrl + STOP * LINE, -32);
+            break;
+          }
+          if (mask) {
+            vs = i;
+            s[i].stage = PULL;
+            Descriptor(io, slots + i * 16, s[i]);
+            vkind = FETCH;
+            vbegin = GetSystemCycle();
+            Command(ctrl, VCMD, ++vgen, FETCH, i, mask);
+            if (cs >= 0)
+              ++pullsDuringCube;
+            progress = true;
+          }
+        }
+    }
+    idle = progress ? 0 : idle + 1;
+    if (idle >= cfg[9]) {
+      Store(ctrl + STOP * LINE, -33);
+      break;
+    }
+  }
+}
+extern "C" __global__ __aicore__ void
+persistent_vector(GM_ADDR config, GM_ADDR unused, GM_ADDR unused2) {
+  auto cfg = (__gm__ int64_t *)config;
+  if (!cfg[10])
+    return;
+  Transfer io;
+  io.Init();
+  if (GetBlockIdx() == 0)
+    Coordinator(cfg, io);
+  else
+    Worker(cfg, io);
+}
+static const struct FunLevelKType persistent_vector_meta
+    __attribute__((used, section(".ascend.meta.persistent_vector"))) = {
+        {F_TYPE_KTYPE, sizeof(unsigned int), K_TYPE_AIV}};

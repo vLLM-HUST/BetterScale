@@ -338,10 +338,11 @@ def serve(server_id, links, output_path):
     w2 = torch.cat([w[1] for w in weights])
     del weights, current, up, down
     actual_counts = os.environ.get("DEVICE_SERVICE_ACTUAL_COUNTS") == "1"
+    persistent = os.environ.get("DEVICE_SERVICE_PERSISTENT") == "1"
     weight_format = os.environ.get(
-        "DEVICE_SERVICE_WEIGHT_FORMAT", "NZ" if actual_counts else "ND"
+        "DEVICE_SERVICE_WEIGHT_FORMAT", "NZ" if actual_counts or persistent else "ND"
     )
-    assert not actual_counts or (PARALLEL and weight_format == "NZ")
+    assert not (actual_counts or persistent) or (PARALLEL and weight_format == "NZ")
     assert weight_format in ("ND", "NZ")
     if weight_format == "NZ":
         torch_npu.npu.config.allow_internal_format = True
@@ -349,6 +350,13 @@ def serve(server_id, links, output_path):
         w2 = torch_npu.npu_format_cast(w2, 29)
         assert torch_npu.get_npu_format(w13) == 29
         assert torch_npu.get_npu_format(w2) == 29
+    if persistent:
+        assert int(os.environ.get("DEVICE_SERVICE_COALESCE_POLLS", "0")) == 0
+        assert os.environ.get("DEVICE_SERVICE_PAIRED_CONTROL") != "1"
+        from persistent_service import serve as persistent_serve
+
+        persistent_serve(api, clients, w13, w2, server_id, output_path)
+        return
     kernels = Kernels()
     prepare = kernels.load("neural_prepare")
     complete = kernels.load("neural_complete")

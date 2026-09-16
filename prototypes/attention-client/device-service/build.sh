@@ -13,9 +13,10 @@ esac
 
 CCEC="$CANN_ROOT/tools/ccec_compiler/bin/ccec"
 LD_LLD="$CANN_ROOT/tools/ccec_compiler/bin/ld.lld"
-SOURCE="$ROOT/prototypes/attention-client/device-service/kernel.cpp"
-TMP_OBJECT="$OUTPUT_DIR/queue_service_tmp.o"
-OBJECT="$OUTPUT_DIR/queue_service.o"
+SOURCE=${SOURCE:-"$ROOT/prototypes/attention-client/device-service/kernel.cpp"}
+OBJECT_NAME=${OBJECT_NAME:-queue_service}
+TMP_OBJECT="$OUTPUT_DIR/${OBJECT_NAME}_tmp.o"
+OBJECT="$OUTPUT_DIR/${OBJECT_NAME}.o"
 
 test -x "$CCEC"
 test -x "$LD_LLD"
@@ -51,6 +52,7 @@ test -s "$TMP_OBJECT"
 "$LD_LLD" -m aicorelinux -Ttext=0 "$TMP_OBJECT" -static -o "$OBJECT"
 test -s "$OBJECT"
 file "$OBJECT"
-g++ -shared -fPIC -O2 -std=c++17 "$ROOT/prototypes/attention-client/device-service/launch.cpp" \
+LAUNCH_SOURCE=${LAUNCH_SOURCE:-"$ROOT/prototypes/attention-client/device-service/launch.cpp"}
+g++ -shared -fPIC -O2 -std=c++17 "$LAUNCH_SOURCE" \
  -I"$CANN_ROOT/include" -L"$CANN_ROOT/lib64" -lascendcl \
  -Wl,-rpath,"$CANN_ROOT/lib64" -o "$OUTPUT_DIR/launch.so"

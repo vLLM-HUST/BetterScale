@@ -415,3 +415,14 @@ a production capacity trick. Explicit custom capacity/live semantics passed
 leaf canaries and joint dummy checks, but broad tiny-expert GEMM remains slower
 than native NZ. Common startup produced24/24 paired cycles; unaligned source
 arrivals produced none. Do not infer online batching or DFC parity from support.
+
+For the work-conserving successor, enter device-service/PERSISTENT.md.
+It runs one persistent AIV team and one persistent AIC team with generation-tagged
+commands, per-core joins and two staging slots; it does not wait to grow batches.
+Pull completion is a mailbox observation boundary before expert grouping.
+Real BF16 four-card and per-core-timestamp gates pass, but equal-work burst
+latency improvement varies2.3–23.6% with natural arrival phase; broad expert
+latency still trails DFC. Do not confuse persistent residency with guaranteed
+batching, overlap, DFC parity or unlimited service. Capture raw ACL launches on
+torch.npu.current_stream() INSIDE the graph context: an enclosing stream can
+differ from the graph's internal stream and silently produce an empty graph.

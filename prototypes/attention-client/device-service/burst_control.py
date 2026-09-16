@@ -10,12 +10,17 @@ from profile_capture import start, stop
 
 
 def run(service, model, links, root, rank, base_up, base_down, bank_type):
+    sizes = [
+        int(v) for v in os.environ.get("DEVICE_SERVICE_BURST_ROWS", "32,32").split(",")
+    ]
+    assert len(sizes) == 2 and all(1 <= n <= 32 for n in sizes)
+    rows = sizes[rank]
     jobs = []
     for step in range(service.TASKS):
         torch.manual_seed(900 + rank * 100 + step)
-        x = (torch.randn(32, 2048) * 0.1).to(torch.bfloat16).npu()
+        x = (torch.randn(rows, 2048) * 0.1).to(torch.bfloat16).npu()
         ids = (
-            ((torch.arange(256).reshape(32, 8) + rank * 8 + step * 8) % 128)
+            ((torch.arange(rows * 8).reshape(rows, 8) + rank * 8 + step * 8) % 128)
             .to(torch.int32)
             .npu()
         )
@@ -38,12 +43,14 @@ def run(service, model, links, root, rank, base_up, base_down, bank_type):
     for layer in (0, 1):
         bank = bank_type(remote, layer, None, jobs[0][1])
         bank.config[6] = 0
-        remote.banks[layer, 32] = bank
-    history = torch.empty((service.TASKS, 32, 2048), dtype=torch.bfloat16, device="npu")
+        remote.banks[layer, rows] = bank
+    history = torch.empty(
+        (service.TASKS, rows, 2048), dtype=torch.bfloat16, device="npu"
+    )
     episode = torch.npu.NPUGraph()
     with torch.npu.graph(episode):
         for step, (layer, x, ids, _) in enumerate(jobs):
-            bank = remote.banks[layer, 32]
+            bank = remote.banks[layer, rows]
             bank.input.copy_(x)
             bank.ids.copy_(ids)
             history[step].copy_(bank.body())
@@ -56,7 +63,7 @@ def run(service, model, links, root, rank, base_up, base_down, bank_type):
     assert 0 <= delayed <= 50
     a = torch.npu.Event(enable_timing=True)
     b = torch.npu.Event(enable_timing=True)
-    if delayed:
+    if delayed or os.environ.get("DEVICE_SERVICE_BURST_PREQUEUE", "1") == "0":
         # Deliberate runtime absence, not merely delayed initialization.
         remote.activate()
         time.sleep(delay / 1000)
@@ -84,7 +91,7 @@ def run(service, model, links, root, rank, base_up, base_down, bank_type):
         results.append(
             dict(
                 pattern="balanced",
-                rows_per_source=32,
+                rows_per_source=rows,
                 repeat=step,
                 layer=layer,
                 relative_l2=relative,
