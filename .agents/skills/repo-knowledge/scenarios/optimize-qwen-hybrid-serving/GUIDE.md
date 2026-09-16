@@ -94,3 +94,10 @@ in `padded-shadow4`. Do not alter shared FIA metadata while repairing GDN.
 Full6GiB-cache before/after snapshots plus13 graphs exceeded59GiB in the shadow.
 Use the diagnostic1GiB KV budget and only512/1024 plus decode graphs for513;
 this is correctness evidence with a changed memory budget, not a timing control.
+
+The GDN-only real-row fix passed `padded-shadow5`:129 checks/rank, max_abs0 on
+both ranks. `padded-full3` then passed all36 C1 continuations against the unpadded
+oracle at512/513/1024/1536/2048/2051 tokens, plus C4/C8 mixed fallback transport.
+FULL mean TTFT at513/2051 was270.67/552.86ms; same-run padded NONE407.81/857.93ms.
+This qualifies the bounded non-speculative single-prefill mechanism only. MTP
+composition and general mixed/full/prefix-cache coverage require their own evidence.
