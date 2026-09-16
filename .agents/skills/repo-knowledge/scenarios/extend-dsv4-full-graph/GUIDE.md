@@ -502,3 +502,9 @@ It records same-host one/two physical weight-catalog controls, fetch-inclusive
 intervals and client/retirement scope. Address reuse affects DFC materially but
 does not establish remote parity; the remaining input-preparation seam has
 descriptor ownership and late-source-coalescing constraints.
+
+For server-published contributions and client-owned token reduction, enter
+device-service/ROUTE-PULL.md. It records the generation/retirement contract,
+mode2 catalog cleanup, same-work controls, paced polling and zero-owner/weighted
+gates. Early token reduction is not permission to reuse exports or advance
+attention before full-wave drain; independent client clocks are not aligned traces.

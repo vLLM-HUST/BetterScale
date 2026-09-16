@@ -72,3 +72,6 @@ Do not overlap Group with FETCH by only moving the function call: movers read th
 same source map buffer Group rewrites, and a post-fetch admission snapshot may
 still add a source and change packed destinations. Descriptor separation or a
 frozen-admission boundary is required for that different optimization.
+
+The subsequent opt-in implementation and acceptance are in
+[ROUTE-PULL.md](ROUTE-PULL.md), including client-owned fused reduction.

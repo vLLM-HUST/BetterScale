@@ -82,10 +82,31 @@ class ClientBank:
         self.layer = layer
         rows = hidden.shape[0]
         self.input = hidden.clone()
+        self.route_pull = os.environ.get("DEVICE_SERVICE_ROUTE_PULL") == "1"
+        assert not self.route_pull or (
+            PARALLEL and os.environ.get("DEVICE_SERVICE_PERSISTENT") == "1"
+        )
+        self.pull_probs = (
+            torch.empty((32, K), dtype=torch.bfloat16, device="npu")
+            if self.route_pull
+            else None
+        )
+        self.pull_output = torch.empty_like(hidden) if self.route_pull else None
         self.raw = [
-            torch.zeros((rows, K, H), dtype=torch.bfloat16, device="npu")
+            torch.zeros(
+                (1,) if self.route_pull else (rows, K, H),
+                dtype=torch.bfloat16,
+                device="npu",
+            )
             for _ in range(2)
         ]
+        self.pull_timing = (
+            torch.zeros((25, 16, 8), dtype=torch.int64, device="npu")
+            if self.route_pull
+            else None
+        )
+        poll_cycles = int(os.environ.get("DEVICE_SERVICE_PULL_POLL_CYCLES", "0"))
+        assert 0 <= poll_cycles <= 500
         self.config = torch.tensor(
             [
                 transport.local + INPUT_OFFSET,
@@ -97,6 +118,10 @@ class ClientBank:
                 2000000,
                 *[x.data_ptr() for x in self.raw],
                 int(PARALLEL),
+                self.pull_probs.data_ptr() if self.route_pull else 0,
+                self.pull_output.data_ptr() if self.route_pull else 0,
+                self.pull_timing.data_ptr() if self.route_pull else 0,
+                poll_cycles,
             ],
             device="npu",
             dtype=torch.int64,
@@ -110,6 +135,14 @@ class ClientBank:
         torch.npu.synchronize()
         self.config[6] = 1
 
+    def collect_reduced(self, ids, weights):
+        self.pull_probs[: self.input.shape[0]].copy_(weights)
+        self.transport.kernels.call(
+            self.transport.collect_reduce, self.config, self.input, ids, blocks=16
+        )
+        self.transport.kernels.call(self.transport.retire, self.config, self.input, ids)
+        return self.pull_output
+
     def body(self):
         logits, _ = self.layer.mlp.gate(self.input)
         # Import only after native platform initialization (the server process
@@ -119,6 +152,8 @@ class ClientBank:
         weights, ids = select_experts(self.input, logits, K, False, True, num_experts=E)
         ids = ids.to(torch.int32)
         self.transport.kernels.call(self.transport.fn, self.config, self.input, ids)
+        if self.route_pull:
+            return self.collect_reduced(ids, weights)
         if PARALLEL:
             self.transport.kernels.call(
                 self.transport.collect, self.config, self.input, ids, blocks=16
@@ -179,6 +214,8 @@ class DeviceExperts:
         self.fn = self.kernels.load("neural_client")
         if PARALLEL:
             self.collect = self.kernels.load("neural_collect")
+            if os.environ.get("DEVICE_SERVICE_ROUTE_PULL") == "1":
+                self.collect_reduce = self.kernels.load("neural_collect_reduce")
             self.retire = self.kernels.load("neural_retire")
         self.counter = torch.zeros(8, dtype=torch.int32, device="npu")
         self.banks = {}

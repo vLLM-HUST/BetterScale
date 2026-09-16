@@ -121,6 +121,13 @@ __aicore__ inline void ReturnStreaming(__gm__ int64_t *cfg, Transfer &io,
         io.Copy((__gm__ int32_t *)ptr[4] + row * HIDDEN / 2,
                 (__gm__ int32_t *)cfg[2 + c] + 64 + route * HIDDEN / 2,
                 HIDDEN / 2);
+        if (cfg[23]) {
+          // Copy has retired MTE3. The flag belongs to this route's sole mover;
+          // never publish a generation before the exported payload is visible.
+          Store((__gm__ int32_t *)cfg[2 + c] + 64 + 256 * HIDDEN / 2 +
+                    route * LINE,
+                sources[c]);
+        }
       }
     }
   }
@@ -298,7 +305,8 @@ __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
   return mask;
 }
 __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
-                             int owner, bool segmented, int tailExperts) {
+                             int owner, int mode, int tailExperts) {
+  bool segmented = mode != 0;
   int count[GROUPS], cursor[GROUPS];
   for (int g = 0; g < GROUPS; ++g)
     count[g] = 0;
@@ -333,16 +341,23 @@ __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
         sum += count[g];
     }
     s.boundary = sum;
-    for (int part = 0; part < 2; ++part) {
-      int prefix = 0;
-      for (int g = 0; g < GROUPS; ++g) {
-        if ((part == 0 && g < cut) || (part == 1 && g >= cut))
-          prefix += count[g];
-        io.words.SetValue(g * 2, prefix);
-        io.words.SetValue(g * 2 + 1, 0);
+    if (mode == 2) {
+      // Continuous GEMMs consume only the full catalog and this boundary.
+      // Preserve the existing aligned last-line address read by every Cube.
+      for (int j = 0; j < 8; ++j)
+        io.words.SetValue(j, j == 6 ? sum : 0);
+      io.Write((__gm__ int32_t *)ptr[9] + 248, 8);
+    } else
+      for (int part = 0; part < 2; ++part) {
+        int prefix = 0;
+        for (int g = 0; g < GROUPS; ++g) {
+          if ((part == 0 && g < cut) || (part == 1 && g >= cut))
+            prefix += count[g];
+          io.words.SetValue(g * 2, prefix);
+          io.words.SetValue(g * 2 + 1, 0);
+        }
+        io.Write((__gm__ int32_t *)ptr[9 + part], GROUPS * 2);
       }
-      io.Write((__gm__ int32_t *)ptr[9 + part], GROUPS * 2);
-    }
   }
   for (int c = 0; c < 2; ++c) {
     for (int i = 0; i < MAP; ++i)

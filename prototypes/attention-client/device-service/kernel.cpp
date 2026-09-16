@@ -417,7 +417,7 @@ neural_complete(GM_ADDR cfgaddr, GM_ADDR computed, GM_ADDR unused) {
   for (int c = 0; c < 2; ++c)
     if (gen[c])
       io.Publish((__gm__ int32_t *)cfg[c], gen[c]);
-  int record[8] = {fields[4], fields[5], gen[0], gen[1],
+  int record[8] = {fields[4], fields[5], gen[0],       gen[1],
                    fields[3], fields[6], int(cfg[12]), 0};
   for (int j = 0; j < 8; ++j)
     io.ub.SetValue(j, record[j]);
@@ -553,6 +553,117 @@ neural_collect(GM_ADDR cfgaddr, GM_ADDR unused, GM_ADDR topk) {
     io.Write((__gm__ int32_t *)cfg[8] + i * H / 2, H / 2);
   }
 }
+// Token-owned gather/reduce: exported route generations replace the initial
+// all-server join. One mover owns each accumulator; server-local output remains
+// immutable until the source publishes its next generation after final drain.
+extern "C" __global__ __aicore__ void
+neural_collect_reduce(GM_ADDR cfgaddr, GM_ADDR unused, GM_ADDR topk) {
+  auto cfg = (__gm__ int64_t *)cfgaddr;
+  if (!cfg[6])
+    return;
+  uint64_t began = GetSystemCycle(), firstRead = 0, reduced = 0;
+  int polling = 0;
+  IO io;
+  io.Init();
+  int gen = io.Flag((__gm__ int32_t *)cfg[0]), n = cfg[4];
+  int ids[256];
+  float weights[256];
+  io.Read((__gm__ int32_t *)topk, n * 8);
+  for (int i = 0; i < n * 8; ++i)
+    ids[i] = io.ub.GetValue(i);
+  io.Read((__gm__ int32_t *)cfg[11], 128);
+  auto bf = io.buf.Get<bfloat16_t>();
+  auto fp = io.buf.Get<float>();
+  PipeBarrier<PIPE_ALL>();
+  Cast(fp[1024], bf, RoundMode::CAST_NONE, 256);
+  PipeBarrier<PIPE_ALL>();
+  for (int i = 0; i < n * 8; ++i)
+    weights[i] = fp.GetValue(1024 + i);
+  int masks[2] = {0, 0};
+  int tokens[2] = {int(GetBlockIdx()), int(GetBlockIdx() + GetBlockNum())};
+  Duplicate(fp[3072], 0.0f, 4096);
+  PipeBarrier<PIPE_V>();
+  int remaining = (tokens[0] < n) + (tokens[1] < n);
+  int idle = 0;
+  while (remaining) {
+    bool progress = false;
+    for (int t = 0; t < 2; ++t) {
+      int token = tokens[t];
+      if (token >= n || masks[t] == 255)
+        continue;
+      for (int owner = 0; owner < 2; ++owner) {
+        bool needed = false;
+        for (int k = 0; k < 8; ++k)
+          needed |= !(masks[t] & (1 << k)) && ids[token * 8 + k] / 64 == owner;
+        if (!needed)
+          continue;
+        // Read all eight cache-line flags together, not eight tiny DMA polls.
+        ++polling;
+        io.Read((__gm__ int32_t *)cfg[1 + owner] + 64 + 256 * H / 2 +
+                    token * 8 * 16,
+                128);
+        int ready = 0;
+        for (int k = 0; k < 8; ++k)
+          if (io.ub.GetValue(k * 16) == gen)
+            ready |= 1 << k;
+        for (int k = 0; k < 8; ++k) {
+          int bit = 1 << k, route = token * 8 + k;
+          if ((masks[t] & bit) || !(ready & bit) || ids[route] / 64 != owner)
+            continue;
+          if (!firstRead)
+            firstRead = GetSystemCycle();
+          io.Read((__gm__ int32_t *)cfg[1 + owner] + 64 + route * H / 2, H / 2);
+          PipeBarrier<PIPE_ALL>();
+          Cast(fp[1024], bf, RoundMode::CAST_NONE, H);
+          PipeBarrier<PIPE_V>();
+          Muls(fp[1024], fp[1024], weights[route], H);
+          PipeBarrier<PIPE_V>();
+          Add(fp[3072 + t * H], fp[3072 + t * H], fp[1024], H);
+          PipeBarrier<PIPE_V>();
+          masks[t] |= bit;
+          progress = true;
+        }
+      }
+      if (masks[t] == 255) {
+        Cast(bf, fp[3072 + t * H], RoundMode::CAST_RINT, H);
+        SetFlag<HardEvent::V_MTE3>(EVENT_ID0);
+        WaitFlag<HardEvent::V_MTE3>(EVENT_ID0);
+        io.Write((__gm__ int32_t *)cfg[12] + token * H / 2, H / 2);
+        --remaining;
+      }
+    }
+    idle = progress ? 0 : idle + 1;
+    if (!progress && cfg[14]) {
+      uint64_t until = GetSystemCycle() + cfg[14];
+      while (GetSystemCycle() < until) {
+      }
+    }
+    if (idle >= cfg[7]) {
+      io.Publish((__gm__ int32_t *)cfg[5], -101);
+      return;
+    }
+  }
+  reduced = GetSystemCycle();
+  // Do not authorize input/frame reuse before producer kernels also retire.
+  // Empty local expert sets still owe a server-wide completion generation.
+  for (int owner = 0; owner < 2; ++owner) {
+    int polls = 0;
+    while (io.Flag((__gm__ int32_t *)cfg[1 + owner]) != gen)
+      if (++polls >= cfg[7]) {
+        io.Publish((__gm__ int32_t *)cfg[5], -102);
+        return;
+      }
+  }
+  if (cfg[13]) {
+    auto times = io.buf.Get<int64_t>();
+    times.SetValue(0, began);
+    times.SetValue(1, firstRead);
+    times.SetValue(2, reduced);
+    times.SetValue(3, GetSystemCycle());
+    times.SetValue(4, polling);
+    io.Write((__gm__ int32_t *)cfg[13] + (gen * 16 + GetBlockIdx()) * 16, 16);
+  }
+}
 extern "C" __global__ __aicore__ void
 neural_retire(GM_ADDR cfgaddr, GM_ADDR unused, GM_ADDR unused2) {
   if (GetBlockIdx() != 0)
@@ -575,3 +686,4 @@ SERVICE_META(neural_pack)
 SERVICE_META(neural_scatter)
 SERVICE_META(neural_collect)
 SERVICE_META(neural_retire)
+SERVICE_META(neural_collect_reduce)

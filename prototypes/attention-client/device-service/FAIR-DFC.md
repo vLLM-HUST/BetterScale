@@ -111,3 +111,6 @@ changes cwd, so all executable/output paths passed to it must be absolute.
 
 For the address-level return-path audit and redundant internal-mode catalogs,
 continue with [PREPARATION-RETURN.md](PREPARATION-RETURN.md).
+
+The subsequent opt-in implementation and acceptance are in
+[ROUTE-PULL.md](ROUTE-PULL.md), including client-owned fused reduction.

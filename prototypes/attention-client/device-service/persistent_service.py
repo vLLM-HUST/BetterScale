@@ -42,6 +42,8 @@ class PersistentEngine:
         assert not self.early_return or (
             self.early_down and not self.move_quantum and not self.resident_moves
         )
+        self.route_pull = os.environ.get("DEVICE_SERVICE_ROUTE_PULL") == "1"
+        assert not self.route_pull or self.early_return
         self.control = torch.zeros((128, 16), dtype=torch.int32, device="npu")
         self.trace = torch.full((tasks * 2, 16), -991, dtype=torch.int32, device="npu")
         self.events = torch.zeros((512, 8), dtype=torch.int64, device="npu")
@@ -143,6 +145,7 @@ class PersistentEngine:
                 self.pack_ready.data_ptr() if self.pack_ready is not None else 0,
                 self.issue_times.data_ptr() if self.issue_times is not None else 0,
                 int(self.early_return),
+                int(self.route_pull),
             ],
             dtype=torch.int64,
             device="npu",

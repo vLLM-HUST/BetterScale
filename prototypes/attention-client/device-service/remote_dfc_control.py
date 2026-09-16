@@ -49,6 +49,8 @@ def child(rank, device, links, root):
                 )
             transport = self.transport
             transport.kernels.call(transport.fn, self.config, self.input, self.ids)
+            if self.route_pull:
+                return self.collect_reduced(self.ids, self.probs)
             transport.kernels.call(
                 transport.collect, self.config, self.input, self.ids, blocks=16
             )
