@@ -60,5 +60,10 @@ for obj, key, bad in [(c, "speculative_config", S(method="mtp")),
     except ValueError: pass
     else: raise AssertionError(key)
     setattr(obj,key,old)
+c.speculative_config=S(method="mtp",num_speculative_tokens=2,enforce_eager=False)
+c.compilation_config.cudagraph_mode="FULL_AND_PIECEWISE"
+c.compilation_config.cudagraph_capture_sizes=[1,2,4,8,16,24]
+validate_config(c)
+assert "betterscale.patches.qwen_layout" not in sys.modules
 """
         subprocess.run([sys.executable, "-c", code], check=True)

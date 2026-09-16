@@ -36,6 +36,10 @@ def check_runtime():
 def validate_config(config):
     p, s, m = config.parallel_config, config.scheduler_config, config.model_config
     hf = getattr(m.hf_config, "text_config", m.hf_config)
+    spec = config.speculative_config
+    mode = str(config.compilation_config.cudagraph_mode)
+    sizes = set(config.compilation_config.cudagraph_capture_sizes)
+    native_mtp = spec is not None
     checks = {
         "Qwen hybrid 27B BF16 text-only": (
             hf.model_type == "qwen3_5_text"
@@ -71,16 +75,25 @@ def validate_config(config):
             for kind in ("image", "video")
         ),
         "native asynchronous scheduler": s.scheduler_cls is None and s.async_scheduling,
-        "non-speculative, APC off": config.speculative_config is None
-        and not config.cache_config.enable_prefix_caching,
-        "complete FULL capture set": str(config.compilation_config.cudagraph_mode)
-        == "FULL"
-        and set(config.compilation_config.cudagraph_capture_sizes)
-        == {1, 2, 4, 8, *PREFILLS},
+        "APC off": not config.cache_config.enable_prefix_caching,
+        "no speculation or native MTP2": spec is None
+        or (
+            getattr(spec, "method", None) == "mtp"
+            and getattr(spec, "num_speculative_tokens", None) == 2
+            and not getattr(spec, "enforce_eager", False)
+        ),
+        "route-specific graph configuration": (
+            mode == "FULL_AND_PIECEWISE"
+            and sizes
+            and min(sizes) >= 1
+            and max(sizes) == 24
+            if native_mtp
+            else mode == "FULL" and sizes == {1, 2, 4, 8, *PREFILLS}
+        ),
     }
     if not all(checks.values()):
         raise ValueError(
-            "Outside Qwen FULL qualification: "
+            "Outside Qwen serving qualification: "
             + "; ".join(k for k, v in checks.items() if not v)
         )
 
@@ -89,5 +102,20 @@ class Worker(NPUWorker):
     def __init__(self, vllm_config, *args, **kwargs):
         check_runtime()
         validate_config(vllm_config)
-        install()
+        self._native_mtp = vllm_config.speculative_config is not None
+        if not self._native_mtp:
+            install()
         super().__init__(vllm_config, *args, **kwargs)
+
+    def load_model(self, *args, **kwargs):
+        result = super().load_model(*args, **kwargs)
+        if self._native_mtp:
+            from .patches.qwen_layout import pack_conv_weights
+            from vllm.logger import init_logger
+
+            count = pack_conv_weights(self.model_runner.model)
+            init_logger("vllm.betterscale.qwen").info(
+                "Packed %d immutable GDN convolution weights; native MTP execution retained",
+                count,
+            )
+        return result
