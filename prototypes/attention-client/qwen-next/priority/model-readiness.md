@@ -110,3 +110,44 @@ explicit-revision listing has76 files and245,484,022,806 bytes: its README is
 shard sizes and SHA256 identities match the initial listing. The SDK already
 uses the intended revision; no weight redownload is needed. Final validation
 uses`runs/qwen38-download/pinned-remote-files.json`, not the initial listing.
+
+## Completed download and authoritative local census
+
+Snapshot is complete in the destination above. All76 pinned manifest files match
+sizes; all61 safetensors files pass index coverage, unique names, contiguous
+payload offsets and dtype/shape bounds: **222,866 tensors**,245,382,313,510 payload
+bytes. No incomplete download files remain. SDK snapshot_download returned;
+its caller's obsolete README-size check then failed as described above. The
+corrected exact-revision check passes; this was not a failed weight download.
+Completion receipt is adjacent to the model directory, with its full basename:
+`Qwen3.8-Flash-Next-w8a8-mtp.modelscope-receipt.json`.
+
+Header-derived placement (not allocated HBM):
+
+| Region | GiB |
+| --- | ---: |
+| Target routed experts, including quantization auxiliaries |113.203125|
+| MTP routed experts |4.687500|
+| PLE |95.429058|
+| Remaining tensors |15.210405|
+
+Importantly, **MTP experts remain fused BF16**, gate_up`[512,1280,2560]` and
+down`[512,2560,640]`, while target experts are per-expert I8. A remote server must
+select the correct weight/math ABI per layer; a single all-W8A8 loader is wrong.
+PLE can use the owned host-table route. Existing Next server remains BF16 NZ
+and H2048/M512; H2560/M640 mixed quantization integration is not yet implemented
+or qualified. Native full-model W8A8 A/E serving is therefore a next integration
+front, not a result of tonight's scheduling/download gates. No installed donor
+or LiveInfer worktree was modified to pretend otherwise.
+
+Recheck without reading/hashing the full228GiB payload again:
+
+```bash
+python3 prototypes/attention-client/qwen-next/priority/check_model_snapshot.py \
+  /data/shared_models/Qwen3.8-Flash-Next-w8a8-mtp \
+  runs/qwen38-download/pinned-remote-files.json /tmp/qwen38-census.json
+```
+
+Tracked`model-snapshot.json` preserves the compact census; pinned inventory and
+SDK logs remain in the task's runs directory. SDK supplies download-integrity
+checking; this helper checks file/tensor structure, not an independent digest.

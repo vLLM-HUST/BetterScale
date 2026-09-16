@@ -1,0 +1,25 @@
+{
+  "model": "/data/shared_models/Qwen3.8-Flash-Next-w8a8-mtp",
+  "files": 61,
+  "tensor_count": 222866,
+  "bytes_by_role": {
+    "other": 16332047840,
+    "target_routed": 121550929920,
+    "mtp_routed": 5033164800,
+    "ple": 102466170950
+  },
+  "bytes_by_dtype": {
+    "F32": 12834749952,
+    "I8": 121413304320,
+    "BF16": 111134259238
+  },
+  "tensor_counts_by_role": {
+    "other": 1543,
+    "target_routed": 221184,
+    "mtp_routed": 2,
+    "ple": 137
+  },
+  "index_declared_bytes": 142916142560,
+  "header_payload_bytes": 245382313510,
+  "validation": "pinned manifest sizes; complete index/header coverage; dtype/shape/offset bounds; SDK handles hashes"
+}

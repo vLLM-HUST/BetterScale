@@ -647,3 +647,14 @@ Final four-layer native gate165554 and bulk priority165658 pass. Diagnostic16534
 observed one in-slot promotion but predates decode no-op removal; do not report
 it as a final performance A/B. The linked model-readiness audit separates the
 new Qwen4Exp W8A8/PLE requirements from the existing BF16 Next path.
+
+The new Qwen3.8 snapshot is fully downloaded under shared_models; see priority's
+model-readiness.md/model-snapshot.json for222,866-tensor coverage. Do not mistake
+filename W8A8 for uniform quantization: target experts are per-expert I8, MTP
+experts fused BF16, with95.43GiB host-capable PLE. Reuse LiveInfer's owned branch
+`lumi/qwen38-flash-next-serving-plan` at820103bf (not main); its host-PLE/full-root
+qualification does not qualify this quantized loader. The current static root
+requires TP2/4/8 and EP==TP; remote-expert injection must preserve QSA/shared
+ownership while removing local routed allocation. Explicit-revision ModelScope
+inventory matters: README and .gitattributes differed from the initial listing,
+although all weight hashes matched. Final corrected inventory/census passed.
