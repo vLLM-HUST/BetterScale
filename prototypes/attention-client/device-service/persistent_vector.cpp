@@ -82,7 +82,7 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
   while (!Load(ctrl + STOP * LINE)) {
     int next = Load(ctrl + VCMD * LINE);
     if (next == seen) {
-      if (++idle >= cfg[9]) {
+      if (!cfg[16] && ++idle >= cfg[9]) {
         Store(ctrl + STOP * LINE, -21);
         break;
       }
@@ -155,13 +155,20 @@ __aicore__ inline void Descriptor(Transfer &io, __gm__ int64_t *ptr, Slot &s) {
   }
 }
 __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
-                             int *claimed, int *finished) {
+                             int *claimed, int *finished, int *closed) {
   int mask = 0;
   for (int c = 0; c < 2; ++c) {
-    if (claimed[c] || finished[c] >= cfg[6])
+    if (claimed[c] || closed[c] || (!cfg[16] && finished[c] >= cfg[6]))
       continue;
     auto src = (__gm__ int32_t *)cfg[4 + c];
     int gen = io.Flag(src);
+    // Negative next generation is EOF, only admitted with no owned frame.
+    if (cfg[16] && gen < 0) {
+      if (gen != -(finished[c] + 1))
+        return -1;
+      closed[c] = 1;
+      continue;
+    }
     if (gen != finished[c] + 1)
       continue;
     io.Read(src + 8, 8);
@@ -257,7 +264,7 @@ __aicore__ inline void Command(__gm__ int32_t *ctrl, int line, int gen,
 __aicore__ inline void Record(__gm__ int64_t *cfg, int &count, int engine,
                               int kind, int slot, uint64_t begin, int rows,
                               int part = 0) {
-  auto record = (__gm__ int64_t *)cfg[11] + count * 8;
+  auto record = (__gm__ int64_t *)cfg[11] + (count % 512) * 8;
   record[0] = engine;
   record[1] = kind;
   record[2] = slot;
@@ -274,7 +281,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
   auto slots = (__gm__ int64_t *)cfg[1];
   Slot s[2];
   int parts = cfg[14] ? 2 : 1, vpart = 0, cpart = 0;
-  int claimed[2] = {0, 0}, finished[2] = {0, 0};
+  int claimed[2] = {0, 0}, finished[2] = {0, 0}, closed[2] = {0, 0};
   int vgen = 0, cgen = 0, vs = -1, cs = -1, waves = 0, idle = 0;
   int pullsDuringCube = 0, eventCount = 0, vkind = 0, ckind = 0;
   uint64_t vbegin = 0, cbegin = 0;
@@ -295,7 +302,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       Record(cfg, eventCount, 0, vkind, vs, vbegin, slot.live, vpart);
       if (slot.stage == PULL) {
         // No wait-to-coalesce: one snapshot after useful DMA completes.
-        int added = Accept(io, cfg, slot, claimed, finished);
+        int added = Accept(io, cfg, slot, claimed, finished, closed);
         if (added < 0) {
           Store(ctrl + STOP * LINE, -31);
           break;
@@ -344,7 +351,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
                             0};
           for (int i = 0; i < 16; ++i)
             io.words.SetValue(i, fields[i]);
-          io.Write((__gm__ int32_t *)cfg[8] + waves * 16, 16);
+          io.Write((__gm__ int32_t *)cfg[8] + (waves % (cfg[6] * 2)) * 16, 16);
           ++waves;
           slot.gen[0] = slot.gen[1] = slot.rows[0] = slot.rows[1] = 0;
           slot.stage = EMPTY;
@@ -354,10 +361,13 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
       }
       progress = true;
     }
-    if (finished[0] == cfg[6] && finished[1] == cfg[6]) {
+    if (cfg[16] ? (closed[0] && closed[1])
+                : (finished[0] == cfg[6] && finished[1] == cfg[6])) {
       ctrl[STATUS * LINE + 1] = waves;
       ctrl[STATUS * LINE + 2] = pullsDuringCube;
       ctrl[STATUS * LINE + 3] = eventCount;
+      ctrl[STATUS * LINE + 4] = finished[0];
+      ctrl[STATUS * LINE + 5] = finished[1];
       Store(ctrl + STATUS * LINE, 1);
       Store(ctrl + STOP * LINE, 1);
       break;
@@ -407,7 +417,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
         }
       for (int i = 0; i < 2 && vs < 0; ++i)
         if (s[i].stage == EMPTY) {
-          int mask = Accept(io, cfg, s[i], claimed, finished);
+          int mask = Accept(io, cfg, s[i], claimed, finished, closed);
           if (mask < 0) {
             Store(ctrl + STOP * LINE, -32);
             break;
@@ -426,8 +436,8 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           }
         }
     }
-    idle = progress ? 0 : idle + 1;
-    if (idle >= cfg[9]) {
+    idle = (progress || cfg[16]) ? 0 : idle + 1;
+    if (!cfg[16] && idle >= cfg[9]) {
       Store(ctrl + STOP * LINE, -33);
       break;
     }

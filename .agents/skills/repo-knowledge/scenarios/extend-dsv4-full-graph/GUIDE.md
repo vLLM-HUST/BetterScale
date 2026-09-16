@@ -462,3 +462,16 @@ unlimited service. Full48-layer BF16 needs role-specific weight loading: current
 client staging alone would be54GiB plus54GiB local experts. Do not scale the dummy
 bootstrap and blame its OOM on the expert transport. This is separate from the
 operator worker's evolving GEMM implementation and changes no released defaults.
+
+
+For independent expert roles and native forward without shadow, enter
+`prototypes/attention-client/roles/README.md`. Four-card two-layer dummy sources
+retire unequal 44/66 jobs using device EOF, not a predeclared job budget. Clients
+allocate no routed weights; servers independently own shards. Initialize remote
+Session at load_model completion: native memory profiling precedes warmup. Share
+MoE graph scratch pools, but keep returned outputs outside that pool for native
+residual lifetimes. Otherwise many tiny private pools can exhaust virtual address
+reservations, not physical expert storage. This gate uses eager native attention
+and captured MoE, not full-model graph composition or real-weight qualification.
+Host teardown remains session-wide, with failure recovery unsupported. Keep
+persistent binaries and the extended configuration ABI from the same source.

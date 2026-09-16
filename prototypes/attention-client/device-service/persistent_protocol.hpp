@@ -46,7 +46,7 @@ __aicore__ inline bool Joined(__gm__ int32_t *ctrl, int first, int cores,
 // Optional per-core work intervals. Each writer owns one entire64-byte line.
 __aicore__ inline void WorkTime(__gm__ int64_t *cfg, int engine, int generation,
                                 int core, uint64_t begin) {
-  if (!cfg[13])
+  if (!cfg[13] || generation > 512)
     return;
   auto row = (__gm__ int64_t *)cfg[13] +
              ((engine * 512 + generation - 1) * 24 + core) * 8;

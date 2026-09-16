@@ -14,7 +14,7 @@ persistent_cube(GM_ADDR config, GM_ADDR unused, GM_ADDR unused2) {
   while (!Load(ctrl + STOP * LINE)) {
     int next = Load(ctrl + CCMD * LINE);
     if (next == seen) {
-      if (++idle >= cfg[9]) {
+      if (!cfg[16] && ++idle >= cfg[9]) {
         Store(ctrl + STOP * LINE, -11);
         break;
       }

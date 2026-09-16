@@ -10,7 +10,7 @@ import torch_npu
 
 
 class PersistentEngine:
-    def __init__(self, sources, outputs, up, down, owner, tasks=24):
+    def __init__(self, sources, outputs, up, down, owner, tasks=24, open_service=False):
         assert len(sources) == len(outputs) == 2 and owner in (0, 1)
         assert 1 <= tasks <= 32
         if os.environ.get("DEVICE_SERVICE_SEGMENTED") == "1":
@@ -27,6 +27,7 @@ class PersistentEngine:
         )
         assert 0 <= self.tail_experts <= 128
         self.up, self.down = up, down
+        self.open_service = open_service
         self.segmented = os.environ.get("DEVICE_SERVICE_SEGMENTED") == "1"
         self.control = torch.zeros((64, 16), dtype=torch.int32, device="npu")
         self.trace = torch.full((tasks * 2, 16), -991, dtype=torch.int32, device="npu")
@@ -97,6 +98,7 @@ class PersistentEngine:
                 self.work_times.data_ptr() if self.work_times is not None else 0,
                 int(self.segmented),
                 self.tail_experts,
+                int(open_service),
             ],
             dtype=torch.int64,
             device="npu",
@@ -164,7 +166,10 @@ class PersistentEngine:
         receipt = dict(
             segmented=self.segmented,
             tail_experts=self.tail_experts,
-            waves=len(records),
+            open_service=self.open_service,
+            waves=ctrl[43][1],
+            completed_counts=ctrl[43][4:6],
+            rolling_trace=ctrl[43][1] > self.trace.shape[0],
             pulls_during_cube=ctrl[43][2],
             trace=records,
             events=self.events[: ctrl[43][3]].cpu().tolist(),
