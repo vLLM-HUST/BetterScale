@@ -169,6 +169,7 @@ def main():
     receipt = dict(
         status="STARTED",
         profile_only=os.environ.get("PROFILE_ONLY") == "1",
+        compilation_cache_root=os.environ.get("VLLM_CACHE_ROOT"),
         arm=a.arm,
         pack_conv=os.environ.get("SERVING_PACK_CONV") == "1",
         full_mtp=os.environ.get("FULL_MTP"),

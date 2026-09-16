@@ -158,3 +158,34 @@ The existing CPU suite needs the pinned Ascend submodule populated. A new parent
 worktree initially has empty submodule directories; use a detached worktree at the
 pinned donor commit in its upstream/vllm-ascend slot. Mere directory existence does
 not mean the fixture exists.69tests pass after supplying that unmodified fixture.
+
+### Immutable convolution layout: measured small fish
+
+Ascend patches its methods onto donor `QwenGatedDeltaNetAttention`; instances are
+NOT `AscendGatedDeltaNetAttention`. `conv-mtp2-1` selectedzero and failed before
+measurements. Corrected `conv-mtp2-2` pre-packs48target weights before compile:
+logicalshape/values/Parameter identity stay fixed; view(C,4).T becomes contiguous.
+70CPU tests include value/identity/stride and repeated-packing checks.
+
+TraceLoom's native raw export gives4exact targetgraphs and4combined-draftgraphs
+perrank. Repairing only the previously underfilled nativeMTP2 short profile gives:
+rank0 target36.253→35.367ms; rank1 36.268→35.445ms.48weightTranspose[5120,4;2]
+per targetbody (~.848/.879ms summed) disappear on bothranks. This supports a real
+~.8-.9ms/targetstep saving, not an assertion that all E2E variance is explained.
+Separate-run C1/C4/C8 rates40.78/81.57/116.02→42.36/90.10/121.16tok/s; C1texts
+match. Do not advertise the C4~10% as a controlled causal result. Helpers
+summarize_graphs.py and root conv-layout-profile-comparison.json retain exact
+operator/shape identity; each rank timeline has its own clock.
+
+### Native AOT cache can mix multimodal and text-only signatures
+
+`package-mtp1` passes pins/config/load but fails at draft startup with
+`AttributeError: 'NoneType' object has no attribute 'size'` in cached AOT call_size.
+Native MTP experiments had multimodal support enabled with text requests; package
+entry explicitly sets image/video limits0. Both use the same backend hash
+0e19c40fdc; failing log directly loads eagle AOT model5732557447b9913f... compiled
+for the earlier tensor-valued inputs_embeds, while text-only dummy passesNone.
+This supports a signature/cache-key collision, not a weight-layout arithmetic bug.
+Do NOT clear shared compiler caches or alter installed donor files. `package-mtp2`
+uses a fresh capsule-local VLLM_CACHE_ROOT to test that explanation. Pending result;
+keep the exact failure even if fresh-cache startup succeeds.

@@ -12,9 +12,11 @@ uses one prefill without reducing the eight live scheduling seats.
 
 Admission is intentionally narrow: pinned donor, Qwen3.5-text architecture matching
 the local Qwen3.8-27B weights, BF16, TP2/DP1/PP1, no EP/context parallelism, text-only,
-8seats,2048token budget, context<=8192, async native scheduler, APC off, no MTP.
-Do not silently enable speculative decoding or prefix caching. Both remain research
-fronts; the native MTP2 configuration is a separate useful serving alternative.
+8seats,2048token budget, context<=8192, async native scheduler, APC off.
+Without speculation it enables the FULL prefill path described here. With native
+MTP2 it instead leaves prefill/decode/draft execution native and packs the48 fixed
+GDN convolution weights once, removing their repeated device transposes. These
+are separate routes: FULL-prefill plus MTP remains experimental. APC is not admitted.
 Changing physical padding can perturb BF16 trajectories even without graph capture.
 
 Historical prototype evidence (not a fresh package benchmark): same-process512-token
@@ -37,12 +39,23 @@ vllm serve "$MODEL" --worker-cls betterscale.qwen_worker.Worker \
 ```
 
 No debug RPC, profiler, custom allocator, environment mutation, automatic donor
-upgrade, weight-layout change, or native DSV4 patches are installed by this entry.
+upgrade, or native DSV4 patches are installed by this entry. Weight layout changes
+only in the explicit native MTP2 route; logical values/Parameter identity are retained.
 This source addition is not a PyPI release.
 
 Frozen public-entry acceptance `package2` (source `ebe3725`) passed12 C1 requests
 (two rounds of the six lengths above) plus C4/C8 mixed cohorts. All12 C1
-continuations matched the qualified prototype. The subsequent source changes add
-only two donor pins and distinguish the DSV4 entry's docstring; runtime behavior
-is unchanged.69CPU tests pass. Fresh local wheel/sdist delivery is checked separately;
+continuations matched the qualified prototype. Subsequent changes add donor pins and a separate MTP2 route; the non-speculative
+metadata, dispatch and padding code are unchanged.70CPU tests pass. Fresh local wheel/sdist delivery is checked separately;
 no installed runtime or published package was replaced.
+
+For native MTP2 + convolution-weight packing, use the same common TP2/text/async/APC-off
+settings, omit the FULL capture configuration, and supply:
+
+```bash
+--speculative-config '{"method":"mtp","num_speculative_tokens":2}'
+```
+
+Keep native FULL_AND_PIECEWISE and its default capture set (maximum24tokens for
+8seats). Do not use the large non-speculative FULL prefill capture set with MTP.
+The native MTP route does not install this directory's FULL metadata hooks.
