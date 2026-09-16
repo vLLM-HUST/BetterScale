@@ -142,6 +142,10 @@ def main():
             "--speculative-config",
             json.dumps(dict(method="mtp", num_speculative_tokens=int(a.arm[-1]))),
         ]
+    if os.environ.get("PACKAGED_QWEN") == "1":
+        assert a.arm == "mtp2" and not a.profile
+        command[command.index("observe_worker.Worker")] = "betterscale.qwen_worker.Worker"
+        command += ["--limit-mm-per-prompt", '{"image":0,"video":0}']
     if os.environ.get("FULL_MTP"):
         assert a.arm == "mtp" + os.environ["FULL_MTP"]
         command[command.index("observe_worker.Worker")] = "bucket_full_worker.Worker"
@@ -164,6 +168,7 @@ def main():
         ]
     receipt = dict(
         status="STARTED",
+        profile_only=os.environ.get("PROFILE_ONLY") == "1",
         arm=a.arm,
         pack_conv=os.environ.get("SERVING_PACK_CONV") == "1",
         full_mtp=os.environ.get("FULL_MTP"),
@@ -193,7 +198,7 @@ def main():
         request(url, prompt[:512], 16)
         with concurrent.futures.ThreadPoolExecutor(8) as pool:
             list(pool.map(lambda i: request(url, prompt[: 512 + i], 16), range(8)))
-            for concurrency in [1, 4, 8]:
+            for concurrency in ([] if os.environ.get("PROFILE_ONLY") == "1" else [1, 4, 8]):
                 for repeat in range(2):
                     # Identical population across arms; arrivals concurrent within cohort.
                     prompts = [
