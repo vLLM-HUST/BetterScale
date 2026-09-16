@@ -219,7 +219,9 @@ def main():
                 timeout=60,
             ):
                 pass
-            request(url, prompt[:2048], 20)
+            # Budget tokens for speculative multi-token steps; the worker still
+            # records only four active iterations after eight warmup iterations.
+            request(url, prompt[:2048], 64)
             with urllib.request.urlopen(
                 urllib.request.Request(url + "/stop_profile", data=b"", method="POST"),
                 timeout=120,
