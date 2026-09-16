@@ -1,0 +1,91 @@
+# Qwen3-Next: native attention clients, four independent expert servers
+
+This experimental path keeps Qwen3-Next's native GatedDeltaNet/full attention,
+recurrent/KV state, gated shared expert, scheduling and sampling. Only the routed
+MoE backend and role-specific weight loading are replaced. It is not enabled by
+the released BetterScale Worker and does not change the installed donor.
+
+## Execution and layer ownership
+
+Two TP1 attention processes submit to four expert-only processes. Each server
+owns128 of512 experts in every admitted layer. The client carries no routed
+parameters; server loading reads only its checkpoint slices, converts one layer
+to NZ at a time, and retains a table of per-layer weight addresses. The underlying
+CATLASS GEMM math is reused, not retuned here.
+
+A source has one reusable communication frame. Its descriptor contains generation,
+layer and valid row count, followed by top-k IDs and hidden rows. READY is published
+after the payload. A server freezes that descriptor for its slot's lifetime;
+only same-layer requests coalesce because they use the same weight catalog.
+Another layer can occupy the other slot. Packed inputs/intermediates/results are
+shared across layers and reused only after the slot retires. Source reuse waits
+for all four servers' generation-matched results to be copied locally. EOF remains
+source-specific; host teardown is session-wide.
+
+The device call order is:
+
+    copy routing/input -> submit graph -> native gated shared MLP
+                       -> collect graph -> routed weighted reduce + shared
+
+The collector is not queued ahead of shared computation. The native shared MLP
+includes its sigmoid gate, and its result is added exactly once. A fresh final
+output protects native residual consumers from later reuse of the graph bank.
+The banks share scratch, retain private IO, and carry a device layer field, so
+48 layers do not require48 copies of the entire row-bucket graph catalog.
+There is no host completion polling or per-forward socket RPC.
+
+## Bounds and caveats
+
+- Hidden2048/intermediate512/top-k10; two sources/four equal owners;1–32 rows.
+- Four-layer dummy fixture covers three GDN layers and one full-attention layer.
+- Full target is48 layers; MTP is deliberately off.
+- Native model remains eager; only submit/collect are captured. Whole-model FULL
+  graph integration has not been qualified.
+- Probabilities are converted to BF16 at the remote weighted-reduce boundary,
+  as in the preceding prototype; independent numerical checks use that explicit
+  arithmetic. This is not bitwise parity with every native MoE implementation.
+- Shared overlap is an execution dependency opportunity, not a measured speedup.
+  One512-wide shared expert need not hide ten routed experts or their communication.
+- Persistent kernels require an explicit1200-second device execution budget;
+  the supervisor remains bounded at1200s and channel drain at600s. This is a
+  bounded experimental session, not an indefinitely available production daemon.
+- Generation rollover, cancellation/recovery, dynamic membership, arbitrary owner
+  counts and untrusted clients are not supported.
+
+## Reproduction and diagnosis
+
+Use the existing pinned runtime and `build.sh` to prepare a frozen Qwen-Next
+binary closure. Set PERSISTENT_BUILD and DEVICE_SERVICE_SOURCE_BUILD to that same
+build, then run `run.sh <six comma-separated idle devices>`. Admission uses the
+existing per-device locks/foreign occupancy check. `NEXT_LAYERS=4` is the default;
+`NEXT_REAL=1 NEXT_LAYERS=48` loads full target weights. `EXPERT_ROLE_AUDIT=1` runs
+an explicit diagnostic reference after generation; its temporary weights inflate
+client peak memory and must not be counted as ordinary service residency.
+
+Isolation gates: `NEXT_LEAF=1 run.sh <one device>` exercises engine geometry,
+hot/broad/zero/skew routes, different layers, actual GEMM and output canaries.
+`NEXT_NATIVE_ONLY=1` runs unchanged four-layer donor on one device.
+`NEXT_WIRE_ONLY=1` exercises six-card layer/row changes without native attention.
+CPU `test_submit_order.py` protects submit/shared/collect ordering and output
+ownership. Build sources, process logs and JSON receipts remain in each run capsule.
+
+Initial six-card native run125736 failed with device-stream507011 while leaves
+passed. The synchronized diagnostic130713 got through profiling but failed after
+cold prefill. The explicit server execution-timeout arm131028 completed all
+requests and numerical checks but its temporary daemon diagnostic thread was not
+joined before process teardown; a server exitedSIGSEGV. It is NOT a clean pass.
+That observer was removed; clean arm131201 passed all six process exits,84 source
+calls (30/54), and max relative L2 error0.000254821. Device timeout is the current
+supported explanation for the earlier long-lifetime failures, not a claim that
+507011 uniquely diagnoses a timeout. No steady-forward global synchronization
+was retained.
+
+Retained local capsules:
+- `runs/qwen-next-20260916T130200Z`: five local engine route/layer gates.
+- `runs/qwen-next-20260916T130542Z`: clean six-card wire/EOF gate.
+- `runs/qwen-next-20260916T130816Z`: unchanged native hybrid generation.
+- `runs/qwen-next-20260916T131201Z`: clean native four-layer A2/E4 + oracle.
+- `runs/persistent-control-20260916T131136Z`: legacy geometry regression.
+
+Full48-layer real-weight acceptance is recorded separately once complete; these
+four-layer results do not establish serving quality, throughput or DFC parity.

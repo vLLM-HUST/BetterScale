@@ -10,12 +10,32 @@ import torch_npu
 
 
 class PersistentEngine:
-    def __init__(self, sources, outputs, up, down, owner, tasks=24, open_service=False):
-        assert len(sources) == len(outputs) == 2 and owner in (0, 1)
+    def __init__(
+        self,
+        sources,
+        outputs,
+        up,
+        down,
+        owner,
+        tasks=24,
+        open_service=False,
+        weight_table=None,
+    ):
+        next_model = weight_table is not None
+        assert len(sources) == len(outputs) == 2 and 0 <= owner < (
+            4 if next_model else 2
+        )
+        inner, topk = (512, 10) if next_model else (768, 8)
+        capacity, map_size = 64 * topk, 32 * topk + 8
+        self.weight_table = weight_table
+        if next_model:
+            assert weight_table.dtype == torch.int64 and weight_table.shape[1] == 2
+            assert 1 <= weight_table.shape[0] <= 48
+            assert os.environ.get("DEVICE_SERVICE_SEGMENTED") != "1"
         assert 1 <= tasks <= 32
         if os.environ.get("DEVICE_SERVICE_SEGMENTED") == "1":
             assert tasks <= 24, "segmented trace capacity"
-        assert up.shape == (128, 2048, 1536) and down.shape == (128, 768, 2048)
+        assert up.shape == (128, 2048, inner * 2) and down.shape == (128, inner, 2048)
         assert up.dtype == down.dtype == torch.bfloat16
         assert (
             int(torch_npu.get_npu_format(up))
@@ -42,17 +62,17 @@ class PersistentEngine:
         for _ in range(2):
             slot = [
                 torch.empty((2, 32, 2048), dtype=torch.bfloat16, device="npu"),
-                torch.empty((512, 2048), dtype=torch.bfloat16, device="npu"),
-                torch.empty((512, 1536), dtype=torch.bfloat16, device="npu"),
-                torch.empty((512, 768), dtype=torch.bfloat16, device="npu"),
-                torch.empty((512, 2048), dtype=torch.bfloat16, device="npu"),
-                torch.zeros((2, 264), dtype=torch.int32, device="npu"),
+                torch.empty((capacity, 2048), dtype=torch.bfloat16, device="npu"),
+                torch.empty((capacity, inner * 2), dtype=torch.bfloat16, device="npu"),
+                torch.empty((capacity, inner), dtype=torch.bfloat16, device="npu"),
+                torch.empty((capacity, 2048), dtype=torch.bfloat16, device="npu"),
+                torch.zeros((2, map_size), dtype=torch.int32, device="npu"),
                 torch.zeros(128, dtype=torch.int64, device="npu"),
             ]
-            for w, k, n in ((up, 2048, 1536), (down, 768, 2048)):
+            for w, k, n in ((up, 2048, inner * 2), (down, inner, 2048)):
                 slot.append(
                     torch.tensor(
-                        [k, n, 128, w.data_ptr(), slot[6].data_ptr(), 512],
+                        [k, n, 128, w.data_ptr(), slot[6].data_ptr(), capacity],
                         dtype=torch.int64,
                         device="npu",
                     )
@@ -63,7 +83,7 @@ class PersistentEngine:
                 slot.extend(
                     torch.zeros(128, dtype=torch.int64, device="npu") for _ in range(2)
                 )
-                for w, k, n in ((up, 2048, 1536), (down, 768, 2048)):
+                for w, k, n in ((up, 2048, inner * 2), (down, inner, 2048)):
                     for part in range(2):
                         slot.append(
                             torch.tensor(
@@ -99,6 +119,8 @@ class PersistentEngine:
                 int(self.segmented),
                 self.tail_experts,
                 int(open_service),
+                weight_table.data_ptr() if next_model else 0,
+                weight_table.shape[0] if next_model else 2,
             ],
             dtype=torch.int64,
             device="npu",

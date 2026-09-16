@@ -1,7 +1,6 @@
 #include "persistent_protocol.hpp"
 using namespace AscendC;
 using namespace Persistent;
-constexpr int HIDDEN = 2048, INNER = 768, ROUTES = 256, GROUPS = 128;
 
 // MTE completion precedes every flag publication. Control lines use scalar
 // DCCI; payload reads/writes use DMA, not scalar cache.
@@ -118,11 +117,11 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
                     (__gm__ int32_t *)ptr[0] + (c * 32 + row) * HIDDEN / 2,
                     HIDDEN / 2);
         } else {
-          for (int route = worker; route < n * 8; route += VW)
+          for (int route = worker; route < n * TOPK; route += VW)
             if (map[route] >= 0) {
               if (kind == REPACK)
                 io.Copy((__gm__ int32_t *)ptr[0] +
-                            (c * 32 + route / 8) * HIDDEN / 2,
+                            (c * 32 + route / TOPK) * HIDDEN / 2,
                         (__gm__ int32_t *)ptr[1] + map[route] * HIDDEN / 2,
                         HIDDEN / 2);
               else
@@ -174,12 +173,17 @@ __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
     io.Read(src + 8, 8);
     int desc = io.words.GetValue(0), layer = io.words.GetValue(1),
         n = io.words.GetValue(2);
-    if (desc != gen || layer < 0 || layer >= 2 || n < 1 || n > 32)
+    if (desc != gen || layer < 0 || layer >= LAYERS ||
+        (SINGLE_LAYER && layer >= cfg[18]) || n < 1 || n > 32)
       return -1;
-    io.Read(src + 64, n * 8);
-    for (int i = 0; i < n * 8; ++i) {
+    // Different layers cannot share a weight catalog in single-layer mode.
+    if (SINGLE_LAYER && ((s.gen[0] && s.layer[0] != layer) ||
+                         (s.gen[1] && s.layer[1] != layer)))
+      continue;
+    io.Read(src + 64, (n * TOPK + 7) / 8 * 8);
+    for (int i = 0; i < n * TOPK; ++i) {
       s.ids[c][i] = io.words.GetValue(i);
-      if (s.ids[c][i] < 0 || s.ids[c][i] >= 128)
+      if (s.ids[c][i] < 0 || s.ids[c][i] >= EXPERTS)
         return -1;
     }
     claimed[c] = gen;
@@ -197,9 +201,10 @@ __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
     count[g] = 0;
   for (int c = 0; c < 2; ++c)
     if (s.gen[c])
-      for (int i = 0; i < s.rows[c] * 8; ++i)
-        if (s.ids[c][i] / 64 == owner)
-          ++count[s.layer[c] * 64 + s.ids[c][i] % 64];
+      for (int i = 0; i < s.rows[c] * TOPK; ++i)
+        if (s.ids[c][i] / LOCAL_EXPERTS == owner)
+          ++count[(SINGLE_LAYER ? 0 : s.layer[c] * LOCAL_EXPERTS) +
+                  s.ids[c][i] % LOCAL_EXPERTS];
   s.live = 0;
   for (int g = 0; g < GROUPS; ++g) {
     cursor[g] = s.live;
@@ -244,10 +249,11 @@ __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
     io.words.SetValue(1, s.rows[c]);
     io.words.SetValue(2, s.layer[c]);
     if (s.gen[c])
-      for (int i = 0; i < s.rows[c] * 8; ++i)
-        if (s.ids[c][i] / 64 == owner)
-          io.words.SetValue(8 + i,
-                            cursor[s.layer[c] * 64 + s.ids[c][i] % 64]++);
+      for (int i = 0; i < s.rows[c] * TOPK; ++i)
+        if (s.ids[c][i] / LOCAL_EXPERTS == owner)
+          io.words.SetValue(
+              8 + i, cursor[(SINGLE_LAYER ? 0 : s.layer[c] * LOCAL_EXPERTS) +
+                            s.ids[c][i] % LOCAL_EXPERTS]++);
     io.Write((__gm__ int32_t *)ptr[5] + c * MAP, MAP);
   }
 }

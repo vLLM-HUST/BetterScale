@@ -488,3 +488,15 @@ Local Qwen3-Next80B is BF16:144GiB target routed weights plus3GiB MTP. E2 does
 NOT fit64GiB devices; E3 or E4 does on weight accounting. Its gated shared expert
 is one same-width MLP versus top-k10 routed MLPs; overlap opportunity is real but
 coverage is unmeasured. Preserve native36GDN/12full-attention state management.
+
+Qwen3-Next A2/E4 implementation lives in `attention-client/qwen-next/README.md`.
+Four-layer dummy native hybrid generation and independent MoE oracle pass in
+131201 (30/54 calls, relL2<=0.000255). A2 inputs retain gated shared compute
+between submit/collect; this is not a measured overlap speedup. Compile QWEN_NEXT
+for top-k10/512 experts and single-layer slot catalogs; legacy shape remains the
+default. Layerwise weight pointer lookup preserves two reusable workspaces, not
+48 full group catalogs. Set persistent server device execution timeout explicitly
+for cold compilation; retain a bounded supervisor. A daemon device-snapshot thread
+caused an unclean teardown arm, removed rather than accepted. Never report audit
+weight reconstruction memory as ordinary client peak. Full-model evidence remains
+separate from these fixture gates.

@@ -45,11 +45,26 @@ persistent_cube(GM_ADDR config, GM_ADDR unused, GM_ADDR unused2) {
     int configIndex =
         cfg[14] ? (kind == 1 ? 11 : 13) + part : (kind == 1 ? 7 : 8);
     uint64_t begin = GetSystemCycle();
-    RunActualGmm((GM_ADDR)ptr[configIndex],
-                 (GM_ADDR)(ptr[kind == 1 ? 1 : 3] +
-                           int64_t(firstRow) * (kind == 1 ? 2048 : 768) * 2),
-                 (GM_ADDR)(ptr[kind == 1 ? 2 : 4] +
-                           int64_t(firstRow) * (kind == 1 ? 1536 : 2048) * 2));
+    // Each slot freezes its source-layer catalog until DOWN completes.
+    // The GEMM itself remains the unchanged CATLASS adapter.
+    uint64_t weightAddress = 0;
+    if (SINGLE_LAYER) {
+      auto descriptors = (__gm__ int32_t *)ptr[5];
+      Refresh(descriptors);
+      int source = descriptors[0] ? 0 : 1;
+      Refresh(descriptors + source * MAP);
+      int layer = descriptors[source * MAP + 2];
+      auto allWeights = (__gm__ int64_t *)cfg[17];
+      Refresh((__gm__ int32_t *)(allWeights + layer * 2));
+      weightAddress = allWeights[layer * 2 + (kind == 1 ? 0 : 1)];
+    }
+    RunActualGmm(
+        (GM_ADDR)ptr[configIndex],
+        (GM_ADDR)(ptr[kind == 1 ? 1 : 3] +
+                  int64_t(firstRow) * (kind == 1 ? HIDDEN : INNER) * 2),
+        (GM_ADDR)(ptr[kind == 1 ? 2 : 4] +
+                  int64_t(firstRow) * (kind == 1 ? INNER * 2 : HIDDEN) * 2),
+        weightAddress);
     PipeBarrier<PIPE_ALL>();
     WorkTime(cfg, 1, next, GetBlockIdx(), begin);
     seen = next;
