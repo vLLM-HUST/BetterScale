@@ -151,6 +151,12 @@ def install():
         pure_decode = num_tokens == num_reqs and bool(
             (num_scheduled_tokens_np == 1).all()
         )
+        if (
+            SPEC
+            and getattr(self, "_bucket_dummy_active", False)
+            and kwargs.get("force_uniform_decode")
+        ):
+            pure_decode = True
         prompting = True
         if SPEC and not getattr(self, "_bucket_dummy_active", False):
             computed = self.input_batch.num_computed_tokens_cpu[:num_reqs]
@@ -251,11 +257,21 @@ def install():
         old_seats = self.scheduler_config.max_num_seqs
         self._bucket_dummy_active = True
         self._bucket_dummy_mode = kwargs.get("cudagraph_runtime_mode")
+        saved_full_keys = None
+        if SPEC and self._bucket_dummy_mode == CUDAGraphMode.PIECEWISE:
+            saved_full_keys = self.cudagraph_dispatcher.cudagraph_keys[
+                CUDAGraphMode.FULL
+            ]
+            self.cudagraph_dispatcher.cudagraph_keys[CUDAGraphMode.FULL] = set()
         try:
             if single:
                 self.scheduler_config.max_num_seqs = 1
             return old_dummy(self, num_tokens, *args, **kwargs)
         finally:
+            if saved_full_keys is not None:
+                self.cudagraph_dispatcher.cudagraph_keys[CUDAGraphMode.FULL] = (
+                    saved_full_keys
+                )
             self.scheduler_config.max_num_seqs = old_seats
             self._bucket_dummy_active = False
             self._bucket_dummy_mode = None
