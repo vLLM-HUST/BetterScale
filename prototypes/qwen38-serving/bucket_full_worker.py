@@ -51,6 +51,9 @@ def install():
                 (starts[1:] == starts[1]).all()
             ):
                 m = m.unpadded(m.num_actual_tokens, 1)
+                # Ascend's override deliberately keeps the FULL block table for
+                # FIA; GDN state indices instead require the real request rows.
+                m.block_table_tensor = m.block_table_tensor[:1]
         metadata = original(self, common_prefix_len, m, *args, **kwargs)
         if metadata.num_prefills == 0:
             return metadata
@@ -76,7 +79,13 @@ def install():
                 if path not in buffers:
                     buffers[path] = value.clone()
                 dest = buffers[path]
-                assert dest.shape == value.shape and dest.dtype == value.dtype, path
+                assert dest.shape == value.shape and dest.dtype == value.dtype, (
+                    path,
+                    tuple(dest.shape),
+                    tuple(value.shape),
+                    dest.dtype,
+                    value.dtype,
+                )
                 dest.copy_(value)
                 return dest
             if dataclasses.is_dataclass(value):
