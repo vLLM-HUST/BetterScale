@@ -48,8 +48,16 @@ def install_shadow():
             meta.append(dict(layer=name, type=type(m).__name__, fields=fields))
         torch.npu.synchronize()
         before = [t.clone() for _, t in tensors]
+        input_values = {
+            **{f"arg{i}": v for i, v in enumerate(args) if isinstance(v, torch.Tensor)},
+            **{k: v for k, v in kwargs.items() if isinstance(v, torch.Tensor)},
+        }
+        input_before = {k: v.clone() for k, v in input_values.items()}
         graph = original(self, *args, **kwargs).clone()
         torch.npu.synchronize()
+        input_unchanged = {
+            k: bool(torch.equal(v, input_values[k])) for k, v in input_before.items()
+        }
         after = [t.clone() for _, t in tensors]
         for (_, t), b in zip(tensors, before):
             t.copy_(b)
@@ -78,7 +86,20 @@ def install_shadow():
                         max_abs=float(delta.nan_to_num().max().item()),
                     )
                 )
+            if os.environ.get("ELASTIC_DEBUG") == "1":
+                for record, (_, a, b) in zip(checks, pairs):
+                    if not record["close"] and a.ndim >= 2 and a.shape[0] <= 256:
+                        record["row_max_abs"] = (
+                            (a.float() - b.float())
+                            .abs()
+                            .nan_to_num()
+                            .flatten(1)
+                            .amax(1)
+                            .cpu()
+                            .tolist()
+                        )
             result = dict(
+                input_unchanged=input_unchanged,
                 rank=self._shadow_rank,
                 actual_tokens=actual,
                 metadata=meta,

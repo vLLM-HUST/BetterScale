@@ -37,6 +37,16 @@ class Worker(MixedWorker):
         NPUModelRunner._model_forward = observed
         super().__init__(*args, **kwargs)
 
+    def load_model(self, *args, **kwargs):
+        result = super().load_model(*args, **kwargs)
+        import os
+
+        if os.environ.get("ELASTIC_LAYER_DEBUG") == "1":
+            from elastic_layer_debug import install
+
+            install()
+        return result
+
     def arm_shadow(self, steps=1):
         r = self.model_runner
         r._shadow_rank = self.rank

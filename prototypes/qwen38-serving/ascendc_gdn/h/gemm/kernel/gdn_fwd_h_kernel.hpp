@@ -356,6 +356,12 @@ public:
                             auto event_id = pingpongFlag ? EVENT_ID1 : EVENT_ID0;
                             AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(event_id);
                             if (cold) {
+                                // A cold zero-fill uses V directly, unlike the warm
+                                // MTE2 -> V cast path. MTE3_MTE2 alone does not keep
+                                // V from overwriting a ping/pong H buffer whose prior
+                                // DMA is still reading it (mixed warm/cold, >4 rows).
+                                AscendC::SetFlag<AscendC::HardEvent::MTE3_V>(event_id);
+                                AscendC::WaitFlag<AscendC::HardEvent::MTE3_V>(event_id);
                                 AscendC::Duplicate(hUbTensor, (ElementH)0, stateBlockSize);
                                 AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(event_id);
                                 AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(event_id);
