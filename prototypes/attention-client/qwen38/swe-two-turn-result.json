@@ -1,0 +1,215 @@
+{
+  "scope": "single-run four-session two-turn SWE-derived pilot; full recorded input/output lengths; not complete trajectories, quality or unmodified vLLM",
+  "time_scope": "maximum source duration after common host warmup rendezvous; not precisely timestamped global makespan",
+  "separated": {
+    "groups": 2,
+    "mtp_tokens": 1,
+    "sessions": [
+      {
+        "trace_id": "measure/swe/667efd70-9b33-4cf0-9b61-9520a163e7eb",
+        "completed_turns": 2,
+        "output_tokens": 535,
+        "prefill_tokens": 5544,
+        "prefix_reused_tokens": 5023,
+        "final_encoded_context": 6077,
+        "events": [
+          {
+            "turn": 0,
+            "first_token_seconds": 9.937064702622592,
+            "ttft_seconds": 9.937065482139587,
+            "cumulative_reused_tokens": 0
+          },
+          {
+            "turn": 1,
+            "first_token_seconds": 27.590065751224756,
+            "ttft_seconds": 1.994427738711238,
+            "cumulative_reused_tokens": 5023
+          }
+        ]
+      },
+      {
+        "trace_id": "measure/swe/8a985d52-72d9-4384-bdd2-423110c034b5",
+        "completed_turns": 2,
+        "output_tokens": 383,
+        "prefill_tokens": 6233,
+        "prefix_reused_tokens": 4712,
+        "final_encoded_context": 6614,
+        "events": [
+          {
+            "turn": 0,
+            "first_token_seconds": 9.022022725082934,
+            "ttft_seconds": 9.02202363498509,
+            "cumulative_reused_tokens": 0
+          },
+          {
+            "turn": 1,
+            "first_token_seconds": 18.47473835851997,
+            "ttft_seconds": 4.162848166190088,
+            "cumulative_reused_tokens": 4712
+          }
+        ]
+      },
+      {
+        "trace_id": "measure/swe/ab6bb805-78ad-40a7-8de0-e532aab9b863",
+        "completed_turns": 2,
+        "output_tokens": 293,
+        "prefill_tokens": 8834,
+        "prefix_reused_tokens": 4742,
+        "final_encoded_context": 9125,
+        "events": [
+          {
+            "turn": 0,
+            "first_token_seconds": 9.93722955416888,
+            "ttft_seconds": 9.937230113893747,
+            "cumulative_reused_tokens": 0
+          },
+          {
+            "turn": 1,
+            "first_token_seconds": 23.771245724521577,
+            "ttft_seconds": 9.004244749434292,
+            "cumulative_reused_tokens": 4742
+          }
+        ]
+      },
+      {
+        "trace_id": "measure/swe/ee1cab8e-8c6e-45eb-8481-d2acb334e8de",
+        "completed_turns": 2,
+        "output_tokens": 197,
+        "prefill_tokens": 5780,
+        "prefix_reused_tokens": 4833,
+        "final_encoded_context": 5975,
+        "events": [
+          {
+            "turn": 0,
+            "first_token_seconds": 10.008088320493698,
+            "ttft_seconds": 10.008089010603726,
+            "cumulative_reused_tokens": 0
+          },
+          {
+            "turn": 1,
+            "first_token_seconds": 21.772373932413757,
+            "ttft_seconds": 3.0793115654960275,
+            "cumulative_reused_tokens": 4833
+          }
+        ]
+      }
+    ],
+    "max_source_seconds": 40.58241440076381,
+    "committed_tokens": 1408,
+    "committed_tokens_per_second": 34.694830773141476,
+    "prefill_tokens": 26391,
+    "reused_prefix_tokens": 19310,
+    "ttft_p50_seconds": 9.004244749434292,
+    "ttft_p95_seconds": 10.008089010603726,
+    "output_interval_p99_seconds": 0.08581558056175709,
+    "output_interval_max_seconds": 9.08818018808961,
+    "max_allocated_gib": 15.63050889968872,
+    "max_reserved_gib": 16.25390625
+  },
+  "colocated": {
+    "groups": 4,
+    "mtp_tokens": 1,
+    "sessions": [
+      {
+        "trace_id": "measure/swe/667efd70-9b33-4cf0-9b61-9520a163e7eb",
+        "completed_turns": 2,
+        "output_tokens": 535,
+        "prefill_tokens": 5544,
+        "prefix_reused_tokens": 5023,
+        "final_encoded_context": 6077,
+        "events": [
+          {
+            "turn": 0,
+            "first_token_seconds": 11.772952252067626,
+            "ttft_seconds": 11.772952982224524,
+            "cumulative_reused_tokens": 0
+          },
+          {
+            "turn": 1,
+            "first_token_seconds": 37.42801774851978,
+            "ttft_seconds": 2.1716352431103587,
+            "cumulative_reused_tokens": 5023
+          }
+        ]
+      },
+      {
+        "trace_id": "measure/swe/8a985d52-72d9-4384-bdd2-423110c034b5",
+        "completed_turns": 2,
+        "output_tokens": 383,
+        "prefill_tokens": 6233,
+        "prefix_reused_tokens": 4712,
+        "final_encoded_context": 6614,
+        "events": [
+          {
+            "turn": 0,
+            "first_token_seconds": 10.524325006641448,
+            "ttft_seconds": 10.524325726553798,
+            "cumulative_reused_tokens": 0
+          },
+          {
+            "turn": 1,
+            "first_token_seconds": 19.369866375811398,
+            "ttft_seconds": 4.606809387914836,
+            "cumulative_reused_tokens": 4712
+          }
+        ]
+      },
+      {
+        "trace_id": "measure/swe/ab6bb805-78ad-40a7-8de0-e532aab9b863",
+        "completed_turns": 2,
+        "output_tokens": 293,
+        "prefill_tokens": 8834,
+        "prefix_reused_tokens": 4742,
+        "final_encoded_context": 9125,
+        "events": [
+          {
+            "turn": 0,
+            "first_token_seconds": 11.765792420133948,
+            "ttft_seconds": 11.765793130733073,
+            "cumulative_reused_tokens": 0
+          },
+          {
+            "turn": 1,
+            "first_token_seconds": 30.19181428756565,
+            "ttft_seconds": 10.032903406769037,
+            "cumulative_reused_tokens": 4742
+          }
+        ]
+      },
+      {
+        "trace_id": "measure/swe/ee1cab8e-8c6e-45eb-8481-d2acb334e8de",
+        "completed_turns": 2,
+        "output_tokens": 197,
+        "prefill_tokens": 5780,
+        "prefix_reused_tokens": 4833,
+        "final_encoded_context": 5975,
+        "events": [
+          {
+            "turn": 0,
+            "first_token_seconds": 11.76280824560672,
+            "ttft_seconds": 11.762809025123715,
+            "cumulative_reused_tokens": 0
+          },
+          {
+            "turn": 1,
+            "first_token_seconds": 33.623669310472906,
+            "ttft_seconds": 3.356548734009266,
+            "cumulative_reused_tokens": 4833
+          }
+        ]
+      }
+    ],
+    "max_source_seconds": 47.69817562401295,
+    "committed_tokens": 1408,
+    "committed_tokens_per_second": 29.518948714071215,
+    "prefill_tokens": 26391,
+    "reused_prefix_tokens": 19310,
+    "ttft_p50_seconds": 10.032903406769037,
+    "ttft_p95_seconds": 11.772952982224524,
+    "output_interval_p99_seconds": 3.426594542339444,
+    "output_interval_max_seconds": 10.109460480511189,
+    "max_allocated_gib": 29.140493869781494,
+    "max_reserved_gib": 29.953125
+  },
+  "speed_ratio": 1.1753410024593118
+}

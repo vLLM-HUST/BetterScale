@@ -255,3 +255,13 @@ initialization error9. `colocated_model.bootstrap_groups` reuses each pre-create
 TP2 coordinator in `_QSA_GROUP_CACHE`; QSA islands and TP pairs are identical
 for this layout. Keep the post-catalog rendezvous and avoid a fresh island
 communicator. The earlier short gates alone do not certify this startup order.
+
+The first matched retained pilot is in `qwen38/swe-two-turn-result.json`:
+4 distinct sessions,2 complete turns each,1408 outputs,26391 prefill rows,
+19310 reused-prefix tokens. Separated/colocated maximum source durations are
+40.5824/47.6982s; both pass first-page retention and final within-TP output IDs.
+This is **not a vLLM result**: the native control currently uses global phase
+voting instead of mixed target waves. Its decode stalls during other sources'
+prefill. Do not turn the1.1753 pilot ratio into a mature DP+EP or expert-GEMM
+claim. P99 is sample-sensitive (max gaps are9.09/10.11s despite very different
+P99). No full-trajectory,262K fill,maximum-HBM,or full quality gate is implied.

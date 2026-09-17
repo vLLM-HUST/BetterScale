@@ -374,3 +374,20 @@ large-resident-State validation, or snapshot only the touched State correctly.
 and the strict-reference failure at wider verification shapes. Target-only
 remains the default; MTP currently has no demonstrated net throughput gain at
 32 total active requests.
+
+## Retained SWE pilot
+
+See [SWE-COMPARISON.md](SWE-COMPARISON.md) and
+[swe-two-turn-result.json](swe-two-turn-result.json) for the first matched
+four-session, two-turn, full-length input/output comparison. The trace path uses
+`--trace-plan <frozen-plan> --trace-count 4 --trace-turns 2 --trace-max-context 16384
+--mtp-tokens 1 --state-gib 8 --decode-graph`; select sources2/batch2 for separated,
+sources4/batch1/`--colocated` with the dedicated overlay for the EP8 control.
+Select the1024-row binary explicitly via QWEN38_BUILD. `--trace-output-cap` is
+only for smoke gates and must remain unset in the throughput pilot.
+
+This is fixed-resident scheduling with real continuation, not yet an admission
+reactor or an optimized mixed vLLM control. Do not remove the documented result
+boundaries when quoting it. `capacity-k1.json` replaces target-only arithmetic
+when quoting MTP State geometry; configured context and aggregate State capacity
+are different quantities.

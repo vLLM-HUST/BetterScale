@@ -169,3 +169,40 @@ creation position. For TP2 the island is exactly the existing TP pair.
 there is no reason to create another communicator. Also rendezvous after every
 expert catalog has loaded, before data-plane warmup. Do not score that failed
 startup as the control's throughput or erase it from the record.
+
+## First matched pilot result
+
+`qwen38-model-20260917T145121Z` (separated) versus
+`qwen38-model-20260917T150050Z` (colocated), on the same hw0 eight910B2 cards,
+repaired full48+MTP K1, State8GiB/attention rank, four **total** concurrent
+sessions, first two complete turns each. Both process26391 prefill tokens,
+reuse19310 prefix tokens, and emit1408 tokens. Both pass retained first-page
+and final within-TP output-ID checks. All processes exit successfully; final
+npu-smi shows eight healthy idle cards and no NPU processes.
+
+| Metric | two TP2 sources + E4 | four TP2 groups + EP8 |
+| --- | ---: | ---: |
+| Maximum source duration | 40.5824s | 47.6982s |
+| Committed output / duration | 34.6948tok/s | 29.5189tok/s |
+| Attention-rank peak allocated HBM | 15.631GiB | 29.140GiB |
+| Attention-rank final reserved HBM | 16.254GiB | 29.953GiB |
+
+The observed throughput ratio is1.1753 in this **single pilot**, not a robust
+scaling claim. Durations follow a shared host warmup rendezvous, not exact global
+start/end timestamps. Raw receipts and `analyze_traces.py` preserve the denominator.
+
+Most importantly, this is our same-model native-operator control, **not vLLM**.
+Its initial scheduler votes a global prefill/decode phase and idles decode while
+another group prefills. It does not yet use mixed target waves to hide that
+stall. The separated side can progress independently. Therefore neither the
+throughput ratio nor the large P99 interval difference can establish superiority
+over a mature mixed DP+EP scheduler. Few prefill interruptions can also move
+across the P99 cutoff in this small sample. Consult both maximum and P99 in
+`swe-two-turn-result.json`; do not headline P99 as a stable SLO result.
+
+No full-trajectory run, largest-context fill, maximum-concurrency sweep, full
+quality evaluation or repeatability interval is claimed. Both model contracts
+allow262144 context tokens with lookahead space required for MTP, but this pilot
+configures16384 and activates8GiB State. Peak measurements at its short contexts
+are not evidence that the same remaining HBM is free at262K context. The
+physical maximum State allocation remains unqualified.

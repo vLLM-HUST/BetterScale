@@ -61,6 +61,7 @@ def summarize(directory, groups):
         ttft_p50_seconds=quantile(ttft, 0.5),
         ttft_p95_seconds=quantile(ttft, 0.95),
         output_interval_p99_seconds=quantile(intervals, 0.99),
+        output_interval_max_seconds=max(intervals, default=0),
         max_allocated_gib=max(r["memory"]["peak_allocated"] for r in rows + peers)
         / 2**30,
         max_reserved_gib=max(r["memory"]["reserved"] for r in rows + peers) / 2**30,
