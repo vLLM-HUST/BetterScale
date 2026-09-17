@@ -1,4 +1,4 @@
-"""Two simultaneous TP2 services, swapped physical pairs in the second round."""
+"""Matched TP2 services: pair-swap in parallel, or ABBA on one admitted pair."""
 
 import json
 import os
@@ -13,7 +13,8 @@ from probe_host_npus import parse_devices
 root = Path(os.environ["CAPSULE"])
 pairs = os.environ.get("SWE_DEVICE_PAIRS", "0,1;6,7").split(";")
 devices = {int(x) for pair in pairs for x in pair.split(",")}
-assert len(pairs) == 2 and len(devices) == 4 and devices <= set(range(8))
+assert len(pairs) in (1, 2) and len(devices) == 2 * len(pairs)
+assert devices <= set(range(8))
 
 
 def wait_reclaimed(wave):
@@ -41,17 +42,42 @@ def wait_reclaimed(wave):
 receipt = dict(
     status="RUNNING",
     rounds=[],
-    scope="Simultaneous same-host pairs; swap arms across pairs; closed-loop cohorts synchronized only at start. Shared-host CPU effects are not isolated.",
+    scope=(
+        "Sequential same-pair ABBA; closed-loop whole-trajectory cohorts."
+        if len(pairs) == 1
+        else "Simultaneous same-host pairs; swap arms across pairs; closed-loop cohorts synchronized only at start. Shared-host CPU effects are not isolated."
+    ),
+)
+plan = (
+    [
+        (0, [(0, "baseline")]),
+        (0, [(0, "candidate")]),
+        (1, [(0, "candidate")]),
+        (1, [(0, "baseline")]),
+    ]
+    if len(pairs) == 1
+    else [
+        (
+            repeat,
+            [
+                (pair, ("baseline", "candidate")[(pair + repeat) % 2])
+                for pair in range(2)
+            ],
+        )
+        for repeat in range(2)
+    ]
 )
 try:
-    for repeat in range(2):
+    for repeat, entries in plan:
         wave = root / f"round{repeat}"
-        wave.mkdir()
+        wave.mkdir(exist_ok=True)
+        for phase in ("c4", "c8", "profile"):
+            (wave / f"{phase}.go").unlink(missing_ok=True)
         wait_reclaimed(wave)
         children, logs = [], []
         try:
-            for pair, visible in enumerate(pairs):
-                arm = ("baseline", "candidate")[(pair + repeat) % 2]
+            for pair, arm in entries:
+                visible = pairs[pair]
                 out = wave / arm
                 out.mkdir()
                 env = os.environ.copy()
@@ -86,8 +112,7 @@ try:
             for phase in (["c4", "c8", "profile"] if repeat == 1 else ["c4", "c8"]):
                 deadline = time.monotonic() + 1800
                 while not all(
-                    (wave / arm / f"{phase}.ready").exists()
-                    for arm in ("baseline", "candidate")
+                    (wave / arm / f"{phase}.ready").exists() for _, arm in entries
                 ):
                     if any(c.poll() is not None for c in children):
                         raise RuntimeError(f"paired service exited before {phase}")
@@ -98,7 +123,7 @@ try:
             for child in children:
                 if child.wait(timeout=1800):
                     raise RuntimeError("paired service failed")
-            for arm in ("baseline", "candidate"):
+            for _, arm in entries:
                 result = json.loads((wave / arm / "receipt.json").read_text())
                 assert result["status"] == "PASS"
                 receipt["rounds"].append(

@@ -106,14 +106,19 @@ def install():
             )
         tokens = m.num_input_tokens
         decode = tokens <= 8 and all(n == 1 for n in lengths)
-        cache = getattr(self, "_elastic_buffers", None)
-        if cache is None:
-            cache = self._elastic_buffers = {}
-        key = tokens, decode
-        if key not in cache:
-            cache[key] = Metadata(tokens, decode, m.query_start_loc.device)
-        meta = cache[key]
-        meta.update(self, m, lengths)
+        publication = getattr(self, "_owned_publication", None)
+        if publication is not None:
+            frame, key, slots = publication
+            meta = frame.fill(key, m, lengths, slots)
+        else:
+            cache = getattr(self, "_elastic_buffers", None)
+            if cache is None:
+                cache = self._elastic_buffers = {}
+            key = tokens, decode
+            if key not in cache:
+                cache[key] = Metadata(tokens, decode, m.query_start_loc.device)
+            meta = cache[key]
+            meta.update(self, m, lengths)
         return SimpleNamespace(
             owned=meta,
             num_actual_tokens=tokens,

@@ -65,7 +65,9 @@ def forward_core(self, mixed_qkv, b, a, core_attn_out):
             chunk_indices=meta.indices[64],
             output_dtype=torch.float32,
         )
-        matrix = chunk.solve_tril(
+        from .solve_tril import solve_tril
+
+        matrix = solve_tril(
             matrix,
             cu_seqlens=meta.cu,
             chunk_indices_large_block=meta.indices[1216],

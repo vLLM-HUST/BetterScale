@@ -19,6 +19,22 @@ class Worker(MixedWorker):
                 owned = next(
                     m.owned for m in ctx.attn_metadata.values() if hasattr(m, "owned")
                 )
+                # Independent publication witness, including every GDN group.
+                for meta in {
+                    id(m.owned): m.owned
+                    for m in ctx.attn_metadata.values()
+                    if hasattr(m, "owned")
+                }.values():
+                    if hasattr(meta, "host"):
+                        import numpy as np
+
+                        for key, expected in meta.host.items():
+                            actual = (
+                                meta.indices[key]
+                                if isinstance(key, int)
+                                else getattr(meta, key)
+                            )
+                            assert np.array_equal(actual.cpu().numpy(), expected), key
                 ends = owned.cu.cpu().tolist()
                 lengths = [b - a for a, b in zip(ends, ends[1:]) if b > a]
                 slots = owned.slots[: len(lengths)].cpu().tolist()
@@ -27,6 +43,7 @@ class Worker(MixedWorker):
                     dict(
                         lengths=lengths,
                         slots=slots,
+                        bank=getattr(ctx.batch_descriptor, "bank", None),
                         capacity=owned.tokens,
                         decode=owned.decode,
                         mode=str(ctx.cudagraph_runtime_mode),

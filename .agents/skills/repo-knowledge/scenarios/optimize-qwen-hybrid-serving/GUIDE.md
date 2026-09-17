@@ -600,3 +600,34 @@ new wait_reclaimed CPU rejection smoke passed. Do not reduce memory guard to get
 past uncertain occupancy. Final campaign released its cards. Fletcher now permits
 local and hw3 cards5/6/7 for follow-up TP2 work; prefer those, still require fresh
 subset admission and preserve foreign work. This permission does not reserve them.
+
+### Alternating metadata banks (qualification in progress, 2026-09-17)
+
+`qwen_gdn/publication.py` gives each capacity two descriptor keys and separate
+native FIA task-resource banks; partitions remain device metadata, never key
+enumeration. All GDN groups share one pinned packed slab/H2D per wave. CPU
+block-table column0 is authoritative only for `mamba_cache_mode=none`; initial
+flags must reproduce **CPU seq_lens - real query lengths**, including synthetic
+capture lengths, not blindly reuse request counters. No speculative decoding.
+The uploaded event protects pinned-source reuse; consumed protects device-bank
+overwrite. Compute waits uploaded on device; neither requires a per-wave host
+compute synchronization. Initial allocation gets a one-time ingress wait on the
+allocating stream. Native model inputs, sampling, D2H and KV retirement remain
+native-owned: this is not a full LiveInference reactor transplant. Compare the
+already earned protocol in `prototypes/owned-wave/fia-plan/ASYNC-TRANSPORT.zh-CN.md`.
+
+hw3 `dualbank-core1`: triangle active rows match donor exactly on7 fixtures;
+12 core graph/NONE cases retain exact output/conv/whole-state and independent
+initial-H checks. `dualbank-solve2`: captured20-solve graphs, ABBA30replays each,
+[1,1472] mean378.85→253.86us; all7 active-output comparisons exact. This is the
+whole solve including merge, not an isolated16x16 kernel or serving speedup.
+Eager-loop timing was host-limited/noisy and is not the performance claim.
+
+`dualbank-service2`:26 captures,5.25GiB graph memory/rank;10single prompt lengths
+1..2051 and C4/C8 mixed cohorts;22shadow steps/rank,5676checks max_abs0. Both
+banks observed, every GDN host/device field independently compared during
+shadow. Diagnostic1GiB KV, not performance. `dualbank-service1` had captured
+successfully but probe RPC returned404: diagnostic `/collective_rpc` needs
+`VLLM_SERVER_DEV_MODE=1`; elastic_probe now sets it only for shadow subprocesses.
+Do not treat that harness failure as a model or graph failure. Whole-trajectory
+SWE and short TraceLoom validation still pending; don't infer net service gain.

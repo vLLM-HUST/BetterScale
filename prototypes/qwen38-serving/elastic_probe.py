@@ -85,7 +85,10 @@ receipt = dict(
 path = root / "receipt.json"
 path.write_text(json.dumps(receipt, indent=2))
 log = (root / "server.log").open("w")
-server = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+env = os.environ.copy()
+if env.get("ELASTIC_SHADOW") == "1":
+    env["VLLM_SERVER_DEV_MODE"] = "1"
+server = subprocess.Popen(command, env=env, stdout=log, stderr=subprocess.STDOUT)
 
 
 def rpc(method, *args):
