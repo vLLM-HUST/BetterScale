@@ -13,7 +13,7 @@ import time
 import urllib.request
 
 
-def request(url, prompt, budget, *, stream=True):
+def request(url, prompt, budget, *, stream=True, on_first_content=None):
     payload = dict(
         model="qwen27",
         prompt=prompt,
@@ -53,6 +53,8 @@ def request(url, prompt, budget, *, stream=True):
             for choice in body.get("choices", []):
                 piece = choice.get("text", "")
                 if piece:
+                    if not events and on_first_content is not None:
+                        on_first_content()
                     events.append(time.perf_counter() - start)
                     text += piece
                 finish = choice.get("finish_reason") or finish

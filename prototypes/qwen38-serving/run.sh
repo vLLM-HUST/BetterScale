@@ -48,6 +48,10 @@ if [[ $ARM == padding-kernel ]]; then
   export CAPSULE
   command=("$runtime/bin/python" "$CAPSULE/source/padding_kernel_probe.py")
 fi
+if [[ $ARM == mixed-full ]]; then
+  export CAPSULE VLLM_SERVER_DEV_MODE=1
+  command=("$runtime/bin/python" "$CAPSULE/source/mixed_full_probe.py")
+fi
 exec "$runtime/bin/python" /workspace/strengthen-dsv4/prototypes/attention-client/device-service/admit_subset.py \
  --devices "$ASCEND_RT_VISIBLE_DEVICES" --wait-seconds 1800 --output "$CAPSULE/admission" -- \
  "${command[@]}"
