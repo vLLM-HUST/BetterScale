@@ -13,18 +13,28 @@ from transformers import AutoTokenizer
 p = argparse.ArgumentParser()
 p.add_argument("--output", type=Path, required=True)
 p.add_argument("--sessions", type=int, default=4)
+p.add_argument("--model", default="/data/shared_models/Qwen3-30B-A3B")
+p.add_argument(
+    "--source",
+    type=Path,
+    default=Path("/root/my-ascend-workspace/datasets/nvidia/Open-SWE-Traces"),
+)
 p.add_argument("--scan-rows", type=int, default=5000)
+p.add_argument("--parse-tool-arguments", action="store_true")
+p.add_argument("--subset", default="data/openhands/deepseek_v4_flash")
 p.add_argument("--max-context", type=int, default=32768)
 p.add_argument("--max-output-total", type=int, default=4096)
 a = p.parse_args()
 a.output.mkdir(parents=True, exist_ok=False)
-source = Path("/root/my-ascend-workspace/datasets/nvidia/Open-SWE-Traces")
-model = "/data/shared_models/Qwen3-30B-A3B"
+source = a.source
+model = a.model
 tok = AutoTokenizer.from_pretrained(model, local_files_only=True)
 selected, rejected = [], []
 seen = 0
-for shard in sorted((source / "data/openhands/deepseek_v4_flash").rglob("*.parquet")):
-    for batch in pq.ParquetFile(shard).iter_batches(batch_size=8):
+for shard in sorted((source / a.subset).rglob("*.parquet")):
+    for batch in pq.ParquetFile(shard).iter_batches(
+        batch_size=8, columns=["messages", "tools", "trajectory_id", "instance_id"]
+    ):
         for row in batch.to_pylist():
             seen += 1
             messages = row["messages"]
@@ -35,9 +45,16 @@ for shard in sorted((source / "data/openhands/deepseek_v4_flash").rglob("*.parqu
             calls = []
             if reason is None:
                 tools = [
-                    json.loads(x) if isinstance(x, str) else x for x in row["tools"]
+                    json.loads(x) if isinstance(x, str) else x
+                    for x in (row.get("tools") or [])
                 ]
                 try:
+                    if a.parse_tool_arguments:
+                        for message in messages:
+                            for call in message.get("tool_calls") or []:
+                                fn = call["function"]
+                                if isinstance(fn.get("arguments"), str):
+                                    fn["arguments"] = json.loads(fn["arguments"])
                     for i in turns:
                         prefix = tok.apply_chat_template(
                             messages[:i],
@@ -107,6 +124,7 @@ manifest = dict(
     revision="fb0c0dccc7a5cce79b3f6de891848acdede36685",
     license="CC-BY-4.0",
     model=model,
+    subset=a.subset,
     sessions=selected,
     scanned=seen,
     selection=dict(
@@ -117,6 +135,9 @@ manifest = dict(
     ),
     transforms=dict(
         truncated=False,
+        tool_arguments=(
+            "JSON strings parsed to mappings" if a.parse_tool_arguments else "unchanged"
+        ),
         history="original recorded messages, not generated responses",
         output_budget="Qwen-tokenized complete assistant serialization suffix (BPE at suffix boundary is independent)",
         tool_execution=False,

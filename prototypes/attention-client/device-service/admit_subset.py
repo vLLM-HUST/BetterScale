@@ -20,6 +20,7 @@ p = argparse.ArgumentParser()
 p.add_argument("--devices", default="0")
 p.add_argument("--output", type=Path, required=True)
 p.add_argument("--wait-seconds", type=float, default=1800)
+p.add_argument("--runtime-seconds", type=float, default=1500)
 p.add_argument("command", nargs=argparse.REMAINDER)
 a = p.parse_args()
 devices = {int(x) for x in a.devices.split(",")}
@@ -127,10 +128,10 @@ child = subprocess.Popen(
     command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True, cwd=a.output
 )
 try:
-    deadline = time.monotonic() + 1500
+    deadline = time.monotonic() + a.runtime_seconds
     while child.poll() is None:
         if time.monotonic() > deadline:
-            raise TimeoutError("bounded probe exceeded 1500s")
+            raise TimeoutError(f"bounded probe exceeded {a.runtime_seconds}s")
         text, _, owners = inspect(descendants(child.pid) | group_members(child.pid))
         (a.output / "latest.txt").write_text(text)
         foreign = owners - (descendants(child.pid) | group_members(child.pid))
