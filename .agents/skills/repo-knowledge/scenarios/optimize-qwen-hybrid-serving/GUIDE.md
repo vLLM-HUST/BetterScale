@@ -451,3 +451,12 @@ rows also imply compact state indexing. Inspect arch20/current device implementa
 before applying this observation. A tensor ABI plus explicit capacity/stride contract
 is a promising native-kernel route, not yet tested. Existing recurrent operator's
 MAX_MTP=16 blocks simply feeding long prefills to that unchanged implementation.
+
+AscendC followup source audit: `prototypes/qwen38-serving/ASCENDC-GDN.md`
+records the narrow H/O fork contract and performance hypotheses. Important:
+910B selects arch22; arch20 is __CCE_AICORE__==200 compatibility. H arch22 AIV
+initial-state loop traverses all heads/requests without core partitioning;
+changing it requires preserving producer/consumer readiness, not a naive striped
+copy with existing per-pair signals. O already uses physical token stride but
+logical chunk stride. No compiled fork or measured optimization follows from this
+audit. Avoid attributing the Triton-vs-native whole-pipeline delta to one kernel.
