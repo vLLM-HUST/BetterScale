@@ -1,7 +1,7 @@
-"""One configured exact mixed FULL shadow pilot, not a general serving policy.
+"""Bounded exact mixed FULL pilots, not a general serving policy.
 
-One token total owns one signature here. Do not generalize this key scheme to
-different prefill partitions sharing a total; native FIA also keys by total.
+Default: one signature/process. MIXED_COEXIST explicitly adds partition graph
+descriptors, per-partition metadata and scoped FIA banks for a small fixed set.
 """
 
 import copy

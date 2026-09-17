@@ -47,3 +47,12 @@ tokens, while GDN has partition-specific host chunk metadata. General integratio
 must resolve that ownership and graph-memory budget, not just remove force_eager.
 Paid receipts and current qualification boundaries live in the repo-knowledge
 `optimize-qwen-hybrid-serving` scenario.
+
+`ARM=partition-full` now runs a separate coexistence pilot in one server. It
+captures five explicit partitions, including two2048token/four-request batches
+with different prefill boundaries. `partition_graphs.py` owns the extended
+descriptor and scoped native FIA resource banks; GDN buffers share that partition
+identity. Eight alternating state shadows test reuse after other graphs execute.
+This is correctness-only, with1GiBKV and bounded arrival staging, not a timing
+benchmark or arbitrary-length graph support. CPU ownership/exception-restoration
+checks: `python3 prototypes/qwen38-serving/partition_contract_test.py`.

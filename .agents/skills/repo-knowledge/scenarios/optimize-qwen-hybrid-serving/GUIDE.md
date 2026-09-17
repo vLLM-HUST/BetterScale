@@ -310,3 +310,36 @@ Native FIA GraphParams keys by total token count; GDN host chunk lists depend on
 the full partition. A2048single and [1,1,1024,1022] must not share handles/buffers.
 Supporting both needs deliberate graph-key ownership and bounded capture memory,
 or a proved padded partition contract; simply removing the mixed fallback is unsafe.
+
+### Multiple exact partitions now coexist (September17,06:46UTC)
+
+`ARM=partition-full` enables the separate MIXED_COEXIST pilot. PartitionDescriptor
+extends native BatchDescriptor with the complete scheduled-length tuple. Capture
+initialization installs those keys, and _warmup_and_capture carries the chosen
+partition into dummy metadata. GDN stable buffers/scalar contracts are keyed by
+the same tuple. Native decode remains on its original descriptors/resources.
+
+FIA's native GraphParams remains internally indexed by token total, but each
+partition owns a distinct bank. A scoped bank selection surrounds the entire
+host _model_forward, including attention parameter updates and native ACL replay;
+finally restores the original bank. It adds no device synchronization. This
+adapts the pinned serial model-submission worker only: global native-bank swapping
+is NOT qualified for concurrent model threads/multiple runners, MTP, DP, PCP,
+LoRA or general graph eviction. Do not silently reuse it in those contexts.
+
+`partition-full1`, source8c198c4, local4/5, TP2/noMTP/APCoff/1GiBKV, passes six
+alternations across [2048], [1,1,1024,1022], [1,512], [1,1,1,514]. Followup
+`partition-full2`, source960bc93, adds [1,1,1022,1024] to distinguish partitions
+with identical total AND request count. Eight alternating actual HTTP shadows,
+both ranks:2064total checks (16x129), every max_abs0. All five banks remain
+distinct and each retains exactly16FIA handles/16events across reuse. Native
+startup reports12s capture/.76GiB total graph memory (five partition graphs plus
+four native decode graphs); not incremental memory versus a controlled baseline.
+Short decode continuations complete after each tested prefill/mixed batch.
+
+The HTTP staging uses the earlier correctness-only500ms worker hold for joins;
+there is no new timing/profile claim in these capsules. Three CPU tests cover
+same-total/same-request-count key and bank separation, exception restoration,
+and unchanged native decode resource selection. This closes bounded coexistence,
+not arbitrary-length/padded partition support or package integration. Production
+Qwen/DSV4 paths and installed donor sources remain unchanged.
