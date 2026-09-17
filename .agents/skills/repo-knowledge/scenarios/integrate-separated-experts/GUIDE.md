@@ -100,3 +100,21 @@ output sequence. Each E4 owner drains240 calls, all six processes exit0.
 This excludes full-model MTP, large prefill, independent-source batching,
 language quality and throughput gains. Do not repeat the full model merely to
 reconfirm those passed contracts; rerun for an affected change or a new risk.
+
+## Two-source extension and admission boundary
+
+Qwen38 `--sources 2` uses two independent TP2 groups plus E4 (eight cards),
+not TP4. Each leader discovers all four output windows before exporting its
+input to all server PIDs. Servers must send windows before waiting for input
+registration; source IDs cannot be inferred from accept order. Shutdown waits
+for both EOF generations before releasing either server's source mappings.
+
+The coordinator's `tasks` field is bounded to32 and also sizes its rolling trace.
+Do not enlarge it just to retain more trace records. Full-run co-batch count is
+`sum(completed_counts) - waves`; sampled layer pairs are only a ring-tail check.
+The two-source CPU integration passed syntax and receipt-analysis checks, but
+September17 local attempts063838Z and064359Z were interrupted by foreign NPU
+occupancy after admission. The latter loaded all E4 target weights and began
+four attention ranks' loading; it did not reach model forward qualification.
+No dual-source throughput/correctness claim follows. The launcher now handles
+SIGTERM through its fail-stop/finally block to preserve role logs.

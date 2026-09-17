@@ -1,7 +1,7 @@
 """Qwen38 expert process. Host only discovers channels and drains at shutdown.
 
-One attention TP group has one publishing leader. The second device mailbox is
-closed from the outset, preserving the existing two-source coordinator ABI.
+Each attention TP group has one publishing leader and its own mailbox.
+Unused sources are closed; active sources drain independently before reclamation.
 """
 
 import argparse
@@ -25,6 +25,7 @@ def main():
     p.add_argument("--owner", type=int, choices=range(4), required=True)
     p.add_argument("--layers", type=int, default=48)
     p.add_argument("--mtp", action="store_true")
+    p.add_argument("--sources", type=int, choices=(1, 2), default=1)
     a = p.parse_args()
     torch.set_num_threads(2)
     torch.npu.set_device(0)
@@ -37,92 +38,116 @@ def main():
     path = a.directory / f"expert{a.owner}.sock"
     listener = listen(path)
     listener.settimeout(1200)
-    channel = Channel(listener.accept()[0])
-    channel.sock.settimeout(1200)
-    hello = channel.expect("hello")
-    assert hello["source"] == 0 and hello["contract"] == CONTRACT
-    output = api.allocate_staging(ALIGN)
+    channels = {}
+    outputs, output_keys = {}, {}
+    sources, source_keys = {}, {}
     zero = torch.zeros(ALIGN // 4, dtype=torch.int32, device="npu")
-    api.copy(torch.npu.current_stream().npu_stream, output, zero.data_ptr(), ALIGN)
-    torch.npu.synchronize()
-    key = api.export(output, ALIGN, (hello["pid"],))
-    channel.send(
-        dict(
-            op="window",
-            owner=a.owner,
-            pid=api.pid(),
-            key=key.decode(),
-            contract=CONTRACT,
+    # Respond to each hello before waiting for source registration: clients
+    # discover all four owners before exporting their source to those PIDs.
+    for _ in range(a.sources):
+        channel = Channel(listener.accept()[0])
+        channel.sock.settimeout(1200)
+        hello = channel.expect("hello")
+        source_id = hello["source"]
+        assert 0 <= source_id < a.sources and source_id not in channels
+        assert hello["contract"] == CONTRACT
+        output = api.allocate_staging(ALIGN)
+        api.copy(torch.npu.current_stream().npu_stream, output, zero.data_ptr(), ALIGN)
+        torch.npu.synchronize()
+        key = api.export(output, ALIGN, (hello["pid"],))
+        channel.send(
+            dict(
+                op="window",
+                owner=a.owner,
+                pid=api.pid(),
+                key=key.decode(),
+                contract=CONTRACT,
+            )
         )
-    )
-    source_key = channel.expect("source")["key"].encode()
-    source = api.import_memory(source_key)
-    channel.send(dict(op="registered"))
+        channels[source_id] = channel
+        outputs[source_id], output_keys[source_id] = output, key
     listener.close()
+    for source_id, channel in channels.items():
+        key = channel.expect("source")["key"].encode()
+        source_keys[source_id] = key
+        sources[source_id] = api.import_memory(key)
+        channel.send(dict(op="registered"))
     closed_source = torch.zeros_like(zero)
     closed_source[0] = -1
     unused_output = torch.zeros_like(zero)
     engine = Engine(
         a.build,
-        [source, closed_source.data_ptr()],
-        [output, unused_output.data_ptr()],
+        [sources.get(i, closed_source.data_ptr()) for i in range(2)],
+        [outputs.get(i, unused_output.data_ptr()) for i in range(2)],
         catalog,
         a.owner,
         tasks=32,
         open_service=True,
     )
     engine.replay()
-    channel.send(dict(op="ready"))
-    while True:
-        message = channel.read()
-        if (
-            message.get("op") == "inspect"
-            and os.environ.get("QWEN38_DIAGNOSTICS") == "1"
-        ):
-            sample = torch.empty(32, dtype=torch.int32, device="npu")
-            api.copy(
-                torch.npu.current_stream().npu_stream, sample.data_ptr(), source, 128
-            )
-            source_head = sample.cpu().tolist()
-            api.copy(
-                torch.npu.current_stream().npu_stream, sample.data_ptr(), output, 128
-            )
-            output_head = sample.cpu().tolist()
-            state = engine.control.cpu().tolist()
-            channel.send(
-                dict(
-                    op="inspection",
-                    source=source_head,
-                    output=output_head,
-                    control={i: state[i][:8] for i in (0, 1, 2, 43)},
-                    slot_headers=[
-                        [s[5][c, :3].cpu().tolist() for c in range(2)]
-                        for s in engine.slots
-                    ],
-                    enabled=int(engine.config[10].cpu()),
+    for channel in channels.values():
+        channel.send(dict(op="ready"))
+    counts = [0, 0]
+    for source_id, channel in channels.items():
+        while True:
+            message = channel.read()
+            if (
+                message.get("op") == "inspect"
+                and os.environ.get("QWEN38_DIAGNOSTICS") == "1"
+            ):
+                sample = torch.empty(32, dtype=torch.int32, device="npu")
+                api.copy(
+                    torch.npu.current_stream().npu_stream,
+                    sample.data_ptr(),
+                    sources[source_id],
+                    128,
                 )
-            )
-            continue
-        if message.get("op") != "drain":
-            raise ValueError("Expected drain or diagnostic inspection")
-        count = message["generation"]
-        break
+                source_head = sample.cpu().tolist()
+                api.copy(
+                    torch.npu.current_stream().npu_stream,
+                    sample.data_ptr(),
+                    outputs[source_id],
+                    128,
+                )
+                output_head = sample.cpu().tolist()
+                state = engine.control.cpu().tolist()
+                channel.send(
+                    dict(
+                        op="inspection",
+                        source=source_head,
+                        output=output_head,
+                        control={i: state[i][:8] for i in (0, 1, 2, 43)},
+                        slot_headers=[
+                            [s[5][c, :3].cpu().tolist() for c in range(2)]
+                            for s in engine.slots
+                        ],
+                        enabled=int(engine.config[10].cpu()),
+                    )
+                )
+                continue
+            if message.get("op") != "drain":
+                raise ValueError("Expected drain or diagnostic inspection")
+            counts[source_id] = message["generation"]
+            break
     receipt = engine.finish()
-    assert receipt["completed_counts"] == [count, 0], receipt
-    channel.send(dict(op="drained"))
-    channel.expect("unmapped")
-    api.close_mapping(source_key)
-    api.close_mapping(key)
-    api.free_staging(output)
-    channel.send(dict(op="released"))
-    channel.close()
+    assert receipt["completed_counts"] == counts, receipt
+    for channel in channels.values():
+        channel.send(dict(op="drained"))
+    for source_id, channel in channels.items():
+        channel.expect("unmapped")
+        api.close_mapping(source_keys[source_id])
+        api.close_mapping(output_keys[source_id])
+        api.free_staging(outputs[source_id])
+        channel.send(dict(op="released"))
+        channel.close()
     engine.close()
     path.unlink()
     (a.directory / f"expert{a.owner}.json").write_text(
         json.dumps(
             dict(
                 status="pass",
-                completed=count,
+                completed=sum(counts),
+                sources=a.sources,
                 layers=len(catalog),
                 weight_bytes=sum(
                     t.numel() * t.element_size()

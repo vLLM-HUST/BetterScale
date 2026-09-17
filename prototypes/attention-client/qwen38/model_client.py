@@ -18,13 +18,14 @@ p.add_argument("--directory", type=Path, required=True)
 p.add_argument("--build", type=Path, required=True)
 p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
+p.add_argument("--source", type=int, choices=(0, 1), default=0)
 a = p.parse_args()
 rank = int(os.environ["RANK"])
 faulthandler.dump_traceback_later(240, repeat=False)
 
 
 def stage(name, **extra):
-    print(json.dumps(dict(rank=rank, stage=name, **extra)), flush=True)
+    print(json.dumps(dict(source=a.source, rank=rank, stage=name, **extra)), flush=True)
 
 
 from livemodule.arch.ascend._native.package import activate_native_package
@@ -97,7 +98,7 @@ with (
     )
     if not a.construct_only:
         if rank == 0:
-            cfg.remote_expert_transport = Session(a.directory, a.build)
+            cfg.remote_expert_transport = Session(a.directory, a.build, source=a.source)
         torch.distributed.barrier()
         stage("transport-ready")
         ple = Qwen38ServingSession(root)
@@ -122,6 +123,7 @@ with (
         # prompt/quality sampling is a later gate after all-layer transport.
         ids = [9707, 11, 1879]
         generated = []
+        wave_seconds = []
         decode_graph = None
         decode_inputs = None
         graph_shadow_error = None
@@ -159,6 +161,7 @@ with (
                         destination_generations=identities,
                     )
 
+            wave_started = time.monotonic()
             if a.decode_graph and wave == 1:
                 # Preserve the exact post-prefill State for eager-vs-replay.
                 # Full copies are a correctness-fixture cost, never serving work.
@@ -213,7 +216,8 @@ with (
             assert torch.equal(agreed[0], agreed[1])
             ids = [int(token.cpu()[0])]
             generated.extend(ids)
-            stage("wave", wave=wave, token=ids[0])
+            wave_seconds.append(time.monotonic() - wave_started)
+            stage("wave", wave=wave, token=ids[0], seconds=wave_seconds[-1])
             if wave == 0:
                 for hook in hooks:
                     hook.remove()
@@ -222,12 +226,15 @@ with (
         ple.close()
         torch.distributed.barrier()
         count = cfg.remote_expert_transport.close() if rank == 0 else None
-        (a.directory / f"attention{rank}.json").write_text(
+        (a.directory / f"attention{2 * a.source + rank}.json").write_text(
             json.dumps(
                 dict(
                     status="PASS",
                     scope="full48 target, real PLE, four waves; not quality",
                     output_ids=generated,
+                    source=a.source,
+                    wave_seconds=wave_seconds,
+                    timing_scope="host wall time; wave1 includes capture and shadow when enabled",
                     calls=count,
                     decode_graph=bool(a.decode_graph),
                     graph_shadow_relative_l2=graph_shadow_error,

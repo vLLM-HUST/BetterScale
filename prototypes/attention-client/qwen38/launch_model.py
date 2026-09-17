@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import shutil
+import signal
 import sys
 import time
 
@@ -15,9 +16,14 @@ p.add_argument("--build", type=Path, required=True)
 p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
 p.add_argument("--artifacts", type=Path)
+p.add_argument("--sources", type=int, choices=(1, 2), default=1)
 a = p.parse_args()
 devices = a.devices.split(",")
-assert len(devices) == len(set(devices)) == (2 if a.construct_only else 6)
+assert (
+    len(devices)
+    == len(set(devices))
+    == (2 * a.sources if a.construct_only else 2 * a.sources + 4)
+)
 a.directory.mkdir(mode=0o700, parents=True, exist_ok=False)
 children = []
 
@@ -34,6 +40,11 @@ def launch(name, script, args, device, **env):
         )
 
 
+def cancelled(signum, frame):
+    raise KeyboardInterrupt("model gate cancelled")
+
+
+signal.signal(signal.SIGTERM, cancelled)
 common = ["--directory", str(a.directory), "--build", str(a.build)]
 try:
     if not a.construct_only:
@@ -41,8 +52,8 @@ try:
             launch(
                 f"expert{owner}",
                 "server.py",
-                [*common, "--owner", str(owner)],
-                devices[owner + 2],
+                [*common, "--owner", str(owner), "--sources", str(a.sources)],
+                devices[owner + 2 * a.sources],
             )
         deadline = time.monotonic() + 900
         while not all((a.directory / f"expert{i}.sock").exists() for i in range(4)):
@@ -51,19 +62,21 @@ try:
             if time.monotonic() > deadline:
                 raise TimeoutError("server weight load")
             time.sleep(0.5)
-    for rank in range(2):
+    for physical_rank in range(2 * a.sources):
+        source, rank = divmod(physical_rank, 2)
         launch(
-            f"attention{rank}",
+            f"attention{physical_rank}",
             "model_client.py",
             common
+            + ["--source", str(source)]
             + (["--construct-only"] if a.construct_only else [])
             + (["--decode-graph"] if a.decode_graph else []),
-            devices[rank],
+            devices[physical_rank],
             RANK=str(rank),
             LOCAL_RANK="0",
             WORLD_SIZE="2",
             MASTER_ADDR="127.0.0.1",
-            MASTER_PORT="37652",
+            MASTER_PORT=str(37652 + source),
         )
     deadline = time.monotonic() + 1200
     while any(c.poll() is None for c in children):

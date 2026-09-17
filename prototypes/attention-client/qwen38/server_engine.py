@@ -162,7 +162,8 @@ class Engine:
             waves=control[43][1],
             completed_counts=control[43][4:6],
             admitted_promotions=control[43][6],
-            trace=self.trace.cpu().tolist(),
+            rolling_trace=control[43][1] > self.trace.shape[0],
+            trace=self.trace[: control[43][1]].cpu().tolist(),
             events=self.events[: control[43][3]].cpu().tolist(),
         )
 

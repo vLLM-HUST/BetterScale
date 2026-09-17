@@ -180,3 +180,33 @@ capture-lifetime requirement, not a new scheduler.
 Reproducer: `bash prototypes/attention-client/qwen38/run_model.sh 2,3,4,5,6,7 --decode-graph`.
 The private native closure and repaired original checkpoint dependency described
 above are required. Published Worker defaults and other model lanes are unchanged.
+
+## Two independent attention sources (integration in progress)
+
+`run_model.sh 0,1,2,3,4,5,6,7 --sources 2 --decode-graph` starts two
+independent TP2 attention groups on cards0..3 and the shared E4 on cards4..7.
+Each group uses a separate HCCL rendezvous and one publishing leader. The
+server keys registrations by source ID, not accept order; both windows must
+be discovered before clients export their input allocation. Each source has
+its own generation and output allocation. Both sources must drain before
+server shutdown; a fast source cannot reclaim another source's buffers.
+
+The existing two-source kernel and weight catalog are unchanged. This first
+fixture uses the same short prompt on each source; it is not a large-prefill
+or online arrival experiment. The two sources progress independently through
+layers. Same-layer co-batching is opportunistic, never forced by a per-layer
+host barrier. FULL graph capture/shadow work remains included in wave1 wall
+time and must not be reported as steady-state latency.
+
+After a successful run, `analyze_concurrency.py <capsule>/roles` validates the
+four clients and owner completion counts. Each server wave consumes one or
+two source descriptors, so `sum(completed_counts) - waves` counts full-run
+paired waves. The64-record rolling trace checks sampled pairs' layer identity;
+it does not establish a full-run distribution of per-layer behavior.
+
+September17: Python/shell checks pass. The first eight-card attempt was stopped
+by admission supervision after foreign work appeared on cards0/1; no performance
+or dual-source correctness qualification is claimed from that attempt. The
+second admission also reached real weight loading, then stopped for a new
+foreign owner. Both capsules are rejected; no job remains queued. The previously
+passed six-card single-source result remains a separate qualification.
