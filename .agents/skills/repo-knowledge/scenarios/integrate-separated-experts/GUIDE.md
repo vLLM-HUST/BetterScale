@@ -192,3 +192,27 @@ Later error amplifies. Preserve the failed reference gate; this is not language
 quality qualification or proof that all later discrepancies are harmless. It
 prevents repeating transport/state speculation without checking the first
 numeric divergence. Larger-shape speed claims still require independent quality.
+
+## SWE equal-card expansion
+
+Enter `qwen38/SWE-COMPARISON.md` for the approved same-model topology control.
+The pinned cohort is downloaded on hw0; its32 complete sessions have1,445turns
+and new-prefill P95=4,732tokens. Do not reuse the old DSV4 tokenizer IDs.
+
+`channel_layout.py` now negotiates binary capacity, source scales/payload and
+output allocation. The1024-row build initially exceeded the AIV32KiB stack:
+coordinator slot route IDs now live in explicit HBM scratch, and workers read
+bounded256-route map tiles. Do not raise the stack limit or enlarge only a
+Python buffer. ABI3 and source-row layout must match; ABI2 is valid only at32.
+Warm only actual client row buckets before capture, avoiding quadratic banks.
+`expanded-ep-gates.json` preserves the passed five-device real layer0 FULL wire
+and native EP8 gates. Neither is a complete serving comparison.
+
+For colocated TP2xDP4, the owned runtime facade originally equated TP with WORLD.
+`prepare_colocated_overlay.py` makes a separate, explicit TP/DP-aware closure;
+never edit the separated runtime in place. Model source tokens are striped once
+across the TP pair at EP ingress. Use native MC2 counts/masks and NZ GMM, with
+native BF16 down scales for BF16 GMM output. The sampled relative oracle error
+is~0.0054, distinct from exact same-program eager/replay checks. All EP ranks
+must execute the same layer/phase, including masked idle participants. TP-only
+output agreement checks must name the TP subgroup, not default WORLD8.

@@ -1,0 +1,43 @@
+{
+  "status": "partial_gates_pass",
+  "host": "hw0",
+  "communication": {
+    "rows_per_source": 1024,
+    "roles": "one source + E4",
+    "binary": "runs/qwen38-server-rows1024-20260917",
+    "role_directory": "/tmp/q38-wire-149719",
+    "calls": 25,
+    "tested_rows": [
+      1,
+      4,
+      32,
+      1023,
+      1024
+    ],
+    "full_eager_replay_equal": true,
+    "maximum_sampled_oracle_relative_l2": 3.271886953370995e-06
+  },
+  "colocated_leaf": {
+    "roles": "EP8",
+    "role_directory": "/tmp/qwen38-colocated-leaf-20260917-v3",
+    "rows_capacity": 4,
+    "active_rows": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      0,
+      1,
+      2
+    ],
+    "full_eager_replay_equal": true,
+    "maximum_oracle_relative_l2": 0.005391051527112722
+  },
+  "exclusions": [
+    "not complete-model/agent throughput",
+    "large wire gate has one publishing source",
+    "native EP leaf target layer0 only; no MTP math gate yet",
+    "sampled arithmetic oracle at expanded wire sizes"
+  ]
+}

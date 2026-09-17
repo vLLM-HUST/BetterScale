@@ -20,26 +20,35 @@ p.add_argument("--directory", type=Path, required=True)
 p.add_argument("--build", type=Path, required=True)
 p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
-p.add_argument("--source", type=int, choices=(0, 1), default=0)
-p.add_argument("--sources", type=int, choices=(1, 2), default=1)
+p.add_argument("--source", type=int, choices=range(4), default=0)
+p.add_argument("--sources", type=int, choices=(1, 2, 4), default=1)
 p.add_argument("--decode-steps", type=int, default=3)
 p.add_argument("--align-steady-start", action="store_true")
 p.add_argument("--observe-pauses", action="store_true")
 p.add_argument("--defer-steady-gc", action="store_true")
 p.add_argument("--batch-size", type=int, choices=range(1, 33), default=1)
 p.add_argument("--state-gib", type=float, default=4)
-p.add_argument("--prompt-width", type=int, choices=(1, 3), default=3)
+p.add_argument("--prompt-width", type=int, default=3)
 p.add_argument("--mtp-tokens", type=int, choices=range(0, 6), default=0)
 p.add_argument("--reference-tokens", type=int, default=0)
+p.add_argument("--colocated", action="store_true")
 a = p.parse_args()
 assert a.reference_tokens == 0 or 2 <= a.reference_tokens <= min(32, a.decode_steps + 3)
 assert not a.reference_tokens or a.mtp_tokens
-assert a.batch_size * max(a.prompt_width, a.mtp_tokens + 1) <= 32
+from channel_layout import ChannelLayout
+import json
+
+token_capacity = ChannelLayout.from_abi(
+    json.loads((a.build / "abi.json").read_text())
+).rows
+assert 1 <= a.prompt_width <= token_capacity
+assert a.batch_size * max(a.prompt_width, a.mtp_tokens + 1) <= token_capacity
 assert 0 < a.state_gib <= 48
 assert 3 <= a.decode_steps <= 96
 assert not a.align_steady_start or a.decode_graph
 assert not a.defer_steady_gc or a.align_steady_start
-rank = int(os.environ["RANK"])
+physical_rank = int(os.environ["RANK"])
+rank = physical_rank % 2 if a.colocated else physical_rank
 faulthandler.dump_traceback_later(240, repeat=False)
 
 
@@ -67,15 +76,19 @@ install_ascend_process_context(device_type=AscendDeviceType.A2, local_rank=0)
 torch.distributed.init_process_group(
     "hccl",
     init_method="env://",
-    rank=rank,
-    world_size=2,
+    rank=physical_rank,
+    world_size=8 if a.colocated else 2,
     timeout=timedelta(seconds=600),
 )
 probe = torch.ones(1, device="npu")
 torch.distributed.all_reduce(probe)
-assert float(probe.cpu()[0]) == 2
+assert float(probe.cpu()[0]) == (8 if a.colocated else 2)
 torch.distributed.broadcast(probe, src=0)
 torch.npu.synchronize()
+if a.colocated:
+    from colocated_model import bootstrap_groups
+
+    bootstrap_groups()
 stage("hccl-ready")
 from livemodule import LiveModule, live_runtime
 from livemodule.llm.configuration import set_current_vllm_config
@@ -88,9 +101,16 @@ from livemodule.serve.qwen38 import Qwen38ServingSession
 from attention import AttentionRoot
 from model_setup import configure
 from client import Session
+from livemodule.llm.distributed import get_tp_group
 
 cfg, runtime = configure(
-    rank, stage, batch_size=a.batch_size, state_gib=a.state_gib, mtp_tokens=a.mtp_tokens
+    physical_rank,
+    stage,
+    batch_size=a.batch_size,
+    state_gib=a.state_gib,
+    mtp_tokens=a.mtp_tokens,
+    colocated=a.colocated,
+    token_capacity=token_capacity,
 )
 with (
     live_runtime(runtime),
@@ -122,12 +142,13 @@ with (
 
         run_mtp(root, cfg, a, rank, stage)
     if not a.construct_only and not a.mtp_tokens:
-        if rank == 0:
-            cfg.remote_expert_transport = Session(a.directory, a.build, source=a.source)
+        from model_transport import install_transport
+
+        install_transport(cfg, a, rank)
         torch.distributed.barrier()
         stage("transport-ready")
         ple = Qwen38ServingSession(root)
-        mailbox = ple.start_ple(token_lanes=32, max_polls=10000000)[
+        mailbox = ple.start_ple(token_lanes=token_capacity, max_polls=10000000)[
             root.contract.ple_layer_indices[0]
         ]
         stage("ple-ready")
@@ -143,13 +164,16 @@ with (
         status = torch.zeros((), dtype=torch.int32, device="npu")
         slots = torch.zeros(codec.lanes, dtype=torch.int64, device="npu")
         identities = torch.ones_like(slots)
-        blocks = torch.arange(2 * a.batch_size, dtype=torch.int32, device="npu").view(
-            a.batch_size, 2
-        )
+        pages = (a.prompt_width + a.decode_steps + 1 + 63) // 64
+        blocks = torch.arange(
+            pages * a.batch_size, dtype=torch.int32, device="npu"
+        ).view(a.batch_size, pages)
         # Identical short token sequence on both attention ranks; tokenizer
         # prompt/quality sampling is a later gate after all-layer transport.
         ids = [
-            [9707 + 17 * request, 11, 1879][: a.prompt_width]
+            ([9707 + 17 * request, 11, 1879] * ((a.prompt_width + 2) // 3))[
+                : a.prompt_width
+            ]
             for request in range(a.batch_size)
         ]
         generated = []
@@ -303,7 +327,9 @@ with (
                 phases["logits_readback"] = time.monotonic()
             token = logits.argmax(-1).reshape(a.batch_size)
             agreed = [torch.empty_like(token) for _ in range(2)]
-            torch.distributed.all_gather(agreed, token)
+            torch.distributed.all_gather(
+                agreed, token, group=get_tp_group().device_group
+            )
             assert torch.equal(agreed[0], agreed[1])
             next_ids = token.cpu().tolist()
             ids = [[value] for value in next_ids]

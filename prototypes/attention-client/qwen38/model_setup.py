@@ -20,7 +20,15 @@ class ModelConfig(NS):
 
 
 def configure(
-    rank, stage, *, batch_size=1, state_gib=4, max_model_len=4096, mtp_tokens=0
+    rank,
+    stage,
+    *,
+    batch_size=1,
+    state_gib=4,
+    max_model_len=4096,
+    mtp_tokens=0,
+    colocated=False,
+    token_capacity=32,
 ):
     hf = Qwen38Config.from_pretrained(MODEL)
     cfg = NS(
@@ -34,12 +42,14 @@ def configure(
             enforce_eager=False,
         ),
         cache_config=NS(block_size=64, cache_dtype="auto"),
-        scheduler_config=NS(max_num_batched_tokens=32, max_num_seqs=batch_size),
+        scheduler_config=NS(
+            max_num_batched_tokens=token_capacity, max_num_seqs=batch_size
+        ),
         parallel_config=NS(
             rank=rank,
             tensor_parallel_size=2,
             pipeline_parallel_size=1,
-            data_parallel_size=1,
+            data_parallel_size=4 if colocated else 1,
             use_sequence_parallel_moe=False,
             enable_eplb=False,
             enable_expert_parallel=True,
@@ -52,7 +62,7 @@ def configure(
             mode=CompilationMode.NONE,
             cudagraph_mode=CUDAGraphMode.NONE,
             cudagraph_capture_sizes=[],
-            max_cudagraph_capture_size=32,
+            max_cudagraph_capture_size=token_capacity,
         ),
         speculative_config=(
             NS(num_speculative_tokens=mtp_tokens) if mtp_tokens else None
@@ -76,8 +86,13 @@ def configure(
         remote_expert_transport=None,
         remote_expert_priority=0,
     )
+    architecture = RemoteAscend()
+    if colocated:
+        from colocated_model import ColocatedAscend
+
+        architecture = ColocatedAscend()
     runtime = LiveRuntime(
-        architecture=RemoteAscend(),
+        architecture=architecture,
         device=cfg.device_config.device,
         state_backend=TorchStateBackend(
             cfg.device_config.device, memory_budget_bytes=int(state_gib * 2**30)

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import torch
 import torch_npu
+from channel_layout import ChannelLayout
 
 
 class Engine:
@@ -25,6 +26,8 @@ class Engine:
         assert not abi["prefix_pipeline"]
         assert len(sources) == len(outputs) == 2 and 0 <= owner < 4
         assert 1 <= tasks <= 32 and 1 <= len(catalog) <= 49
+        self.layout = ChannelLayout.from_abi(abi)
+        rows = self.layout.rows
         self.catalog = catalog
         self.weight_table = torch.tensor(
             [
@@ -49,16 +52,17 @@ class Engine:
         self.events = torch.zeros(512, 8, dtype=torch.int64, device="npu")
         self.slots = []
         self.auxiliary = []
+        self.route_ids = []
         table = []
-        capacity = 640
+        capacity = rows * 10 * 2
         for _ in range(2):
             slot = [
-                torch.empty(2, 32, 2560, dtype=torch.bfloat16, device="npu"),
+                torch.empty(2, rows, 2560, dtype=torch.bfloat16, device="npu"),
                 torch.empty(capacity, 2560, dtype=torch.bfloat16, device="npu"),
                 torch.empty(capacity, 1280, dtype=torch.int32, device="npu"),
                 torch.empty(capacity, 640, dtype=torch.bfloat16, device="npu"),
                 torch.empty(capacity, 2560, dtype=torch.int32, device="npu"),
-                torch.zeros(2, 328, dtype=torch.int32, device="npu"),
+                torch.zeros(2, self.layout.map_words, dtype=torch.int32, device="npu"),
                 torch.zeros(128, dtype=torch.int64, device="npu"),
             ]
             for w, k, n in ((catalog[0][0], 2560, 1280), (catalog[0][1], 640, 2560)):
@@ -71,14 +75,22 @@ class Engine:
                 )
             scales = [
                 torch.empty(n, 8, dtype=torch.float32, device="npu")
-                for n in (64, capacity, capacity)
+                for n in (rows * 2, capacity, capacity)
             ]
             aux = torch.tensor(
                 [t.data_ptr() for t in scales], dtype=torch.int64, device="npu"
             )
             self.auxiliary.append((scales, aux))
             self.slots.append(slot)
-            table.append([p.data_ptr() for p in slot] + [0] * 6 + [aux.data_ptr()])
+            route_ids = torch.empty(
+                2, self.layout.routes, dtype=torch.int32, device="npu"
+            )
+            self.route_ids.append(route_ids)
+            table.append(
+                [p.data_ptr() for p in slot]
+                + [0] * 5
+                + [route_ids.data_ptr(), aux.data_ptr()]
+            )
         self.table = torch.tensor(table, dtype=torch.int64, device="npu")
         values = [
             self.control.data_ptr(),

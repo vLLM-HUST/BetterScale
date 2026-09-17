@@ -22,7 +22,7 @@ experts = [0, 1, 127, 128, 129, 255, 256, 383, 384, 511]
 weights = [checkpoint.expert(0, e)[1] for e in experts]
 session = Session(a.directory, a.build)
 records = []
-for n in (1, 4, 32):
+for n in sorted({1, 4, 32, session.layout.rows - 1, session.layout.rows}):
     x = torch.randn(n, 2560, dtype=torch.bfloat16, device="npu")
     ids = (
         torch.tensor(experts, dtype=torch.int32, device="npu")
@@ -49,8 +49,25 @@ for n in (1, 4, 32):
         x.copy_(torch.randn_like(x))
         graph.replay()
         torch.npu.synchronize()
-        got = output.cpu().float()
-        q, scale = torch_npu.npu_dynamic_quant(x)
+        # Compare eager and replay for every row; the expensive independent
+        # CPU arithmetic oracle samples boundaries of the enlarged route tiles.
+        eager = run()
+        torch.npu.synchronize()
+        assert torch.equal(output, eager), (n, "eager/replay mismatch")
+        sample = (
+            sorted(
+                {
+                    0,
+                    n - 1,
+                    *[i for i in (7, 8, 31, 32, 127, 128, 255, 256, 511, 512) if i < n],
+                }
+            )
+            if n > 32
+            else list(range(n))
+        )
+        got = output[sample].cpu().float()
+        sample_x = x[sample]
+        q, scale = torch_npu.npu_dynamic_quant(sample_x)
         q = q.cpu().double()
         scale = scale.cpu()
         routed = []
@@ -73,14 +90,22 @@ for n in (1, 4, 32):
             routed.append(y)
         # Match native unpermute's BF16 output boundary, then shared addition.
         ref = (
-            (torch.stack(routed, 1).float() * probs.cpu().float()[:, :, None])
+            (torch.stack(routed, 1).float() * probs[sample].cpu().float()[:, :, None])
             .sum(1)
             .bfloat16()
         )
-        ref = (ref + x.cpu() * 0.125).float()
+        ref = (ref + sample_x.cpu() * 0.125).float()
         error = float((got - ref).norm() / ref.norm().clamp_min(1e-9))
         assert error < 0.006, (n, generation, error)
-        records.append(dict(rows=n, generation=generation, relative_l2=error))
+        records.append(
+            dict(
+                rows=n,
+                generation=generation,
+                oracle_rows=sample,
+                full_eager_replay_equal=True,
+                relative_l2=error,
+            )
+        )
     graph.reset()
 count = session.close()
 (a.directory / "client.json").write_text(

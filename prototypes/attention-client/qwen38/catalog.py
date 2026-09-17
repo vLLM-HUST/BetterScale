@@ -12,17 +12,19 @@ from safetensors import safe_open
 from weights import Checkpoint
 
 
-def target_layer(checkpoint, layer, owner):
-    up = torch.empty(128, 2560, 1280, dtype=torch.int8)
-    down = torch.empty(128, 640, 2560, dtype=torch.int8)
-    su = torch.empty(128, 1280, dtype=torch.float32)
-    sd = torch.empty(128, 2560, dtype=torch.float32)
+def target_layer(checkpoint, layer, owner, *, owners=4):
+    assert owners in (4, 8) and 0 <= owner < owners
+    local_experts = 512 // owners
+    up = torch.empty(local_experts, 2560, 1280, dtype=torch.int8)
+    down = torch.empty(local_experts, 640, 2560, dtype=torch.int8)
+    su = torch.empty(local_experts, 1280, dtype=torch.float32)
+    sd = torch.empty(local_experts, 2560, dtype=torch.float32)
     shards = defaultdict(list)
-    for local in range(128):
+    for local in range(local_experts):
         for projection in ("gate_proj", "up_proj", "down_proj"):
             prefix = (
                 f"model.language_model.layers.{layer}.mlp.experts."
-                f"{owner * 128 + local}.{projection}"
+                f"{owner * local_experts + local}.{projection}"
             )
             for suffix in ("weight", "weight_scale", "weight_offset"):
                 name = f"{prefix}.{suffix}"
@@ -52,14 +54,18 @@ def target_layer(checkpoint, layer, owner):
     return up_nz, down_nz, su.to("npu"), sd.to("npu")
 
 
-def mtp_layer(checkpoint, owner):
+def mtp_layer(checkpoint, owner, *, owners=4):
+    assert owners in (4, 8) and 0 <= owner < owners
+    local_experts = 512 // owners
     result = []
     for projection in ("gate_up_proj", "down_proj"):
         name = f"mtp.layers.0.mlp.experts.{projection}"
         with safe_open(
             checkpoint.root / checkpoint.index[name], framework="pt", device="cpu"
         ) as f:
-            value = f.get_slice(name)[owner * 128 : (owner + 1) * 128]
+            value = f.get_slice(name)[
+                owner * local_experts : (owner + 1) * local_experts
+            ]
             assert value.dtype == torch.bfloat16
             result.append(
                 torch_npu.npu_format_cast(value.transpose(1, 2).to("npu"), 29)
@@ -67,14 +73,14 @@ def mtp_layer(checkpoint, owner):
     return *result, None, None
 
 
-def load(owner, *, model=None, layers=48, mtp=False):
-    assert 0 <= owner < 4 and 1 <= layers <= 48
+def load(owner, *, model=None, layers=48, mtp=False, owners=4):
+    assert owners in (4, 8) and 0 <= owner < owners and 1 <= layers <= 48
     assert not mtp or layers == 48
     checkpoint = Checkpoint() if model is None else Checkpoint(model)
     result = []
     for layer in range(layers):
-        result.append(target_layer(checkpoint, layer, owner))
+        result.append(target_layer(checkpoint, layer, owner, owners=owners))
         print(f"owner {owner}: loaded target layer {layer + 1}/{layers}", flush=True)
     if mtp:
-        result.append(mtp_layer(checkpoint, owner))
+        result.append(mtp_layer(checkpoint, owner, owners=owners))
     return result

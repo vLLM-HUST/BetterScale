@@ -20,7 +20,9 @@ class Bank:
         )
         self.ids = self.ids_storage[: rows * 10].view(rows, 10)
         self.probs = torch.empty(rows, 10, dtype=torch.bfloat16, device="npu")
-        self.scales = torch.zeros(32, dtype=torch.float32, device="npu")
+        self.scales = torch.zeros(
+            (rows + 7) // 8 * 8, dtype=torch.float32, device="npu"
+        )
         self.raw = torch.empty(rows * 10, 2560, dtype=torch.bfloat16, device="npu")
         self.indices = torch.arange(rows * 10, dtype=torch.int32, device="npu")
         self.config = torch.tensor(
@@ -50,11 +52,19 @@ class Session:
     def __init__(self, directory, build, source=0):
         self.directory = Path(directory)
         self.diagnostics = os.environ.get("QWEN38_DIAGNOSTICS") == "1"
+        self.kernels = Kernels(build)
+        self.layout = self.kernels.layout
+        contract = self.layout.contract()
         self.api = acl_api()
-        self.local = self.api.allocate_staging(ALIGN)
-        zero = torch.zeros(ALIGN // 4, dtype=torch.int32, device="npu")
+        self.local = self.api.allocate_staging(self.layout.source_bytes)
+        zero = torch.zeros(
+            self.layout.source_bytes // 4, dtype=torch.int32, device="npu"
+        )
         self.api.copy(
-            torch.npu.current_stream().npu_stream, self.local, zero.data_ptr(), ALIGN
+            torch.npu.current_stream().npu_stream,
+            self.local,
+            zero.data_ptr(),
+            self.layout.source_bytes,
         )
         torch.npu.synchronize()
         self.channels = []
@@ -65,43 +75,47 @@ class Session:
             channel = connect(Path(directory) / f"expert{owner}.sock")
             channel.sock.settimeout(1200)
             channel.send(
-                dict(op="hello", source=source, pid=self.api.pid(), contract=CONTRACT)
+                dict(op="hello", source=source, pid=self.api.pid(), contract=contract)
             )
             response = channel.expect("window")
-            assert response["contract"] == CONTRACT
+            assert response["contract"] == contract
             key = response["key"].encode()
             self.keys.append(key)
             self.peers.append(self.api.import_memory(key))
             pids.append(response["pid"])
             self.channels.append(channel)
-        self.export = self.api.export(self.local, ALIGN, tuple(pids))
+        self.export = self.api.export(self.local, self.layout.source_bytes, tuple(pids))
         for channel in self.channels:
             channel.send(dict(op="source", key=self.export.decode()))
             channel.expect("registered")
         self.counter = torch.zeros(8, dtype=torch.int32, device="npu")
-        self.kernels = Kernels(build)
         self.submit = self.kernels.load("neural_client")
         self.collect = self.kernels.load("neural_collect")
         self.promote = self.kernels.load("neural_promote")
         self.retire = self.kernels.load("neural_retire")
-        self.banks = {
-            (rows, q): Bank(self, rows, q)
-            for rows in range(1, 33)
-            for q in (False, True)
-        }
+        # Banks are created by eager warmup for the actual capture buckets,
+        # not all1..capacity sizes (which would reserve quadratic memory).
+        self.banks = {}
         torch.npu.synchronize()
         for channel in self.channels:
             channel.expect("ready")
 
     def forward(self, layer, hidden, logits, shared, *, priority=0):
-        if hidden.ndim != 2 or not 1 <= hidden.shape[0] <= 32:
-            raise ValueError("First Qwen38 wire admits1..32 token rows")
+        if hidden.ndim != 2 or not 1 <= hidden.shape[0] <= self.layout.rows:
+            raise ValueError(f"rows exceed channel capacity {self.layout.rows}")
         probs, ids = select_experts(hidden, logits, 10, False, True, num_experts=512)
         return self.forward_routed(layer, hidden, ids, probs, shared, priority=priority)
 
     def forward_routed(self, layer, hidden, ids, probs, shared, *, priority=0):
         """Same device wire with externally checked routing (also a leaf-test seam)."""
-        bank = self.banks[hidden.shape[0], layer < 48]
+        key = (hidden.shape[0], layer < 48)
+        if not 1 <= key[0] <= self.layout.rows:
+            raise ValueError(f"rows exceed channel capacity {self.layout.rows}")
+        if key not in self.banks:
+            if torch.npu.is_current_stream_capturing():
+                raise RuntimeError("Warm this expert row bucket before capture")
+            self.banks[key] = Bank(self, *key)
+        bank = self.banks[key]
         bank.config[5] = layer
         bank.config[15] = priority
         bank.ids.copy_(ids)

@@ -12,6 +12,7 @@ import time
 import torch
 
 from client import Session
+from livemodule.llm.distributed import get_tp_group
 from livemodule.llm.forward_context import ForwardContext
 from livemodule.llm.qwen35.batch import Qwen35DeviceBatchTopology
 from livemodule.serve.qwen38 import Qwen38ServingSession
@@ -20,13 +21,13 @@ from livemodule.serve.qwen38.wave import qwen38_decode_cabin_topologies
 
 def run_mtp(root, cfg, args, rank, stage):
     batch, k = args.batch_size, args.mtp_tokens
-    if rank == 0:
-        cfg.remote_expert_transport = Session(
-            args.directory, args.build, source=args.source
-        )
+    lanes = cfg.scheduler_config.max_num_batched_tokens
+    from model_transport import install_transport
+
+    install_transport(cfg, args, rank)
     torch.distributed.barrier()
     serving = Qwen38ServingSession(root)
-    mailbox = serving.start_ple(token_lanes=32, max_polls=10000000)[
+    mailbox = serving.start_ple(token_lanes=lanes, max_polls=10000000)[
         root.contract.ple_layer_indices[0]
     ]
     generation = torch.zeros((), dtype=torch.int64, device="npu")
@@ -34,7 +35,7 @@ def run_mtp(root, cfg, args, rank, stage):
         mailbox.codec.response_bytes, dtype=torch.uint8, device="npu"
     )
     status = torch.zeros((), dtype=torch.int32, device="npu")
-    identities = torch.ones(32, dtype=torch.int64, device="npu")
+    identities = torch.ones(lanes, dtype=torch.int64, device="npu")
     # Bound the entire run, including warm-up, by disjoint request-owned pages.
     pages = (args.prompt_width + (args.decode_steps + 8) * (k + 1) + 63) // 64
     blocks = torch.arange(batch * pages, dtype=torch.int32, device="npu").view(
@@ -45,7 +46,12 @@ def run_mtp(root, cfg, args, rank, stage):
     remaining = torch.full((batch,), 100000, dtype=torch.int32, device="npu")
     eos = torch.full((batch,), -1, dtype=torch.int64, device="npu")
     prompt = torch.tensor(
-        [[9707 + 17 * row, 11, 1879][: args.prompt_width] for row in range(batch)],
+        [
+            ([9707 + 17 * row, 11, 1879] * ((args.prompt_width + 2) // 3))[
+                : args.prompt_width
+            ]
+            for row in range(batch)
+        ],
         device="npu",
     )
     prompt_positions = (
@@ -53,7 +59,7 @@ def run_mtp(root, cfg, args, rank, stage):
         .expand(batch, -1)
         .contiguous()
     )
-    slots = torch.arange(32, device="npu") // args.prompt_width
+    slots = torch.arange(lanes, device="npu") // args.prompt_width
     topology = Qwen35DeviceBatchTopology(
         sequence_lengths=positions.to(torch.int32),
         query_lengths=positions.to(torch.int32),
@@ -138,7 +144,7 @@ def run_mtp(root, cfg, args, rank, stage):
                     generation=generation,
                     response_payload=response,
                     status=status,
-                    slot_ids=torch.arange(32, device="npu"),
+                    slot_ids=torch.arange(lanes, device="npu"),
                     request_generations=identities,
                     destination_generations=identities,
                 )
@@ -179,7 +185,7 @@ def run_mtp(root, cfg, args, rank, stage):
         continuation[: k - 1],
     )
     next_multi = multi[:, -1:].clone()
-    verify_slots = torch.arange(32, device="npu") // (k + 1)
+    verify_slots = torch.arange(lanes, device="npu") // (k + 1)
     cfg.remote_expert_priority = 0
 
     def verify(proposals, draft_multi, target_topology):
@@ -330,7 +336,9 @@ def run_mtp(root, cfg, args, rank, stage):
             assert bool(observed[: batch * (k + 1)].all().cpu())
             payload = torch.cat((accepted[:, None], count[:, None], committed), dim=1)
             agreed = [torch.empty_like(payload) for _ in range(2)]
-            torch.distributed.all_gather(agreed, payload)
+            torch.distributed.all_gather(
+                agreed, payload, group=get_tp_group().device_group
+            )
             assert torch.equal(agreed[0], agreed[1])
             rows = payload.cpu().tolist()
             elapsed = time.monotonic() - begin

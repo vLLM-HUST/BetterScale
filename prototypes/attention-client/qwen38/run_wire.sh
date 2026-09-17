@@ -9,6 +9,6 @@ printf '%s\n' "$CAP" > /tmp/betterscale-qwen38-wire-capsule
 source /usr/local/Ascend/cann-9.0.1/set_env.sh
 export PYTHONPATH="$CAP/source:$ROOT/prototypes/attention-client/roles:$ROOT/runs/qwen38-native-runtime-20260917/overlay:${PYTHONPATH:-}"
 export OMP_NUM_THREADS=2 TASK_QUEUE_ENABLE=0 PYTHONDONTWRITEBYTECODE=1
-PY=/workspace/my-ascend-workspace/runs/liveinfer-online/20260908-donor-local-runtime/env/bin/python
+PY=${QWEN38_PYTHON:-/workspace/my-ascend-workspace/runs/liveinfer-online/20260908-donor-local-runtime/env/bin/python}
 DEVICES=${1:-1,3,4,5,6}
-exec "$PY" "$CAP/admission-helper/admit_subset.py" --devices "$DEVICES" --output "$CAP/run" --wait-seconds 1200 -- "$PY" "$CAP/source/launch_wire.py" --devices "$DEVICES" --directory "/tmp/q38-wire-$$" --build "$ROOT/runs/qwen38-server-build-20260917T0348-lifetime"
+exec "$PY" "$CAP/admission-helper/admit_subset.py" --devices "$DEVICES" --output "$CAP/run" --wait-seconds "${QWEN38_WAIT_SECONDS:-1200}" -- "$PY" "$CAP/source/launch_wire.py" --devices "$DEVICES" --directory "/tmp/q38-wire-$$" --build "${QWEN38_BUILD:-$ROOT/runs/qwen38-server-build-20260917T0348-lifetime}"

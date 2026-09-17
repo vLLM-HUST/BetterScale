@@ -10,10 +10,13 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+from channel_layout import ChannelLayout
 
 p = argparse.ArgumentParser()
 p.add_argument("output", type=Path)
+p.add_argument("--rows", type=int, default=32)
 a = p.parse_args()
+layout = ChannelLayout(a.rows)
 repo = Path(__file__).resolve().parents[3]
 local = Path(__file__).resolve().parent
 base = local.parent / "device-service"
@@ -29,17 +32,36 @@ assert "HIDDEN = 2048, INNER = 512" in protocol
 protocol = protocol.replace(
     "HIDDEN = 2048, INNER = 512", "HIDDEN = 2560, INNER = 640"
 ).replace("LAYERS = 48", "LAYERS = 49")
+protocol = protocol.replace("TOKENS = 32", f"TOKENS = {layout.rows}")
+protocol = protocol.replace(
+    "constexpr int MAP =",
+    f"constexpr int SOURCE_SCALES = {layout.scales}, SOURCE_PAYLOAD = {layout.payload};\nconstexpr int MAP =",
+)
 (source / "persistent_protocol.hpp").write_text("#define QWEN_NEXT 1\n" + protocol)
 coordinator = (base / "persistent_vector.cpp").read_text()
 assert coordinator.count("struct Slot {") == 1
-coordinator = coordinator[coordinator.index("struct Slot {") :]
+coordinator = coordinator[coordinator.index("struct Slot {") :].replace(
+    "n > 32", "n > TOKENS"
+)
+# Route IDs belong to the persistent slot, not the AIV function stack.
+# Only the coordinator accesses this scratch; workers consume published maps.
+coordinator = coordinator.replace("int ids[2][ROUTES],", "__gm__ int32_t *ids[2]; int")
+coordinator = coordinator.replace(
+    "Slot s[2];",
+    """Slot s[2];
+  for (int slot = 0; slot < 2; ++slot)
+    for (int c = 0; c < 2; ++c)
+      s[slot].ids[c] = (__gm__ int32_t *)slots[slot * 16 + 14] + c * ROUTES;""",
+)
 (source / "persistent_vector.cpp").write_text(
     '#include "server_workers.hpp"\n#include "priority_policy.hpp"\n' + coordinator
 )
 shutil.copyfile(local / "server_cube.cpp", source / "persistent_cube.cpp")
 client = (local.parent / "qwen-next/client_kernel.cpp").read_text()
 assert "constexpr int H = 2048" in client
-client = client.replace("constexpr int H = 2048", "constexpr int H = 2560")
+client = client.replace("constexpr int H = 2048", "constexpr int H = 2560").replace(
+    "ROUTES = 320", f"ROUTES = {layout.routes}"
+)
 old = """  for (int row = 0; row < n; ++row) {
     io.Read((__gm__ int32_t *)hidden + row * H / 2, H / 2);
     io.Write(src + 1024 + row * H / 2, H / 2);
@@ -60,6 +82,23 @@ client = client.replace(
       io.Write(src + 512 + row * 8, 8);
     }
   }""",
+)
+client = client.replace("src + 1024", f"src + {layout.payload}").replace(
+    "src + 512", f"src + {layout.scales}"
+)
+old_collect = """  io.Read((__gm__ int32_t *)topk, (n * TOPK + 7) / 8 * 8);
+  int ids[ROUTES];
+  for (int i = 0; i < n * TOPK; ++i)
+    ids[i] = io.ub.GetValue(i);
+  for (int i = GetBlockIdx(); i < n * TOPK; i += GetBlockNum()) {
+    int owner = ids[i] / 128;"""
+assert old_collect in client
+client = client.replace(
+    old_collect,
+    """  for (int i = GetBlockIdx(); i < n * TOPK; i += GetBlockNum()) {
+    io.Read((__gm__ int32_t *)topk + (i / 8) * 8, 8);
+    int owner = io.ub.GetValue(i % 8) / 128;""",
+    1,
 )
 # The first INT8 gate uses complete-owner collect, not the old H2048 token-pull
 # UB layout or BF16-only early-return pipeline. Do not ship a malformed export.
@@ -85,7 +124,7 @@ for script, unit, name in (
 (out / "abi.json").write_text(
     json.dumps(
         dict(
-            version=2,
+            version=3,
             kernel_timeout_us=1200000000,
             model="qwen38",
             server_config_words=27,
@@ -95,7 +134,9 @@ for script, unit, name in (
             inner=640,
             topk=10,
             owners=4,
-            rows=32,
+            rows=layout.rows,
+            source_scale_words=layout.scales,
+            source_payload_words=layout.payload,
             target_input="native_dynamic_int8_and_fp32_scale",
             mtp_input="bf16",
             prefix_pipeline=False,

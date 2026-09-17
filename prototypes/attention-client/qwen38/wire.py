@@ -7,20 +7,9 @@ from pathlib import Path
 import torch
 from ipc_acl import PrefixCopyACL
 
-ALIGN = 2 * 1024**2
-CONTRACT = dict(
-    version=1,
-    model="qwen38",
-    hidden=2560,
-    inner=640,
-    topk=10,
-    experts=512,
-    owners=4,
-    rows=32,
-    input="target_int8_scale_mtp_bf16",
-    client_words=17,
-    prefix_pipeline=False,
-)
+from channel_layout import ALIGN, ChannelLayout
+
+CONTRACT = ChannelLayout().contract()
 
 
 def acl_api():
@@ -39,6 +28,7 @@ class Kernels:
             and abi["client_config_words"] == 17
             and not abi["prefix_pipeline"]
         )
+        self.layout = ChannelLayout.from_abi(abi)
         self.root = root
         self.lib = C.CDLL(str(root / "launch.so"))
         self.binaries = []

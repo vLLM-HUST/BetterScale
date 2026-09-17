@@ -72,8 +72,8 @@ Do not silently truncate long turns to the current prototype's small capacity.
    views, routing/exchange, local expert ownership and output return must agree.
 
 A same-implementation colocated EP8 control is a useful topology experiment,
-but must be labelled as such, not as unmodified vLLM. Choosing that integration
-versus switching to an already supported model is pending Fletcher's decision.
+but must be labelled as such, not as unmodified vLLM. Fletcher approved that integration on September17; see
+`CAPACITY-AND-COLOCATED.md` for progress and passed leaf gates.
 No donor pins, installed donor runtime or public defaults were changed.
 
 ## Prepared workload receipt

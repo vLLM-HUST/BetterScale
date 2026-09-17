@@ -103,10 +103,8 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
       }
     } else {
       for (int c = 0; c < 2; ++c) {
-        io.Read(desc + c * MAP, MAP);
-        int gen = io.words.GetValue(0), n = io.words.GetValue(1), map[ROUTES];
-        for (int i = 0; i < ROUTES; ++i)
-          map[i] = io.words.GetValue(8 + i);
+        io.Read(desc + c * MAP, 8);
+        int gen = io.words.GetValue(0), n = io.words.GetValue(1);
         if (!gen)
           continue;
         if (kind == FETCH) {
@@ -114,25 +112,31 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
             continue;
           int width = HIDDEN / (int8 ? 4 : 2);
           for (int row = worker; row < n; row += VW) {
-            io.Copy((__gm__ int32_t *)cfg[4 + c] + 1024 + row * width,
-                    (__gm__ int32_t *)ptr[0] + (c * 32 + row) * width, width);
+            io.Copy((__gm__ int32_t *)cfg[4 + c] + SOURCE_PAYLOAD + row * width,
+                    (__gm__ int32_t *)ptr[0] + (c * TOKENS + row) * width, width);
             if (int8)
-              io.Copy((__gm__ int32_t *)cfg[4 + c] + 512 + row * 8,
-                      (__gm__ int32_t *)auxiliary[0] + (c * 32 + row) * 8, 8);
+              io.Copy((__gm__ int32_t *)cfg[4 + c] + SOURCE_SCALES + row * 8,
+                      (__gm__ int32_t *)auxiliary[0] + (c * TOKENS + row) * 8, 8);
           }
-        } else
-          for (int route = worker; route < n * TOPK; route += VW) {
-            int row = map[route];
+        } else {
+          // A bounded map tile survives the row transfer's reuse of UB.
+          // Capacity does not increase the worker's scalar-stack footprint.
+          for (int begin = 0; begin < n * TOPK; begin += 256) {
+            int count = ScalarMin(256, n * TOPK - begin), map[256];
+            io.Read(desc + c * MAP + 8 + begin, (count + 7) / 8 * 8);
+            for (int i = 0; i < count; ++i) map[i] = io.words.GetValue(i);
+            for (int offset = worker; offset < count; offset += VW) {
+            int route = begin + offset, row = map[offset];
             if (row < 0)
               continue;
             if (kind == REPACK) {
               int width = HIDDEN / (int8 ? 4 : 2);
               io.Copy((__gm__ int32_t *)ptr[0] +
-                          (c * 32 + route / TOPK) * width,
+                          (c * TOKENS + route / TOPK) * width,
                       (__gm__ int32_t *)ptr[1] + row * width, width);
               if (int8)
                 io.Copy((__gm__ int32_t *)auxiliary[0] +
-                            (c * 32 + route / TOPK) * 8,
+                            (c * TOKENS + route / TOPK) * 8,
                         (__gm__ int32_t *)auxiliary[1] + row * 8, 8);
             } else if (int8) {
               int expert = RowExpert(ends, row);
@@ -147,7 +151,9 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
               io.Copy((__gm__ int32_t *)ptr[4] + row * HIDDEN / 2,
                       (__gm__ int32_t *)cfg[2 + c] + 64 + route * HIDDEN / 2,
                       HIDDEN / 2);
+            }
           }
+        }
       }
     }
     PipeBarrier<PIPE_ALL>();

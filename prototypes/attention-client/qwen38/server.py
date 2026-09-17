@@ -15,7 +15,8 @@ import torch_npu
 from catalog import load
 from control import Channel, listen
 from server_engine import Engine
-from wire import ALIGN, CONTRACT, acl_api
+from wire import ALIGN, acl_api
+from channel_layout import ChannelLayout
 
 
 def main():
@@ -27,6 +28,8 @@ def main():
     p.add_argument("--mtp", action="store_true")
     p.add_argument("--sources", type=int, choices=(1, 2), default=1)
     a = p.parse_args()
+    layout = ChannelLayout.from_abi(json.loads((a.build / "abi.json").read_text()))
+    contract = layout.contract()
     torch.set_num_threads(2)
     torch.npu.set_device(0)
     torch_npu.npu.config.allow_internal_format = True
@@ -41,7 +44,7 @@ def main():
     channels = {}
     outputs, output_keys = {}, {}
     sources, source_keys = {}, {}
-    zero = torch.zeros(ALIGN // 4, dtype=torch.int32, device="npu")
+    zero = torch.zeros(layout.output_bytes // 4, dtype=torch.int32, device="npu")
     # Respond to each hello before waiting for source registration: clients
     # discover all four owners before exporting their source to those PIDs.
     for _ in range(a.sources):
@@ -50,18 +53,23 @@ def main():
         hello = channel.expect("hello")
         source_id = hello["source"]
         assert 0 <= source_id < a.sources and source_id not in channels
-        assert hello["contract"] == CONTRACT
-        output = api.allocate_staging(ALIGN)
-        api.copy(torch.npu.current_stream().npu_stream, output, zero.data_ptr(), ALIGN)
+        assert hello["contract"] == contract
+        output = api.allocate_staging(layout.output_bytes)
+        api.copy(
+            torch.npu.current_stream().npu_stream,
+            output,
+            zero.data_ptr(),
+            layout.output_bytes,
+        )
         torch.npu.synchronize()
-        key = api.export(output, ALIGN, (hello["pid"],))
+        key = api.export(output, layout.output_bytes, (hello["pid"],))
         channel.send(
             dict(
                 op="window",
                 owner=a.owner,
                 pid=api.pid(),
                 key=key.decode(),
-                contract=CONTRACT,
+                contract=contract,
             )
         )
         channels[source_id] = channel

@@ -16,25 +16,34 @@ p.add_argument("--build", type=Path, required=True)
 p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
 p.add_argument("--artifacts", type=Path)
-p.add_argument("--sources", type=int, choices=(1, 2), default=1)
+p.add_argument("--sources", type=int, choices=(1, 2, 4), default=1)
 p.add_argument("--decode-steps", type=int, default=3)
 p.add_argument("--align-steady-start", action="store_true")
 p.add_argument("--observe-pauses", action="store_true")
 p.add_argument("--defer-steady-gc", action="store_true")
 p.add_argument("--batch-size", type=int, choices=range(1, 33), default=1)
 p.add_argument("--state-gib", type=float, default=4)
-p.add_argument("--prompt-width", type=int, choices=(1, 3), default=3)
+p.add_argument("--prompt-width", type=int, default=3)
 p.add_argument("--mtp-tokens", type=int, choices=range(0, 6), default=0)
 p.add_argument("--reference-tokens", type=int, default=0)
+p.add_argument("--colocated", action="store_true")
 a = p.parse_args()
+assert (a.sources == 4) if a.colocated else (a.sources in (1, 2))
 assert a.reference_tokens == 0 or 2 <= a.reference_tokens <= min(32, a.decode_steps + 3)
 assert not a.reference_tokens or a.mtp_tokens
-assert a.batch_size * max(a.prompt_width, a.mtp_tokens + 1) <= 32
+from channel_layout import ChannelLayout
+import json
+
+token_capacity = ChannelLayout.from_abi(
+    json.loads((a.build / "abi.json").read_text())
+).rows
+assert 1 <= a.prompt_width <= token_capacity
+assert a.batch_size * max(a.prompt_width, a.mtp_tokens + 1) <= token_capacity
 devices = a.devices.split(",")
 assert (
     len(devices)
     == len(set(devices))
-    == (2 * a.sources if a.construct_only else 2 * a.sources + 4)
+    == (2 * a.sources if a.construct_only or a.colocated else 2 * a.sources + 4)
 )
 a.directory.mkdir(mode=0o700, parents=True, exist_ok=False)
 children = []
@@ -59,7 +68,7 @@ def cancelled(signum, frame):
 signal.signal(signal.SIGTERM, cancelled)
 common = ["--directory", str(a.directory), "--build", str(a.build)]
 try:
-    if not a.construct_only:
+    if not a.construct_only and not a.colocated:
         for owner in range(4):
             launch(
                 f"expert{owner}",
@@ -105,13 +114,14 @@ try:
             + (["--observe-pauses"] if a.observe_pauses else [])
             + (["--defer-steady-gc"] if a.defer_steady_gc else [])
             + (["--construct-only"] if a.construct_only else [])
-            + (["--decode-graph"] if a.decode_graph else []),
+            + (["--decode-graph"] if a.decode_graph else [])
+            + (["--colocated"] if a.colocated else []),
             devices[physical_rank],
-            RANK=str(rank),
+            RANK=str(physical_rank if a.colocated else rank),
             LOCAL_RANK="0",
-            WORLD_SIZE="2",
+            WORLD_SIZE="8" if a.colocated else "2",
             MASTER_ADDR="127.0.0.1",
-            MASTER_PORT=str(37652 + source),
+            MASTER_PORT=str(37652 if a.colocated else 37652 + source),
         )
     deadline = time.monotonic() + 1200
     while any(c.poll() is None for c in children):
@@ -122,6 +132,8 @@ try:
         if time.monotonic() > deadline:
             raise TimeoutError("model gate")
         time.sleep(0.5)
+    if any(c.returncode != 0 for c in children):
+        raise RuntimeError("Model roles exited unsuccessfully")
 finally:
     for c in children:
         if c.poll() is None:
