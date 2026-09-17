@@ -7,7 +7,7 @@ runtime=/workspace/my-ascend-workspace/runs/rp-legacy/20260903T155041Z-layout/rp
 mkdir -p "$(dirname "$CAPSULE")"
 mkdir "$CAPSULE" "$CAPSULE/source"
 cp "$source_dir/"*.py "$CAPSULE/source/"
-if [[ $ARM == package || ${PACKAGED_QWEN:-0} == 1 ]]; then cp -a "$repo/src/betterscale" "$CAPSULE/source/betterscale"; fi
+if [[ $ARM == package || $ARM == compare-no-mtp || ${PACKAGED_QWEN:-0} == 1 ]]; then cp -a "$repo/src/betterscale" "$CAPSULE/source/betterscale"; fi
 cp /root/my-ascend-workspace/runs/qwen38-27b-tp2-baseline/20260916-donor0251-v5/prompt.json "$CAPSULE/prompt.json"
 git -C "$repo" rev-parse HEAD > "$CAPSULE/source-commit.txt"
 cp /models/vllm-ascend-models/Qwen3.8-27B/config.json "$CAPSULE/model-config.json"
@@ -39,6 +39,10 @@ fi
 if [[ $ARM == package ]]; then
   export CAPSULE
   command=("$runtime/bin/python" "$CAPSULE/source/package_probe.py")
+fi
+if [[ $ARM == compare-no-mtp ]]; then
+  export CAPSULE
+  command=("$runtime/bin/python" "$CAPSULE/source/compare_no_mtp.py")
 fi
 if [[ $ARM == padding-kernel ]]; then
   export CAPSULE

@@ -144,7 +144,9 @@ def main():
         ]
     if os.environ.get("PACKAGED_QWEN") == "1":
         assert a.arm == "mtp2" and not a.profile
-        command[command.index("observe_worker.Worker")] = "betterscale.qwen_worker.Worker"
+        command[command.index("observe_worker.Worker")] = (
+            "betterscale.qwen_worker.Worker"
+        )
         command += ["--limit-mm-per-prompt", '{"image":0,"video":0}']
     if os.environ.get("FULL_MTP"):
         assert a.arm == "mtp" + os.environ["FULL_MTP"]
@@ -166,11 +168,51 @@ def main():
                 )
             ),
         ]
+    comparison = os.environ.get("COMPARE_NO_MTP")
+    if comparison:
+        assert (
+            comparison in ("baseline", "candidate")
+            and a.arm == "async"
+            and not a.profile
+        )
+        assert not os.environ.get("FULL_MTP") and not os.environ.get("PACKAGED_QWEN")
+        command[command.index("observe_worker.Worker")] = (
+            "betterscale.qwen_worker.Worker"
+            if comparison == "candidate"
+            else "vllm_ascend.worker.worker.NPUWorker"
+        )
+        command += ["--limit-mm-per-prompt", '{"image":0,"video":0}']
+        if comparison == "candidate":
+            command += [
+                "--compilation-config",
+                json.dumps(
+                    dict(
+                        cudagraph_mode="FULL",
+                        cudagraph_capture_sizes=[
+                            1,
+                            2,
+                            4,
+                            8,
+                            16,
+                            32,
+                            64,
+                            128,
+                            256,
+                            512,
+                            1024,
+                            1536,
+                            2048,
+                        ],
+                        max_cudagraph_capture_size=2048,
+                    )
+                ),
+            ]
     receipt = dict(
         status="STARTED",
         profile_only=os.environ.get("PROFILE_ONLY") == "1",
         compilation_cache_root=os.environ.get("VLLM_CACHE_ROOT"),
         arm=a.arm,
+        comparison=comparison,
         pack_conv=os.environ.get("SERVING_PACK_CONV") == "1",
         full_mtp=os.environ.get("FULL_MTP"),
         padded_gdn=os.environ.get("PADDED_PREFILL") == "1",
@@ -196,14 +238,22 @@ def main():
             if time.monotonic() > deadline:
                 raise TimeoutError("readiness deadline")
             time.sleep(2)
-        request(url, prompt[:512], 16)
+        for length in ([512, 1024, 2048] if comparison else [512]):
+            request(url, prompt[:length], 16)
         with concurrent.futures.ThreadPoolExecutor(8) as pool:
             list(pool.map(lambda i: request(url, prompt[: 512 + i], 16), range(8)))
-            for concurrency in ([] if os.environ.get("PROFILE_ONLY") == "1" else [1, 4, 8]):
+            cases = (
+                [(1, 512), (1, 1024), (1, 2048), (4, None), (8, None)]
+                if comparison
+                else [(c, None) for c in [1, 4, 8]]
+            )
+            for concurrency, single_length in (
+                [] if os.environ.get("PROFILE_ONLY") == "1" else cases
+            ):
                 for repeat in range(2):
                     # Identical population across arms; arrivals concurrent within cohort.
                     prompts = [
-                        prompt[: [512, 2048, 1024, 1536][i % 4]]
+                        prompt[: single_length or [512, 2048, 1024, 1536][i % 4]]
                         for i in range(concurrency)
                     ]
                     start = time.perf_counter()
@@ -212,6 +262,7 @@ def main():
                     receipt["cohorts"].append(
                         dict(
                             concurrency=concurrency,
+                            single_length=single_length,
                             repeat=repeat,
                             elapsed_s=elapsed,
                             tokens_per_s=64 * concurrency / elapsed,
