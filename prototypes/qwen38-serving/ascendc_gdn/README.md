@@ -70,3 +70,11 @@ H and O graph stages using native/owned/owned/native twice,30replays/measurement
 These are graph-stage costs (native adapter tasks versus raw owned launch), not
 an isolated attribution of all H savings to initialization. O's matrix algorithm
 is unchanged. No model/HTTP, msprof/TraceLoom or service integration in this probe.
+
+Follow-up `ascendc-gdn-stages-control1` uses build2 (owned initialization OFF)
+with the same stage harness and also passes exact checks. Owned H means
+.09597/.12244/.13155ms; its native H .11269/.13897/.14808ms. Thus the raw-boundary
+control alone saves roughly .0165ms here; the ON result supports additional
+initialization savings, especially four requests. OFF and ON are separate admitted
+runs (their native controls vary), not a single interleaved ON/OFF confidence study.
+Do not present the cross-run difference as a precise guaranteed gain.
