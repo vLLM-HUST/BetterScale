@@ -133,7 +133,9 @@ class RemoteMoE(ArchQwen38MoE):
             # Do not skip this: native shared down projection is collective.
             self.shared_expert(flat)
             result = torch.empty_like(flat)
-        result = group.broadcast(result, src=0)
+        torch.distributed.broadcast(
+            result, src=group.first_rank, group=group.device_group
+        )
         return result.reshape_as(hidden)
 
 
@@ -166,10 +168,14 @@ class AttentionRoot(Qwen38ForCausalLM):
         return ".mlp.experts." not in name and super().accepts_checkpoint_tensor(name)
 
     def load_weights(self, weights):
+        from ple_metadata import ExactPLEMetadata
+
         auxiliary = set()
+        ple_metadata = ExactPLEMetadata()
 
         def base_weights():
             for name, value in weights:
+                value = ple_metadata.restore(name, value)
                 path, leaf = name.rsplit(".", 1)
                 if path in self.quantized_qsa and leaf in (
                     "weight_scale",
@@ -204,4 +210,5 @@ class AttentionRoot(Qwen38ForCausalLM):
             )
         for module in self.quantized_qsa.values():
             module.finish()
+        self.repaired_ple_metadata = tuple(ple_metadata.repaired)
         return loaded | auxiliary

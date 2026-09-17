@@ -15,6 +15,7 @@ p = argparse.ArgumentParser()
 p.add_argument("--directory", type=Path, required=True)
 p.add_argument("--build", type=Path, required=True)
 p.add_argument("--construct-only", action="store_true")
+p.add_argument("--decode-graph", action="store_true")
 a = p.parse_args()
 rank = int(os.environ["RANK"])
 
@@ -101,6 +102,9 @@ with (
         # prompt/quality sampling is a later gate after all-layer transport.
         ids = [9707, 11, 1879]
         generated = []
+        decode_graph = None
+        decode_inputs = None
+        graph_shadow_error = None
         for wave in range(4):
             count = len(ids)
             start = 0 if wave == 0 else 3 + wave - 1
@@ -118,20 +122,66 @@ with (
                 fresh_prefill=wave == 0,
             )
             cfg.remote_expert_priority = int(wave == 0)
-            generation.add_(1)
-            status.zero_()
-            with context.activate():
-                hidden, _, _, valid = root.forward_request_owned_continuous_ple(
+
+            def forward():
+                generation.add_(1)
+                status.zero_()
+                with context.activate():
+                    return root.forward_request_owned_continuous_ple(
+                        tokens,
+                        positions=positions,
+                        mailbox=mailbox,
+                        generation=generation,
+                        response_payload=response,
+                        status=status,
+                        slot_ids=slots,
+                        request_generations=identities,
+                        destination_generations=identities,
+                    )
+
+            if a.decode_graph and wave == 1:
+                # Preserve the exact post-prefill State for eager-vs-replay.
+                # Full copies are a correctness-fixture cost, never serving work.
+                states = [
+                    (state.tensor, state.tensor.clone())
+                    for _, state in root.named_states()
+                ]
+                eager_hidden, _, _, eager_valid = forward()
+                expected = eager_hidden.clone()
+                assert bool(eager_valid[:count].all().cpu())
+                for state, saved in states:
+                    state.copy_(saved)
+                capture_stream = torch.npu.Stream()
+                capture_stream.wait_stream(torch.npu.current_stream())
+                decode_graph = torch.npu.NPUGraph()
+                with torch.npu.stream(capture_stream):
+                    with torch.npu.graph(decode_graph):
+                        graph_output = forward()
+                capture_stream.synchronize()
+                for state, saved in states:
+                    state.copy_(saved)
+                decode_inputs = (
                     tokens,
-                    positions=positions,
-                    mailbox=mailbox,
-                    generation=generation,
-                    response_payload=response,
-                    status=status,
-                    slot_ids=slots,
-                    request_generations=identities,
-                    destination_generations=identities,
+                    positions,
+                    context.batch_topology.sequence_lengths,
                 )
+                decode_graph.replay()
+                hidden, _, _, valid = graph_output
+                torch.npu.synchronize()
+                graph_shadow_error = float(
+                    (hidden.float() - expected.float()).norm()
+                    / expected.float().norm().clamp_min(1e-9)
+                )
+                assert graph_shadow_error < 0.001, graph_shadow_error
+                del states, expected
+            elif a.decode_graph and wave > 1:
+                decode_inputs[0].copy_(tokens)
+                decode_inputs[1].copy_(positions)
+                decode_inputs[2].copy_(context.batch_topology.sequence_lengths)
+                decode_graph.replay()
+                hidden, _, _, valid = graph_output
+            else:
+                hidden, _, _, valid = forward()
             assert bool(valid[:count].all().cpu())
             logits = root.compute_logits(hidden[:, -1:])
             assert not bool(torch.isnan(logits).any().cpu())
@@ -142,6 +192,8 @@ with (
             ids = [int(token.cpu()[0])]
             generated.extend(ids)
             stage("wave", wave=wave, token=ids[0])
+        if decode_graph is not None:
+            decode_graph.reset()
         ple.close()
         torch.distributed.barrier()
         count = cfg.remote_expert_transport.close() if rank == 0 else None
@@ -152,6 +204,9 @@ with (
                     scope="eager full48 target, real PLE, four waves; not quality",
                     output_ids=generated,
                     calls=count,
+                    decode_graph=bool(a.decode_graph),
+                    graph_shadow_relative_l2=graph_shadow_error,
+                    repaired_ple_metadata=root.repaired_ple_metadata,
                 ),
                 indent=2,
             )

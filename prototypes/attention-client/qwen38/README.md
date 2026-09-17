@@ -86,3 +86,25 @@ from that old branch was an invalid assumption. Keep this dependency explicit.
 The private native runtime overlay combines Python source820103bf with the
 September7 mapped-QSA wheel; its receipt lives in `runs/qwen38-native-runtime-20260917`.
 Preserve CANN's PYTHONPATH when adding the overlay (otherwise TBE import fails).
+
+### Exact PLE metadata repair
+
+The downloaded quantized snapshot has BF16 `layer_multipliers`,
+`ngram_heads_offsets` and `ngram_heads_vocab_sizes`. These are semantic integer
+buffers, not activations; BF16 rounding destroys the PLE hash/index contract.
+The colocated original checkpoint retains int64. Text configs match; converting
+all three original buffers to BF16 reproduces the quantized snapshot exactly.
+Sampled unquantized router and embedding rows also match.
+
+`ple_metadata.py` restores the three original buffers without changing either
+snapshot, with explicit dtype/shape/cast checks. **Results belong to a repaired
+checkpoint**, not the untouched Eco-Tech export. The TP2 real attention load then
+passed (48target layers,60quantized projections, actual PLE ownership, no routed
+weights): allocated9,865,748,480bytes/rank, reserved12,002,000,896bytes/rank including
+the4GiB State budget. This is a construction gate, not full forward quality.
+
+Full target runner: `bash prototypes/attention-client/qwen38/run_model.sh 1,3,4,5,6,7`.
+Use `... 1,3 --construct-only` for the already-passed loading gate. `--decode-graph`
+is the following eager-vs-replay State-shadow gate and is not yet qualified.
+Run capsules snapshot Python and admit only their selected devices. Do not
+manually bypass an occupied card or overwrite a capsule's source/binary closure.

@@ -25,3 +25,7 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 - **Build or publish BetterScale's Python distribution:** read
   [release-python-package](scenarios/release-python-package/GUIDE.md) before
   packaging, installing the public Worker, or publishing to PyPI.
+
+- **Integrate separated attention/expert serving:** read
+  [integrate-separated-experts](scenarios/integrate-separated-experts/GUIDE.md)
+  before changing the persistent expert ABI or adapting Qwen38 checkpoints.
