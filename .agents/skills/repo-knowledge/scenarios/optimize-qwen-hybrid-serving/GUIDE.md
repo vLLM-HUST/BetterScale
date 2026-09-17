@@ -485,3 +485,31 @@ fixed native .587–.773ms with unequal capacity/state glue. Runtime is a ctypes
 prototype requiring TASK_QUEUE_ENABLE=0, stable resource lifetimes and packed
 positive request prefix/empty suffix; do not install it into asynchronous Torch
 submission unchanged. No fullmodel/mixed-role/MTP/PCP/service qualification.
+
+### K-V pool and actual-role non-regression gate
+
+Fletcher rejected keeping V-K compatibility as a fixed constraint. Current owned
+prototype uses one K-V FP32 pool for chunk H and a K-V-aware single-token Triton
+decode adapted from pinned vLLM FLA. Direct H state mode requires owned-pair
+initialization ON. Native V-K decode MUST NOT consume this pool. Temporal copy
+specs are whole-row opaque; convolution cache is separate. Shape equality128x128
+is not layout compatibility. Production allocation/routing remains unchanged.
+
+`ascendc_gdn/README.md` owns the precise contract and evidence. hw3 pool4/7a01f9c
+with build4/f6f1bed passes50 checks (32native-chunk/16actual-role/2decode-policy),
+including poisoned-NaN cold slots and continuation. Native-chunk max0; mixed
+native recurrent comparisons differ at most .000244 output/.003468 state.
+Complete core-GDN ABBA graph timings include capacity, transformations and state
+handling:512prefill .761→.692ms; [1,1,256,254] mixed .853→.674ms; four cold64
+prefills .944→.652ms; [1,127,63,321] mixed .997→.692ms; four decode .03046→.02996ms.
+All eight tested rows are no slower. DecodeC1 independently passes, owned~15us
+versus steady native~17us (native first timing~59us retained as an outlier).
+Common normalization, convolution/projections, host metadata publication and
+full-service effects are outside these timings. Metadata is one536-byte pinned
+slab perwave; asynchronous slab reuse/overlap is not proved.
+
+Avoid paid dead ends: build5/pool2's V-K UB conversion failed numerical checks
+and was removed, not shipped.128-wide recurrent blocks repeatedly exceeded192KiB
+UB; accepted decode uses two64-wide V tiles in a single head program. Earlier
+address-only/one-program-per-Vtile variants were correct but slower than native.
+Do not substitute those or claim an end-to-end service win from the microprobe.

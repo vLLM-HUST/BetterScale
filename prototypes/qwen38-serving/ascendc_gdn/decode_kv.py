@@ -119,7 +119,7 @@ def fused_recurrent_gated_delta_rule_fwd_kernel(
                 state_idx = tl.load(
                     ssm_state_indices + i_n * stride_indices_seq + i_t
                 ).to(tl.int64)
-                # Skip if state index is invalid (NULL_BLOCK_ID=0)
+                # Owned pool uses negative indices for invalid rows; slot zero is valid.
                 p_h0 = h0 + state_idx * stride_init_state_token
             else:
                 p_h0 = h0 + bos * HV * V * K
@@ -135,7 +135,7 @@ def fused_recurrent_gated_delta_rule_fwd_kernel(
                 b_q = b_q / tl.sqrt(tl.sum(b_q * b_q) + 1e-6)
                 b_k = b_k / tl.sqrt(tl.sum(b_k * b_k) + 1e-6)
             b_q = b_q * scale
-            # [BV, BK]
+            # [BK, BV]
             if not IS_KDA:
                 b_g = tl.load(p_g).to(tl.float32)
                 b_h *= exp(b_g)
@@ -149,7 +149,7 @@ def fused_recurrent_gated_delta_rule_fwd_kernel(
             else:
                 b_beta = tl.load(p_beta).to(tl.float32)
             b_v *= b_beta
-            # [BV, BK]
+            # [BK, BV]
             b_h = tl.fma(b_k[:, None], b_v[None, :], b_h)
             # [BV]
             b_o = tl.sum(b_h * b_q[:, None], 0)
@@ -161,7 +161,7 @@ def fused_recurrent_gated_delta_rule_fwd_kernel(
                 final_state_idx = tl.load(
                     ssm_state_indices + i_n * stride_indices_seq + i_t
                 ).to(tl.int64)
-                # Only store if state index is valid (not NULL_BLOCK_ID=0)
+                # Only store valid owned-pool slots.
                 if final_state_idx >= 0:
                     p_ht = ht + final_state_idx * stride_final_state_token
                     p_ht = p_ht + i_hv * V * K + o_k[:, None] * V + o_v[None, :]

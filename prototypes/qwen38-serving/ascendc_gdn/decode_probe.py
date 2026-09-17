@@ -13,6 +13,8 @@ init_device_properties_triton()
 from decode_kv import fused_recurrent_gated_delta_rule_fwd as decode
 
 root = Path(os.environ["CAPSULE"])
+D = int(os.environ.get("GDN_DECODE_REQUESTS", "4"))
+assert D in (1, 2, 4)
 torch.manual_seed(107)
 
 
@@ -31,15 +33,15 @@ with torch.inference_mode():
     bank = seed.clone()
     native_bank = seed.transpose(-1, -2).contiguous()
     q = torch.nn.functional.normalize(
-        torch.randn(1, 4, 8, 128, device="npu"), dim=-1
+        torch.randn(1, D, 8, 128, device="npu"), dim=-1
     ).bfloat16()
     k = torch.nn.functional.normalize(torch.randn_like(q.float()), dim=-1).bfloat16()
-    v = torch.randn(1, 4, 24, 128, device="npu").bfloat16()
-    g = -torch.rand(1, 4, 24, device="npu") * 0.1
-    beta = torch.rand(1, 4, 24, device="npu").bfloat16()
-    cu = torch.arange(5, device="npu", dtype=torch.int32)
-    slots = torch.tensor([5, 2, 7, 1], device="npu", dtype=torch.int32)
-    actual = torch.tensor([0, 1, 1, 1, 1], device="npu", dtype=torch.int32)
+    v = torch.randn(1, D, 24, 128, device="npu").bfloat16()
+    g = -torch.rand(1, D, 24, device="npu") * 0.1
+    beta = torch.rand(1, D, 24, device="npu").bfloat16()
+    cu = torch.arange(D + 1, device="npu", dtype=torch.int32)
+    slots = torch.tensor([5, 2, 7, 1][:D], device="npu", dtype=torch.int32)
+    actual = torch.tensor([0] + [1] * D, device="npu", dtype=torch.int32)
 
     def candidate():
         return decode(q, k, v, g, beta, 128**-0.5, bank, True, cu, slots)[0]
@@ -70,7 +72,7 @@ with torch.inference_mode():
     native_bank.copy_(seed.transpose(-1, -2))
     results = []
     for ids in ([5, 2, 7, 1], [3, 6, 2, 4], [1, 2, 5, 7], [7, 5, 3, 6]):
-        slots.copy_(torch.tensor(ids, device="npu", dtype=torch.int32))
+        slots.copy_(torch.tensor(ids[:D], device="npu", dtype=torch.int32))
         graphs["candidate"].replay()
         graphs["native"].replay()
         torch.npu.synchronize()
@@ -89,6 +91,7 @@ with torch.inference_mode():
     for name in ["native", "candidate", "candidate", "native"] * 2:
         times[name].append(measure(graphs[name]))
     result = {
+        "requests": D,
         "status": (
             "PASS"
             if all(v["close"] and v["finite"] for r in results for v in r.values())

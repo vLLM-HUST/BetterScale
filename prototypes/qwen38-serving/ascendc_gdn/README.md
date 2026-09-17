@@ -78,3 +78,97 @@ control alone saves roughly .0165ms here; the ON result supports additional
 initialization savings, especially four requests. OFF and ON are separate admitted
 runs (their native controls vary), not a single interleaved ON/OFF confidence study.
 Do not present the cross-run difference as a precise guaranteed gain.
+
+## Direct K-V state ownership — current prototype
+
+Fletcher chose a compute-friendly shared pool layout over preserving the donor's
+V-K storage convention. H now reads/writes FP32 `[slot,24,K,V]` directly, using a
+device `[request,2]` INT64 table `(slot,has_initial_state)` in its otherwise unused
+chunk-index argument. Initial and final pointers name the SAME bank. Cold slots
+start from zero in UB; no gather/where/scatter or separate final-state allocation.
+Positive-length rows must form a packed prefix, slots must be unique/in range;
+empty suffix rows perform no state access. State-pool mode REQUIRES the
+BS_GDN_OWNED_INIT=ON build: unrelated pairs must not reread/write another pair's
+mutable initial state. Use the qualified build4 artifact, not older H/O libraries.
+The ctypes prototype has no automatic binary ABI/version negotiation yet.
+
+`pool_forward` is the owned entry; the old `__call__` is the non-pool control.
+`pool_probe.py` publishes all dynamic metadata in one pinned536-byte H2D slab;
+that publication is once per wave, not per layer. Source asserts capacity and
+exclusive-slot ownership before publication. Its single pinned buffer is reused
+only after synchronization; asynchronous multi-wave ownership is not implemented.
+
+`decode_kv.py` is a limited nonSpec one-token decode adaptation of pinned vLLM
+752a3a50 `model_executor/layers/fla/ops/fused_recurrent.py` (original notices kept).
+It uses K-V address/tensor orientation, FP32 state, one program per request/head,
+and two64-wide V tiles within that program. No global state transpose. Explicit
+FMA creates tiny FP32 differences versus native. Every nonempty cu segment MUST
+have one token; noMTP/KDA/vector-beta/general-head-shape support claimed. Native
+AscendC recurrent remains the comparison, not this prototype's implementation.
+
+Impact audit: donor gdn.py owns prefill and recurrent consumers; its current
+prefill path gathers and transposes V-K state, then reverses that on writeback.
+Qwen's state-shape calculator specifies V,K (both128 in this checkpoint).
+`get_temporal_copy_spec` copies entire state rows without interpreting K/V;
+convolution cache is separate. Thus a new owned serving path can allocate K-V
+without changing opaque temporal copies or convolution, but must route ALL its
+readers to K-V-aware kernels. Never pass this bank to native recurrent or silently
+reinterpret an existing live V-K pool. MTP/PCP/APC and external transfer protocols
+are not qualified by this audit. No production allocation/Worker was changed.
+
+### Acceptance and complete core-GDN timing
+
+hw3 `ascendc-gdn-pool4`, source7a01f9c, build4/f6f1bed:
+- Eight partitions, including mixed cold/continuing requests. Cold slots seeded
+  with NaN, proving cold startup ignores stale pool contents.32 output/bank/second
+  pass comparisons against native chunk are max_abs0.
+- Actual native role control uses recurrent decode prefix plus chunk prefill tail,
+  native gather/transpose/clear/writeback and output concatenation.16 additional
+  checks pass; mixed chunk-vs-recurrent differences peak .000244 output/.003468
+  state, within atol=.01/rtol=.01. Pure-decode policy adds2 passing checks.
+- Prefill/mixed reuse ONE dynamic graph; pure decode has its own graph, NOT the
+  entire chunk pipeline. Both consume the same K-V pool contract. No partition
+  enumeration. NaN cold slots, inactive rows and changed slot ownership included.
+- Same-process ABBA twice,20replays/measurement, complete core-GDN graph means(ms):
+
+| scheduled lengths | roles | native | owned |
+| --- | --- | ---: | ---: |
+|512|one prefill|.76077|.69236|
+|1,511|two cold prefills|.85150|.68772|
+|1,1,256,254|two decode + two prefill|.85286|.67432|
+|129,63,1|three prefills|.87989|.65967|
+|64,64,64,64|four cold prefills|.94384|.65229|
+|1,1,1,1|four decode|.03046|.02996|
+|512|one prefill, changed slot|.76384|.69164|
+|1,127,63,321|one decode + three prefill|.99700|.69214|
+
+These timings include capacity work, layout transformations within the GDN
+pipeline, state management and role merge. Common q/k normalization is prepared
+outside both arms; convolution/projections, host metadata preparation/H2D,
+HTTP/model service and profiling overhead are NOT included. This is a bounded
+core-GDN non-regression result, not an end-to-end service claim.
+
+`ascendc-gdn-kv-decode-c1` separately passes four slot-changing continuation
+rounds, max output4.77e-7/state2.98e-8. Candidate samples14.92–15.58us; native
+steady samples16.81–16.96us plus a first58.999us outlier (retained, not used to
+advertise a large gain). Four-request decode9 samples26.67–26.83us versus native
+27.55–30.42us. pool4's capacity512 decode graph is slower than that minimal decode
+probe, hence use pool4 numbers for the full policy table.
+
+### Rejected/diagnostic capsules
+
+- pool1: direct K-V state correct, but old baseline used generic where/copy glue;
+  superseded by the source-faithful actual-role control in pool4.
+- build5/pool2: attempted in-UB V-K conversion; numerical mismatch/NaNs. Fletcher
+  redirected to shared K-V ownership; that conversion branch was removed. Never
+  use its timings or binary as a valid candidate.
+- decode1: K-V address-only adaptation correct but~55us versus native~30us.
+  decode3 increases V tile32→64 (~38us), decode4 also changes tensor orientation
+  (~34us). decode2/5/6/7 attempted128-wide blocks but exceeded192KiB UB, including
+  variants with single-token specialization/FMA/reduced buffering. Stop retrying
+  that tile without a changed memory design. decode8 hit Triton's prohibition
+  on return inside a loop; decode9 hoists the invalid-slot guard and processes
+  two64-wide tiles per head, giving the accepted performance above.
+
+Local evidence mirrors capsules with `hw3-` prefixes under the established
+qwen38-tp2-serving evidence root. No installation, service edit or remote Git push.
