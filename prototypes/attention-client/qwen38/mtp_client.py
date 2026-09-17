@@ -392,9 +392,11 @@ def run_mtp(root, cfg, args, rank, stage):
         ),
         scope="full48 target plus BF16 MTP greedy speculative closure; not quality",
         topology=(
-            "TP2xDP4_EP8_colocated" if args.colocated else "TP2_sources_E4_separated"
+            f"TP{args.tp_size}xDP{args.sources}_EP8_colocated" if args.colocated else f"TP{args.tp_size}_sources_separated"
         ),
         source=args.source,
+        tp_size=args.tp_size,
+        sources=args.sources,
         batch_size=batch,
         mtp_tokens=k,
         state_gib=args.state_gib,

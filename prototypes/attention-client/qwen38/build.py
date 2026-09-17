@@ -11,12 +11,18 @@ from pathlib import Path
 import shutil
 import subprocess
 from channel_layout import ChannelLayout
+from expert_partition import ExpertPartition
 
 p = argparse.ArgumentParser()
 p.add_argument("output", type=Path)
 p.add_argument("--rows", type=int, default=32)
+p.add_argument("--owners", type=int, choices=(3, 4), default=4)
+p.add_argument("--sources", type=int, choices=(2, 4, 5), default=2)
 a = p.parse_args()
-layout = ChannelLayout(a.rows)
+layout = ChannelLayout(a.rows, a.owners, a.sources)
+partition = ExpertPartition(a.owners)
+groups = (partition.slots + 3) // 4 * 4
+ends_storage = (groups + 7) // 8 * 8
 repo = Path(__file__).resolve().parents[3]
 local = Path(__file__).resolve().parent
 base = local.parent / "device-service"
@@ -33,6 +39,9 @@ protocol = protocol.replace(
     "HIDDEN = 2048, INNER = 512", "HIDDEN = 2560, INNER = 640"
 ).replace("LAYERS = 48", "LAYERS = 49")
 protocol = protocol.replace("TOKENS = 32", f"TOKENS = {layout.rows}")
+protocol = protocol.replace(
+    "LOCAL_EXPERTS = 128", f"LOCAL_EXPERTS = {partition.slots}"
+).replace("GROUPS = 128", f"GROUPS = {groups}")
 protocol = protocol.replace(
     "constexpr int MAP =",
     f"constexpr int SOURCE_SCALES = {layout.scales}, SOURCE_PAYLOAD = {layout.payload};\nconstexpr int MAP =",
@@ -57,6 +66,11 @@ coordinator = coordinator.replace(
     '#include "server_workers.hpp"\n#include "priority_policy.hpp"\n' + coordinator
 )
 shutil.copyfile(local / "server_cube.cpp", source / "persistent_cube.cpp")
+for filename in ("server_workers.hpp", "persistent_cube.cpp"):
+    path = source / filename
+    text = path.read_text().replace("e < 128", "e < LOCAL_EXPERTS")
+    text = text.replace("offset < 256", f"offset < {ends_storage * 2}")
+    path.write_text(text)
 client = (local.parent / "qwen-next/client_kernel.cpp").read_text()
 assert "constexpr int H = 2048" in client
 client = client.replace("constexpr int H = 2048", "constexpr int H = 2560").replace(
@@ -106,7 +120,14 @@ start = client.index('extern "C" __global__ __aicore__ void\nneural_collect_redu
 end = client.index('extern "C" __global__ __aicore__ void\nneural_retire', start)
 client = client[:start] + client[end:]
 client = client.replace("META(neural_collect_reduce)", "")
+client = client.replace("owner < 4", f"owner < {a.owners}").replace(
+    "/ 128", f"/ {partition.slots}"
+)
 (source / "client_kernel.cpp").write_text(client)
+if a.sources > 2:
+    from topology_codegen import expand_sources
+
+    expand_sources(source, a.sources)
 env = dict(os.environ, OUTPUT_DIR=str(out), LAUNCH_SOURCE=str(source / "launch.cpp"))
 for script, unit, name in (
     ("build.sh", "persistent_vector.cpp", "persistent_vector"),
@@ -124,16 +145,17 @@ for script, unit, name in (
 (out / "abi.json").write_text(
     json.dumps(
         dict(
-            version=3,
+            version=5 if a.sources > 2 else (3 if a.owners == 4 else 4),
             kernel_timeout_us=1200000000,
             model="qwen38",
-            server_config_words=27,
+            server_config_words=29 if a.sources > 2 else 27,
             client_config_words=17,
             weight_pointer_columns=4,
             hidden=2560,
             inner=640,
             topk=10,
-            owners=4,
+            owners=a.owners,
+            sources=a.sources,
             rows=layout.rows,
             source_scale_words=layout.scales,
             source_payload_words=layout.payload,

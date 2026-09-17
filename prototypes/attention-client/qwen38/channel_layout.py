@@ -17,8 +17,14 @@ def align(value, multiple):
 @dataclass(frozen=True)
 class ChannelLayout:
     rows: int = 32
+    owners: int = 4
+    sources: int = 2
 
     def __post_init__(self):
+        if self.sources not in (2, 4, 5):
+            raise ValueError("server source capacity must be2,4,5")
+        if self.owners not in (3, 4):
+            raise ValueError("external wire supports E3/E4")
         # Coordinator/worker routing metadata currently occupies one 64KiB UB.
         # This is a deliberate bound, not a hardware serving-capacity claim.
         if self.rows not in (32, 128, 256, 512, 1024):
@@ -56,7 +62,8 @@ class ChannelLayout:
             inner=640,
             topk=10,
             experts=512,
-            owners=4,
+            owners=self.owners,
+            sources=self.sources,
             rows=self.rows,
             input="target_int8_scale_mtp_bf16",
             client_words=17,
@@ -65,11 +72,20 @@ class ChannelLayout:
 
     @classmethod
     def from_abi(cls, abi):
-        layout = cls(abi["rows"])
-        if abi.get("version") == 2 and layout.rows == 32:
+        layout = cls(abi["rows"], abi.get("owners", 4), abi.get("sources", 2))
+        if (
+            abi.get("version") == 2
+            and layout.rows == 32
+            and layout.owners == 4
+            and layout.sources == 2
+        ):
             return layout
         if (
-            abi.get("version") != 3
+            (
+                abi.get("version") not in (3, 4, 5)
+                or (abi.get("version") == 3 and layout.owners != 4)
+                or (abi.get("version") < 5 and layout.sources != 2)
+            )
             or abi.get("source_scale_words") != layout.scales
             or abi.get("source_payload_words") != layout.payload
         ):

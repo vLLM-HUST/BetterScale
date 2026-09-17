@@ -12,15 +12,23 @@ from weights import Checkpoint
 p = argparse.ArgumentParser()
 p.add_argument("--directory", type=Path, required=True)
 p.add_argument("--build", type=Path, required=True)
+p.add_argument("--source", type=int, default=0)
 a = p.parse_args()
 torch.set_num_threads(2)
 torch.npu.set_device(0)
 torch_npu.npu.config.allow_internal_format = True
 torch.manual_seed(777)
 checkpoint = Checkpoint()
-experts = [0, 1, 127, 128, 129, 255, 256, 383, 384, 511]
+from channel_layout import ChannelLayout
+
+layout = ChannelLayout.from_abi(json.loads((a.build / "abi.json").read_text()))
+experts = (
+    [0, 1, 170, 171, 172, 341, 342, 343, 510, 511]
+    if layout.owners == 3
+    else [0, 1, 127, 128, 129, 255, 256, 383, 384, 511]
+)
 weights = [checkpoint.expert(0, e)[1] for e in experts]
-session = Session(a.directory, a.build)
+session = Session(a.directory, a.build, source=a.source)
 records = []
 for n in sorted({1, 4, 32, session.layout.rows - 1, session.layout.rows}):
     x = torch.randn(n, 2560, dtype=torch.bfloat16, device="npu")
@@ -108,7 +116,7 @@ for n in sorted({1, 4, 32, session.layout.rows - 1, session.layout.rows}):
         )
     graph.reset()
 count = session.close()
-(a.directory / "client.json").write_text(
+(a.directory / (f"client{a.source}.json" if a.source else "client.json")).write_text(
     json.dumps(dict(status="PASS", calls=count, cases=records), indent=2)
 )
-print("PASS E4 wire", records, flush=True)
+print(f"PASS E{layout.owners} source{a.source} wire", records, flush=True)

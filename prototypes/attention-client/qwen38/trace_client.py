@@ -443,6 +443,7 @@ def run_trace(root, cfg, args, rank, stage):
             scope="SWE-derived retained State workload; native EP8 same-model control, not unmodified vLLM",
             topology="colocated" if args.colocated else "separated",
             source=args.source,
+            tp_size=args.tp_size,
             seconds=elapsed,
             truncated_gate=bool(args.trace_turns or args.trace_output_cap),
             mtp_tokens=args.mtp_tokens,

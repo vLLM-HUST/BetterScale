@@ -1,0 +1,113 @@
+{
+  "scope": "hardware qualification gates, not equal-load performance or language quality; older TP1 receipts have stale TP2 topology text, corrected here from launcher inputs",
+  "model": [
+    {
+      "topology": "TP1x1+E4",
+      "capsule": "qwen38-model-20260917T162525Z",
+      "attention_processes": 1,
+      "all_pass": true,
+      "all_same_state_graph_shadow_exact": true,
+      "batch_per_source": 2,
+      "mtp_tokens": 1,
+      "decode_graph": true
+    },
+    {
+      "topology": "TP1x8/EP8",
+      "capsule": "qwen38-model-20260917T162952Z",
+      "attention_processes": 8,
+      "all_pass": true,
+      "all_same_state_graph_shadow_exact": true,
+      "batch_per_source": 2,
+      "mtp_tokens": 1,
+      "decode_graph": true
+    },
+    {
+      "topology": "TP1x4+E4",
+      "capsule": "qwen38-model-20260917T163857Z",
+      "attention_processes": 4,
+      "all_pass": true,
+      "all_same_state_graph_shadow_exact": true,
+      "batch_per_source": 2,
+      "mtp_tokens": 1,
+      "decode_graph": true
+    }
+  ],
+  "wire": [
+    {
+      "layout": "e3-sources5-wire",
+      "capsule": "qwen38-wire-20260917T163717Z",
+      "clients": 5,
+      "owners": 3,
+      "all_pass": true,
+      "max_sampled_relative_l2": 6.540666163346032e-06,
+      "completed_counts": [
+        [
+          25,
+          25,
+          25,
+          25,
+          25
+        ],
+        [
+          25,
+          25,
+          25,
+          25,
+          25
+        ],
+        [
+          25,
+          25,
+          25,
+          25,
+          25
+        ]
+      ],
+      "coalesced_calls": [
+        5,
+        5,
+        5
+      ]
+    },
+    {
+      "layout": "e4-sources4-wire",
+      "capsule": "qwen38-wire-20260917T163804Z",
+      "clients": 4,
+      "owners": 4,
+      "all_pass": true,
+      "max_sampled_relative_l2": 3.271886953370995e-06,
+      "completed_counts": [
+        [
+          25,
+          25,
+          25,
+          25
+        ],
+        [
+          25,
+          25,
+          25,
+          25
+        ],
+        [
+          25,
+          25,
+          25,
+          25
+        ],
+        [
+          25,
+          25,
+          25,
+          25
+        ]
+      ],
+      "coalesced_calls": [
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

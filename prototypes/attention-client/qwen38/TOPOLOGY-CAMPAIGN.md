@@ -84,3 +84,34 @@ E3's Python catalog now has an explicit171/171/170 partition and zero-padded
 last storage slot. CPU routing coverage passes for every expert ID. The binary
 still advertises E4/two sources: **E3 launch remains unavailable** until its
 route mapping, descriptor and weight ABI are changed and verified together.
+
+## Expanded protocol checkpoint
+
+`topology-gates-result.json` now records full48+MTP FULL-shadow passes for one
+TP1+E4, TP1×8/EP8 and TP1×4+E4. Early TP1 receipt topology text still saysTP2;
+launcher inputs and this summary carry the correct topology, and new receipts
+explicitly record TP width/source count. Do not alter historical raw receipts.
+
+E3/two-source binary ABI4 passed its real-layer wire gate. ABI5 adds4/5 source
+mailboxes independently of the two staging slots. Source/output pointer tables
+are config27/28; the server config is29 words, client config remains17 words
+(with an unused fourth owner pointer forE3). Traces are32 words: generations,
+layers and rows each have `sources` entries, followed by live rows, slot,
+priority, ticket and service rank. Completion counters cover every source.
+`topology_codegen.py` changes only the disconnected generated closure. It does
+not enable old segmented/prefix-pipeline flags.
+
+Five sources+E3 and four sources+E4 passed real layer0, row counts1/4/32/1023/1024,
+changed-input FULL replay and sampled independent arithmetic. Each source
+completed25 calls. E3 observed5 coalesced calls/owner; E4 observed0 in this cold,
+CPU-oracle-interleaved test. This is not evidence against batching or a throughput
+comparison. Full48 TP1×5+E3 is the next hardware gate.
+
+The equal-card workload is now40 distinct SWE sessions so2/4/5/8 attention
+sources receive equal integer seat counts without cloning trajectories. The
+frozen40-session artifact contains1830 full turns; first comparison uses the
+first2 complete turns/session, with no output cap. Full-trajectory results remain
+separate. `run_topology_case.sh` owns a single admitted case and always preserves
+its capsule/exit status; both capacity and trace use C40. Current queued fits:
+TP1×8/EP8 State30GiB, TP1×4+E4 State44GiB, TP2×2+E4 State48GiB, TP2×4/EP8 State34GiB.
+These are test candidates, not passed budgets. Keep scope distinctions intact.

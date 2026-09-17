@@ -26,17 +26,18 @@ def main():
     p.add_argument("--owner", type=int, choices=range(4), required=True)
     p.add_argument("--layers", type=int, default=48)
     p.add_argument("--mtp", action="store_true")
-    p.add_argument("--sources", type=int, choices=(1, 2), default=1)
+    p.add_argument("--sources", type=int, choices=(1, 2, 4, 5), default=1)
     a = p.parse_args()
     layout = ChannelLayout.from_abi(json.loads((a.build / "abi.json").read_text()))
     contract = layout.contract()
+    assert a.sources <= layout.sources
     torch.set_num_threads(2)
     torch.npu.set_device(0)
     torch_npu.npu.config.allow_internal_format = True
     acl = C.CDLL("/usr/local/Ascend/cann-9.0.1/lib64/libascendcl.so")
     acl.aclrtSetOpExecuteTimeOut.argtypes = [C.c_uint32]
     assert acl.aclrtSetOpExecuteTimeOut(1200) == 0
-    catalog = load(a.owner, layers=a.layers, mtp=a.mtp)
+    catalog = load(a.owner, layers=a.layers, mtp=a.mtp, owners=layout.owners)
     api = acl_api()
     path = a.directory / f"expert{a.owner}.sock"
     listener = listen(path)
@@ -85,8 +86,8 @@ def main():
     unused_output = torch.zeros_like(zero)
     engine = Engine(
         a.build,
-        [sources.get(i, closed_source.data_ptr()) for i in range(2)],
-        [outputs.get(i, unused_output.data_ptr()) for i in range(2)],
+        [sources.get(i, closed_source.data_ptr()) for i in range(layout.sources)],
+        [outputs.get(i, unused_output.data_ptr()) for i in range(layout.sources)],
         catalog,
         a.owner,
         tasks=32,
@@ -103,7 +104,7 @@ def main():
     )
     for channel in channels.values():
         channel.send(dict(op="ready"))
-    counts = [0, 0]
+    counts = [0] * layout.sources
     for source_id, channel in channels.items():
         while True:
             message = channel.read()
@@ -134,7 +135,7 @@ def main():
                         output=output_head,
                         control={i: state[i][:8] for i in (0, 1, 2, 43)},
                         slot_headers=[
-                            [s[5][c, :3].cpu().tolist() for c in range(2)]
+                            [s[5][c, :3].cpu().tolist() for c in range(layout.sources)]
                             for s in engine.slots
                         ],
                         enabled=int(engine.config[10].cpu()),

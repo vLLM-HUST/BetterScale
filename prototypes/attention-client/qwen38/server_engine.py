@@ -11,6 +11,7 @@ from pathlib import Path
 import torch
 import torch_npu
 from channel_layout import ChannelLayout
+from expert_partition import ExpertPartition
 
 
 class Engine:
@@ -24,10 +25,18 @@ class Engine:
         ), "Reject microbench launch lifetime"
         assert abi["model"] == "qwen38" and abi["client_config_words"] == 17
         assert not abi["prefix_pipeline"]
-        assert len(sources) == len(outputs) == 2 and 0 <= owner < 4
+        assert len(sources) == len(outputs)
         assert 1 <= tasks <= 32 and 1 <= len(catalog) <= 49
         self.layout = ChannelLayout.from_abi(abi)
         rows = self.layout.rows
+        count = self.layout.sources
+        assert len(sources) == count
+        expanded = count > 2
+        trace_words = 32 if expanded else 16
+        partition = ExpertPartition(self.layout.owners)
+        partition.bounds(owner)
+        experts = partition.slots
+        ends_storage = (experts + 7) // 8 * 8
         self.catalog = catalog
         self.weight_table = torch.tensor(
             [
@@ -39,43 +48,51 @@ class Engine:
         )
         assert self.weight_table.shape == (len(catalog), 4)
         for index, (up, down, su, sd) in enumerate(catalog):
-            assert up.shape == (128, 2560, 1280) and down.shape == (128, 640, 2560)
+            assert up.shape == (experts, 2560, 1280) and down.shape == (
+                experts,
+                640,
+                2560,
+            )
             assert (
                 up.dtype == down.dtype == (torch.int8 if index < 48 else torch.bfloat16)
             )
             assert torch_npu.get_npu_format(up) == torch_npu.get_npu_format(down) == 29
             if index < 48:
-                assert su.shape == (128, 1280) and sd.shape == (128, 2560)
+                assert su.shape == (experts, 1280) and sd.shape == (experts, 2560)
                 assert su.dtype == sd.dtype == torch.float32
         self.control = torch.zeros(128, 16, dtype=torch.int32, device="npu")
-        self.trace = torch.full((tasks * 2, 16), -991, dtype=torch.int32, device="npu")
+        self.trace = torch.full(
+            (tasks * 2, trace_words), -991, dtype=torch.int32, device="npu"
+        )
         self.events = torch.zeros(512, 8, dtype=torch.int64, device="npu")
         self.slots = []
         self.auxiliary = []
         self.route_ids = []
         table = []
-        capacity = rows * 10 * 2
+        capacity = rows * 10 * count
         for _ in range(2):
             slot = [
-                torch.empty(2, rows, 2560, dtype=torch.bfloat16, device="npu"),
+                torch.empty(count, rows, 2560, dtype=torch.bfloat16, device="npu"),
                 torch.empty(capacity, 2560, dtype=torch.bfloat16, device="npu"),
                 torch.empty(capacity, 1280, dtype=torch.int32, device="npu"),
                 torch.empty(capacity, 640, dtype=torch.bfloat16, device="npu"),
                 torch.empty(capacity, 2560, dtype=torch.int32, device="npu"),
-                torch.zeros(2, self.layout.map_words, dtype=torch.int32, device="npu"),
-                torch.zeros(128, dtype=torch.int64, device="npu"),
+                torch.zeros(
+                    count, self.layout.map_words, dtype=torch.int32, device="npu"
+                ),
+                torch.zeros(ends_storage, dtype=torch.int64, device="npu"),
             ]
             for w, k, n in ((catalog[0][0], 2560, 1280), (catalog[0][1], 640, 2560)):
                 slot.append(
                     torch.tensor(
-                        [k, n, 128, w.data_ptr(), slot[6].data_ptr(), capacity],
+                        [k, n, experts, w.data_ptr(), slot[6].data_ptr(), capacity],
                         dtype=torch.int64,
                         device="npu",
                     )
                 )
             scales = [
                 torch.empty(n, 8, dtype=torch.float32, device="npu")
-                for n in (rows * 2, capacity, capacity)
+                for n in (rows * count, capacity, capacity)
             ]
             aux = torch.tensor(
                 [t.data_ptr() for t in scales], dtype=torch.int64, device="npu"
@@ -83,7 +100,7 @@ class Engine:
             self.auxiliary.append((scales, aux))
             self.slots.append(slot)
             route_ids = torch.empty(
-                2, self.layout.routes, dtype=torch.int32, device="npu"
+                count, self.layout.routes, dtype=torch.int32, device="npu"
             )
             self.route_ids.append(route_ids)
             table.append(
@@ -95,8 +112,8 @@ class Engine:
         values = [
             self.control.data_ptr(),
             self.table.data_ptr(),
-            *outputs,
-            *sources,
+            *outputs[:2],
+            *sources[:2],
             tasks,
             owner,
             self.trace.data_ptr(),
@@ -110,7 +127,18 @@ class Engine:
             self.weight_table.data_ptr(),
             len(catalog),
         ]
-        assert len(values) == 27
+        if expanded:
+            self.source_pointers = torch.tensor(
+                sources, dtype=torch.int64, device="npu"
+            )
+            self.output_pointers = torch.tensor(
+                outputs, dtype=torch.int64, device="npu"
+            )
+            values.extend(
+                [self.source_pointers.data_ptr(), self.output_pointers.data_ptr()]
+            )
+        assert len(values) == (29 if expanded else 27)
+        assert len(values) == abi["server_config_words"]
         self.config = torch.tensor(values, dtype=torch.int64, device="npu")
         self.lib = C.CDLL(str(root / "launch.so"))
         self.lib.load_server.argtypes = [
@@ -172,8 +200,10 @@ class Engine:
         assert control[0][0] == control[43][0] == 1, control[:3] + control[43:44]
         return dict(
             waves=control[43][1],
-            completed_counts=control[43][4:6],
-            admitted_promotions=control[43][6],
+            completed_counts=control[43][4 : 4 + self.layout.sources],
+            admitted_promotions=control[43][4 + self.layout.sources],
+            trace_sources=self.layout.sources,
+            trace_layout="sources-first-v5" if self.layout.sources > 2 else "legacy-v3",
             rolling_trace=control[43][1] > self.trace.shape[0],
             trace=self.trace[: control[43][1]].cpu().tolist(),
             events=self.events[: control[43][3]].cpu().tolist(),

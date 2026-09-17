@@ -28,7 +28,7 @@ class Bank:
         self.config = torch.tensor(
             [
                 session.local,
-                *session.peers,
+                *(session.peers + [0] * (4 - len(session.peers))),
                 0 if quantized else 48,
                 rows,
                 session.counter.data_ptr(),
@@ -71,7 +71,7 @@ class Session:
         self.peers = []
         self.keys = []
         pids = []
-        for owner in range(4):
+        for owner in range(self.layout.owners):
             channel = connect(Path(directory) / f"expert{owner}.sock")
             channel.sock.settimeout(1200)
             channel.send(

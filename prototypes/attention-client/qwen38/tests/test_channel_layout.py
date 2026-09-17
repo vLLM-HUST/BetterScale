@@ -42,6 +42,21 @@ class ChannelLayoutTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Layout.from_abi(abi)
 
+    def test_e3_requires_distinct_binary_and_channel_identity(self):
+        layout = Layout(1024, 3)
+        abi = dict(
+            version=4,
+            owners=3,
+            rows=1024,
+            source_scale_words=layout.scales,
+            source_payload_words=layout.payload,
+        )
+        self.assertEqual(Layout.from_abi(abi), layout)
+        self.assertNotEqual(layout.contract(), Layout(1024, 4).contract())
+        abi["version"] = 3
+        with self.assertRaises(ValueError):
+            Layout.from_abi(abi)
+
     def test_unknown_capacity_fails_before_export(self):
         for rows in (0, 31, 33, 4096):
             with self.assertRaises(ValueError):

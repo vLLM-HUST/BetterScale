@@ -100,6 +100,7 @@ def run_capacity(root, cfg, args, rank, stage):
             scope="real48+MTP weights, all State touched, synthetic zero-history memory-pressure gate; NOT quality or genuine long-prefix service",
             topology="colocated" if args.colocated else "separated",
             source=args.source,
+            tp_size=args.tp_size,
             state_budget_gib=args.state_gib,
             state_tensor_bytes=touched,
             requests_per_source=args.batch_size,

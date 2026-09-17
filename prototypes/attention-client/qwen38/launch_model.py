@@ -16,7 +16,7 @@ p.add_argument("--build", type=Path, required=True)
 p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
 p.add_argument("--artifacts", type=Path)
-p.add_argument("--sources", type=int, choices=(1, 2, 4, 8), default=1)
+p.add_argument("--sources", type=int, choices=(1, 2, 4, 5, 8), default=1)
 p.add_argument("--tp-size", type=int, choices=(1, 2), default=2)
 p.add_argument("--decode-steps", type=int, default=3)
 p.add_argument("--align-steady-start", action="store_true")
@@ -36,15 +36,16 @@ p.add_argument("--trace-output-cap", type=int, default=0)
 p.add_argument("--trace-max-context", type=int, default=32768)
 p.add_argument("--capacity-probe", action="store_true")
 a = p.parse_args()
-assert (a.sources * a.tp_size == 8) if a.colocated else (a.sources in (1, 2))
+
 assert a.reference_tokens == 0 or 2 <= a.reference_tokens <= min(32, a.decode_steps + 3)
 assert not a.reference_tokens or a.mtp_tokens
 from channel_layout import ChannelLayout
 import json
 
-token_capacity = ChannelLayout.from_abi(
-    json.loads((a.build / "abi.json").read_text())
-).rows
+layout = ChannelLayout.from_abi(json.loads((a.build / "abi.json").read_text()))
+token_capacity = layout.rows
+expert_owners = layout.owners
+assert (a.sources * a.tp_size == 8) if a.colocated else (a.sources <= layout.sources)
 assert 1 <= a.prompt_width <= token_capacity
 assert a.batch_size * max(a.prompt_width, a.mtp_tokens + 1) <= token_capacity
 devices = a.devices.split(",")
@@ -54,7 +55,7 @@ assert (
     == (
         a.tp_size * a.sources
         if a.construct_only or a.colocated
-        else a.tp_size * a.sources + 4
+        else a.tp_size * a.sources + expert_owners
     )
 )
 a.directory.mkdir(mode=0o700, parents=True, exist_ok=False)
@@ -81,7 +82,7 @@ signal.signal(signal.SIGTERM, cancelled)
 common = ["--directory", str(a.directory), "--build", str(a.build)]
 try:
     if not a.construct_only and not a.colocated:
-        for owner in range(4):
+        for owner in range(expert_owners):
             launch(
                 f"expert{owner}",
                 "server.py",
@@ -90,7 +91,9 @@ try:
                 devices[owner + a.tp_size * a.sources],
             )
         deadline = time.monotonic() + 900
-        while not all((a.directory / f"expert{i}.sock").exists() for i in range(4)):
+        while not all(
+            (a.directory / f"expert{i}.sock").exists() for i in range(expert_owners)
+        ):
             if any(c.poll() is not None for c in children):
                 raise RuntimeError("server weight startup failed")
             if time.monotonic() > deadline:
