@@ -8,3 +8,8 @@ include(${ASCEND_CANN_PACKAGE_PATH}/compiler/tikcpp/ascendc_kernel_cmake/ascendc
 ascendc_library(bs_gdn SHARED bs_gdn_h.cpp bs_gdn_o.cpp)
 ascendc_include_directories(bs_gdn PRIVATE ${ASCEND_CANN_PACKAGE_PATH}/include ${CATLASS_ROOT}/include ${CMAKE_CURRENT_SOURCE_DIR}/common)
 ascendc_compile_options(bs_gdn PRIVATE -O2 --cce-auto-sync=off -Wno-deprecated-declarations)
+
+option(BS_GDN_OWNED_INIT "Restrict initial-state copies to consuming core pairs" OFF)
+if(BS_GDN_OWNED_INIT)
+  ascendc_compile_definitions(bs_gdn PRIVATE BS_GDN_OWNED_INIT=1)
+endif()

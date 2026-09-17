@@ -328,6 +328,20 @@ public:
                     for (uint32_t vHeadIdx = 0; vHeadIdx < vNumHead; vHeadIdx++) {
                         for (uint32_t tokenBatchIdx = 0; tokenBatchIdx < vecBlockScheduler.tokenBatch; tokenBatchIdx++) {
                             uint32_t batchIdx = isVariedLen ? tokenBatchIdx : shapeBatchIdx;
+#ifdef BS_GDN_OWNED_INIT
+                            // Each AIC/AIV pair initializes only the states it consumes.
+                            // Both AIV subblocks retain their original paired signals;
+                            // no cross-pair dependency or global barrier is introduced.
+                            // Qualified specialization: vHeadDim=128 (one V tile).
+                            uint32_t linearTask = batchIdx * vNumHead + vHeadIdx;
+                            uint32_t wave = linearTask / (PING_PONG_STAGES * coreNum);
+                            uint32_t remaining = vecBlockScheduler.taskNum - wave * PING_PONG_STAGES * coreNum;
+                            uint32_t width = remaining <= coreNum ? 1 : PING_PONG_STAGES;
+                            uint32_t owner = (linearTask % (PING_PONG_STAGES * coreNum)) / width;
+                            if (owner != vecBlockScheduler.cubeCoreIdx) {
+                                continue;
+                            }
+#endif
                             uint32_t chunkOffset = isVariedLen ? gmNumChunks.GetValue(tokenBatchIdx) : 0;
                             uint32_t initialStateSrcOffset = (batchIdx * vNumHead + vHeadIdx) * kHeadDim * initalStateStride0;
                             uint32_t hOffset = (shapeBatchIdx * vNumHead * totalChunks + vHeadIdx * totalChunks + chunkOffset) * stateBlockSize;
