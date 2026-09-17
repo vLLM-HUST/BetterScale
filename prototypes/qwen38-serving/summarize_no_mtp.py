@@ -13,17 +13,17 @@ manifest = json.loads((a.capsule / "comparison.json").read_text())
 assert manifest["status"] == "PASS" and len(manifest["rounds"]) == 4
 arms = defaultdict(lambda: defaultdict(list))
 texts = defaultdict(lambda: defaultdict(list))
-for round in manifest["rounds"]:
-    d = json.loads(Path(round["path"]).read_text())
+for round_data in manifest["rounds"]:
+    d = json.loads(Path(round_data["path"]).read_text())
     assert d["status"] == "PASS" and "--speculative-config" not in d["command"]
-    assert d["comparison"] == round["arm"]
+    assert d["comparison"] == round_data["arm"]
     for c in d["cohorts"]:
         key = f"C{c['concurrency']}-" + (
             str(c["single_length"]) if c["single_length"] else "mixed"
         )
-        arms[key][round["arm"]].append((round["index"], c))
+        arms[key][round_data["arm"]].append((round_data["index"], c))
         if c["concurrency"] == 1:
-            texts[key][round["arm"]].extend(x["text"] for x in c["requests"])
+            texts[key][round_data["arm"]].extend(x["text"] for x in c["requests"])
 summary = []
 for case, groups in arms.items():
     result = dict(case=case)
