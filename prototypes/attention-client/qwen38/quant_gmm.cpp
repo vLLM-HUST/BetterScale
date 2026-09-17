@@ -1,18 +1,21 @@
 // Actual-count INT8 expert GEMM. Reuse CANN CATLASS tile/load/MMAD scheduling;
 // keep INT32 accumulators explicit for per-token/per-channel dequantization.
-#include "catlass/arch/arch.hpp"
+// clang-format off
+#include "kernel_operator.h"
 #include "catlass/catlass.hpp"
+#include "catlass/arch/arch.hpp"
+#include "catlass/gemm/dispatch_policy.hpp"
 #include "catlass/gemm/block/block_mmad.hpp"
 #include "catlass/gemm/block/block_swizzle.hpp"
-#include "catlass/gemm/dispatch_policy.hpp"
 #include "catlass/gemm/gemm_type.hpp"
 #include "catlass/gemm/kernel/grouped_matmul_slice_m.hpp"
-#include "kernel_operator.h"
+// clang-format on
 using namespace Catlass;
 using namespace AscendC;
 
 // cfg: K,N,groups,weight address,group-end address,input capacity.
-__aicore__ inline void QuantGmm(GM_ADDR config, GM_ADDR input, GM_ADDR output) {
+__aicore__ inline void QuantGmm(GM_ADDR config, GM_ADDR input, GM_ADDR output,
+                                uint64_t weightAddress = 0) {
   auto cfg = (__gm__ int64_t *)config;
   uint32_t k = cfg[0], n = cfg[1], groups = cfg[2], capacity = cfg[5];
   using Policy = Gemm::MmadAtlasA2PreloadAsync<1, 2, 2, 2, 1, false, true>;
@@ -24,15 +27,16 @@ __aicore__ inline void QuantGmm(GM_ADDR config, GM_ADDR input, GM_ADDR output) {
   using Schedule = Gemm::Block::GemmIdentityBlockSwizzle<9, 1>;
   using Kernel =
       Gemm::Kernel::GroupedMatmulSliceM<Tile, void, Schedule, int64_t>;
-  typename Kernel::Params params{GemmCoord{capacity, n, k},
-                                 groups,
-                                 (GM_ADDR)cfg[4],
-                                 input,
-                                 layout::RowMajor{capacity, k},
-                                 (GM_ADDR)cfg[3],
-                                 layout::zN::MakeLayout<int8_t>(k, n),
-                                 output,
-                                 layout::RowMajor{capacity, n}};
+  typename Kernel::Params params{
+      GemmCoord{capacity, n, k},
+      groups,
+      (GM_ADDR)cfg[4],
+      input,
+      layout::RowMajor{capacity, k},
+      (GM_ADDR)(weightAddress ? weightAddress : cfg[3]),
+      layout::zN::MakeLayout<int8_t>(k, n),
+      output,
+      layout::RowMajor{capacity, n}};
   Kernel kernel;
   kernel(params);
 }

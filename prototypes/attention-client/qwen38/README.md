@@ -48,3 +48,41 @@ unrelated model checkpoint substitutes for the new geometry.
 4. Independent numerical/quality evidence before online performance claims.
 
 No other LiveInfer worktree or installed donor runtime has been modified.
+
+## September17 integration checkpoint
+
+The composition gates above have now advanced:
+
+- Native input DynamicQuant + actual-count INT8 GMM + fused SwiGLU quantization
+  passes the real-weight chain (`quant-chain-result.json`). A custom input
+  quantizer differed by one integer level and was rejected; ingress uses native
+  DynamicQuant, publishing INT8 rows and FP32 per-row scales.
+- Persistent mixed target/MTP catalog gate passes three cases, including two
+  sources at the same and different layers (`server-leaf-result.json`). This
+  remains a one-device protocol/math gate, not a performance result.
+- Full TP2 attention **meta** construction retains 60 quantized QSA projections
+  and zero routed-expert parameters. Each rank owns 5,479,377,280 parameter bytes;
+  this excludes State, host PLE, allocator and graph workspaces.
+- Five-device real layer0 gate passes: one client and four independent owners,
+  each loading its 128 experts; rows1/4/32, changed-input outer graph replay,
+  source scale publication, collect, weighted unpermute, promotion and EOF drain.
+  Maximum relative L2 vs the integer/FP32/BF16 reference is3.271887e-6.
+  `wire-result.json` is the compact receipt. This does **not** qualify full-model
+  output, MTP across devices, large prefill or concurrent attention sources.
+
+`catalog.py` groups checkpoint reads by shard within each layer and keeps only
+NZ weights resident. `attention.py` replaces the immutable MoE binding, not a
+process-global installed donor. `model_client.py` is the full-root integration
+runner under development; no full48 success claim yet.
+
+The first INT8 server deliberately uses whole up/down readiness and complete-owner
+collect. Earlier BF16 fine-grained prefix/return optimizations are not assumed to
+work with the new mixed-dtype scratch ABI. Large-prefill capacity is still a
+separate missing gate: this wire admits at most32 rows per source.
+
+`ipc_acl.py` is a disconnected copy of the owned LiveInfer IPC helper at file
+revision1dc65a99. That helper postdates the pinned Qwen38 branch; importing it
+from that old branch was an invalid assumption. Keep this dependency explicit.
+The private native runtime overlay combines Python source820103bf with the
+September7 mapped-QSA wheel; its receipt lives in `runs/qwen38-native-runtime-20260917`.
+Preserve CANN's PYTHONPATH when adding the overlay (otherwise TBE import fails).

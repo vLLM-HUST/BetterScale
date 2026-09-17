@@ -1,0 +1,65 @@
+{
+  "status": "PASS",
+  "cases": [
+    {
+      "counts": [
+        0,
+        1,
+        32,
+        0
+      ],
+      "input_quant_max_integer_diff": 0,
+      "z_quant_mismatch_elements": 0,
+      "relative_l2": [
+        0.0,
+        7.890969754953403e-06
+      ],
+      "tail_untouched": true
+    },
+    {
+      "counts": [
+        16,
+        0,
+        128,
+        1
+      ],
+      "input_quant_max_integer_diff": 0,
+      "z_quant_mismatch_elements": 0,
+      "relative_l2": [
+        0.0,
+        1.769269692886155e-05,
+        0.0
+      ],
+      "tail_untouched": true
+    },
+    {
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "input_quant_max_integer_diff": 0,
+      "z_quant_mismatch_elements": 0,
+      "relative_l2": [],
+      "tail_untouched": true
+    },
+    {
+      "counts": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "input_quant_max_integer_diff": 0,
+      "z_quant_mismatch_elements": 0,
+      "relative_l2": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "tail_untouched": true
+    }
+  ]
+}

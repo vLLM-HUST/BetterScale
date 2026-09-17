@@ -1,0 +1,1 @@
+{"status": "PASS", "scope": "CPU meta ownership only", "ranks": [{"rank": 0, "parameter_tensors": 1187, "parameter_bytes": 5479377280, "quantized_projections": 60, "routed_expert_parameters": 0}, {"rank": 1, "parameter_tensors": 1187, "parameter_bytes": 5479377280, "quantized_projections": 60, "routed_expert_parameters": 0}]}

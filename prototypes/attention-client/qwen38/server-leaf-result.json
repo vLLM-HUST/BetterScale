@@ -1,0 +1,89 @@
+{
+  "status": "PASS",
+  "cases": [
+    {
+      "layers": [
+        0,
+        0
+      ],
+      "priorities": [
+        1,
+        1
+      ],
+      "relative_l2": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "receipt": {
+        "waves": 1,
+        "completed_counts": [
+          1,
+          1
+        ],
+        "admitted_promotions": 0
+      }
+    },
+    {
+      "layers": [
+        0,
+        48
+      ],
+      "priorities": [
+        0,
+        1
+      ],
+      "relative_l2": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        3.2993768400046974e-05,
+        3.31501354366992e-07,
+        0.00010138468496734276,
+        3.350463884999044e-05
+      ],
+      "receipt": {
+        "waves": 2,
+        "completed_counts": [
+          1,
+          1
+        ],
+        "admitted_promotions": 0
+      }
+    },
+    {
+      "layers": [
+        48,
+        0
+      ],
+      "priorities": [
+        1,
+        0
+      ],
+      "relative_l2": [
+        1.93311255891615e-09,
+        0.0,
+        8.164559403667226e-06,
+        2.8101321731810458e-05,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "receipt": {
+        "waves": 2,
+        "completed_counts": [
+          1,
+          1
+        ],
+        "admitted_promotions": 0
+      }
+    }
+  ]
+}

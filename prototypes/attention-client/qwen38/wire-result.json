@@ -1,0 +1,89 @@
+{
+  "scope": "real layer0 E4 IPC and changed-input graph, not full model",
+  "client": {
+    "status": "PASS",
+    "calls": 9,
+    "cases": [
+      {
+        "rows": 1,
+        "generation": 0,
+        "relative_l2": 0.0
+      },
+      {
+        "rows": 1,
+        "generation": 1,
+        "relative_l2": 0.0
+      },
+      {
+        "rows": 4,
+        "generation": 0,
+        "relative_l2": 0.0
+      },
+      {
+        "rows": 4,
+        "generation": 1,
+        "relative_l2": 0.0
+      },
+      {
+        "rows": 32,
+        "generation": 0,
+        "relative_l2": 0.0
+      },
+      {
+        "rows": 32,
+        "generation": 1,
+        "relative_l2": 3.271886953370995e-06
+      }
+    ]
+  },
+  "owners": [
+    {
+      "status": "pass",
+      "completed": 9,
+      "layers": 1,
+      "weight_bytes": 631111680,
+      "waves": 9,
+      "completed_counts": [
+        9,
+        0
+      ],
+      "admitted_promotions": 4
+    },
+    {
+      "status": "pass",
+      "completed": 9,
+      "layers": 1,
+      "weight_bytes": 631111680,
+      "waves": 9,
+      "completed_counts": [
+        9,
+        0
+      ],
+      "admitted_promotions": 4
+    },
+    {
+      "status": "pass",
+      "completed": 9,
+      "layers": 1,
+      "weight_bytes": 631111680,
+      "waves": 9,
+      "completed_counts": [
+        9,
+        0
+      ],
+      "admitted_promotions": 4
+    },
+    {
+      "status": "pass",
+      "completed": 9,
+      "layers": 1,
+      "weight_bytes": 631111680,
+      "waves": 9,
+      "completed_counts": [
+        9,
+        0
+      ],
+      "admitted_promotions": 4
+    }
+  ]
+}
