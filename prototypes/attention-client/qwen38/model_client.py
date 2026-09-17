@@ -15,6 +15,8 @@ import time
 from datetime import timedelta
 from pathlib import Path
 
+faulthandler.enable()
+
 p = argparse.ArgumentParser()
 p.add_argument("--directory", type=Path, required=True)
 p.add_argument("--build", type=Path, required=True)

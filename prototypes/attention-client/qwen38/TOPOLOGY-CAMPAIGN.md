@@ -243,3 +243,35 @@ with exact stable ordering and inverse. Hardware qualification is pending.
 The CLI now permits `--token-capacity` below the physical wire bound, recording
 it in case parameters; the final intended comparison still uses1024/source.
 The temporary512-lane diagnostic is not silently substituted into the matrix.
+
+### A2 dispatch argument gate and long-run failures
+
+The pinned vLLM-Ascend dispatcher only supplies TP communication arguments on
+A3/A5. This A2 MC2 control now omits `group_tp`, `tp_world_size`, `tp_rank_id`
+and `tp_send_counts`, as upstream does. The isolated real layer0 eight-card
+`probe_native_ep.py` passes eager/FULL exact output, finite results and zero
+inactive rows at32/256/1020 source rows, with broad and narrow routing and
+non-prefix input masks compacted by the adapter. Receipt:
+`hw0:repo/runs/qwen38-native-ep-leaf-20260917b/run/`.
+The initial leaf failed before dispatch because NZ internal format was not
+enabled; the corrected leaf explicitly enables it, like the model runner.
+
+The legal TP2xDP4 full-model36GiB fit (`185923Z`) passes:10,271,232 allocated
+history tokens/machine,256,602 exercised prefix/request, minimum sampled free
+399,052,800B. It remains a zero-history memory gate, not language quality.
+
+Two d-layout C40 two-turn traces failed with native SIGSEGV after many waves:
+TP2-E4 State50GiB (`184816Z`) and TP2xDP4 State35GiB (`190147Z`). Their partial
+wave timings are **not** completed workload throughput. A common cause is not
+yet established; neither OOM nor expert transport is inferred from the signal.
+The launch capsule now records role PIDs and runtime directory; trace diagnostics
+sample allocator/driver memory every20 waves. Native stack capture is being used
+on a matched reproduction. Avoid dumping every thread stack into model context.
+
+The TP1-E4 d diagnostic (`190637Z`, with debugger attached) was stopped before
+completion: prefill time increased sharply as active prefix length grew. The
+active two-head gather stores still contain vector head division/remainder,
+unlike TP2's constant single-head expression. The e overlay replaces them with
+separate affine per-head loads/stores. This is a hypothesis until the paired
+`probe_qsa_gather_cost.py` and full2051-slot correctness gate complete; do not
+quote its expected benefit as measured throughput.

@@ -104,6 +104,8 @@ class ColocatedEP:
         hidden, ids, probabilities, active, destination = compact_prefix(
             hidden, ids, probabilities, active
         )
+        # Match the pinned donor A2 branch: TP arguments and tp_send_counts
+        # belong to its A3/A5 extra-argument path, not this EP-only 910B lane.
         communication = dict(
             group_ep=self.name,
             ep_world_size=8,
@@ -112,9 +114,6 @@ class ColocatedEP:
             expert_shard_type=0,
             shared_expert_rank_num=0,
             global_bs=0,
-            group_tp=self.name,
-            tp_world_size=1,
-            tp_rank_id=0,
             x_active_mask=active,
         )
         x, scale, assist, ends, ep_counts, tp_counts, expand_scales = (
@@ -168,7 +167,6 @@ class ColocatedEP:
             expert_ids=ids,
             assist_info_for_combine=assist,
             ep_send_counts=ep_counts,
-            tp_send_counts=tp_counts,
             expert_scales=probabilities.float(),
             expand_scales=expand_scales,
             comm_quant_mode=0,

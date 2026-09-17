@@ -305,3 +305,12 @@ sums and inverts after combine; shared stays in original order. Enter the
 campaign's MC2 section for the official reference, CPU oracle and latest hardware
 qualification. Do not interpret the old native TP1 layer0 dispatch stops as
 State OOM, and do not reuse pre-correction masked timings as a legal baseline.
+
+A2 MC2 also differs from A3/A5 in optional TP arguments: follow the pinned
+upstream dispatcher, omitting the TP group/count fields on A2. The isolated
+real layer0 `probe_native_ep.py` gate now passes masked eager/FULL rows through
+1020 after device compaction. Its NZ setup must explicitly enable internal
+format before loading weights. See the campaign for the separate full-model
+fit and unresolved long-run SIGSEGV receipts; passing this leaf does not certify
+SWE completion. For head-major two-head gathers, inspect active stores too:
+affine inactive zeroing alone does not remove active vector-scatter lowering.

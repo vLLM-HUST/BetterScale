@@ -62,6 +62,8 @@ assert (
 )
 a.directory.mkdir(mode=0o700, parents=True, exist_ok=False)
 children = []
+processes = []
+print(json.dumps(dict(runtime_directory=str(a.directory))), flush=True)
 
 
 def launch(name, script, args, device, **env):
@@ -74,6 +76,8 @@ def launch(name, script, args, device, **env):
                 stderr=subprocess.STDOUT,
             )
         )
+        processes.append(dict(role=name, pid=children[-1].pid, device=device))
+        (a.directory / "processes.json").write_text(json.dumps(processes, indent=2))
 
 
 def cancelled(signum, frame):

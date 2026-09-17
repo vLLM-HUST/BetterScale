@@ -29,6 +29,9 @@ case "$qsa" in
   bounded128)
     if [[ $layout == *-ep8 ]]; then overlay=qwen38-bounded-qsa-colocated-20260917d;
     else overlay=qwen38-bounded-qsa-runtime-20260917d/overlay; fi ;;
+  affineheads)
+    if [[ $layout == *-ep8 ]]; then overlay=qwen38-bounded-qsa-colocated-20260917e;
+    else overlay=qwen38-bounded-qsa-runtime-20260917e/overlay; fi ;;
   original) ;;
   *) echo "unknown QSA implementation" >&2; exit 2 ;;
 esac

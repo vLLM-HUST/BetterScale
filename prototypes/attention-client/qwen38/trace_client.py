@@ -415,7 +415,14 @@ def run_trace(root, cfg, args, rank, stage):
                 )
             )
             if step % 20 == 0 or prefill:
-                stage("trace-wave", **events[-1])
+                memory = {}
+                if step % 20 == 0:
+                    memory = dict(
+                        allocated=torch.npu.memory_allocated(),
+                        reserved=torch.npu.memory_reserved(),
+                        driver_free=torch.npu.mem_get_info()[0],
+                    )
+                stage("trace-wave", **events[-1], **memory)
             step += 1
             if diagnostic:
                 detail = timers.result()

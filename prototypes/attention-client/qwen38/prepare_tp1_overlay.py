@@ -151,6 +151,33 @@ patch(
         ),
     ],
 )
+# Two-head active stores must also remain affine. A vector modulo that
+# interleaves KV heads turns these writes into a scatter on Ascend.
+patch(
+    prefix + "qsa_gather.py",
+    [
+        (
+            """            d = tl.arange(0, DIM)
+            # Invalid selections need no cache traffic and are zeroed before FIA.
+            k = tl.load(K + physical[:, None] * KS0 + offset[:, None] * KS1 + d[None, :],
+                        valid[:, None], other=0)
+            v = tl.load(V + physical[:, None] * VS0 + offset[:, None] * VS1 + d[None, :],
+                        valid[:, None], other=0)
+            out = (row.to(tl.int64) * HEADS + d[None, :] // 256) * SELECTED * 256 + column[:, None] * 256 + d[None, :] % 256
+            tl.store(OutK + out, k, lane[:, None])
+            tl.store(OutV + out, v, lane[:, None])""",
+            """            d = tl.arange(0, 256)
+            for head in tl.static_range(HEADS):
+                k = tl.load(K + physical[:, None] * KS0 + offset[:, None] * KS1 + head * 256 + d[None, :],
+                            valid[:, None], other=0)
+                v = tl.load(V + physical[:, None] * VS0 + offset[:, None] * VS1 + head * 256 + d[None, :],
+                            valid[:, None], other=0)
+                out = ((row.to(tl.int64) * HEADS + head) * SELECTED + column[:, None]) * 256 + d[None, :]
+                tl.store(OutK + out, k, lane[:, None])
+                tl.store(OutV + out, v, lane[:, None])""",
+        ),
+    ],
+)
 patch(
     prefix + "qsa_attention.py",
     [
