@@ -18,6 +18,9 @@ class Engine:
     ):
         root = Path(build)
         abi = json.loads((root / "abi.json").read_text())
+        assert (
+            abi.get("kernel_timeout_us") == 1200000000
+        ), "Reject microbench launch lifetime"
         assert abi["model"] == "qwen38" and abi["client_config_words"] == 17
         assert not abi["prefix_pipeline"]
         assert len(sources) == len(outputs) == 2 and 0 <= owner < 4

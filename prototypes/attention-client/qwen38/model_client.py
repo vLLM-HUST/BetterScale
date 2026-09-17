@@ -5,6 +5,8 @@ suite. Decode graph qualification follows the eager all-layer gate.
 """
 
 import argparse
+import ctypes as C
+import faulthandler
 import json
 import os
 import time
@@ -18,6 +20,7 @@ p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
 a = p.parse_args()
 rank = int(os.environ["RANK"])
+faulthandler.dump_traceback_later(240, repeat=False)
 
 
 def stage(name, **extra):
@@ -34,6 +37,9 @@ torch.set_num_threads(2)
 torch.npu.set_device(0)
 torch_npu.npu.config.allow_internal_format = True
 activate_native_package(load_extension=True)
+acl = C.CDLL("/usr/local/Ascend/cann-9.0.1/lib64/libascendcl.so")
+acl.aclrtSetOpExecuteTimeOut.argtypes = [C.c_uint32]
+assert acl.aclrtSetOpExecuteTimeOut(1200) == 0
 from livemodule.arch.ascend.process_context import install_ascend_process_context
 from livemodule.arch.ascend.vllm.moe_runtime.platform import AscendDeviceType
 
@@ -45,6 +51,12 @@ torch.distributed.init_process_group(
     world_size=2,
     timeout=timedelta(seconds=600),
 )
+probe = torch.ones(1, device="npu")
+torch.distributed.all_reduce(probe)
+assert float(probe.cpu()[0]) == 2
+torch.distributed.broadcast(probe, src=0)
+torch.npu.synchronize()
+stage("hccl-ready")
 from livemodule import LiveModule, live_runtime
 from livemodule.llm.configuration import set_current_vllm_config
 from livemodule.llm.runtime_support import set_default_torch_dtype
@@ -87,9 +99,17 @@ with (
         if rank == 0:
             cfg.remote_expert_transport = Session(a.directory, a.build)
         torch.distributed.barrier()
+        stage("transport-ready")
         ple = Qwen38ServingSession(root)
         mailbox = ple.start_ple(token_lanes=32, max_polls=10000000)[
             root.contract.ple_layer_indices[0]
+        ]
+        stage("ple-ready")
+        hooks = [
+            layer.register_forward_pre_hook(
+                lambda module, inputs, i=i: stage("layer", layer=i)
+            )
+            for i, layer in enumerate(root.model.language_model.layers)
         ]
         codec = mailbox.codec
         generation = torch.zeros((), dtype=torch.int64, device="npu")
@@ -192,6 +212,9 @@ with (
             ids = [int(token.cpu()[0])]
             generated.extend(ids)
             stage("wave", wave=wave, token=ids[0])
+            if wave == 0:
+                for hook in hooks:
+                    hook.remove()
         if decode_graph is not None:
             decode_graph.reset()
         ple.close()
@@ -213,4 +236,5 @@ with (
         )
     root.close() if hasattr(root, "close") else None
 torch.distributed.destroy_process_group()
+faulthandler.cancel_dump_traceback_later()
 stage("done")

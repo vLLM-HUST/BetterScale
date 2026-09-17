@@ -11,6 +11,8 @@ import torch_npu
 from torch import nn
 
 from livemodule.arch.ascend.binding import AscendArchitectureBinding
+from livemodule.arch.ascend.llm.qwen35_gdn import AscendQwen35GDNBackend
+from livemodule.llm.qwen35.gdn import Qwen35GDNBackend
 from livemodule.arch.binding import ArchBindings
 from livemodule.arch.ascend.llm.qwen38.moe import _Qwen38SharedExpert
 from livemodule.llm.distributed import get_tp_group
@@ -139,9 +141,29 @@ class RemoteMoE(ArchQwen38MoE):
         return result.reshape_as(hidden)
 
 
+class TargetAwareGDN(AscendQwen35GDNBackend):
+    """The old device metadata always supplies a clamped acceptance tensor.
+
+    With K=0 it is necessarily one, but the native ordinary-decode contract
+    correctly expects no speculative selector. Keep candidate handling intact
+    for K>0; only normalize the target-only call boundary.
+    """
+
+    def decode(self, layer, hidden_states, state_indices, previous_accepted_tokens):
+        if layer.num_speculative_tokens == 0:
+            previous_accepted_tokens = None
+        return super().decode(
+            layer, hidden_states, state_indices, previous_accepted_tokens
+        )
+
+
 class RemoteAscend(AscendArchitectureBinding):
     bindings = ArchBindings(
-        {**AscendArchitectureBinding.bindings.classes, ArchQwen38MoE: RemoteMoE}
+        {
+            **AscendArchitectureBinding.bindings.classes,
+            ArchQwen38MoE: RemoteMoE,
+            Qwen35GDNBackend: TargetAwareGDN,
+        }
     )
 
 

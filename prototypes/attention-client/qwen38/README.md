@@ -108,3 +108,24 @@ Use `... 1,3 --construct-only` for the already-passed loading gate. `--decode-gr
 is the following eager-vs-replay State-shadow gate and is not yet qualified.
 Run capsules snapshot Python and admit only their selected devices. Do not
 manually bypass an occupied card or overwrite a capsule's source/binary closure.
+
+### Persistent-kernel lifetime is a launch contract
+
+The inherited `device-service/launch.cpp` explicitly supplied
+`ACL_RT_LAUNCH_KERNEL_ATTR_TIMEOUT_US=10000000` (10seconds). That per-launch
+microbenchmark setting remained present despite the process-level1200s setter.
+Full model runs consequently lost the resident servers while the client was
+still doing cold work; `neural_collect` timeout was downstream, not evidence of
+GDN arithmetic failure. A diagnostic run completed all48 prefill layers and
+agreed on token7824 before the next phase exposed another boundary.
+
+Qwen38 now owns `launch.cpp` with a1200s launch budget and ABI receipt v2.
+Both Engine and client reject the old short-lifetime closure. The supervisor
+still owns finite startup/execution deadlines and fail-stop cleanup. This does
+not establish an indefinitely resident production server; long-running service
+must account for device task lifetime explicitly.
+
+The target-only GDN adapter normalizes the old metadata's always-present,
+K=0-clamped acceptance selector to `None` at the ordinary-decode backend boundary.
+Candidate handling for K>0 remains unchanged. Earlier first-token gates alone
+could not expose this target-only continuation gap.

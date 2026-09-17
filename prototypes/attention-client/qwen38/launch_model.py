@@ -4,6 +4,7 @@ import argparse
 import os
 from pathlib import Path
 import subprocess
+import shutil
 import sys
 import time
 
@@ -13,6 +14,7 @@ p.add_argument("--directory", type=Path, required=True)
 p.add_argument("--build", type=Path, required=True)
 p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
+p.add_argument("--artifacts", type=Path)
 a = p.parse_args()
 devices = a.devices.split(",")
 assert len(devices) == len(set(devices)) == (2 if a.construct_only else 6)
@@ -66,7 +68,9 @@ try:
     deadline = time.monotonic() + 1200
     while any(c.poll() is None for c in children):
         if any(c.poll() not in (None, 0) for c in children):
-            raise RuntimeError("role failure")
+            raise RuntimeError(
+                f"role failure; launch-order exit codes: {[c.poll() for c in children]}"
+            )
         if time.monotonic() > deadline:
             raise TimeoutError("model gate")
         time.sleep(0.5)
@@ -80,3 +84,9 @@ finally:
         except subprocess.TimeoutExpired:
             c.kill()
             c.wait()
+
+    if a.artifacts is not None:
+        a.artifacts.mkdir(parents=True, exist_ok=True)
+        for pattern in ("*.log", "*.json", "last-client-input.pt"):
+            for path in a.directory.glob(pattern):
+                shutil.copyfile(path, a.artifacts / path.name)

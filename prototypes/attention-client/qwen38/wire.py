@@ -32,6 +32,9 @@ class Kernels:
         root = Path(build)
         abi = json.loads((root / "abi.json").read_text())
         assert (
+            abi.get("kernel_timeout_us") == 1200000000
+        ), "Reject microbench launch lifetime"
+        assert (
             abi["model"] == "qwen38"
             and abi["client_config_words"] == 17
             and not abi["prefix_pipeline"]

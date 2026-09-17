@@ -1,0 +1,48 @@
+#include <acl/acl.h>
+#include <acl/acl_rt.h>
+#include <cstdint>
+extern "C" int load_server(const char *path, const char *symbol, void **binary,
+                           void **function) {
+  int rc = aclrtBinaryLoadFromFile(path, nullptr, binary);
+  if (rc)
+    return rc;
+  return aclrtBinaryGetFunction(*binary, symbol, function);
+}
+static int launch_engine(void *fn, void *stream, void *config, void *audit,
+                         void *trace, uint32_t blocks, bool cube) {
+  aclrtLaunchKernelAttr attrs[3]{};
+  attrs[0].id = ACL_RT_LAUNCH_KERNEL_ATTR_SCHEM_MODE;
+  attrs[0].value.schemMode = 1;
+  attrs[1].id = ACL_RT_LAUNCH_KERNEL_ATTR_TIMEOUT_US;
+  // Persistent service spans cold model work; the inherited 10s microbench
+  // launch deadline overrides aclrtSetOpExecuteTimeOut and kills healthy servers.
+  // Keep the external role supervisor bounded; this is not an infinite kernel.
+  attrs[1].value.timeoutUs.timeoutLow = 1200000000;
+  attrs[2].id = ACL_RT_LAUNCH_KERNEL_ATTR_ENGINE_TYPE;
+  attrs[2].value.engineType =
+      cube ? ACL_RT_ENGINE_TYPE_AIC : ACL_RT_ENGINE_TYPE_AIV;
+  aclrtLaunchKernelCfg cfg{};
+  cfg.numAttrs = 3;
+  cfg.attrs = attrs;
+  struct {
+    void *c;
+    void *a;
+    void *t;
+  } args{config, audit, trace};
+  return aclrtLaunchKernelWithHostArgs(fn, blocks, stream, &cfg, &args,
+                                       sizeof(args), nullptr, 0);
+}
+extern "C" int launch_blocks(void *fn, void *stream, void *config, void *a,
+                             void *b, uint32_t blocks) {
+  return launch_engine(fn, stream, config, a, b, blocks, false);
+}
+extern "C" int launch_cube(void *fn, void *stream, void *config, void *a,
+                           void *b, uint32_t blocks) {
+  return launch_engine(fn, stream, config, a, b, blocks, true);
+}
+extern "C" int unload_server(void *binary) { return aclrtBinaryUnLoad(binary); }
+
+extern "C" int launch_server(void *fn, void *stream, void *config, void *a,
+                             void *b) {
+  return launch_blocks(fn, stream, config, a, b, 1);
+}

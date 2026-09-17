@@ -20,9 +20,9 @@ base = local.parent / "device-service"
 out = a.output.resolve()
 source = out / "source"
 source.mkdir(parents=True, exist_ok=True)
-for name in ("actual_gmm.cpp", "priority_policy.hpp", "launch.cpp"):
+for name in ("actual_gmm.cpp", "priority_policy.hpp"):
     shutil.copyfile(base / name, source / name)
-for name in ("server_workers.hpp", "quant_vector.hpp", "quant_gmm.cpp"):
+for name in ("server_workers.hpp", "quant_vector.hpp", "quant_gmm.cpp", "launch.cpp"):
     shutil.copyfile(local / name, source / name)
 protocol = (base / "persistent_protocol.hpp").read_text()
 assert "HIDDEN = 2048, INNER = 512" in protocol
@@ -85,7 +85,8 @@ for script, unit, name in (
 (out / "abi.json").write_text(
     json.dumps(
         dict(
-            version=1,
+            version=2,
+            kernel_timeout_us=1200000000,
             model="qwen38",
             server_config_words=27,
             client_config_words=17,

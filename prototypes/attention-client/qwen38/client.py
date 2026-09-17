@@ -1,6 +1,7 @@
 """One leader per attention group; native quantization precedes input publication."""
 
 from pathlib import Path
+import os
 
 import torch
 import torch_npu
@@ -30,7 +31,7 @@ class Bank:
                 rows,
                 session.counter.data_ptr(),
                 1,
-                20000000,
+                1000000 if session.diagnostics else 20000000,
                 self.raw.data_ptr(),
                 0,
                 0,
@@ -47,6 +48,8 @@ class Bank:
 
 class Session:
     def __init__(self, directory, build, source=0):
+        self.directory = Path(directory)
+        self.diagnostics = os.environ.get("QWEN38_DIAGNOSTICS") == "1"
         self.api = acl_api()
         self.local = self.api.allocate_staging(ALIGN)
         zero = torch.zeros(ALIGN // 4, dtype=torch.int32, device="npu")
@@ -109,11 +112,36 @@ class Session:
             bank.scales[: hidden.shape[0]].copy_(scales)
         else:
             bank.input.copy_(hidden)
+        if self.diagnostics:
+            torch.save(
+                dict(
+                    layer=layer, hidden=hidden.cpu(), ids=ids.cpu(), probs=probs.cpu()
+                ),
+                self.directory / "last-client-input.pt",
+            )
+            print("submit layer", layer, "ids", ids.cpu().tolist(), flush=True)
         self.kernels.call(self.submit, bank.config, bank.input, bank.ids_storage)
         shared_result = shared(hidden)
         if priority:
             self.kernels.call(self.promote, bank.config, bank.input, bank.ids_storage)
         self.kernels.call(self.collect, bank.config, bank.input, bank.ids_storage, 16)
+        if self.diagnostics:
+            torch.npu.synchronize()
+            value = int(self.counter.cpu()[0])
+            if value < 0:
+                print("failed layer", layer, "rows", hidden.shape[0], flush=True)
+                for channel in self.channels:
+                    channel.send(dict(op="inspect"))
+                for owner, channel in enumerate(self.channels):
+                    print(
+                        "owner inspection",
+                        owner,
+                        channel.expect("inspection"),
+                        flush=True,
+                    )
+                raise RuntimeError(
+                    f"expert collect rejected layer {layer}: counter {value}"
+                )
         self.kernels.call(self.retire, bank.config, bank.input, bank.ids_storage)
         routed = torch_npu.npu_moe_token_unpermute(
             bank.raw, bank.indices, probs=bank.probs

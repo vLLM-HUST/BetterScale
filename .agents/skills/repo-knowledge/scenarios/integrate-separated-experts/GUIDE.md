@@ -68,3 +68,15 @@ Admission-helper snapshots siblings into PYTHONPATH. Copy only the admission
 script into an isolated helper directory, and keep the experiment source in its
 own capsule. Otherwise unrelated helper modules can shadow the selected ABI.
 On errors, the launcher stops only its children; never kill a foreign NPU job.
+
+## Persistent lifetime is not the process timeout
+
+Inspect the actual launch attributes before blaming queues. The reused microbench
+`device-service/launch.cpp` explicitly sets per-kernel timeout10,000,000µs. This
+remained active despite a process-level1200s setter. Full-root cold work outlived
+the resident server; downstream `neural_collect` then timed out. Qwen38 owns a
+longer launch wrapper and rejects old-lifetime ABI receipts. The external role
+supervisor remains bounded. Do not turn a short successful leaf into a claim of
+indefinite persistent service. The full-model gate also exposed K=0 metadata
+carrying a clamped selector into an ordinary GDN backend that requires `None`;
+the narrow target-only binding adapter preserves K>0 candidate semantics.

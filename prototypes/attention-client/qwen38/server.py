@@ -7,6 +7,7 @@ closed from the outset, preserving the existing two-source coordinator ABI.
 import argparse
 import ctypes as C
 import json
+import os
 from pathlib import Path
 
 import torch
@@ -72,7 +73,40 @@ def main():
     )
     engine.replay()
     channel.send(dict(op="ready"))
-    count = channel.expect("drain")["generation"]
+    while True:
+        message = channel.read()
+        if (
+            message.get("op") == "inspect"
+            and os.environ.get("QWEN38_DIAGNOSTICS") == "1"
+        ):
+            sample = torch.empty(32, dtype=torch.int32, device="npu")
+            api.copy(
+                torch.npu.current_stream().npu_stream, sample.data_ptr(), source, 128
+            )
+            source_head = sample.cpu().tolist()
+            api.copy(
+                torch.npu.current_stream().npu_stream, sample.data_ptr(), output, 128
+            )
+            output_head = sample.cpu().tolist()
+            state = engine.control.cpu().tolist()
+            channel.send(
+                dict(
+                    op="inspection",
+                    source=source_head,
+                    output=output_head,
+                    control={i: state[i][:8] for i in (0, 1, 2, 43)},
+                    slot_headers=[
+                        [s[5][c, :3].cpu().tolist() for c in range(2)]
+                        for s in engine.slots
+                    ],
+                    enabled=int(engine.config[10].cpu()),
+                )
+            )
+            continue
+        if message.get("op") != "drain":
+            raise ValueError("Expected drain or diagnostic inspection")
+        count = message["generation"]
+        break
     receipt = engine.finish()
     assert receipt["completed_counts"] == [count, 0], receipt
     channel.send(dict(op="drained"))
