@@ -1,6 +1,7 @@
 # Qwen3.8 remote routed-expert integration
 
-Active integration; **not yet end-to-end qualified**. Reuse the owned LiveInfer
+**Basic real-weight end-to-end and FULL decode gates passed.** This is not yet
+a production, quality or throughput qualification. Reuse the owned LiveInfer
 Qwen4Exp root at820103bf, including host PLE, HC, QSA pair and GDN State. The
 checkpoint is the pinned shared-directory W8A8+BF16 snapshot documented in
 `../qwen-next/priority/model-readiness.md`. Published defaults remain untouched.
@@ -13,7 +14,8 @@ client. Each attention group retains native shared expert and request State.
 Only its leader publishes routed work; shared TP work runs before collect and
 the completed routed result is broadcast inside that attention pair. Generation,
 layer, class, shared-completion promotion and all-owner retirement remain the
-existing server contracts. This is a plan, not a passed transport gate.
+existing server contracts. The target-only topology now passes the gates below;
+two independent TP2 groups remain unqualified.
 
 Target experts are W8A8_DYNAMIC; MTP layer48 experts remain fused BF16. Do not
 silently dequantize the whole checkpoint to BF16 and call it W8A8. QSA target
@@ -39,13 +41,13 @@ unrelated model checkpoint substitutes for the new geometry.
 
 ## Remaining integration gates
 
-1. Compose quantize/dequantize/SwiGLU with actual-count Cube work, preserving
-   paired source packing and readiness/return ordering; keep BF16 MTP branch.
-2. Add native W8A8 QSA projection loading to the reused attention root; route
-   experts externally without first allocating local routed weights.
-3. Six-role dummy/real one-layer shadow, then full48 target, real host PLE,
-   recurrent continuation and captured decode. MTP is a separate following gate.
-4. Independent numerical/quality evidence before online performance claims.
+1. Add the separately math-qualified BF16 MTP layer to full-model serving.
+2. Qualify multiple attention sources and large-prefill batching; the first
+   Qwen38 source window still admits only1..32 rows.
+3. Establish independent numerical/language-quality evidence and online
+   throughput/latency under comparable workloads. Short agreed outputs alone
+   are not quality or performance evidence.
+4. Account explicitly for device-task lifetime in long-running serving.
 
 No other LiveInfer worktree or installed donor runtime has been modified.
 
@@ -141,7 +143,7 @@ The full async run passes after replacing the short per-launch deadline.
 
 This is a real end-to-end **mechanism gate**, not a language-quality benchmark,
 throughput gain, multi-source campaign, large-prefill test, or MTP qualification.
-FULL decode graph remains the next separate same-State comparison gate.
+The following FULL decode gate has since passed, as recorded below.
 
 ### PLE convolution graph dispatch
 
@@ -157,3 +159,24 @@ Retain the **whole captured ForwardContext**, including active/query-length
 inputs, until graph reset. Keeping only token ids, positions and sequence lengths
 leaves other external graph inputs eligible for allocator reuse. This is a
 capture-lifetime requirement, not a new scheduler.
+
+
+## FULL decode and same-State shadow passed
+
+`full-graph-result.json` records the final six-device gate (physical2,3,4,5,6,7):
+
+- One TP2 attention group, four independent E4 owners, all48 real target layers,
+  repaired integer PLE metadata and native W8A8 projection/expert weights.
+- One3-token prefill, then three changed-input1-token FULL graph decode replays.
+  An additional eager shadow starts from the identical post-prefill State.
+- Hidden-output relative L2 is **0.0 on both attention ranks** in that shadow.
+  Generated ids remain `[7824,11,6326,9703]`, matching the preceding eager run.
+- Each expert owner completes exactly240 calls (including the extra shadow),
+  then drains and releases its channel. All six processes exit successfully.
+- Per-layer diagnostics are disabled. Graph inputs retain the entire captured
+  metadata frame until graph reset; the earlier partial-retention attempt is
+  rejected evidence, not a passed run.
+
+Reproducer: `bash prototypes/attention-client/qwen38/run_model.sh 2,3,4,5,6,7 --decode-graph`.
+The private native closure and repaired original checkpoint dependency described
+above are required. Published Worker defaults and other model lanes are unchanged.

@@ -92,3 +92,11 @@ calls,192generations per E4 owner, with diagnostic per-layer sync disabled; see
 capture (`ple-conv-result.json`). Retain the entire graph input frame, not only
 three convenient tensor fields, through graph reset. Full graph qualification
 is distinct from these preceding gates; consult the current prototype receipt.
+
+Final September17 gate: `qwen38/full-graph-result.json` passes all48 real target
+layers on one TP2 attention group plus E4. Same-State eager/decode-graph hidden
+relative L2 is0 on both ranks; three changed-input replays preserve the eager
+output sequence. Each E4 owner drains240 calls, all six processes exit0.
+This excludes full-model MTP, large prefill, independent-source batching,
+language quality and throughput gains. Do not repeat the full model merely to
+reconfirm those passed contracts; rerun for an affected change or a new risk.
