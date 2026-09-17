@@ -173,7 +173,7 @@ def main():
         assert (
             comparison in ("baseline", "candidate")
             and a.arm == "async"
-            and not a.profile
+            and (not a.profile or os.environ.get("CONCURRENCY_PROFILE") == "1")
         )
         assert not os.environ.get("FULL_MTP") and not os.environ.get("PACKAGED_QWEN")
         command[command.index("observe_worker.Worker")] = (
@@ -207,6 +207,9 @@ def main():
                     )
                 ),
             ]
+    if os.environ.get("CONCURRENCY_PROFILE") == "1":
+        assert comparison and a.profile
+        command[command.index("--worker-cls") + 1] = "concurrency_worker.Worker"
     receipt = dict(
         status="STARTED",
         profile_only=os.environ.get("PROFILE_ONLY") == "1",
@@ -278,7 +281,16 @@ def main():
                 pass
             # Budget tokens for speculative multi-token steps; the worker still
             # records only four active iterations after eight warmup iterations.
-            request(url, prompt[:2048], 64)
+            if os.environ.get("CONCURRENCY_PROFILE") == "1":
+                with concurrent.futures.ThreadPoolExecutor(4) as pool:
+                    receipt["profile_requests"] = list(
+                        pool.map(
+                            lambda n: request(url, prompt[:n], 64),
+                            [512, 2048, 1024, 1536],
+                        )
+                    )
+            else:
+                request(url, prompt[:2048], 64)
             with urllib.request.urlopen(
                 urllib.request.Request(url + "/stop_profile", data=b"", method="POST"),
                 timeout=120,
