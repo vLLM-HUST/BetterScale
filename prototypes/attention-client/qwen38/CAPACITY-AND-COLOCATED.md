@@ -71,3 +71,24 @@ For full-root qualification use the ordinary admitted model launcher with
 WORLD8 instead of independent TP worlds, keeps token agreement checks inside
 TP pairs, and retains the native MTP program. Do not label fixed short-window
 results as SWE serving throughput.
+
+## Completed full-model gates
+
+- `runs/qwen38-model-20260917T141139Z`: four TP2 attention groups, colocated EP8,
+  two requests/group, prompt3, MTP K1, eight decode steps. All eight roles exit
+  successfully; all three same-State decode shadow tensors match exactly on
+  every rank, and both members of every TP pair agree on output. Catalogs contain
+  all48 target layers plus BF16 MTP. This is the native BF16-down-scale lane.
+- `runs/qwen38-model-20260917T141508Z`: two TP2 sources+E4 with ABI3 capacity1024,
+  two requests/source, prompt512/request (1024 actual rows/source), distinct
+  prompts, MTP K1 and eight decode steps. Both sources complete long-prefill
+  initialization and FULL decode. All four attention shadow checks pass. Each
+  expert owner completes598 calls/source,1098 waves total (98 paired waves).
+  The aggregate pairing counter does not identify which rows/phases were paired.
+
+These gates qualify the two requested implementation changes. They do not
+compare SWE makespan: their request counts/prompts differ, prefill is eager,
+and they use a fixed-membership short runner. The downloaded SWE sessions still
+need multi-turn continuation/admission integration with correct retained State;
+the native colocated arm additionally needs coordinated layer/phase submission.
+Do not manufacture performance conclusions from these unequal gate workloads.

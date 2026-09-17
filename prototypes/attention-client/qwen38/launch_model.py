@@ -27,6 +27,7 @@ p.add_argument("--prompt-width", type=int, default=3)
 p.add_argument("--mtp-tokens", type=int, choices=range(0, 6), default=0)
 p.add_argument("--reference-tokens", type=int, default=0)
 p.add_argument("--colocated", action="store_true")
+p.add_argument("--distinct-prompts", action="store_true")
 a = p.parse_args()
 assert (a.sources == 4) if a.colocated else (a.sources in (1, 2))
 assert a.reference_tokens == 0 or 2 <= a.reference_tokens <= min(32, a.decode_steps + 3)
@@ -115,7 +116,8 @@ try:
             + (["--defer-steady-gc"] if a.defer_steady_gc else [])
             + (["--construct-only"] if a.construct_only else [])
             + (["--decode-graph"] if a.decode_graph else [])
-            + (["--colocated"] if a.colocated else []),
+            + (["--colocated"] if a.colocated else [])
+            + (["--distinct-prompts"] if a.distinct_prompts else []),
             devices[physical_rank],
             RANK=str(physical_rank if a.colocated else rank),
             LOCAL_RANK="0",

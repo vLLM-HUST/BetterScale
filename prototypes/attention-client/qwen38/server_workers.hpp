@@ -124,33 +124,34 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
           for (int begin = 0; begin < n * TOPK; begin += 256) {
             int count = ScalarMin(256, n * TOPK - begin), map[256];
             io.Read(desc + c * MAP + 8 + begin, (count + 7) / 8 * 8);
-            for (int i = 0; i < count; ++i) map[i] = io.words.GetValue(i);
+            for (int i = 0; i < count; ++i)
+              map[i] = io.words.GetValue(i);
             for (int offset = worker; offset < count; offset += VW) {
-            int route = begin + offset, row = map[offset];
-            if (row < 0)
-              continue;
-            if (kind == REPACK) {
-              int width = HIDDEN / (int8 ? 4 : 2);
-              io.Copy((__gm__ int32_t *)ptr[0] +
-                          (c * TOKENS + route / TOPK) * width,
-                      (__gm__ int32_t *)ptr[1] + row * width, width);
-              if (int8)
-                io.Copy((__gm__ int32_t *)auxiliary[0] +
-                            (c * TOKENS + route / TOPK) * 8,
-                        (__gm__ int32_t *)auxiliary[1] + row * 8, 8);
-            } else if (int8) {
-              int expert = RowExpert(ends, row);
-              quant.Dequant((__gm__ int32_t *)ptr[4] + row * HIDDEN,
-                            (__gm__ float *)weights[3] + expert * HIDDEN,
-                            (__gm__ float *)auxiliary[2] + row * 8, HIDDEN);
-              quant.ToBf16(
-                  (__gm__ bfloat16_t *)((__gm__ int32_t *)cfg[2 + c] + 64) +
-                      route * HIDDEN,
-                  HIDDEN);
-            } else
-              io.Copy((__gm__ int32_t *)ptr[4] + row * HIDDEN / 2,
-                      (__gm__ int32_t *)cfg[2 + c] + 64 + route * HIDDEN / 2,
-                      HIDDEN / 2);
+              int route = begin + offset, row = map[offset];
+              if (row < 0)
+                continue;
+              if (kind == REPACK) {
+                int width = HIDDEN / (int8 ? 4 : 2);
+                io.Copy((__gm__ int32_t *)ptr[0] +
+                            (c * TOKENS + route / TOPK) * width,
+                        (__gm__ int32_t *)ptr[1] + row * width, width);
+                if (int8)
+                  io.Copy((__gm__ int32_t *)auxiliary[0] +
+                              (c * TOKENS + route / TOPK) * 8,
+                          (__gm__ int32_t *)auxiliary[1] + row * 8, 8);
+              } else if (int8) {
+                int expert = RowExpert(ends, row);
+                quant.Dequant((__gm__ int32_t *)ptr[4] + row * HIDDEN,
+                              (__gm__ float *)weights[3] + expert * HIDDEN,
+                              (__gm__ float *)auxiliary[2] + row * 8, HIDDEN);
+                quant.ToBf16(
+                    (__gm__ bfloat16_t *)((__gm__ int32_t *)cfg[2 + c] + 64) +
+                        route * HIDDEN,
+                    HIDDEN);
+              } else
+                io.Copy((__gm__ int32_t *)ptr[4] + row * HIDDEN / 2,
+                        (__gm__ int32_t *)cfg[2 + c] + 64 + route * HIDDEN / 2,
+                        HIDDEN / 2);
             }
           }
         }

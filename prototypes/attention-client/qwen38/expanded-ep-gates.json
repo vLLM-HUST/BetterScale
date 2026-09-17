@@ -35,9 +35,41 @@
     "maximum_oracle_relative_l2": 0.005391051527112722
   },
   "exclusions": [
-    "not complete-model/agent throughput",
-    "large wire gate has one publishing source",
-    "native EP leaf target layer0 only; no MTP math gate yet",
-    "sampled arithmetic oracle at expanded wire sizes"
-  ]
+    "not agent throughput or language quality",
+    "large wire oracle samples boundary/tile rows",
+    "full-model prefill is eager; FULL capture qualified for decode and leaf wire",
+    "paired-wave count alone does not prove large-prefill co-batching"
+  ],
+  "colocated_model": {
+    "status": "PASS",
+    "capsule": "runs/qwen38-model-20260917T141139Z",
+    "topology": "TP2xDP4_EP8",
+    "attention_ranks": 8,
+    "batch_per_source": 2,
+    "prefill_rows_per_source": 6,
+    "mtp_k": 1,
+    "target_layers": 48,
+    "draft_layers": 1,
+    "all_decode_graph_shadows_exact": true,
+    "within_TP_pair_outputs_equal": true,
+    "prefill_execution": "eager",
+    "decode_execution": "FULL graph",
+    "scope": "short fixed-membership integration gate, not SWE or language quality"
+  },
+  "expanded_model": {
+    "status": "PASS",
+    "capsule": "runs/qwen38-model-20260917T141508Z",
+    "topology": "two_TP2_sources_E4",
+    "attention_ranks": 4,
+    "batch_per_source": 2,
+    "prefill_rows_per_source": 1024,
+    "mtp_k": 1,
+    "target_layers": 48,
+    "draft_layers": 1,
+    "all_decode_graph_shadows_exact": true,
+    "within_TP_pair_outputs_equal": true,
+    "prefill_execution": "eager",
+    "decode_execution": "FULL graph",
+    "scope": "short fixed-membership integration gate, not SWE or language quality"
+  }
 }

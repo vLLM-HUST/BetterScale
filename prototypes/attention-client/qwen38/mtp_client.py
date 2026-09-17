@@ -47,9 +47,16 @@ def run_mtp(root, cfg, args, rank, stage):
     eos = torch.full((batch,), -1, dtype=torch.int64, device="npu")
     prompt = torch.tensor(
         [
-            ([9707 + 17 * row, 11, 1879] * ((args.prompt_width + 2) // 3))[
-                : args.prompt_width
-            ]
+            (
+                [
+                    9707
+                    + 17
+                    * (args.source * batch + row if args.distinct_prompts else row),
+                    11,
+                    1879,
+                ]
+                * ((args.prompt_width + 2) // 3)
+            )[: args.prompt_width]
             for row in range(batch)
         ],
         device="npu",
@@ -381,7 +388,10 @@ def run_mtp(root, cfg, args, rank, stage):
         status=(
             "PASS" if reference_matches is None or all(reference_matches) else "FAIL"
         ),
-        scope="full48 target plus BF16 MTP remote experts, greedy speculative closure; not quality",
+        scope="full48 target plus BF16 MTP greedy speculative closure; not quality",
+        topology=(
+            "TP2xDP4_EP8_colocated" if args.colocated else "TP2_sources_E4_separated"
+        ),
         source=args.source,
         batch_size=batch,
         mtp_tokens=k,

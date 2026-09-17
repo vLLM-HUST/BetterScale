@@ -32,6 +32,7 @@ p.add_argument("--prompt-width", type=int, default=3)
 p.add_argument("--mtp-tokens", type=int, choices=range(0, 6), default=0)
 p.add_argument("--reference-tokens", type=int, default=0)
 p.add_argument("--colocated", action="store_true")
+p.add_argument("--distinct-prompts", action="store_true")
 a = p.parse_args()
 assert a.reference_tokens == 0 or 2 <= a.reference_tokens <= min(32, a.decode_steps + 3)
 assert not a.reference_tokens or a.mtp_tokens
@@ -171,9 +172,20 @@ with (
         # Identical short token sequence on both attention ranks; tokenizer
         # prompt/quality sampling is a later gate after all-layer transport.
         ids = [
-            ([9707 + 17 * request, 11, 1879] * ((a.prompt_width + 2) // 3))[
-                : a.prompt_width
-            ]
+            (
+                [
+                    9707
+                    + 17
+                    * (
+                        a.source * a.batch_size + request
+                        if a.distinct_prompts
+                        else request
+                    ),
+                    11,
+                    1879,
+                ]
+                * ((a.prompt_width + 2) // 3)
+            )[: a.prompt_width]
             for request in range(a.batch_size)
         ]
         generated = []

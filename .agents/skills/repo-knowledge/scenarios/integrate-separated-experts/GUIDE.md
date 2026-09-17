@@ -216,3 +216,12 @@ native BF16 down scales for BF16 GMM output. The sampled relative oracle error
 is~0.0054, distinct from exact same-program eager/replay checks. All EP ranks
 must execute the same layer/phase, including masked idle participants. TP-only
 output agreement checks must name the TP subgroup, not default WORLD8.
+
+The full-model gates subsequently pass:141139Z runs TP2xDP4/EP8 with real48+MTP
+and exact same-State FULL decode shadows;141508Z runs both separated TP2 sources
+with1024 actual prefill rows/source and the same MTP closure. See
+`CAPACITY-AND-COLOCATED.md`. Full-model prefill remains eager. The short runner
+still is not a multi-turn SWE reactor, and the two gates have unequal workloads;
+do not quote their raw timings as the topology comparison. Catalog load inside
+an NPU default-device context must explicitly enter CPU scope for safetensors
+slices and ND assembly before explicit NZ upload.
