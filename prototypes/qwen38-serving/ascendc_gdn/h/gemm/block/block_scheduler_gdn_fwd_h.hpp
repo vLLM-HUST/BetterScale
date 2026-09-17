@@ -70,6 +70,8 @@ struct BlockSchedulerGdnFwdH {
     uint32_t tokenBatch;
     bool useInitialState;
     bool storeFinalState;
+    bool statePoolMode;
+    AscendC::GlobalTensor<int64_t> gmStateMeta;
     uint32_t numSeqWorkspaceOffset;
     uint32_t numChunksWorkspaceOffset;
 
@@ -140,6 +142,8 @@ struct BlockSchedulerGdnFwdH {
         numSeqWorkspaceOffset = gdnFwdHTilingData->numSeqWorkspaceOffset;
         numChunksWorkspaceOffset = gdnFwdHTilingData->numChunksWorkspaceOffset;
 
+        statePoolMode = gdnFwdHTilingData->statePoolMode;
+        gmStateMeta.SetGlobalBuffer((__gm__ int64_t *)chunk_indices);
         gmSeqlen.SetGlobalBuffer((__gm__ int64_t *)cu_seqlens);
         gmNumSeq.SetGlobalBuffer((__gm__ int64_t *)(user + numSeqWorkspaceOffset));
         gmNumChunks.SetGlobalBuffer((__gm__ int64_t *)(user + numChunksWorkspaceOffset));
@@ -218,7 +222,8 @@ struct BlockSchedulerGdnFwdH {
         offsets[currStage].isInitialState = chunkIdx == 0; 
         offsets[currStage].isFinalState = chunkIdx == (batchChunks - 1);
         offsets[currStage].initialStateOffset = (batchIdx * vNumHead + vHeadIdx) * kHeadDim * initalStateStride0;
-        offsets[currStage].finalStateOffset = (batchIdx * vNumHead + vHeadIdx) * kHeadDim * vHeadDim;  
+        uint32_t stateSlot = statePoolMode ? gmStateMeta.GetValue(2 * batchIdx) : batchIdx;
+        offsets[currStage].finalStateOffset = (stateSlot * vNumHead + vHeadIdx) * kHeadDim * vHeadDim;  
         offsets[currStage].hSrcOffset = (shapeBatchIdx * vNumHead * totalChunks + vHeadIdx * totalChunks + chunkOffset + chunkIdx) * kHeadDim * vHeadDim;
         offsets[currStage].hDstOffset = offsets[currStage].hSrcOffset + kHeadDim * vHeadDim;
         offsets[currStage].uvOffset = (shapeBatchIdx * vNumHead * totalTokens + vHeadIdx * totalTokens + tokenOffset + chunkIdx * chunkSize) * vHeadDim;

@@ -23,4 +23,5 @@ struct ChunkGatedDeltaRuleFwdHTilingData {
     int64_t numSeqWorkspaceOffset;
     int64_t numChunksWorkspaceOffset;
     int64_t chunkCapacity;
+    bool statePoolMode;
 };

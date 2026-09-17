@@ -157,6 +157,8 @@ public:
     uint32_t initalStateStride0;
     bool useInitialState;
     bool storeFinalState;
+    bool statePoolMode;
+    AscendC::GlobalTensor<int64_t> gmStateMeta;
     uint32_t isVariedLen;
     uint32_t shapeBatch;
     uint32_t tokenBatch;
@@ -214,6 +216,8 @@ public:
         numSeqWorkspaceOffset = gdnFwdHTilingData->numSeqWorkspaceOffset;
         numChunksWorkspaceOffset = gdnFwdHTilingData->numChunksWorkspaceOffset;
         
+        statePoolMode = gdnFwdHTilingData->statePoolMode;
+        gmStateMeta.SetGlobalBuffer((__gm__ int64_t *)chunk_indices);
         gmK.SetGlobalBuffer((__gm__ ElementK *)k);
         gmW.SetGlobalBuffer((__gm__ ElementW *)w);
         gmU.SetGlobalBuffer((__gm__ ElementU *)u);
@@ -343,13 +347,20 @@ public:
                             }
 #endif
                             uint32_t chunkOffset = isVariedLen ? gmNumChunks.GetValue(tokenBatchIdx) : 0;
-                            uint32_t initialStateSrcOffset = (batchIdx * vNumHead + vHeadIdx) * kHeadDim * initalStateStride0;
+                            uint32_t stateSlot = statePoolMode ? gmStateMeta.GetValue(2 * batchIdx) : batchIdx;
+                            bool cold = statePoolMode && gmStateMeta.GetValue(2 * batchIdx + 1) == 0;
+                            uint32_t initialStateSrcOffset = (stateSlot * vNumHead + vHeadIdx) * kHeadDim * initalStateStride0;
                             uint32_t hOffset = (shapeBatchIdx * vNumHead * totalChunks + vHeadIdx * totalChunks + chunkOffset) * stateBlockSize;
                             AscendC::LocalTensor<ElementInitialState> stateUbTensor = pingpongFlag ? stateUbTensorPing : stateUbTensorPong;
                             AscendC::LocalTensor<ElementH> hUbTensor = pingpongFlag ? hUbTensorPing : hUbTensorPong;
                             auto event_id = pingpongFlag ? EVENT_ID1 : EVENT_ID0;
                             AscendC::WaitFlag<AscendC::HardEvent::MTE3_MTE2>(event_id);
-                            if constexpr(!std::is_same<ElementInitialState, ElementH>::value) {
+                            if (cold) {
+                                AscendC::Duplicate(hUbTensor, (ElementH)0, stateBlockSize);
+                                AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(event_id);
+                                AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(event_id);
+                                AscendC::DataCopy(gmH[hOffset], hUbTensor, stateBlockSize);
+                            } else if constexpr(!std::is_same<ElementInitialState, ElementH>::value) {
                                 AscendC::DataCopy(stateUbTensor, gmInitialState[initialStateSrcOffset], repeatParams);
                                 AscendC::SetFlag<AscendC::HardEvent::MTE2_V>(event_id);
                                 AscendC::WaitFlag<AscendC::HardEvent::MTE2_V>(event_id);

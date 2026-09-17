@@ -30,7 +30,7 @@ def device_struct(value):
 
 
 class Kernels:
-    def __init__(self, library, tokens, requests, chunks, cores=24):
+    def __init__(self, library, tokens, requests, chunks, cores=24, state_pool=False):
         assert os.environ.get("TASK_QUEUE_ENABLE") == "0"
         self.lib = C.CDLL(str(library))
         self.cores = cores
@@ -56,6 +56,7 @@ class Kernels:
             t.dataType = 1
             t.gDataType = 2
             t.chunkCapacity = chunks
+        th.statePoolMode = state_pool
         th.batch = requests
         th.initalStateStride0 = 128
         th.useInitialState = th.storeFinalState = True
