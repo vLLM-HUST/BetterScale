@@ -220,5 +220,39 @@ probes record actual scheduled tokens/request IDs/computed counts and native gra
 mode; don'tinfer from requested configuration alone. Observation hook must attach
 in load_model AFTER NPUWorker.init_device constructs the runner, not Worker.__init__.
 `no-mtp-concurrent-candidate1` failed beforeload on that diagnostic-only mistake;
-its queued native counterpart was cancelled. Corrected native2/candidate2 pending.
+its queued native counterpart was cancelled. Corrected native2/candidate2 results follow below.
 No serving implementation change belongs to these diagnostic probes.
+
+The corrected `no-mtp-concurrent-native2` / `candidate2` both PASS. Six-step C4
+observations have different first-arrival order; do not compare whole profile
+makespans as a matched timing A/B. Actual dispatch:
+- Native:512single NONE;1decode FULL;[1,2047] NONE;[1,1,1024,1022] NONE;
+  [1,1,1,514] NONE;4decode FULL.
+- Candidate:2048single FULL;[1,512] NONE;[1,1,1024,1022] NONE;
+  [1,1,1,514] NONE;4decode FULL;4decode FULL.
+Thus native mixed is also NONE, not a PIECEWISE path uniquely lost by candidate.
+The main missed opportunity is FULL coverage of real scheduler-produced mixed
+batches. In this candidate trace the short512prefill joins a decode token and
+misses the large standalone FULL benefit; the only captured prefill is the long
+2048case where device compute already masks submission overhead.
+
+Both TraceLoom raw exports retain TASK/compute/comm/API evidence. Exact graph
+reconstruction can be empty with onlytwo same-shape decode repeats; don't recapture
+just for that. Generalized compare_full_prefill.inspect checks6GemmaRmsNorm starts,
+6ArgMaxV2 samples,304totalMatMulV2/V3 +16FIA +128comm per modelbody. Initial norm
+inputshapes match all six scheduled token counts; API timestamps fall within the
+recorded host profile window. It bounds bodies at finalAddRmsNormBias, before sampling.
+
+Candidate mixed513:body451.33ms;rank1compute119.99ms,comm41.09ms,uncovered290.25ms;
+~23k CANNcalls begin during the body. Mixed517 native/candidate body447.50/456.84ms;
+rank1uncovered285.14/293.28ms,~23.6k CANNcalls. Rank0communication268.97/284.89ms
+is consistent with waiting on the starved peer. Uncovered is not pureidle (may
+include memory/control); API profiling overhead is not an E2E speedup measurement.
+Both still exhibit the host-submission bottleneck in short mixed batches.
+Same-width4decode FULL bodies: native36.78/36.80ms(rank0/1), candidate~37.15ms;
+only1vs2samples, not enough to attribute the whole C8-1.1% result causally.
+
+Engineering direction: extend the FULL metadata/capture contract to real mixed
+prefill/decode batches rather than first altering queue policy or forcibly splitting
+continuous batches into single requests. This is a coverage diagnosis, NOT shipped
+mixedFULL support or proof that the native scheduler policy is inefficient.

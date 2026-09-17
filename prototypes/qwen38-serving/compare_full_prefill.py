@@ -21,16 +21,18 @@ def duration(rows):
     return sum(hi - lo for lo, hi in union(rows)) / 1e6
 
 
-def inspect(path, matmul_type="MatMulV3", matmul_count=256, synchronous=True):
+def inspect(
+    path, matmul_type="MatMulV3", matmul_count=256, synchronous=True, expected_steps=4
+):
     c = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     rows = c.execute(
         """select t.startNs,t.endNs,s.value,t.modelId,t.globalTaskId from TASK t
         join COMPUTE_TASK_INFO i using(globalTaskId) join STRING_IDS s on s.id=i.opType order by t.startNs"""
     ).fetchall()
     samples = [r for r in rows if r[2] == "ArgMaxV2"]
-    assert len(samples) == 4
+    assert len(samples) == expected_steps, (len(samples), expected_steps)
     firsts = [r for r in rows if r[2] == "GemmaRmsNorm"]
-    assert len(firsts) == 4
+    assert len(firsts) == expected_steps, (len(firsts), expected_steps)
     all_comm = c.execute(
         "select startNs,endNs from COMMUNICATION_OP order by startNs"
     ).fetchall()
@@ -45,7 +47,12 @@ def inspect(path, matmul_type="MatMulV3", matmul_count=256, synchronous=True):
         hi = tail[1]
         body = [r for r in rows if lo <= r[0] < hi]
         assert (
-            sum(r[2] == matmul_type for r in body) == matmul_count
+            sum(
+                r[2]
+                in ((matmul_type,) if isinstance(matmul_type, str) else matmul_type)
+                for r in body
+            )
+            == matmul_count
         ), collections.Counter(r[2] for r in body)
         assert sum(r[2] == "FusedInferAttentionScore" for r in body) == 16
         compute = [(r[0], r[1]) for r in body]
