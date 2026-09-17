@@ -80,3 +80,15 @@ supervisor remains bounded. Do not turn a short successful leaf into a claim of
 indefinite persistent service. The full-model gate also exposed K=0 metadata
 carrying a clamped selector into an ordinary GDN backend that requires `None`;
 the narrow target-only binding adapter preserves K>0 candidate semantics.
+
+For single-card leaves, require a physical-device argument to agree with
+`ASCEND_RT_VISIBLE_DEVICES` **before** set_device(0). Admission alone does not
+bind a process. A missing binding was caught and the owned run stopped; that
+capsule is rejected. Multi-role launchers bind each child explicitly.
+
+The repaired full48 target lane subsequently passed prefill plus three decode
+calls,192generations per E4 owner, with diagnostic per-layer sync disabled; see
+`qwen38/full-target-result.json`. PLE Conv1d needed leaf-scoped ACLNN dispatch for
+capture (`ple-conv-result.json`). Retain the entire graph input frame, not only
+three convenient tensor fields, through graph reset. Full graph qualification
+is distinct from these preceding gates; consult the current prototype receipt.

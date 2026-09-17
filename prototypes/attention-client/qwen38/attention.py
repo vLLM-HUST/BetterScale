@@ -20,6 +20,7 @@ from livemodule.llm.layers.linear import ReplicatedLinear
 from livemodule.llm.qwen38.causal_lm import Qwen38ForCausalLM
 from livemodule.llm.qwen38.moe import ArchQwen38MoE
 from weights import MODEL
+from ple_conv import GraphPLEConv
 
 
 class QuantLinear(nn.Module):
@@ -170,6 +171,9 @@ class RemoteAscend(AscendArchitectureBinding):
 class AttentionRoot(Qwen38ForCausalLM):
     def __init__(self, *, vllm_config, prefix=""):
         super().__init__(vllm_config=vllm_config, prefix=prefix)
+        for layer in self.model.language_model.layers:
+            if layer.ple is not None:
+                layer.ple.conv1d = GraphPLEConv(layer.ple.conv1d)
         description = json.loads((MODEL / "quant_model_description.json").read_text())
         self.quantized_qsa = {}
         for name, module in list(self.named_modules()):

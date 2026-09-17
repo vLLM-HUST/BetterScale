@@ -142,3 +142,18 @@ The full async run passes after replacing the short per-launch deadline.
 This is a real end-to-end **mechanism gate**, not a language-quality benchmark,
 throughput gain, multi-source campaign, large-prefill test, or MTP qualification.
 FULL decode graph remains the next separate same-State comparison gate.
+
+### PLE convolution graph dispatch
+
+The target-only capture exposed PLE `nn.Conv1d` dispatching through legacy
+aclop Conv2D. `GraphPLEConv` scopes `ALLOW_INTERNAL_FORMAT=disable` to that leaf,
+restoring the prior setting immediately; it does not change INT8 NZ weights.
+Real PLE weights at1/3/32query rows match the previous eager convolution exactly,
+and changed-input replay is exact (`ple-conv-result.json`). The installed
+`torch.npu.config` has a setter but no getter for this field; preserve its option
+via the same `_npu_getOption` mechanism used by the installed HF32 accessors.
+
+Retain the **whole captured ForwardContext**, including active/query-length
+inputs, until graph reset. Keeping only token ids, positions and sequence lengths
+leaves other external graph inputs eligible for allocator reuse. This is a
+capture-lifetime requirement, not a new scheduler.

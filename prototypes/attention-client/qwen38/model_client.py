@@ -183,7 +183,7 @@ with (
                 decode_inputs = (
                     tokens,
                     positions,
-                    context.batch_topology.sequence_lengths,
+                    context,  # Own every external metadata tensor through graph.reset().
                 )
                 decode_graph.replay()
                 hidden, _, _, valid = graph_output
@@ -197,7 +197,9 @@ with (
             elif a.decode_graph and wave > 1:
                 decode_inputs[0].copy_(tokens)
                 decode_inputs[1].copy_(positions)
-                decode_inputs[2].copy_(context.batch_topology.sequence_lengths)
+                decode_inputs[2].batch_topology.sequence_lengths.copy_(
+                    context.batch_topology.sequence_lengths
+                )
                 decode_graph.replay()
                 hidden, _, _, valid = graph_output
             else:
@@ -224,7 +226,7 @@ with (
             json.dumps(
                 dict(
                     status="PASS",
-                    scope="eager full48 target, real PLE, four waves; not quality",
+                    scope="full48 target, real PLE, four waves; not quality",
                     output_ids=generated,
                     calls=count,
                     decode_graph=bool(a.decode_graph),

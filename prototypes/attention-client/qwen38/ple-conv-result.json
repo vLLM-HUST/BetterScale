@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "cases": [
+    {
+      "rows": 1,
+      "relative_l2": 0.0,
+      "replay_relative_l2": 0.0
+    },
+    {
+      "rows": 3,
+      "relative_l2": 0.0,
+      "replay_relative_l2": 0.0
+    },
+    {
+      "rows": 32,
+      "relative_l2": 0.0,
+      "replay_relative_l2": 0.0
+    }
+  ]
+}
