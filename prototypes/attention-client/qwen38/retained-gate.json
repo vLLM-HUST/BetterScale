@@ -1,0 +1,220 @@
+{
+  "capsule": "qwen38-model-20260917T144438Z",
+  "scope": "4 distinct SWE sessions, 2 turns, output capped8/turn; continuation smoke gate, not quality or throughput",
+  "status": "PASS",
+  "roles": [
+    {
+      "role": "attention0",
+      "status": "PASS",
+      "seconds": 125.39933912269771,
+      "sessions": [
+        {
+          "trace_id": "measure/swe/8a985d52-72d9-4384-bdd2-423110c034b5",
+          "completed_turns": 2,
+          "output_tokens": 16,
+          "prefill_tokens": 6233,
+          "prefix_reused_tokens": 4615,
+          "final_encoded_context": 6247,
+          "events": [
+            {
+              "turn": 0,
+              "first_token_seconds": 22.540103835985065,
+              "reused_tokens": 0
+            },
+            {
+              "turn": 1,
+              "first_token_seconds": 125.16787379514426,
+              "reused_tokens": 7
+            }
+          ]
+        },
+        {
+          "trace_id": "measure/swe/ee1cab8e-8c6e-45eb-8481-d2acb334e8de",
+          "completed_turns": 2,
+          "output_tokens": 16,
+          "prefill_tokens": 5780,
+          "prefix_reused_tokens": 4732,
+          "final_encoded_context": 5794,
+          "events": [
+            {
+              "turn": 0,
+              "first_token_seconds": 74.19836978428066,
+              "reused_tokens": 0
+            },
+            {
+              "turn": 1,
+              "first_token_seconds": 77.57238774280995,
+              "reused_tokens": 7
+            }
+          ]
+        }
+      ],
+      "memory": {
+        "allocated": 14480137728,
+        "reserved": 17460887552,
+        "peak_allocated": 16806820864
+      }
+    },
+    {
+      "role": "attention1",
+      "status": "PASS",
+      "seconds": 125.40067241620272,
+      "sessions": [
+        {
+          "trace_id": "measure/swe/8a985d52-72d9-4384-bdd2-423110c034b5",
+          "completed_turns": 2,
+          "output_tokens": 16,
+          "prefill_tokens": 6233,
+          "prefix_reused_tokens": 4615,
+          "final_encoded_context": 6247,
+          "events": [
+            {
+              "turn": 0,
+              "first_token_seconds": 22.54142182972282,
+              "reused_tokens": 0
+            },
+            {
+              "turn": 1,
+              "first_token_seconds": 125.16851611062884,
+              "reused_tokens": 7
+            }
+          ]
+        },
+        {
+          "trace_id": "measure/swe/ee1cab8e-8c6e-45eb-8481-d2acb334e8de",
+          "completed_turns": 2,
+          "output_tokens": 16,
+          "prefill_tokens": 5780,
+          "prefix_reused_tokens": 4732,
+          "final_encoded_context": 5794,
+          "events": [
+            {
+              "turn": 0,
+              "first_token_seconds": 74.19983136095107,
+              "reused_tokens": 0
+            },
+            {
+              "turn": 1,
+              "first_token_seconds": 77.57374572753906,
+              "reused_tokens": 7
+            }
+          ]
+        }
+      ],
+      "memory": {
+        "allocated": 14319978496,
+        "reserved": 17356029952,
+        "peak_allocated": 16664743424
+      }
+    },
+    {
+      "role": "attention2",
+      "status": "PASS",
+      "seconds": 134.3300960669294,
+      "sessions": [
+        {
+          "trace_id": "measure/swe/667efd70-9b33-4cf0-9b61-9520a163e7eb",
+          "completed_turns": 2,
+          "output_tokens": 16,
+          "prefill_tokens": 5544,
+          "prefix_reused_tokens": 4871,
+          "final_encoded_context": 5558,
+          "events": [
+            {
+              "turn": 0,
+              "first_token_seconds": 76.12597026117146,
+              "reused_tokens": 0
+            },
+            {
+              "turn": 1,
+              "first_token_seconds": 78.32794334087521,
+              "reused_tokens": 7
+            }
+          ]
+        },
+        {
+          "trace_id": "measure/swe/ab6bb805-78ad-40a7-8de0-e532aab9b863",
+          "completed_turns": 2,
+          "output_tokens": 16,
+          "prefill_tokens": 8834,
+          "prefix_reused_tokens": 4636,
+          "final_encoded_context": 8848,
+          "events": [
+            {
+              "turn": 0,
+              "first_token_seconds": 76.1261268928647,
+              "reused_tokens": 0
+            },
+            {
+              "turn": 1,
+              "first_token_seconds": 133.96760091930628,
+              "reused_tokens": 7
+            }
+          ]
+        }
+      ],
+      "memory": {
+        "allocated": 14515554816,
+        "reserved": 17452498944,
+        "peak_allocated": 16838159360
+      }
+    },
+    {
+      "role": "attention3",
+      "status": "PASS",
+      "seconds": 134.33015905786306,
+      "sessions": [
+        {
+          "trace_id": "measure/swe/667efd70-9b33-4cf0-9b61-9520a163e7eb",
+          "completed_turns": 2,
+          "output_tokens": 16,
+          "prefill_tokens": 5544,
+          "prefix_reused_tokens": 4871,
+          "final_encoded_context": 5558,
+          "events": [
+            {
+              "turn": 0,
+              "first_token_seconds": 76.12546780519187,
+              "reused_tokens": 0
+            },
+            {
+              "turn": 1,
+              "first_token_seconds": 78.32785333041102,
+              "reused_tokens": 7
+            }
+          ]
+        },
+        {
+          "trace_id": "measure/swe/ab6bb805-78ad-40a7-8de0-e532aab9b863",
+          "completed_turns": 2,
+          "output_tokens": 16,
+          "prefill_tokens": 8834,
+          "prefix_reused_tokens": 4636,
+          "final_encoded_context": 8848,
+          "events": [
+            {
+              "turn": 0,
+              "first_token_seconds": 76.12563949730247,
+              "reused_tokens": 0
+            },
+            {
+              "turn": 1,
+              "first_token_seconds": 133.9670484131202,
+              "reused_tokens": 7
+            }
+          ]
+        }
+      ],
+      "memory": {
+        "allocated": 14319979008,
+        "reserved": 17349738496,
+        "peak_allocated": 16664744960
+      }
+    }
+  ],
+  "limitations": [
+    "No independent full-history numeric oracle",
+    "Variable tail buckets compiled in measured window; times invalid as steady performance",
+    "First-page State retention and TP output agreement guards added after this gate"
+  ]
+}

@@ -247,3 +247,11 @@ The PLE CPU response encoder's `bytes(tensor_row)` was measured at4.513s for
 `trace_ple.py` bulk codec for this experiment, not a larger device polling bound
 as the first repair. It also acknowledges all-inactive waves; the old host
 worker rejects empty requests, which cannot support idle native EP participants.
+
+Qwen38's `prepare_qwen38_qsa_island` assumes TP is its parent WORLD. In the
+colocated TP2/DP4 lane it instead creates different local pair member lists at
+one WORLD8 group-creation position. A larger real trace warmup exposed HCCL
+initialization error9. `colocated_model.bootstrap_groups` reuses each pre-created
+TP2 coordinator in `_QSA_GROUP_CACHE`; QSA islands and TP pairs are identical
+for this layout. Keep the post-catalog rendezvous and avoid a fresh island
+communicator. The earlier short gates alone do not certify this startup order.

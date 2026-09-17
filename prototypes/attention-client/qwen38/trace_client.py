@@ -72,11 +72,11 @@ class TraceEngine:
         self.graph = None
 
     def prefill(self, chunks, cursors):
-        width = max(2, max(map(len, chunks)))
-        if self.args.colocated:
-            extent = torch.tensor(width, dtype=torch.int32, device="npu")
-            torch.distributed.all_reduce(extent, op=torch.distributed.ReduceOp.MAX)
-            width = int(extent.cpu())
+        # One qualified bucket; tails use validity masks rather than triggering
+        # dozens of first-use Triton compilations inside the measured session.
+        width = min(512, self.lanes // self.batch)
+        if max(map(len, chunks)) > width:
+            raise ValueError("prefill exceeds warmed bucket")
         b = self.batch
         lengths = torch.tensor(list(map(len, chunks)), dtype=torch.int64, device="npu")
         active = lengths.gt(0)
@@ -249,7 +249,8 @@ class TraceEngine:
 
     def warm(self):
         self.prefill([[9707, 11, 1879] for _ in range(self.batch)], [0] * self.batch)
-        self.positions.fill_(3)
+        self.prefill([[9707, 11, 1879] for _ in range(self.batch)], [3] * self.batch)
+        self.positions.fill_(6)
         self.pending.fill_(11)
         self.remaining.fill_(32)
         self.active.fill_(True)
@@ -282,6 +283,15 @@ def run_trace(root, cfg, args, rank, stage):
         raise ValueError("fixed-resident pilot requires count == sources * batch")
     seats = [Seat(s) for s in assigned]
     install_transport(cfg, args, rank)
+    # No source may initialize a new data-plane communicator while its peer
+    # is still assembling the real expert catalog on CPU.
+    torch.distributed.barrier()
+    torch.npu.synchronize()
+    stage(
+        "trace-transport-ready",
+        allocated=torch.npu.memory_allocated(),
+        reserved=torch.npu.memory_reserved(),
+    )
     engine = TraceEngine(root, cfg, args, assigned)
     engine.warm()
     torch.npu.synchronize()

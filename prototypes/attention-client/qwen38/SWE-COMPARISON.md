@@ -141,3 +141,31 @@ limits output count but returns pending/multi from the untruncated speculative
 cabin. A terminal request could discard that State; a retained agent session
 cannot. The CPU probe forces accepted K1 with remaining1 and checks first-output
 pending/multi and the corresponding GDN/PLE selector. No donor/global patches.
+
+The repaired smoke gate `qwen38-model-20260917T144438Z` completes all four
+sessions' two turns (16 output tokens/session), with actual previous-turn
+prefix reuse4615/4871/4732/4636 tokens. See `retained-gate.json`. Its variable
+prefill tails trigger first-use Triton compilation (47–52s outliers), so those
+timings are **not steady-serving measurements**. The next runner uses a fixed
+512-row/query bucket, warms fresh and continuation prefill before the window,
+compares final token IDs within TP, and checks that retained first history
+pages remain byte-identical. Native EP routes only valid token rows, including
+idle sources. The first matched pilot keeps the same four sessions and two
+turns but restores all1408 recorded output tokens; it is still not the full
+185-turn workload represented by these four sessions.
+
+The separated matched pilot `qwen38-model-20260917T145121Z` completes all1408
+outputs,26391 prefill tokens (including four pending-token anchors), and19310
+reused-prefix tokens. All four attention ranks pass first-history-page retention
+and final TP output-ID agreement. Maximum source duration is40.5824s; this is a
+single four-session/two-turn pilot, not a complete-trajectory or quality result.
+
+The first colocated attempt `qwen38-model-20260917T145508Z` fails during warmup
+with HCCL communicator initialization error9, before a measured wave. Inspection
+found that the legacy QSA-island constructor calls `new_group(local_tp_ranks)`
+under WORLD8: the four DP groups supply different member lists at the same
+creation position. For TP2 the island is exactly the existing TP pair.
+`bootstrap_groups()` now seeds its cache with that deterministic, warmed group;
+there is no reason to create another communicator. Also rendezvous after every
+expert catalog has loaded, before data-plane warmup. Do not score that failed
+startup as the control's throughput or erase it from the record.

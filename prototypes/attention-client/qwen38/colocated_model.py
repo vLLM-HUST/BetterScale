@@ -6,6 +6,7 @@ from colocated_ep import ColocatedEP
 from livemodule.arch.binding import ArchBindings
 from livemodule.llm.qwen38.moe import ArchQwen38MoE
 from livemodule.llm.distributed import get_tp_group
+from livemodule.llm.forward_context import current_forward_context
 from livemodule.arch.ascend.vllm.moe_runtime.experts_selector import select_experts
 
 
@@ -37,6 +38,14 @@ def bootstrap_groups():
     torch.distributed.all_reduce(probe, group=get_tp_group().device_group)
     torch.npu.synchronize()
     assert probe.item() == 2
+    # QSA islands are exactly TP2 here. The legacy helper creates new_group
+    # from each local TP membership, which is NOT a consistent WORLD8 creation
+    # order across four DP sources. Reuse the already-created, warmed TP pair.
+    from livemodule.llm.qwen38.parallel import _QSA_GROUP_CACHE
+
+    tp = get_tp_group()
+    assert tp.world_size == 2
+    _QSA_GROUP_CACHE[(id(tp.device_group), tuple(tp.ranks))] = tp
 
 
 class ColocatedMoE(RemoteMoE):
@@ -49,6 +58,17 @@ class ColocatedMoE(RemoteMoE):
         # expert lives on one of8 ranks, never on both ranks of a TP pair.
         local = flat[group.rank_in_group :: 2].contiguous()
         active = torch.arange(count, device=flat.device) < local.shape[0]
+        context = current_forward_context()
+        topology = getattr(context, "batch_topology", None)
+        if topology is not None and hasattr(topology, "query_valid"):
+            valid = topology.query_valid.reshape(-1)[group.rank_in_group :: 2]
+            if valid.numel() != local.shape[0]:
+                raise ValueError("EP token rows disagree with attention validity")
+            if valid.numel() < count:
+                valid = torch.nn.functional.pad(
+                    valid, (0, count - valid.numel()), value=False
+                )
+            active = active & valid
         if local.shape[0] < count:
             local = torch.cat(
                 (
