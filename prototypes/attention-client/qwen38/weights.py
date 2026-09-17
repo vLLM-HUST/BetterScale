@@ -5,12 +5,15 @@ weights. Keep the two contracts explicit rather than coercing the whole catalog.
 """
 
 import json
+import os
 from pathlib import Path
 
 import torch
 from safetensors import safe_open
 
-MODEL = Path("/data/shared_models/Qwen3.8-Flash-Next-w8a8-mtp")
+MODEL = Path(
+    os.environ.get("QWEN38_MODEL", "/data/shared_models/Qwen3.8-Flash-Next-w8a8-mtp")
+)
 
 
 class Checkpoint:

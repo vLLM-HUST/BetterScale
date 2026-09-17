@@ -7,12 +7,15 @@ This is a repaired-model execution lane, not unmodified Eco-Tech equivalence.
 """
 
 import json
+import os
 from pathlib import Path
 import torch
 from safetensors import safe_open
 from weights import MODEL
 
-ORIGINAL = Path("/data/shared_models/Qwen3.8-Flash-Next")
+ORIGINAL = Path(
+    os.environ.get("QWEN38_ORIGINAL_MODEL", "/data/shared_models/Qwen3.8-Flash-Next")
+)
 FIELDS = {"layer_multipliers", "ngram_heads_offsets", "ngram_heads_vocab_sizes"}
 
 
