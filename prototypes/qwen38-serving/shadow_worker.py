@@ -88,7 +88,7 @@ def install_shadow():
             step = len(self._shadow_results)
             path = (
                 Path(os.environ["CAPSULE"])
-                / f"shadow-rank{self._shadow_rank}-step{step}.json"
+                / f"shadow-{getattr(self, '_shadow_label', '')}rank{self._shadow_rank}-step{step}.json"
             )
             path.write_text(json.dumps(result, indent=2))
             self._shadow_results.append(
