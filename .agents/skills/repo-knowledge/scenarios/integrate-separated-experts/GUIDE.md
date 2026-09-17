@@ -273,3 +273,13 @@ allocation. Native34GiB first failed A2 MC2's256-source-row bound, **not OOM**.
 Do not confuse staging-slot count2 with source-count2 when expanding the server.
 TP1 needs two-head QSA publication/gather/FIA as well as a parallel-plan change;
 removing the TP2 guard alone silently leaves half of each KV row unpublished.
+
+
+C40 TP1 full-prefill fit failures exposed a separate QSA workspace tax:1024
+queries x2051 selected KV rows x2 heads gives about2GiB each for K and V,
+then the old FIA layout adaptation copies both again. Enter the campaign's
+bounded-QSA section before reducing State budgets. The disconnected overlay
+now consumes <=128 queries at a time and gathers directly into head-major FIA
+storage; Q/indexer/top-k remain whole-wave and exact. The8-case leaf gate covers
+one/two heads and chunk boundaries, but does not by itself qualify full-model
+capacity or timing. Apply the same overlay to TP2 controls for fair comparison.

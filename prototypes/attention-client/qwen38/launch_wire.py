@@ -6,6 +6,8 @@ from channel_layout import ChannelLayout
 import os
 from pathlib import Path
 import subprocess
+import shutil
+import signal
 import sys
 import time
 
@@ -14,6 +16,7 @@ p.add_argument("--devices", required=True)
 p.add_argument("--directory", type=Path, required=True)
 p.add_argument("--build", type=Path, required=True)
 p.add_argument("--sources", type=int, default=1)
+p.add_argument("--artifacts", type=Path)
 a = p.parse_args()
 devices = a.devices.split(",")
 layout = ChannelLayout.from_abi(json.loads((a.build / "abi.json").read_text()))
@@ -36,6 +39,11 @@ def launch(name, args, device):
         )
 
 
+def cancelled(signum, frame):
+    raise KeyboardInterrupt("wire gate cancelled")
+
+
+signal.signal(signal.SIGTERM, cancelled)
 try:
     for owner in range(owners):
         launch(
@@ -93,3 +101,9 @@ finally:
         except subprocess.TimeoutExpired:
             c.kill()
             c.wait()
+
+    if a.artifacts is not None:
+        a.artifacts.mkdir(parents=True, exist_ok=True)
+        for pattern in ("*.log", "*.json"):
+            for path in a.directory.glob(pattern):
+                shutil.copyfile(path, a.artifacts / path.name)

@@ -81,4 +81,64 @@ for heads in (1, 2):
             assert torch.equal(output, expected), (heads, n, generation)
         graph.reset()
         records.append(dict(kv_heads=heads, rows=n, status="PASS"))
+# Non-degenerate head-major layout, inactive tiles, and both sides of the
+# 128-query workspace boundary. Independent page indexing feeds unchunked FIA.
+for heads in (1, 2):
+    for n in (129, 257):
+        cache = torch.randn(6, 64, heads, 256, dtype=torch.bfloat16, device="npu")
+        value_cache = torch.randn_like(cache)
+        query = torch.randn(n, 1, heads * 12, 256, dtype=torch.bfloat16, device="npu")
+        table = torch.tensor([[0, 2], [1, 3]], dtype=torch.int32, device="npu")
+        requests = torch.arange(n, device="npu") % 2
+        selected = 33
+        indices = (torch.arange(selected, device="npu") * 3).int().repeat(n, 1)
+        indices[:, 5] = -1
+        counts = (torch.arange(n, device="npu") % (selected + 1)).int()
+        packed = torch.cat((indices, counts[:, None]), dim=1)
+
+        def run_many():
+            return backend.decode_paged(
+                query,
+                cache,
+                value_cache,
+                packed,
+                table,
+                leading_pages=2,
+                request_rows=requests,
+                scale=256**-0.5,
+            )
+
+        run_many()
+        graph = torch.npu.NPUGraph()
+        stream = torch.npu.Stream()
+        stream.wait_stream(torch.npu.current_stream())
+        with torch.npu.stream(stream), torch.npu.graph(graph):
+            output = run_many()
+        stream.synchronize()
+        for generation in range(2):
+            cache.copy_(torch.randn_like(cache))
+            value_cache.copy_(torch.randn_like(value_cache))
+            graph.replay()
+            torch.npu.synchronize()
+            safe = indices.clamp_min(0).long()
+            page = table[requests[:, None], safe // 64].long() + 2
+            keys = cache[page, safe % 64]
+            values = value_cache[page, safe % 64]
+            valid = (indices >= 0) & (
+                torch.arange(selected, device="npu")[None] < counts[:, None]
+            )
+            keys = torch.where(valid[:, :, None, None], keys, 0)
+            values = torch.where(valid[:, :, None, None], values, 0)
+            got = gather_qsa_kv(
+                query, cache, value_cache, packed, table, requests, leading_pages=2
+            )
+            assert torch.equal(got[0], keys) and torch.equal(got[1], values)
+            assert got[0].transpose(1, 2).is_contiguous()
+            assert got[1].transpose(1, 2).is_contiguous()
+            reference = backend._attend(
+                query, keys, values, valid, counts, scale=256**-0.5
+            )
+            assert torch.equal(output, reference), (heads, n, generation, "chunked FIA")
+        graph.reset()
+        records.append(dict(kv_heads=heads, rows=n, selected=selected, status="PASS"))
 print(json.dumps(dict(status="PASS", cases=records)))

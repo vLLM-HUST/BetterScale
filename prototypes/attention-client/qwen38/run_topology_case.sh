@@ -7,6 +7,7 @@ layout=$1
 mode=$2
 budget=$3
 out=$4
+qsa=${5:-bounded128}
 [[ ! -e $out ]]
 mkdir -p "$out"
 extra=()
@@ -23,11 +24,23 @@ case "$mode" in
   trace) extra+=(--trace-plan /workspace/betterscale-hw0/runs/swe-traces-20260917/qwen38-swe40.json --trace-count 40 --trace-turns 2) ;;
   *) echo "unknown mode" >&2; exit 2 ;;
 esac
+case "$qsa" in
+  bounded128)
+    if [[ $layout == *-ep8 ]]; then overlay=qwen38-bounded-qsa-colocated-20260917c;
+    else overlay=qwen38-bounded-qsa-runtime-20260917c/overlay; fi ;;
+  original) ;;
+  *) echo "unknown QSA implementation" >&2; exit 2 ;;
+esac
+"$QWEN38_PYTHON" - "$out/parameters.json" "$layout" "$mode" "$budget" "$qsa" "$overlay" "$build" <<'PYMETA'
+import json,sys
+path,layout,mode,budget,qsa,overlay,build=sys.argv[1:]
+with open(path,"w") as f:json.dump(dict(layout=layout,mode=mode,state_gib=float(budget),qsa=qsa,overlay=overlay,build=build,total_sessions=40,trace_turns=2,mtp_tokens=1),f,indent=2)
+PYMETA
 export QWEN38_BUILD=$PWD/runs/$build
 export QWEN38_OVERLAY=$PWD/runs/$overlay
 export QWEN38_WAIT_SECONDS=1800
 exec 9>/root/tp8.lock
-flock -w 1800 9
+if ! flock -w 3600 9; then echo "lease wait expired" > "$out/admission-failure"; exit 73; fi
 # Keep the exact 40-session allocation and output budgets across all layouts.
 # B40 is divisible by2,4,5,8; no replicated sessions or inactive padded sources.
 set +e
