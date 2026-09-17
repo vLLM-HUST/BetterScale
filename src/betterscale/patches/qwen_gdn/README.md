@@ -77,3 +77,26 @@ Use only the cold-fill-DMA-fenced library in `native.json` (build6, kernel sourc
 4e21bb1). Earlier build4 passed four-request operator checks but has a cold/warm
 buffer-reuse race exposed by five/eight-request mixtures; it is not service safe.
 See the repository operator README for the reproducer and synchronization fix.
+
+
+## End-to-end comparison
+
+hw3 `elastic-ab1`: same cards6/7, TP2/noMTP/APCoff,6GiB KV,8 seats,2048 token
+budget,64 generated tokens; warmup then two cohorts/case. Native server followed
+by candidate (AB, not ABBA). Native queue1 versus owned queue0 is part of the
+service comparison. No profiler active. Pooled output tokens/s:
+
+| workload | native | MixedWorker | change |
+| --- | ---: | ---: | ---: |
+| C1,512 prompt |26.655|28.783|+7.98%|
+| C1,1024 prompt |26.600|27.411|+3.05%|
+| C1,2048 prompt |25.686|25.179|-1.97%|
+| C4,mixed lengths |64.513|70.546|+9.35%|
+| C8,mixed lengths |96.149|104.167|+8.34%|
+
+C4 mean TTFT1104→895ms, C8 1889→1590ms. Single-request mean output gaps get
+slightly worse (~31.8–32.1→32.5–33.0ms); prefill savings do not offset this at
+C1/2048. Keep this as an opt-in configuration, not a universal faster default.
+Two warmed samples establish bounded behavior, not statistical certainty.
+Compact receipts and all round metrics: `docs/evidence/qwen-mixed-full.json`
+in the repository. This source integration has not been published to PyPI.

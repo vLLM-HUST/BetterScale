@@ -32,6 +32,8 @@ pool and dynamic mixed FULL graphs keyed by token capacity, not request partitio
 It requires the qualified external AscendC library and a fresh service process;
 no MTP/APC. See [service contract and launcher](src/betterscale/patches/qwen_gdn/README.md).
 The existing Qwen and DSV4 entries are unchanged; this entry is also source-only.
+[Bounded service acceptance and performance](docs/evidence/qwen-mixed-full.json)
+include the C1/2048 regression as well as the C4/C8 gains.
 
 ## End-to-end service evidence
 

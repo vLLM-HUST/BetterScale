@@ -379,5 +379,117 @@
     "TASK_QUEUE_ENABLE=0; fresh K-V pool; separately supplied qualified library",
     "Native FIA update retained; no sampling capture or metadata-overlap claim",
     "Bounded correctness, not language quality or long-context equivalence"
-  ]
+  ],
+  "http_comparison": {
+    "status": "PASS",
+    "capsule": "hw3-elastic-ab1",
+    "devices": [
+      6,
+      7
+    ],
+    "order": [
+      "baseline",
+      "candidate"
+    ],
+    "repeats_per_case": 2,
+    "kv_bytes": 6442450944,
+    "output_tokens": 64,
+    "scope": "Warmed unprofiled HTTP cohorts, no MTP/APC; native queue1 versus required owned queue0. Sequential AB, not ABBA or a confidence study. No universal non-regression claim.",
+    "metrics": {
+      "0-baseline": {
+        "(1, 512)": {
+          "tokens_per_s": 26.65461814553462,
+          "ttft_ms": 394.2620869493112,
+          "gap_ms": 31.84500371386844,
+          "round_tps": [
+            26.597220756807594,
+            26.71226379968429
+          ]
+        },
+        "(1, 1024)": {
+          "tokens_per_s": 26.59955289777651,
+          "ttft_ms": 396.31534251384437,
+          "gap_ms": 31.889669284860172,
+          "round_tps": [
+            26.615242039531473,
+            26.583882241981897
+          ]
+        },
+        "(1, 2048)": {
+          "tokens_per_s": 25.686351028927806,
+          "ttft_ms": 471.19130950886756,
+          "gap_ms": 32.054712801861264,
+          "round_tps": [
+            25.691442998576147,
+            25.681261077306793
+          ]
+        },
+        "(4, None)": {
+          "tokens_per_s": 64.51283499182063,
+          "ttft_ms": 1104.4065975002013,
+          "gap_ms": 44.60023227471134,
+          "round_tps": [
+            65.17515223152013,
+            63.86384341999768
+          ]
+        },
+        "(8, None)": {
+          "tokens_per_s": 96.14854092168096,
+          "ttft_ms": 1888.9108380390098,
+          "gap_ms": 53.192010033637324,
+          "round_tps": [
+            99.92458525706515,
+            92.64749030386288
+          ]
+        }
+      },
+      "1-candidate": {
+        "(1, 512)": {
+          "tokens_per_s": 28.782774296352223,
+          "ttft_ms": 172.55597235634923,
+          "gap_ms": 32.5480841769142,
+          "round_tps": [
+            28.77607850666019,
+            28.7894732028021
+          ]
+        },
+        "(1, 1024)": {
+          "tokens_per_s": 27.41069397310372,
+          "ttft_ms": 259.82756703160703,
+          "gap_ms": 32.927327222072535,
+          "round_tps": [
+            27.55528727689678,
+            27.26761022264182
+          ]
+        },
+        "(1, 2048)": {
+          "tokens_per_s": 25.179242459988707,
+          "ttft_ms": 459.7278799628839,
+          "gap_ms": 33.03514241373965,
+          "round_tps": [
+            25.12723026898393,
+            25.2314704232356
+          ]
+        },
+        "(4, None)": {
+          "tokens_per_s": 70.54566014407895,
+          "ttft_ms": 894.6183928637765,
+          "gap_ms": 42.65323162747784,
+          "round_tps": [
+            69.16081445241402,
+            71.987098094764
+          ]
+        },
+        "(8, None)": {
+          "tokens_per_s": 104.16722793824944,
+          "ttft_ms": 1590.1736071828054,
+          "gap_ms": 51.556112913189395,
+          "round_tps": [
+            105.47340216082407,
+            102.89300909810848
+          ]
+        }
+      }
+    }
+  }
 }

@@ -545,3 +545,14 @@ layer-debug capture copies. No language-quality or unlimited-context claim.
 Artifacts under established remote qwen27-partition-serving root and local
 qwen38-tp2-serving/hw3-elastic-* mirrors. Binary manifest in package pins build6
 (kernel4e21bb1); the separately built binary is not bundled in Git or PyPI0.4.2.
+
+
+Whole-service AB `elastic-ab1`, same hw3 cards6/7,6GiB KV,64 outputs, two warmed
+cohorts/case, native queue1 versus owned queue0: pooled tok/s native→owned
+C1/51226.655→28.783; C1/102426.600→27.411; C1/204825.686→25.179;
+C464.513→70.546; C896.149→104.167. C4/C8 TTFT1104→895/1889→1590ms.
+Single-request output gaps worsen about0.7–1ms, so NOT universal non-regression.
+Do not confuse this new elastic service with partition-abba2's exact enumeration.
+No new profile or statistical confidence claimed; all round metrics retained in
+`docs/evidence/qwen-mixed-full.json`. Cards released. CPU73 tests and fresh
+sdist-to-wheel archive contents pass; no PyPI publication/version change.
