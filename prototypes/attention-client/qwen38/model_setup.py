@@ -19,7 +19,9 @@ class ModelConfig(NS):
         return int(self.hf_text_config.num_experts)
 
 
-def configure(rank, stage, *, batch_size=1, state_gib=4, max_model_len=4096):
+def configure(
+    rank, stage, *, batch_size=1, state_gib=4, max_model_len=4096, mtp_tokens=0
+):
     hf = Qwen38Config.from_pretrained(MODEL)
     cfg = NS(
         model_config=ModelConfig(
@@ -52,7 +54,9 @@ def configure(rank, stage, *, batch_size=1, state_gib=4, max_model_len=4096):
             cudagraph_capture_sizes=[],
             max_cudagraph_capture_size=32,
         ),
-        speculative_config=None,
+        speculative_config=(
+            NS(num_speculative_tokens=mtp_tokens) if mtp_tokens else None
+        ),
         device_config=NS(device=torch.device("npu:0")),
         load_config=NS(
             device=None,

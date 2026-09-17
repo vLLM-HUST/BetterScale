@@ -24,8 +24,12 @@ p.add_argument("--defer-steady-gc", action="store_true")
 p.add_argument("--batch-size", type=int, choices=range(1, 33), default=1)
 p.add_argument("--state-gib", type=float, default=4)
 p.add_argument("--prompt-width", type=int, choices=(1, 3), default=3)
+p.add_argument("--mtp-tokens", type=int, choices=range(0, 6), default=0)
+p.add_argument("--reference-tokens", type=int, default=0)
 a = p.parse_args()
-assert a.batch_size * a.prompt_width <= 32
+assert a.reference_tokens == 0 or 2 <= a.reference_tokens <= min(32, a.decode_steps + 3)
+assert not a.reference_tokens or a.mtp_tokens
+assert a.batch_size * max(a.prompt_width, a.mtp_tokens + 1) <= 32
 devices = a.devices.split(",")
 assert (
     len(devices)
@@ -60,7 +64,8 @@ try:
             launch(
                 f"expert{owner}",
                 "server.py",
-                [*common, "--owner", str(owner), "--sources", str(a.sources)],
+                [*common, "--owner", str(owner), "--sources", str(a.sources)]
+                + (["--mtp"] if a.mtp_tokens else []),
                 devices[owner + 2 * a.sources],
             )
         deadline = time.monotonic() + 900
@@ -85,6 +90,10 @@ try:
                 str(a.decode_steps),
             ]
             + [
+                "--reference-tokens",
+                str(a.reference_tokens),
+                "--mtp-tokens",
+                str(a.mtp_tokens),
                 "--batch-size",
                 str(a.batch_size),
                 "--state-gib",

@@ -21,15 +21,23 @@ def summarize(directory):
     assert all(o["completed_counts"] == expected for o in owners)
     starts, ends, rows = [], [], []
     for client in leaders:
-        times = client["wave_seconds"][2:]
-        starts.append(client["wave_started_seconds"][2])
+        offset = 0 if "wave_output_tokens" in client else 2
+        times = client["wave_seconds"][offset:]
+        token_count = (
+            sum(client["wave_output_tokens"])
+            if "wave_output_tokens" in client
+            else len(times) * client.get("batch_size", 1)
+        )
+        starts.append(client["wave_started_seconds"][offset])
         ends.append(client["wave_started_seconds"][-1] + times[-1])
         rows.append(
             dict(
                 source=client["source"],
                 steps=len(times),
                 batch_size=client.get("batch_size", 1),
-                output_tokens=len(times) * client.get("batch_size", 1),
+                output_tokens=token_count,
+                mtp_tokens=client.get("mtp_tokens", 0),
+                prompt_width=client.get("prompt_width", 3),
                 median_ms=statistics.median(times) * 1000,
                 p95_ms=sorted(times)[math.ceil(0.95 * len(times)) - 1] * 1000,
                 max_ms=max(times) * 1000,
@@ -46,7 +54,8 @@ def summarize(directory):
         output_tokens=sum(r["output_tokens"] for r in rows),
         output_tokens_per_second=sum(r["output_tokens"] for r in rows) / duration,
         sources=rows,
-        graph_shadow_relative_l2=[c["graph_shadow_relative_l2"] for c in clients],
+        graph_shadow_relative_l2=[c.get("graph_shadow_relative_l2") for c in clients],
+        graph_shadow_exact=[c.get("graph_shadow_exact") for c in clients],
         full_run_paired_waves=[sum(o["completed_counts"]) - o["waves"] for o in owners],
     )
 

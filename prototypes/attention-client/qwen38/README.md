@@ -41,7 +41,8 @@ unrelated model checkpoint substitutes for the new geometry.
 
 ## Remaining integration gates
 
-1. Add the separately math-qualified BF16 MTP layer to full-model serving.
+1. BF16 MTP now enters full-model serving; see [MTP integration](MTP.md) for
+   passed K1 gates and the remaining wider-shape reference/quality boundary.
 2. Qualify multiple attention sources and large-prefill batching; the first
    Qwen38 source window still admits only1..32 rows.
 3. Establish independent numerical/language-quality evidence and online
@@ -364,3 +365,12 @@ check clones the entire State before capture: do not test40–48GiB resident Sta
 with that double-allocation fixture and misdiagnose the resulting OOM as a
 serving capacity limit. Separate the already-passed shadow gate from a future
 large-resident-State validation, or snapshot only the touched State correctly.
+
+
+## MTP extension
+
+[MTP execution, qualification and reproduction](MTP.md) records the opt-in
+49-layer persistent catalog, FULL speculative graph, actual-token accounting,
+and the strict-reference failure at wider verification shapes. Target-only
+remains the default; MTP currently has no demonstrated net throughput gain at
+32 total active requests.

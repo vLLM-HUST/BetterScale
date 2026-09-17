@@ -174,3 +174,21 @@ Large resident-budget testing must not blindly reuse the full-State cloning
 shadow fixture: a40GiB State would be cloned to another40GiB. The current8GiB
 batch tests avoid this confound and use only two64-token pages/request; static
 40GiB estimates do not qualify graph fit or populated long contexts.
+
+## Full-model MTP extension
+
+Enter `qwen38/MTP.md` before using `--mtp-tokens`. Existing server ABI already
+selects the BF16 layer48 alongside INT8 target layers; the integration reuses
+owned draft/commit/reconciliation programs. K1 B2 dual passes FULL graph exact
+output/count shadow and first16 sequential-target reference tokens. K1 B16 is
+~161tok/s vs prior target-only~163: do not claim a throughput win. The32-row
+source ceiling applies to B*(K+1), and K=0 State estimates exclude K>0 candidates.
+
+Wider-query strict token reference can fail before any server fault. The K3 B8
+first verification matches target-reference layers0/1 exactly; layer2 HC has
+exact normalized input but5.58e-5relative difference in its stateless BF16 down
+projection(width1 vs4), before attention/experts. See `mtp-shape-divergence.json`.
+Later error amplifies. Preserve the failed reference gate; this is not language
+quality qualification or proof that all later discrepancies are harmless. It
+prevents repeating transport/state speculation without checking the first
+numeric divergence. Larger-shape speed claims still require independent quality.

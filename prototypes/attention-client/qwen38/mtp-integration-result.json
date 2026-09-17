@@ -1,0 +1,256 @@
+{
+  "scope": "Full48 target INT8 plus one BF16 MTP layer in same persistent E4; greedy, fixed membership, no production quality claim",
+  "passed_runs": [
+    {
+      "capsule_roles": "runs/qwen38-hw0-results-20260917/mtp-k1-b2-dual-roles",
+      "attention_sources": 2,
+      "deferred_steady_gc": true,
+      "physical_cards": 8,
+      "steady_seconds": 1.0841301726177335,
+      "output_tokens": 96,
+      "output_tokens_per_second": 88.55025201281784,
+      "sources": [
+        {
+          "source": 0,
+          "steps": 16,
+          "batch_size": 2,
+          "output_tokens": 48,
+          "mtp_tokens": 1,
+          "prompt_width": 3,
+          "median_ms": 66.71354454010725,
+          "p95_ms": 71.42574433237314,
+          "max_ms": 71.42574433237314,
+          "mean_ms": 67.66481680097058
+        },
+        {
+          "source": 1,
+          "steps": 16,
+          "batch_size": 2,
+          "output_tokens": 48,
+          "mtp_tokens": 1,
+          "prompt_width": 3,
+          "median_ms": 67.37342709675431,
+          "p95_ms": 71.8008279800415,
+          "max_ms": 71.8008279800415,
+          "mean_ms": 67.67310330178589
+        }
+      ],
+      "graph_shadow_relative_l2": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "graph_shadow_exact": [
+        [
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true
+        ]
+      ],
+      "full_run_paired_waves": [
+        340,
+        340,
+        340,
+        339
+      ],
+      "hw0_capsule": "/workspace/betterscale-hw0/repo/runs/qwen38-model-20260917T130119Z",
+      "target_reference_matches": [
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ],
+        [
+          true,
+          true
+        ]
+      ],
+      "mean_output_tokens_per_request_per_step": 1.5,
+      "owner_weight_bytes": [
+        31551651840,
+        31551651840,
+        31551651840,
+        31551651840
+      ],
+      "catalog_layers": [
+        49,
+        49,
+        49,
+        49
+      ],
+      "all_sources_tp_ranks_output_ids_equal": true
+    },
+    {
+      "capsule_roles": "runs/qwen38-hw0-results-20260917/mtp-k1-b16-dual-roles",
+      "attention_sources": 2,
+      "deferred_steady_gc": true,
+      "physical_cards": 8,
+      "steady_seconds": 18.150088955648243,
+      "output_tokens": 2930,
+      "output_tokens_per_second": 161.4317156879936,
+      "sources": [
+        {
+          "source": 0,
+          "steps": 64,
+          "batch_size": 16,
+          "output_tokens": 1465,
+          "mtp_tokens": 1,
+          "prompt_width": 1,
+          "median_ms": 283.47304463386536,
+          "p95_ms": 297.4263206124306,
+          "max_ms": 298.7002655863762,
+          "mean_ms": 283.4552696585888
+        },
+        {
+          "source": 1,
+          "steps": 64,
+          "batch_size": 16,
+          "output_tokens": 1465,
+          "mtp_tokens": 1,
+          "prompt_width": 1,
+          "median_ms": 282.7001349069178,
+          "p95_ms": 295.537568628788,
+          "max_ms": 299.5734252035618,
+          "mean_ms": 283.37892633862793
+        }
+      ],
+      "graph_shadow_relative_l2": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "graph_shadow_exact": [
+        [
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true
+        ],
+        [
+          true,
+          true,
+          true
+        ]
+      ],
+      "full_run_paired_waves": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "hw0_capsule": "/workspace/betterscale-hw0/repo/runs/qwen38-model-20260917T130454Z",
+      "target_reference_matches": [
+        null,
+        null,
+        null,
+        null
+      ],
+      "mean_output_tokens_per_request_per_step": 1.4306640625,
+      "owner_weight_bytes": [
+        31551651840,
+        31551651840,
+        31551651840,
+        31551651840
+      ],
+      "catalog_layers": [
+        49,
+        49,
+        49,
+        49
+      ],
+      "all_sources_tp_ranks_output_ids_equal": true
+    }
+  ],
+  "target_only_batch16_control": {
+    "capsule_roles": "runs/qwen38-hw0-results-20260917/batch16-roles",
+    "attention_sources": 2,
+    "deferred_steady_gc": true,
+    "physical_cards": 8,
+    "steady_seconds": 12.380902803502977,
+    "output_tokens": 2016,
+    "output_tokens_per_second": 162.83142126191356,
+    "sources": [
+      {
+        "source": 0,
+        "steps": 63,
+        "batch_size": 16,
+        "output_tokens": 1008,
+        "mtp_tokens": 0,
+        "prompt_width": 1,
+        "median_ms": 195.62670961022377,
+        "p95_ms": 202.50544045120478,
+        "max_ms": 204.55330424010754,
+        "mean_ms": 195.21623919348394
+      },
+      {
+        "source": 1,
+        "steps": 63,
+        "batch_size": 16,
+        "output_tokens": 1008,
+        "mtp_tokens": 0,
+        "prompt_width": 1,
+        "median_ms": 196.05033472180367,
+        "p95_ms": 201.78178139030933,
+        "max_ms": 202.8529029339552,
+        "mean_ms": 195.1935798195856
+      }
+    ],
+    "graph_shadow_relative_l2": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "graph_shadow_exact": [
+      null,
+      null,
+      null,
+      null
+    ],
+    "full_run_paired_waves": [
+      33,
+      27,
+      25,
+      27
+    ]
+  },
+  "limitations": [
+    "K1 B2 dual passes first16 greedy target-reference tokens; not language quality.",
+    "K1 B16 passes same-State graph token/count comparison, but differs from earlier K0 generated sequences; throughput is provisional without independent quality qualification.",
+    "K3 B8 rejects strict target-only token equality. Do not report its throughput as a qualified result.",
+    "Timing counts actual committed tokens, excludes prompt/capture/reference work; bounded GC deferral. Histories advance different distances with speculation."
+  ]
+}

@@ -1,4 +1,4 @@
-"""TP2 target-only full-root gate with real PLE and external routed experts.
+"""TP2 full-root target/MTP gates with real PLE and external routed experts.
 
 Correctness/continuation first. This is not a throughput benchmark or a quality
 suite. Decode graph qualification follows the eager all-layer gate.
@@ -29,8 +29,12 @@ p.add_argument("--defer-steady-gc", action="store_true")
 p.add_argument("--batch-size", type=int, choices=range(1, 33), default=1)
 p.add_argument("--state-gib", type=float, default=4)
 p.add_argument("--prompt-width", type=int, choices=(1, 3), default=3)
+p.add_argument("--mtp-tokens", type=int, choices=range(0, 6), default=0)
+p.add_argument("--reference-tokens", type=int, default=0)
 a = p.parse_args()
-assert a.batch_size * a.prompt_width <= 32
+assert a.reference_tokens == 0 or 2 <= a.reference_tokens <= min(32, a.decode_steps + 3)
+assert not a.reference_tokens or a.mtp_tokens
+assert a.batch_size * max(a.prompt_width, a.mtp_tokens + 1) <= 32
 assert 0 < a.state_gib <= 48
 assert 3 <= a.decode_steps <= 96
 assert not a.align_steady_start or a.decode_graph
@@ -85,7 +89,9 @@ from attention import AttentionRoot
 from model_setup import configure
 from client import Session
 
-cfg, runtime = configure(rank, stage, batch_size=a.batch_size, state_gib=a.state_gib)
+cfg, runtime = configure(
+    rank, stage, batch_size=a.batch_size, state_gib=a.state_gib, mtp_tokens=a.mtp_tokens
+)
 with (
     live_runtime(runtime),
     set_current_vllm_config(cfg),
@@ -111,7 +117,11 @@ with (
         allocated=torch.npu.memory_allocated(),
         reserved=torch.npu.memory_reserved(),
     )
-    if not a.construct_only:
+    if not a.construct_only and a.mtp_tokens:
+        from mtp_client import run_mtp
+
+        run_mtp(root, cfg, a, rank, stage)
+    if not a.construct_only and not a.mtp_tokens:
         if rank == 0:
             cfg.remote_expert_transport = Session(a.directory, a.build, source=a.source)
         torch.distributed.barrier()
