@@ -40,3 +40,29 @@ counts and clean exits. Then use `analyze_concurrency.py <capsule>/roles` to
 measure full-run paired waves and validate sampled same-layer pairs. This short
 fixture is not a serving throughput or large-prefill qualification. Preserve
 capsule identity and environment revisions when returning the results to hw2.
+
+## Environment qualification and current waiter
+
+Host-local private venv now pins transformers5.14.1 and numpy2.2.6 to the
+single-source machine. Installed donor0.23 package requirements emit conflicts,
+but importing this owned AttentionRoot loads **no external vllm/vllm_ascend
+modules**; no installed donor was upgraded. This does not claim donor0.23 is
+compatible with those private venv overrides.
+
+`hw0-int8-gmm-result.json` passes eight dummy FULL graph cases using the actual
+INT8 GEMM closure on admitted physical card2: both matrix geometries, dynamic
+counts, empty groups and inactive-tail preservation. All integer outputs exact;
+card released. This validates the new host's basic binary/math path, not full
+model service.
+
+`run-after-download.sh` (remote root directory) is the bounded continuation,
+initial PID35910. It waits for both downloader receipts, executes
+`validate_ple.py`, then enters eight-card admission and runs the two-source FULL
+gate. Successful completion writes `runs/concurrency-result.json`;
+`runs/campaign.log` retains startup/error state. On download failure it refuses
+to launch, and on occupancy collision the existing supervisor reclaims our run.
+Do not let a cancelled goal leave this waiter or the downloader alive.
+
+At07:45 UTC the direct download held about22GiB locally and was still running;
+no full-model dual-source qualification had occurred. Recheck receipt/process
+identity rather than inferring completion from that size.

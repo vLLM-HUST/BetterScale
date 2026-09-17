@@ -1,0 +1,101 @@
+{
+  "status": "PASS",
+  "cases": [
+    {
+      "k": 2560,
+      "n": 1280,
+      "counts": [
+        0,
+        1,
+        32,
+        0
+      ],
+      "exact": true,
+      "tail_untouched": true
+    },
+    {
+      "k": 2560,
+      "n": 1280,
+      "counts": [
+        16,
+        0,
+        128,
+        1
+      ],
+      "exact": true,
+      "tail_untouched": true
+    },
+    {
+      "k": 2560,
+      "n": 1280,
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "exact": true,
+      "tail_untouched": true
+    },
+    {
+      "k": 2560,
+      "n": 1280,
+      "counts": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "exact": true,
+      "tail_untouched": true
+    },
+    {
+      "k": 640,
+      "n": 2560,
+      "counts": [
+        0,
+        1,
+        32,
+        0
+      ],
+      "exact": true,
+      "tail_untouched": true
+    },
+    {
+      "k": 640,
+      "n": 2560,
+      "counts": [
+        16,
+        0,
+        128,
+        1
+      ],
+      "exact": true,
+      "tail_untouched": true
+    },
+    {
+      "k": 640,
+      "n": 2560,
+      "counts": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "exact": true,
+      "tail_untouched": true
+    },
+    {
+      "k": 640,
+      "n": 2560,
+      "counts": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "exact": true,
+      "tail_untouched": true
+    }
+  ]
+}

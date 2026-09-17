@@ -118,3 +118,10 @@ occupancy after admission. The latter loaded all E4 target weights and began
 four attention ranks' loading; it did not reach model forward qualification.
 No dual-source throughput/correctness claim follows. The launcher now handles
 SIGTERM through its fail-stop/finally block to preserve role logs.
+
+For the authorized hw0 migration, enter `qwen38/HW0.md`. Models download directly
+on hw0; `/model` is read-only, so use `/workspace/betterscale-hw0/models` and the
+explicit QWEN38 model/reference/Python environment overrides. Only two original
+Qwen shards are needed for the three PLE integer fields. Do not copy or download
+the entire original model to restore those buffers. A dummy INT8 FULL-graph gate
+passed on hw0; full-model admission waits behind the direct download receipts.
