@@ -296,3 +296,12 @@ performance. Native MC2 stack snapshots during slow warmup were not proof of a
 collective deadlock. CPU PLE lookup was also measured separately and could not
 explain seconds-long waves; its exact last-position/grouped-shard improvement is
 only millisecond scale. Enter the campaign for receipts and current timing status.
+
+
+Native MC2 Dispatch/Combine1D masks require a true prefix. Arbitrary request
+padding or finished-seat holes are illegal even when a short run happens to
+complete. `colocated_ep.compact_prefix` adapts fixed chunks with device prefix
+sums and inverts after combine; shared stays in original order. Enter the
+campaign's MC2 section for the official reference, CPU oracle and latest hardware
+qualification. Do not interpret the old native TP1 layer0 dispatch stops as
+State OOM, and do not reuse pre-correction masked timings as a legal baseline.

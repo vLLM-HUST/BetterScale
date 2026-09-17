@@ -24,6 +24,7 @@ p.add_argument("--observe-pauses", action="store_true")
 p.add_argument("--defer-steady-gc", action="store_true")
 p.add_argument("--batch-size", type=int, choices=range(1, 33), default=1)
 p.add_argument("--state-gib", type=float, default=4)
+p.add_argument("--token-capacity", type=int, default=0)
 p.add_argument("--prompt-width", type=int, default=3)
 p.add_argument("--mtp-tokens", type=int, choices=range(0, 6), default=0)
 p.add_argument("--reference-tokens", type=int, default=0)
@@ -43,7 +44,8 @@ from channel_layout import ChannelLayout
 import json
 
 layout = ChannelLayout.from_abi(json.loads((a.build / "abi.json").read_text()))
-token_capacity = layout.rows
+token_capacity = a.token_capacity or layout.rows
+assert 1 <= token_capacity <= layout.rows
 expert_owners = layout.owners
 assert (a.sources * a.tp_size == 8) if a.colocated else (a.sources <= layout.sources)
 assert 1 <= a.prompt_width <= token_capacity
@@ -122,6 +124,8 @@ try:
                 str(a.mtp_tokens),
                 "--batch-size",
                 str(a.batch_size),
+                "--token-capacity",
+                str(token_capacity),
                 "--state-gib",
                 str(a.state_gib),
                 "--prompt-width",

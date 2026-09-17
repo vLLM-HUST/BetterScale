@@ -29,6 +29,7 @@ p.add_argument("--observe-pauses", action="store_true")
 p.add_argument("--defer-steady-gc", action="store_true")
 p.add_argument("--batch-size", type=int, choices=range(1, 33), default=1)
 p.add_argument("--state-gib", type=float, default=4)
+p.add_argument("--token-capacity", type=int, default=0)
 p.add_argument("--prompt-width", type=int, default=3)
 p.add_argument("--mtp-tokens", type=int, choices=range(0, 6), default=0)
 p.add_argument("--reference-tokens", type=int, default=0)
@@ -49,6 +50,9 @@ import json
 token_capacity = ChannelLayout.from_abi(
     json.loads((a.build / "abi.json").read_text())
 ).rows
+wire_rows = token_capacity
+token_capacity = a.token_capacity or wire_rows
+assert 1 <= token_capacity <= wire_rows
 assert 1 <= a.prompt_width <= token_capacity
 assert a.batch_size * max(a.prompt_width, a.mtp_tokens + 1) <= token_capacity
 assert 0 < a.state_gib <= 60
@@ -147,6 +151,11 @@ with (
         allocated=torch.npu.memory_allocated(),
         reserved=torch.npu.memory_reserved(),
     )
+    if os.environ.get("QWEN38_DEBUG_LAYERS") == "1":
+        for i, layer in enumerate(root.model.language_model.layers):
+            layer.register_forward_pre_hook(
+                lambda module, inputs, i=i: stage("layer-entry", layer=i)
+            )
     if a.capacity_probe and not a.construct_only:
         from probe_capacity import run_capacity
 

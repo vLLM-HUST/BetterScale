@@ -217,3 +217,29 @@ not a new topology speedup. All five normal trace cases now select d, with PLE
 lookup fixed identically, under `/workspace/betterscale-hw0/runs/topology-affine-20260917/`.
 Native TP1-EP8 capacity is retried there before its trace, since the old c
 warmup stops cannot establish its limit.
+
+
+## Native MC2 mask contract correction
+
+The d repair does not fix native TP1's layer0 warmup stop. The512-lane retry
+(`183923Z`) explicitly logs only layer0 entry, then waits in DispatchV2; the
+1024-lane d trial is `183043Z`. Neither is qualified as OOM. We stopped these
+owned jobs rather than allowing unsupported inputs to run until a long timeout.
+
+[CANN's DispatchV2 documentation](https://www.hiascend.com/document/detail/zh/CANNCommunityEdition/850alpha001/API/aolapi/context/aclnnMoeDistributeDispatchV2.md)
+requires a1D active mask to have all true entries before false entries. Our
+request-padded prefill and finished decode seats can have holes. Therefore old
+native masked workload passes are not sufficient qualification; retain them as
+historical memory observations, not reliable legal-input performance controls.
+This is separate from the QSA padding regression and from State capacity.
+
+`colocated_ep.compact_prefix` now uses device prefix sums to place valid rows
+first in each fixed MC2 chunk. It carries hidden/route IDs/probabilities through
+the same permutation and restores combined results to original token order.
+Shared expert still consumes the original local tokens exactly once. No host
+route count or dynamic CPU allocation is introduced; the graph sees fixed sizes.
+`probe_ep_prefix.py` checks16 CPU masks, including holes/all-inactive/all-active,
+with exact stable ordering and inverse. Hardware qualification is pending.
+The CLI now permits `--token-capacity` below the physical wire bound, recording
+it in case parameters; the final intended comparison still uses1024/source.
+The temporary512-lane diagnostic is not silently substituted into the matrix.

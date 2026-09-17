@@ -10,6 +10,19 @@ import torch
 import torch_npu
 
 
+def compact_prefix(hidden, ids, probabilities, active):
+    """Stable device-only row permutation for MC2's true-prefix mask contract."""
+    prefix = active.to(torch.int32).cumsum(0)
+    rows = torch.arange(active.numel(), device=active.device)
+    total = prefix[-1]
+    destination = torch.where(active, prefix - 1, total + rows - prefix).long()
+    packed = [
+        torch.empty_like(x).index_copy_(0, destination, x)
+        for x in (hidden, ids, probabilities)
+    ]
+    return (*packed, rows < total, destination)
+
+
 class ColocatedEP:
     def __init__(self, group, catalog):
         self.group = group
@@ -84,6 +97,13 @@ class ColocatedEP:
             raise ValueError("A2 MC2 leaf admits1..256 source rows/rank")
         if active is None:
             active = torch.ones(hidden.shape[0], dtype=torch.bool, device=hidden.device)
+        # CANN Dispatch/Combine's 1D mask must be true-prefix, not arbitrary
+        # holes. Request-padded prefill and finished decode seats violate that
+        # unless compacted. Counts and the inverse mapping stay on device.
+        original_active = active
+        hidden, ids, probabilities, active, destination = compact_prefix(
+            hidden, ids, probabilities, active
+        )
         communication = dict(
             group_ep=self.name,
             ep_world_size=8,
@@ -155,6 +175,8 @@ class ColocatedEP:
             **communication,
         )
 
+        output = output.index_select(0, destination)
+        output = torch.where(original_active[:, None], output, 0)
         return (output, shared_output) if shared is not None else output
 
     def close(self):

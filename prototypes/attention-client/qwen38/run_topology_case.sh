@@ -8,6 +8,7 @@ mode=$2
 budget=$3
 out=$4
 qsa=${5:-bounded128}
+tokens=${6:-1024}
 [[ ! -e $out ]]
 mkdir -p "$out"
 extra=()
@@ -31,10 +32,10 @@ case "$qsa" in
   original) ;;
   *) echo "unknown QSA implementation" >&2; exit 2 ;;
 esac
-"$QWEN38_PYTHON" - "$out/parameters.json" "$layout" "$mode" "$budget" "$qsa" "$overlay" "$build" <<'PYMETA'
+"$QWEN38_PYTHON" - "$out/parameters.json" "$layout" "$mode" "$budget" "$qsa" "$overlay" "$build" "$tokens" <<'PYMETA'
 import json,sys
-path,layout,mode,budget,qsa,overlay,build=sys.argv[1:]
-with open(path,"w") as f:json.dump(dict(layout=layout,mode=mode,state_gib=float(budget),qsa=qsa,overlay=overlay,build=build,total_sessions=40,trace_turns=2,mtp_tokens=1),f,indent=2)
+path,layout,mode,budget,qsa,overlay,build,tokens=sys.argv[1:]
+with open(path,"w") as f:json.dump(dict(layout=layout,mode=mode,state_gib=float(budget),qsa=qsa,overlay=overlay,build=build,total_sessions=40,trace_turns=2,mtp_tokens=1,token_capacity=int(tokens)),f,indent=2)
 PYMETA
 export QWEN38_BUILD=$PWD/runs/$build
 export QWEN38_OVERLAY=$PWD/runs/$overlay
@@ -46,7 +47,7 @@ if ! flock -w 3600 9; then echo "lease wait expired" > "$out/admission-failure";
 set +e
 bash "$PWD/prototypes/attention-client/qwen38/run_model.sh" 0,1,2,3,4,5,6,7 \
   --tp-size "$tp" --sources "$sources" --batch-size "$((40 / sources))" \
-  --state-gib "$budget" --mtp-tokens 1 --decode-graph --trace-max-context 262144 \
+  --state-gib "$budget" --token-capacity "$tokens" --mtp-tokens 1 --decode-graph --trace-max-context 262144 \
   "${extra[@]}" > "$out/launch.log" 2>&1
 status=$?
 set -e
