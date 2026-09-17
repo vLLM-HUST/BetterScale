@@ -1,0 +1,138 @@
+{
+  "status": "PASS",
+  "scope": "selected real expert math and graph; no remote transport",
+  "cases": [
+    {
+      "layer": 0,
+      "expert": 0,
+      "rows": 1,
+      "kind": "w8a8_dynamic",
+      "stage_relative_l2": {
+        "gate_proj": 0.0,
+        "up_proj": 0.0,
+        "down_proj": 0.0
+      },
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 0,
+      "expert": 0,
+      "rows": 32,
+      "kind": "w8a8_dynamic",
+      "stage_relative_l2": {
+        "gate_proj": 0.0,
+        "up_proj": 0.0,
+        "down_proj": 0.0
+      },
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 0,
+      "expert": 0,
+      "rows": 128,
+      "kind": "w8a8_dynamic",
+      "stage_relative_l2": {
+        "gate_proj": 0.0,
+        "up_proj": 2.0259363736840896e-05,
+        "down_proj": 1.2055575098202098e-05
+      },
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 3,
+      "expert": 511,
+      "rows": 1,
+      "kind": "w8a8_dynamic",
+      "stage_relative_l2": {
+        "gate_proj": 0.0,
+        "up_proj": 0.0,
+        "down_proj": 0.0
+      },
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 3,
+      "expert": 511,
+      "rows": 32,
+      "kind": "w8a8_dynamic",
+      "stage_relative_l2": {
+        "gate_proj": 0.0,
+        "up_proj": 0.0,
+        "down_proj": 1.1047271073039155e-05
+      },
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 3,
+      "expert": 511,
+      "rows": 128,
+      "kind": "w8a8_dynamic",
+      "stage_relative_l2": {
+        "gate_proj": 0.0,
+        "up_proj": 2.1581749024335295e-05,
+        "down_proj": 0.0
+      },
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 47,
+      "expert": 257,
+      "rows": 1,
+      "kind": "w8a8_dynamic",
+      "stage_relative_l2": {
+        "gate_proj": 0.0,
+        "up_proj": 0.0,
+        "down_proj": 0.0
+      },
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 47,
+      "expert": 257,
+      "rows": 32,
+      "kind": "w8a8_dynamic",
+      "stage_relative_l2": {
+        "gate_proj": 0.0,
+        "up_proj": 7.505224493797868e-05,
+        "down_proj": 0.0
+      },
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 47,
+      "expert": 257,
+      "rows": 128,
+      "kind": "w8a8_dynamic",
+      "stage_relative_l2": {
+        "gate_proj": 0.0,
+        "up_proj": 0.0,
+        "down_proj": 5.308298113959609e-06
+      },
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 48,
+      "expert": 0,
+      "rows": 1,
+      "kind": "bf16",
+      "stage_relative_l2": {},
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 48,
+      "expert": 0,
+      "rows": 32,
+      "kind": "bf16",
+      "stage_relative_l2": {},
+      "changed_replay_exact": true
+    },
+    {
+      "layer": 48,
+      "expert": 0,
+      "rows": 128,
+      "kind": "bf16",
+      "stage_relative_l2": {},
+      "changed_replay_exact": true
+    }
+  ]
+}
