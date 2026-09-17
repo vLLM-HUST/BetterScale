@@ -14,13 +14,19 @@ from service_probe import request
 root = Path(os.environ["CAPSULE"])
 signature = tuple(int(n) for n in os.environ.get("MIXED_SIGNATURE", "1,512").split(","))
 decodes = next(i for i, n in enumerate(signature) if n > 1)
-assert len(signature) == decodes + 1  # This HTTP staging probe adds one prefill.
 tokens = sum(signature)
 width = 2048
 url = "http://127.0.0.1:32181"
 prompt = json.loads((root / "prompt.json").read_text())["prompt_token_ids"]
-lengths = [signature[-1], width - decodes + signature[-1]]
-prompts = {n: (prompt * 4)[:n] for n in [512, *lengths]}
+if len(signature) == decodes + 1:
+    lengths = [signature[-1], width - decodes + signature[-1]]
+else:
+    assert signature == (1, 1, 1024, 1022)
+    lengths = [[1024, 1536], [1024, 1536]]
+prompt_lengths = [
+    n for value in lengths for n in (value if isinstance(value, list) else [value])
+]
+prompts = {n: (prompt * 4)[:n] for n in [512, *prompt_lengths]}
 command = [
     sys.executable,
     "-m",
@@ -105,17 +111,34 @@ try:
 
     def cohort(length):
         ready = [threading.Event() for _ in range(decodes)]
-        with concurrent.futures.ThreadPoolExecutor(max_workers=decodes + 1) as pool:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(signature)) as pool:
             ongoing = [
                 pool.submit(request, url, prompts[512], 96, on_first_content=event.set)
                 for event in ready
             ]
             if not all(event.wait(120) for event in ready):
                 raise TimeoutError("ongoing request first token")
-            joined = pool.submit(request, url, prompts[length], 4)
-            return dict(ongoing=[f.result() for f in ongoing], joined=joined.result())
+            if isinstance(length, list):
+                barrier = threading.Barrier(len(length))
+
+                def join(n):
+                    barrier.wait(timeout=10)
+                    return request(url, prompts[n], 4)
+
+                joined = [pool.submit(join, n) for n in length]
+            else:
+                joined = pool.submit(request, url, prompts[length], 4)
+            return dict(
+                ongoing=[f.result() for f in ongoing],
+                joined=(
+                    [f.result() for f in joined]
+                    if isinstance(joined, list)
+                    else joined.result()
+                ),
+            )
 
     if os.environ.get("MIXED_TIMING") == "1":
+        assert len(signature) == decodes + 1
         receipt["scope"] = (
             "same-process exact mixed FULL/NONE, identical native scheduling and metadata, no state shadow; profiled cohorts excluded"
         )
