@@ -115,3 +115,11 @@ separate. `run_topology_case.sh` owns a single admitted case and always preserve
 its capsule/exit status; both capacity and trace use C40. Current queued fits:
 TP1×8/EP8 State30GiB, TP1×4+E4 State44GiB, TP2×2+E4 State48GiB, TP2×4/EP8 State34GiB.
 These are test candidates, not passed budgets. Keep scope distinctions intact.
+
+TP1×5+E3 full48+MTP also passed (`qwen38-model-20260917T164125Z`): all5
+attention FULL shadows exact, all3 servers drain every source, clean exit.
+All requested topology implementations now have full-model gates; capacity and
+matched workload results remain outstanding. E3 C40 State44GiB joined the queue.
+The40-session two-turn workload is80 turns,14,362 output tokens,236,306 prefill
+rows including40 continuation anchors, maximum selected horizon9,128 tokens.
+This short matched pilot does not itself exercise the long-context capacity fit.

@@ -30,6 +30,16 @@
       "batch_per_source": 2,
       "mtp_tokens": 1,
       "decode_graph": true
+    },
+    {
+      "topology": "TP1x5+E3",
+      "capsule": "qwen38-model-20260917T164125Z",
+      "attention_processes": 5,
+      "all_pass": true,
+      "all_same_state_graph_shadow_exact": true,
+      "batch_per_source": 2,
+      "mtp_tokens": 1,
+      "decode_graph": true
     }
   ],
   "wire": [

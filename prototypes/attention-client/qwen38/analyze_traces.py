@@ -13,22 +13,20 @@ def quantile(values, q):
     return values[max(0, math.ceil(q * len(values)) - 1)]
 
 
-def summarize(directory, groups):
+def summarize(directory, groups, tp_size=2):
     rows = [
-        json.loads((directory / f"attention{i * 2}.json").read_text())
+        json.loads((directory / f"attention{i * tp_size}.json").read_text())
         for i in range(groups)
     ]
-    peers = [
-        json.loads((directory / f"attention{i * 2 + 1}.json").read_text())
-        for i in range(groups)
-    ]
-    if not all(
-        r["status"] == "PASS" and r["prefix_first_page_exact"] and r["tp_output_exact"]
-        for r in rows + peers
-    ):
-        raise ValueError("failed runtime gate")
-    for a, b in zip(rows, peers):
-        if a["sessions"] != b["sessions"]:
+    peers = []
+    for group, leader in enumerate(rows):
+        if leader.get("tp_size", tp_size) != tp_size:
+            raise ValueError("receipt TP width disagrees with requested topology")
+        for rank in range(1, tp_size):
+            peer = json.loads(
+                (directory / f"attention{group * tp_size + rank}.json").read_text()
+            )
+            peers.append(peer)
             # Timestamp jitter is expected; workload and accounting are not.
             fields = (
                 "trace_id",
@@ -38,10 +36,15 @@ def summarize(directory, groups):
                 "prefix_reused_tokens",
                 "final_encoded_context",
             )
-            if [[s[k] for k in fields] for s in a["sessions"]] != [
-                [s[k] for k in fields] for s in b["sessions"]
+            if [[s[k] for k in fields] for s in leader["sessions"]] != [
+                [s[k] for k in fields] for s in peer["sessions"]
             ]:
                 raise ValueError("TP accounting disagreement")
+    if not all(
+        r["status"] == "PASS" and r["prefix_first_page_exact"] and r["tp_output_exact"]
+        for r in rows + peers
+    ):
+        raise ValueError("failed runtime gate")
     sessions = sorted(
         [s for r in rows for s in r["sessions"]], key=lambda s: s["trace_id"]
     )
@@ -51,6 +54,7 @@ def summarize(directory, groups):
     ttft = [e["ttft_seconds"] for s in sessions for e in s["events"]]
     return dict(
         groups=groups,
+        tp_size=tp_size,
         mtp_tokens=rows[0]["mtp_tokens"],
         sessions=sessions,
         max_source_seconds=elapsed,
