@@ -58,6 +58,7 @@ struct BlockSchedulerGdnFwdO {
     uint32_t chunkSize;
     uint32_t isVariedLen;
     uint32_t tokenBatch;
+    uint32_t chunkStride;
     uint32_t numChunks{0};
     uint32_t vBlockSize{128};
 
@@ -130,6 +131,9 @@ struct BlockSchedulerGdnFwdO {
         cubeCoreIdx = coreIdx;
         cubeCoreNum = coreNum;
         vLoops = vHeadDim / vBlockSize;
+        // BetterScale: retain logical task count, use immutable H storage stride.
+        chunkStride = gdnFwdOTilingData->chunkCapacity > 0
+            ? gdnFwdOTilingData->chunkCapacity : numChunks;
         taskNum = vLoops * shapeBatch * numChunks * vNumHead;
         headGroups = vNumHead / kNumHead;
         taskIdx = cubeCoreIdx * PING_PONG_STAGES;
@@ -161,7 +165,7 @@ struct BlockSchedulerGdnFwdO {
         kHeadIdx = vHeadIdx / headGroups;
         offsets[currStage].qkOffset = (shapeBatchIdx * kNumHead * seqlen + kHeadIdx * seqlen + tokenOffset + batchChunkIdx * chunkSize) * kHeadDim;
         offsets[currStage].ovOffset = (shapeBatchIdx * vNumHead * seqlen + vHeadIdx * seqlen + tokenOffset + batchChunkIdx * chunkSize) * vHeadDim;
-        offsets[currStage].hOffset = (shapeBatchIdx * vNumHead * numChunks + vHeadIdx * numChunks + chunkIdx) * kHeadDim * vHeadDim;
+        offsets[currStage].hOffset = (shapeBatchIdx * vNumHead * chunkStride + vHeadIdx * chunkStride + chunkIdx) * kHeadDim * vHeadDim;
         offsets[currStage].gOffset = shapeBatchIdx * vNumHead * seqlen + vHeadIdx * seqlen + tokenOffset + batchChunkIdx * chunkSize;
         offsets[currStage].attnWorkOffset = (cubeCoreIdx * PING_PONG_STAGES + currStage) * chunkSize * chunkSize;
         offsets[currStage].hvWorkOffset = (cubeCoreIdx * PING_PONG_STAGES + currStage) * chunkSize * vHeadDim;

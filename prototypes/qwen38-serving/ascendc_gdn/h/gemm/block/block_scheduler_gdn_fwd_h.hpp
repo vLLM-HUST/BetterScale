@@ -164,6 +164,11 @@ struct BlockSchedulerGdnFwdH {
             batch = actualBatch;
             totalChunks = gmNumChunks.GetValue(tokenBatch);
             totalTokens = gmNumSeq.GetValue(tokenBatch);
+            // BetterScale: work counts come from metadata; storage strides do not.
+            if (gdnFwdHTilingData->chunkCapacity > 0) {
+                totalTokens = seqlen;
+                totalChunks = gdnFwdHTilingData->chunkCapacity;
+            }
         } else {
             totalChunks = (seqlen + chunkSize - 1) / chunkSize;
             totalTokens = seqlen;
