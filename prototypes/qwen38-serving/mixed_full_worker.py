@@ -7,6 +7,7 @@ different prefill partitions sharing a total; native FIA also keys by total.
 import copy
 import dataclasses
 import os
+import time
 
 import torch
 from observe_worker import Worker as BaseWorker
@@ -104,9 +105,11 @@ def install():
             max_num_scheduled_tokens = max(SIGNATURE)
         exact = tuple(num_scheduled_tokens_np.tolist()) == SIGNATURE
         decode = num_tokens == num_reqs and bool((num_scheduled_tokens_np == 1).all())
-        if not exact and not decode:
+        if (not exact and not decode) or (
+            exact and not getattr(self, "_mixed_full", True)
+        ):
             kwargs["force_eager"] = True
-        return original_determine(
+        result = original_determine(
             self,
             num_tokens,
             num_reqs,
@@ -115,6 +118,10 @@ def install():
             use_cascade_attn,
             **kwargs,
         )
+        if exact and hasattr(self, "_mixed_counts"):
+            key = str(result[0])
+            self._mixed_counts[key] = self._mixed_counts.get(key, 0) + 1
+        return result
 
     original_attention = NPUModelRunner._build_attention_metadata
 
@@ -157,6 +164,28 @@ def install():
 
         ctx = get_forward_context()
         if (
+            getattr(self, "_mixed_profile_pending", None)
+            and ctx.batch_descriptor.num_tokens == TOKENS
+        ):
+            from profiling import ProfileWindow
+
+            owner = self._mixed_owner
+            owner.window = ProfileWindow(
+                self._mixed_profile_pending, owner.rank, steps=3
+            )
+            self._mixed_profile_pending = None
+        owner = getattr(self, "_mixed_owner", None)
+        if owner is not None and owner.window is not None and not owner.window.closed:
+            owner.window.schedule.append(
+                dict(
+                    event="model_forward",
+                    wall_ns=time.time_ns(),
+                    sequence=owner.window.count,
+                    mode=str(ctx.cudagraph_runtime_mode),
+                    descriptor=repr(ctx.batch_descriptor),
+                )
+            )
+        if (
             getattr(self, "_mixed_shadow_budget", 0)
             and ctx.cudagraph_runtime_mode == CUDAGraphMode.FULL
             and ctx.batch_descriptor.num_tokens == TOKENS
@@ -175,6 +204,32 @@ class Worker(BaseWorker):
         assert vllm_config.parallel_config.tensor_parallel_size == 2
         install()
         super().__init__(vllm_config, *args, **kwargs)
+
+    def load_model(self, *args, **kwargs):
+        result = super().load_model(*args, **kwargs)
+        self.model_runner._mixed_owner = self
+        return result
+
+    def set_mixed_mode(self, mode, profile_label=None):
+        assert mode in ("full", "none")
+        assert self.window is None or self.window.closed
+        r = self.model_runner
+        r._mixed_full = mode == "full"
+        r._mixed_counts = {}
+        if profile_label is not None:
+            from pathlib import Path
+
+            r._mixed_profile_pending = str(
+                Path(os.environ["SERVING_PROFILE"]) / profile_label
+            )
+        return dict(rank=self.rank, mode=mode)
+
+    def mixed_status(self):
+        return dict(
+            rank=self.rank,
+            counts=self.model_runner._mixed_counts,
+            profile_closed=self.window is None or self.window.closed,
+        )
 
     def arm_mixed_shadow(self, steps=2):
         r = self.model_runner

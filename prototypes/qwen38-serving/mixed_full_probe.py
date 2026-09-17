@@ -101,10 +101,9 @@ try:
             raise TimeoutError("server readiness")
         time.sleep(2)
     request(url, prompts[512], 4)
-    rpc("arm_mixed_shadow", 2)
     import threading
 
-    for trial, length in enumerate(lengths):
+    def cohort(length):
         ready = [threading.Event() for _ in range(decodes)]
         with concurrent.futures.ThreadPoolExecutor(max_workers=decodes + 1) as pool:
             ongoing = [
@@ -114,19 +113,42 @@ try:
             if not all(event.wait(120) for event in ready):
                 raise TimeoutError("ongoing request first token")
             joined = pool.submit(request, url, prompts[length], 4)
-            receipt["rows"].append(
-                dict(
-                    trial=trial,
-                    ongoing=[f.result() for f in ongoing],
-                    joined=joined.result(),
-                )
+            return dict(ongoing=[f.result() for f in ongoing], joined=joined.result())
+
+    if os.environ.get("MIXED_TIMING") == "1":
+        receipt["scope"] = (
+            "same-process exact mixed FULL/NONE, identical native scheduling and metadata, no state shadow; profiled cohorts excluded"
+        )
+        phases = [("full", "warmup"), ("none", "warmup")]
+        phases += [(mode, "measure") for mode in ["none", "full", "full", "none"] * 2]
+        phases += [("none", "profile"), ("full", "profile")]
+        for trial, (mode, phase) in enumerate(phases):
+            label = mode if phase == "profile" else None
+            rpc("set_mixed_mode", mode, label)
+            row = cohort(lengths[0])
+            row.update(
+                trial=trial, mode=mode, phase=phase, dispatch=rpc("mixed_status")
             )
-    receipt["shadow"] = rpc("mixed_shadow_result")
-    receipt["status"] = (
-        "PASS"
-        if all(x["passed"] for x in receipt["shadow"]["results"])
-        else "SHADOW_MISMATCH"
-    )
+            expected = "FULL" if mode == "full" else "NONE"
+            assert all(
+                x["counts"].get(expected, 0) == 1 and x["profile_closed"]
+                for x in row["dispatch"]["results"]
+            ), row["dispatch"]
+            receipt["rows"].append(row)
+            path.write_text(json.dumps(receipt, indent=2))
+        receipt["status"] = "PASS"
+    else:
+        rpc("arm_mixed_shadow", 2)
+        for trial, length in enumerate(lengths):
+            row = cohort(length)
+            row["trial"] = trial
+            receipt["rows"].append(row)
+        receipt["shadow"] = rpc("mixed_shadow_result")
+        receipt["status"] = (
+            "PASS"
+            if all(x["passed"] for x in receipt["shadow"]["results"])
+            else "SHADOW_MISMATCH"
+        )
 except BaseException as exc:
     receipt.update(status="FAIL", error=f"{type(exc).__name__}: {exc}")
     raise
