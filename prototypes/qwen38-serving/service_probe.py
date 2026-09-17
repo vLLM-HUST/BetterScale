@@ -212,12 +212,25 @@ def main():
     if os.environ.get("CONCURRENCY_PROFILE") == "1":
         assert comparison and a.profile
         command[command.index("--worker-cls") + 1] = "concurrency_worker.Worker"
+    if os.environ.get("PARTITION_CANDIDATE") == "1" and comparison == "candidate":
+        os.environ["MIXED_COEXIST"] = "1"
+        if not a.profile:
+            command[command.index("--worker-cls") + 1] = "mixed_full_worker.Worker"
+        command[command.index("--compilation-config") + 1] = json.dumps(
+            dict(
+                cudagraph_mode="FULL",
+                cudagraph_capture_sizes=[1, 2, 4, 8, 512, 513, 517, 1024, 1536, 2048],
+                max_cudagraph_capture_size=2048,
+            )
+        )
     receipt = dict(
         status="STARTED",
         profile_only=os.environ.get("PROFILE_ONLY") == "1",
         compilation_cache_root=os.environ.get("VLLM_CACHE_ROOT"),
         arm=a.arm,
         comparison=comparison,
+        partition_candidate=os.environ.get("PARTITION_CANDIDATE") == "1"
+        and comparison == "candidate",
         pack_conv=os.environ.get("SERVING_PACK_CONV") == "1",
         full_mtp=os.environ.get("FULL_MTP"),
         padded_gdn=os.environ.get("PADDED_PREFILL") == "1",

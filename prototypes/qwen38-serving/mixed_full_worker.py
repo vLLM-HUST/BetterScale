@@ -19,7 +19,16 @@ assert all(n > 1 for n in SIGNATURE[DECODES:])
 TOKENS = sum(SIGNATURE)
 COEXIST = os.environ.get("MIXED_COEXIST") == "1"
 SIGNATURES = (
-    ((2048,), (1, 1, 1024, 1022), (1, 1, 1022, 1024), (1, 512), (1, 1, 1, 514))
+    (
+        (512,),
+        (1024,),
+        (1536,),
+        (2048,),
+        (1, 1, 1024, 1022),
+        (1, 1, 1022, 1024),
+        (1, 512),
+        (1, 1, 1, 514),
+    )
     if COEXIST
     else (SIGNATURE,)
 )

@@ -58,7 +58,7 @@ command = [
     json.dumps(
         dict(
             cudagraph_mode="FULL",
-            cudagraph_capture_sizes=[1, 2, 4, 8, 513, 517, 2048],
+            cudagraph_capture_sizes=[1, 2, 4, 8, 512, 513, 517, 1024, 1536, 2048],
             max_cudagraph_capture_size=2048,
         )
     ),
@@ -146,7 +146,7 @@ try:
         assert all(x["passed"] for x in shadow["results"]), shadow
         for rank in shadow["results"]:
             banks = list(rank["resource_banks"].values())
-            assert len(banks) == 5 and len({b["bank_id"] for b in banks}) == 5
+            assert len(banks) == 8 and len({b["bank_id"] for b in banks}) == 8
             assert all(b["handles"] == b["events"] == 16 for b in banks)
         receipt["rows"].append(dict(partition=partition, requests=row, shadow=shadow))
         path.write_text(json.dumps(receipt, indent=2))
