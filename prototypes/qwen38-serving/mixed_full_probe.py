@@ -111,7 +111,9 @@ try:
 
     def cohort(length):
         ready = [threading.Event() for _ in range(decodes)]
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(signature)) as pool:
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(signature) + 1
+        ) as pool:
             ongoing = [
                 pool.submit(request, url, prompts[512], 96, on_first_content=event.set)
                 for event in ready
@@ -119,13 +121,13 @@ try:
             if not all(event.wait(120) for event in ready):
                 raise TimeoutError("ongoing request first token")
             if isinstance(length, list):
-                barrier = threading.Barrier(len(length))
-
-                def join(n):
-                    barrier.wait(timeout=10)
-                    return request(url, prompts[n], 4)
-
-                joined = [pool.submit(join, n) for n in length]
+                hold = pool.submit(rpc, "hold_for_mixed_inputs")
+                time.sleep(0.1)
+                joined = []
+                for n in length:
+                    joined.append(pool.submit(request, url, prompts[n], 4))
+                    time.sleep(0.02)
+                receipt["correctness_staging_hold"] = hold.result()
             else:
                 joined = pool.submit(request, url, prompts[length], 4)
             return dict(

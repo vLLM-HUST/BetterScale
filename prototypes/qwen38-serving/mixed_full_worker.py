@@ -104,6 +104,9 @@ def install():
             num_scheduled_tokens_np[:] = SIGNATURE
             max_num_scheduled_tokens = max(SIGNATURE)
         exact = tuple(num_scheduled_tokens_np.tolist()) == SIGNATURE
+        if hasattr(self, "_mixed_shapes"):
+            shape = str(tuple(num_scheduled_tokens_np.tolist()))
+            self._mixed_shapes[shape] = self._mixed_shapes.get(shape, 0) + 1
         decode = num_tokens == num_reqs and bool((num_scheduled_tokens_np == 1).all())
         if (not exact and not decode) or (
             exact and not getattr(self, "_mixed_full", True)
@@ -235,7 +238,14 @@ class Worker(BaseWorker):
         r = self.model_runner
         r._shadow_rank, r._shadow_results = self.rank, []
         r._mixed_shadow_budget = steps
+        r._mixed_shapes = {}
         return dict(rank=self.rank, armed=steps)
+
+    def hold_for_mixed_inputs(self):
+        # Correctness-only staging: let two HTTP arrivals queue before resuming
+        # the unmodified native scheduler. Never used for performance evidence.
+        time.sleep(0.5)
+        return dict(rank=self.rank, held_seconds=0.5)
 
     def mixed_shadow_result(self):
         r = self.model_runner
@@ -245,4 +255,5 @@ class Worker(BaseWorker):
             passed=r._mixed_shadow_budget == 0
             and all(x["passed"] for x in r._shadow_results),
             steps=r._shadow_results,
+            shapes=r._mixed_shapes,
         )
