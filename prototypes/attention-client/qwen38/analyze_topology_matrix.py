@@ -56,6 +56,29 @@ def main():
             raise ValueError(f"unmatched workload: {name}")
         expected = current
         result.pop("sessions")
+        servers = []
+        for path in sorted((capsule / "roles").glob("expert*.json")):
+            server = json.loads(path.read_text())
+            if server["status"].lower() != "pass":
+                raise ValueError(f"server did not pass: {path}")
+            calls = sum(server["completed_counts"])
+            waves = server["waves"]
+            servers.append(
+                dict(
+                    role=path.stem,
+                    completed_calls=calls,
+                    served_waves=waves,
+                    coalesced_calls=calls - waves,
+                    calls_per_wave=calls / waves,
+                    weight_bytes=server["weight_bytes"],
+                    memory_after_start=server["memory_after_start"],
+                )
+            )
+        if servers:
+            result["expert_servers"] = servers
+            result["server_accounting_scope"] = (
+                "whole process including warmup, not steady trace alone"
+            )
         records[name] = dict(capsule=str(capsule), parameters=parameters, **result)
     report = dict(
         scope="same repaired full48+MTP K1 checkpoint, equal-eight-card topology controls; NOT unmodified vLLM or language quality",

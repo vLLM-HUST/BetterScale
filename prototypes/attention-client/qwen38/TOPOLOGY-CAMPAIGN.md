@@ -316,3 +316,18 @@ reused tokens. This single pair is only about3% apart, **not** a robust scaling
 win. TTFT P95 is109.21/70.58s; output-interval P99 is43.11/54.38s. The prototype's
 fixed-width prefill and phase scheduling dominate these tails. These remain
 owned-runtime topology controls, not an unmodified vLLM performance claim.
+
+
+## Campaign completion
+
+All five corrected e retained-trace cases pass with identical per-session
+work accounting. [TOPOLOGY-RESULTS.md](TOPOLOGY-RESULTS.md) is the concise current
+handoff; JSON matrices preserve configuration and capsule identities. Native
+TP1-EP8 State31 and32 pass (`202148Z`, `203138Z`);33 fails as above. The31/32
+case-directory suffix `reclaim` is historical: their source does **not** retain
+the ineffective empty-cache experiment. Service uses31GiB for that layout.
+
+TP1x4+E4 completes in256.817s, TP1x5+E3 in217.190s, and TP1x8/EP8 in437.086s.
+These are40 sessions/two turns with14,362 outputs, not full-trajectory or mature
+vLLM results. All owned roles/controllers are finished and hw0's final NPU
+release snapshot shows no running NPU processes. Published defaults unchanged.

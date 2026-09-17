@@ -1,0 +1,316 @@
+{
+  "scope": "same repaired full48+MTP K1 checkpoint, equal-eight-card topology controls; NOT unmodified vLLM or language quality",
+  "time_scope": "maximum source duration after common warmup rendezvous; not precise globally timestamped makespan",
+  "caveat": "native colocated control globally votes phases rather than mixing prefill/decode; differences are not solely expert batching",
+  "sessions": 40,
+  "cases": {
+    "tp2-e4": {
+      "capsule": "/workspace/betterscale-hw0/repo/runs/qwen38-model-20260917T192818Z",
+      "parameters": {
+        "layout": "tp2-e4",
+        "mode": "trace",
+        "state_gib": 50.0,
+        "qsa": "affineheads",
+        "overlay": "qwen38-bounded-qsa-runtime-20260917e/overlay",
+        "build": "qwen38-server-rows1024-20260917",
+        "total_sessions": 40,
+        "trace_turns": 2,
+        "mtp_tokens": 1,
+        "token_capacity": 1024
+      },
+      "groups": 2,
+      "tp_size": 2,
+      "mtp_tokens": 1,
+      "max_source_seconds": 702.8686251286417,
+      "committed_tokens": 14362,
+      "committed_tokens_per_second": 20.433406025729788,
+      "prefill_tokens": 236306,
+      "reused_prefix_tokens": 193043,
+      "ttft_p50_seconds": 96.11510545760393,
+      "ttft_p95_seconds": 109.21400404628366,
+      "output_interval_p99_seconds": 43.11149799544364,
+      "output_interval_max_seconds": 96.26950822025537,
+      "max_allocated_gib": 55.938613414764404,
+      "max_reserved_gib": 56.65234375,
+      "expert_servers": [
+        {
+          "role": "expert0",
+          "completed_calls": 98461,
+          "served_waves": 98407,
+          "coalesced_calls": 54,
+          "calls_per_wave": 1.0005487414513194,
+          "weight_bytes": 31551651840,
+          "memory_after_start": {
+            "allocated": 32668426240,
+            "reserved": 32812040192,
+            "driver_free": 32124002304,
+            "driver_total": 65452113920
+          }
+        },
+        {
+          "role": "expert1",
+          "completed_calls": 98461,
+          "served_waves": 98409,
+          "coalesced_calls": 52,
+          "calls_per_wave": 1.0005284069546485,
+          "weight_bytes": 31551651840,
+          "memory_after_start": {
+            "allocated": 32668426240,
+            "reserved": 32812040192,
+            "driver_free": 32123375616,
+            "driver_total": 65452113920
+          }
+        },
+        {
+          "role": "expert2",
+          "completed_calls": 98461,
+          "served_waves": 98407,
+          "coalesced_calls": 54,
+          "calls_per_wave": 1.0005487414513194,
+          "weight_bytes": 31551651840,
+          "memory_after_start": {
+            "allocated": 32668426240,
+            "reserved": 32812040192,
+            "driver_free": 32095772672,
+            "driver_total": 65452113920
+          }
+        },
+        {
+          "role": "expert3",
+          "completed_calls": 98461,
+          "served_waves": 98403,
+          "coalesced_calls": 58,
+          "calls_per_wave": 1.0005894129244026,
+          "weight_bytes": 31551651840,
+          "memory_after_start": {
+            "allocated": 32668426240,
+            "reserved": 32812040192,
+            "driver_free": 32090624000,
+            "driver_total": 65452113920
+          }
+        }
+      ],
+      "server_accounting_scope": "whole process including warmup, not steady trace alone"
+    },
+    "tp2-ep8": {
+      "capsule": "/workspace/betterscale-hw0/repo/runs/qwen38-model-20260917T195256Z",
+      "parameters": {
+        "layout": "tp2-ep8",
+        "mode": "trace",
+        "state_gib": 35.0,
+        "qsa": "affineheads",
+        "overlay": "qwen38-bounded-qsa-colocated-20260917e",
+        "build": "qwen38-server-rows1024-20260917",
+        "total_sessions": 40,
+        "trace_turns": 2,
+        "mtp_tokens": 1,
+        "token_capacity": 1024
+      },
+      "groups": 4,
+      "tp_size": 2,
+      "mtp_tokens": 1,
+      "max_source_seconds": 724.0103444671258,
+      "committed_tokens": 14362,
+      "committed_tokens_per_second": 19.836733148571906,
+      "prefill_tokens": 236306,
+      "reused_prefix_tokens": 193043,
+      "ttft_p50_seconds": 61.91086000390351,
+      "ttft_p95_seconds": 70.57517479918897,
+      "output_interval_p99_seconds": 54.378080126829445,
+      "output_interval_max_seconds": 62.02233269903809,
+      "max_allocated_gib": 55.5318808555603,
+      "max_reserved_gib": 56.208984375
+    },
+    "tp1-e4": {
+      "capsule": "/workspace/betterscale-hw0/repo/runs/qwen38-model-20260917T201415Z",
+      "parameters": {
+        "layout": "tp1-e4",
+        "mode": "trace",
+        "state_gib": 47.0,
+        "qsa": "affineheads",
+        "overlay": "qwen38-bounded-qsa-runtime-20260917e/overlay",
+        "build": "qwen38-e4-sources4-rows1024-20260917",
+        "total_sessions": 40,
+        "trace_turns": 2,
+        "mtp_tokens": 1,
+        "token_capacity": 1024
+      },
+      "groups": 4,
+      "tp_size": 1,
+      "mtp_tokens": 1,
+      "max_source_seconds": 256.81736570224166,
+      "committed_tokens": 14362,
+      "committed_tokens_per_second": 55.9230095703557,
+      "prefill_tokens": 236306,
+      "reused_prefix_tokens": 193043,
+      "ttft_p50_seconds": 45.669015403836966,
+      "ttft_p95_seconds": 51.14363175909966,
+      "output_interval_p99_seconds": 12.15726414322853,
+      "output_interval_max_seconds": 46.6785466466099,
+      "max_allocated_gib": 56.875492095947266,
+      "max_reserved_gib": 58.001953125,
+      "expert_servers": [
+        {
+          "role": "expert0",
+          "completed_calls": 108289,
+          "served_waves": 105982,
+          "coalesced_calls": 2307,
+          "calls_per_wave": 1.0217678473703082,
+          "weight_bytes": 31551651840,
+          "memory_after_start": {
+            "allocated": 33586913280,
+            "reserved": 33757855744,
+            "driver_free": 31067475968,
+            "driver_total": 65452113920
+          }
+        },
+        {
+          "role": "expert1",
+          "completed_calls": 108289,
+          "served_waves": 105976,
+          "coalesced_calls": 2313,
+          "calls_per_wave": 1.021825696384087,
+          "weight_bytes": 31551651840,
+          "memory_after_start": {
+            "allocated": 33586913280,
+            "reserved": 33757855744,
+            "driver_free": 31065628672,
+            "driver_total": 65452113920
+          }
+        },
+        {
+          "role": "expert2",
+          "completed_calls": 108289,
+          "served_waves": 105983,
+          "coalesced_calls": 2306,
+          "calls_per_wave": 1.0217582065048167,
+          "weight_bytes": 31551651840,
+          "memory_after_start": {
+            "allocated": 33586913280,
+            "reserved": 33757855744,
+            "driver_free": 31038160896,
+            "driver_total": 65452113920
+          }
+        },
+        {
+          "role": "expert3",
+          "completed_calls": 108289,
+          "served_waves": 105976,
+          "coalesced_calls": 2313,
+          "calls_per_wave": 1.021825696384087,
+          "weight_bytes": 31551651840,
+          "memory_after_start": {
+            "allocated": 33586913280,
+            "reserved": 33757855744,
+            "driver_free": 31035191296,
+            "driver_total": 65452113920
+          }
+        }
+      ],
+      "server_accounting_scope": "whole process including warmup, not steady trace alone"
+    },
+    "tp1-e3": {
+      "capsule": "/workspace/betterscale-hw0/repo/runs/qwen38-model-20260917T202430Z",
+      "parameters": {
+        "layout": "tp1-e3",
+        "mode": "trace",
+        "state_gib": 46.0,
+        "qsa": "affineheads",
+        "overlay": "qwen38-bounded-qsa-runtime-20260917e/overlay",
+        "build": "qwen38-e3-sources5-rows1024-20260917",
+        "total_sessions": 40,
+        "trace_turns": 2,
+        "mtp_tokens": 1,
+        "token_capacity": 1024
+      },
+      "groups": 5,
+      "tp_size": 1,
+      "mtp_tokens": 1,
+      "max_source_seconds": 217.1902762586251,
+      "committed_tokens": 14362,
+      "committed_tokens_per_second": 66.1263489664614,
+      "prefill_tokens": 236306,
+      "reused_prefix_tokens": 193043,
+      "ttft_p50_seconds": 35.43943013716489,
+      "ttft_p95_seconds": 40.982430750504136,
+      "output_interval_p99_seconds": 9.52255560271442,
+      "output_interval_max_seconds": 36.10548096895218,
+      "max_allocated_gib": 55.86430311203003,
+      "max_reserved_gib": 57.017578125,
+      "expert_servers": [
+        {
+          "role": "expert0",
+          "completed_calls": 117607,
+          "served_waves": 114628,
+          "coalesced_calls": 2979,
+          "calls_per_wave": 1.0259884146979796,
+          "weight_bytes": 42151034880,
+          "memory_after_start": {
+            "allocated": 44603395072,
+            "reserved": 44941967360,
+            "driver_free": 19824312320,
+            "driver_total": 65452113920
+          }
+        },
+        {
+          "role": "expert1",
+          "completed_calls": 117607,
+          "served_waves": 114621,
+          "coalesced_calls": 2986,
+          "calls_per_wave": 1.0260510726655674,
+          "weight_bytes": 42151034880,
+          "memory_after_start": {
+            "allocated": 44603395072,
+            "reserved": 44941967360,
+            "driver_free": 19795648512,
+            "driver_total": 65452113920
+          }
+        },
+        {
+          "role": "expert2",
+          "completed_calls": 117607,
+          "served_waves": 114622,
+          "coalesced_calls": 2985,
+          "calls_per_wave": 1.0260421210587845,
+          "weight_bytes": 42151034880,
+          "memory_after_start": {
+            "allocated": 44603395072,
+            "reserved": 44941967360,
+            "driver_free": 19792220160,
+            "driver_total": 65452113920
+          }
+        }
+      ],
+      "server_accounting_scope": "whole process including warmup, not steady trace alone"
+    },
+    "tp1-ep8": {
+      "capsule": "/workspace/betterscale-hw0/repo/runs/qwen38-model-20260917T203449Z",
+      "parameters": {
+        "layout": "tp1-ep8",
+        "mode": "trace",
+        "state_gib": 31.0,
+        "qsa": "affineheads",
+        "overlay": "qwen38-bounded-qsa-colocated-20260917e",
+        "build": "qwen38-server-rows1024-20260917",
+        "total_sessions": 40,
+        "trace_turns": 2,
+        "mtp_tokens": 1,
+        "token_capacity": 1024
+      },
+      "groups": 8,
+      "tp_size": 1,
+      "mtp_tokens": 1,
+      "max_source_seconds": 437.08636641222984,
+      "committed_tokens": 14362,
+      "committed_tokens_per_second": 32.85849457600045,
+      "prefill_tokens": 236306,
+      "reused_prefix_tokens": 193043,
+      "ttft_p50_seconds": 36.33832541666925,
+      "ttft_p95_seconds": 42.161477632820606,
+      "output_interval_p99_seconds": 31.692317433655262,
+      "output_interval_max_seconds": 36.448659093119204,
+      "max_allocated_gib": 55.457934856414795,
+      "max_reserved_gib": 57.091796875
+    }
+  }
+}

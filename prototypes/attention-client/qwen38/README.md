@@ -1,12 +1,16 @@
 # Qwen3.8 remote routed-expert integration
 
-**Basic real-weight end-to-end and FULL decode gates passed.** This is not yet
-a production, quality or throughput qualification. Reuse the owned LiveInfer
-Qwen4Exp root at820103bf, including host PLE, HC, QSA pair and GDN State. The
+**Latest: five equal-eight-card topologies now complete a matched retained-prefix
+SWE pilot, including TP1 and E3.** Enter [TOPOLOGY-RESULTS.md](TOPOLOGY-RESULTS.md)
+for results, capacity and limitations. This is not production or full language
+quality qualification, and the native EP control is not unmodified vLLM.
+
+The chronological bring-up below reuses the owned LiveInfer Qwen4Exp root at
+820103bf, including host PLE, HC, QSA pair and GDN State. The
 checkpoint is the pinned shared-directory W8A8+BF16 snapshot documented in
 `../qwen-next/priority/model-readiness.md`. Published defaults remain untouched.
 
-## Execution/placement plan
+## Initial execution/placement plan
 
 First one TP2 attention group plus four expert owners (six devices); later two
 independent TP2 groups plus E4. QSA cannot be treated as the older TP1 Next
@@ -15,7 +19,8 @@ Only its leader publishes routed work; shared TP work runs before collect and
 the completed routed result is broadcast inside that attention pair. Generation,
 layer, class, shared-completion promotion and all-owner retirement remain the
 existing server contracts. The target-only topology now passes the gates below;
-two independent TP2 groups remain unqualified.
+two independent TP2 groups were unqualified at that initial checkpoint. Later
+qualified topologies and the disconnected TP1 extension are in the result above.
 
 Target experts are W8A8_DYNAMIC; MTP layer48 experts remain fused BF16. Do not
 silently dequantize the whole checkpoint to BF16 and call it W8A8. QSA target

@@ -5,6 +5,17 @@ Next BF16 server to Qwen3.8 mixed W8A8/BF16. This is distinct from public Worker
 patches. Do not change their defaults or upgrade the pinned donor to obtain an
 experimental model implementation.
 
+## Current Qwen38 topology result
+
+Enter `prototypes/attention-client/qwen38/TOPOLOGY-RESULTS.md` for the completed
+five-topology hw0 C40/K1 retained-prefix pilot and capacity matrix. TP1x5+E3 is
+fastest in this prototype (66.13tok/s versus32.86 native TP1x8/EP8), but does not
+have the greatest whole-machine KV capacity. The native control globally votes
+phases; never call that ratio a stock-vLLM gain. Only the first two full turns
+of40 distinct traces were replayed. Extreme-capacity gates use zero synthetic
+history, independently of the9K-horizon real workload. The chronological notes
+below preserve discovery boundaries; use the result page for current status.
+
 ## Owned sources and boundaries
 
 - `prototypes/attention-client/qwen-next/README.md` owns the previously qualified
