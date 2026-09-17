@@ -225,10 +225,10 @@ with torch.inference_mode():
 
         device_cu = cpu.to("npu")
 
-        def oracle():
+        def oracle(initial_arg=None):
             return chunk.chunk_gated_delta_rule(
                 **inputs,
-                initial_state=initial,
+                initial_state=initial if initial_arg is None else initial_arg,
                 output_final_state=True,
                 cu_seqlens=device_cu,
                 prebuilt_meta=meta,
@@ -269,18 +269,13 @@ with torch.inference_mode():
         native_bank = seed.clone()
         native_slots = torch.tensor(slot_ids[:n], dtype=torch.int64, device="npu")
 
+        from vllm_ascend.ops.triton.fla.utils import clear_ssm_states
+
         def native_stateful():
-            initial.copy_(
-                torch.where(
-                    flag_tensor,
-                    native_bank[native_slots].transpose(-1, -2).contiguous(),
-                    0,
-                )
-            )
-            output, final_state = oracle()
-            native_bank.index_copy_(
-                0, native_slots, final_state.transpose(-1, -2).contiguous()
-            )
+            gathered = native_bank[native_slots].transpose(-1, -2).contiguous()
+            clear_ssm_states(gathered, flag_tensor.flatten())
+            output, final_state = oracle(gathered)
+            native_bank[native_slots] = final_state.transpose(-1, -2).contiguous()
             return output
 
         native_stateful()
