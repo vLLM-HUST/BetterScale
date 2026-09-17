@@ -203,12 +203,14 @@ with torch.inference_mode():
             initial.zero_()
         inputs = {k: v[:, :total].contiguous() for k, v in values.items()}
 
+        device_cu = cpu.to("npu")
+
         def oracle():
             return chunk.chunk_gated_delta_rule(
                 **inputs,
                 initial_state=initial,
                 output_final_state=True,
-                cu_seqlens=cpu.to("npu"),
+                cu_seqlens=device_cu,
                 prebuilt_meta=meta,
                 head_first=False,
                 use_qk_l2norm_in_kernel=False,
