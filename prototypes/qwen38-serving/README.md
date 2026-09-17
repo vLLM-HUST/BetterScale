@@ -49,10 +49,18 @@ Paid receipts and current qualification boundaries live in the repo-knowledge
 `optimize-qwen-hybrid-serving` scenario.
 
 `ARM=partition-full` now runs a separate coexistence pilot in one server. It
-captures five explicit partitions, including two2048token/four-request batches
+captures eight explicit partitions, including two2048token/four-request batches
 with different prefill boundaries. `partition_graphs.py` owns the extended
 descriptor and scoped native FIA resource banks; GDN buffers share that partition
 identity. Eight alternating state shadows test reuse after other graphs execute.
 This is correctness-only, with1GiBKV and bounded arrival staging, not a timing
 benchmark or arbitrary-length graph support. CPU ownership/exception-restoration
 checks: `python3 prototypes/qwen38-serving/partition_contract_test.py`.
+
+`PARTITION_CANDIDATE=1 ARM=compare-no-mtp` selects this prototype instead of the
+packaged candidate in the existing unprofiled ABBA harness. `QWEN_MODEL_PATH`
+provides an explicit remote checkpoint path. Ordinary single512/1024/1536/2048
+prefills and four exact mixed signatures are covered; a one-token prompt tail
+is not a decode-prefix match. Short `CONCURRENCY_PROFILE=1` captures remain
+separate. hw3 setup, comparison receipts and profile limitations are retained
+in the repo-local scenario; don't mix hw3 and local timing arms.

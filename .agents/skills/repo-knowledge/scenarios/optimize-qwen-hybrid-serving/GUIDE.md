@@ -343,3 +343,69 @@ same-total/same-request-count key and bank separation, exception restoration,
 and unchanged native decode resource selection. This closes bounded coexistence,
 not arbitrary-length/padded partition support or package integration. Production
 Qwen/DSV4 paths and installed donor sources remain unchanged.
+
+### End-to-end partition candidate on hw3 (September17)
+
+Fletcher reassigned local cards to an eight-card experiment during this task;
+all subsequent TP2 work moved to hw3. Local `partition-abba1` is FAIL, not a
+performance result: natural concurrency exposed a one-token prefill tail with
+the same length tuple as a decode-prefix graph. GDN correctly classified it as
+prefill and the pilot asserted. Dispatch now additionally checks computed>=prompt
+for every supposed decode-prefix request; role mismatches use native NONE and
+do not bind the fixed mixed metadata. Lengths alone do not identify request role.
+
+hw3 root `/workspace/my-ascend-workspace/runs/qwen27-partition-serving`:
+- `model/` is the same local27B checkpoint, copied because the discovered hw3
+  Qwen3.8 model was Flash-Next, NOT the requested27B.18safetensor shards; rsync
+  final size/mtime dry comparison empty. Do not repeat broad content grep over
+  old accuracy JSON: those single-line files contain huge token arrays.
+- `runtime-source/` contains copied local pinned vllm and vllm_ascend import
+  trees, not edits to an installed hw3 donor. Python is the existing
+  `/workspace/my-ascend-workspace/runs/liveinfer-online/20260907-donor-dspark-runtime/env/bin/python`.
+  Preflight confirms actual import roots and torch2.10.0+cpu,torch-npu2.10.0.post2,
+  transformers5.14.1. `partition-abba2/launch.sh` preserves CANN PYTHONPATH and
+  owns explicit localhost ports32181/32182,HCCL29664–29727,devices4/5 admission.
+  Copied admission helpers require idle_gate.py as well as supervise/probe_host_npus.
+- Local downloaded evidence is under the usual root with `hw3-` capsule prefixes.
+
+`partition-abba2`, source3cd25d1, PASS: baseline/candidate/candidate/baseline in
+one admitted hw3 pair4/5 window. Same noMTP,async,text-only,APCoff,6GiBKV,8seats,
+2048budget,64output workload as the earlier comparison; no staging holds or
+shadows. Candidate is the prototype mixed Worker, not the packaged Qwen Worker.
+Its coexistence set now also includes exact single512/1024/1536, restoring those
+ordinary prefill graphs alongside2048 and four mixed partitions (eight total).
+Unknown lengths/partitions and short-prefill role mismatches retain native fallback.
+
+Pooled output tok/s native→candidate (four cohorts/case/arm):
+- C1/512:26.31→29.25 (+11.19%); TTFT423.30→181.56ms.
+- C1/1024:26.52→28.07 (+5.84%); TTFT396.75→266.98ms.
+- C1/2048:25.69→25.66 (-.12%); TTFT468.87→468.05ms.
+- C4mixed:65.08→69.84 (+7.30%); TTFT1135.90→934.61ms.
+- C8mixed:96.01→105.20 (+9.57%); TTFT1882.64→1568.62ms.
+C4round rates64.16/66.03 versus72.83/67.08; C8round rates95.79/96.24 versus
+104.64/105.78. C1text sets match. Limited synthetic cohorts, not population-wide
+or SWE accuracy evidence; don't subtract old local-host results to isolate a
+causal gain attributable solely to mixed capture. No new package/PyPI shipment.
+
+Short profiles are separate from all timings: `partition-profile-baseline` and
+`partition-profile-candidate2` PASS. Initial candidate profile inherited two
+sample step hooks and stopped after three forwards; fixed observer2f440fd advances
+exactly once whether the base Worker already owns a hook or not. Keep that initial
+artifact but use candidate2 for the requested six-step comparison.
+Actual candidate2 schedule:512single FULL;[1,2047] NONE;[1,1,1536,510] NONE;
+[1,1,1,514] FULL;4decode FULL twice. Baseline:1024single NONE;[1,512] NONE;
+[1,1,2046] NONE;[1,1,2,1536] NONE;4decode FULL twice. Arrival order differs;
+whole-profile makespans are not a matched performance A/B.
+
+TraceLoom raw exports pass6starts/6samples,304MatMulV2/V3,16FIA,128comm perbody
+on both ranks; initial norm shapes exactly match dispatch token totals. Candidate
+512body162.53ms and517mixedbody168.11/168.09ms,~4.4msuncovered,~40mscomm,
+~400–460APIs started/body. Its uncovered2048mixed partitions still run NONE with
+~23kAPIs and486/490msbodies. Both arms'4decode bodies remain~37ms. This supports
+effective FULL coverage where implemented, not full coverage of natural batching.
+
+Four readable Perfetto timelines plus schedules, step-costs and unprofiled summary
+are packaged locally as `hw3-partition-timelines.tar.gz` in the evidence root
+(~9.4MB). Directory `hw3-partition-timelines/` contains baseline/candidate-rank0/1
+files. Per-rank clocks remain independent. All hw3 probes reclaimed/port32181
+closed; no local NPU job was launched after Fletcher's reassignment.
