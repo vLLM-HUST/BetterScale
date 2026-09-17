@@ -12,10 +12,15 @@ import urllib.request
 from service_probe import request
 
 root = Path(os.environ["CAPSULE"])
+signature = tuple(int(n) for n in os.environ.get("MIXED_SIGNATURE", "1,512").split(","))
+decodes = next(i for i, n in enumerate(signature) if n > 1)
+assert len(signature) == decodes + 1  # This HTTP staging probe adds one prefill.
+tokens = sum(signature)
 width = 2048
 url = "http://127.0.0.1:32181"
 prompt = json.loads((root / "prompt.json").read_text())["prompt_token_ids"]
-prompts = {n: (prompt + prompt)[:n] for n in [512, 513, 1024, 1536, 2048, 2051]}
+lengths = [signature[-1], width - decodes + signature[-1]]
+prompts = {n: (prompt * 4)[:n] for n in [512, *lengths]}
 command = [
     sys.executable,
     "-m",
@@ -58,13 +63,13 @@ command = [
     json.dumps(
         dict(
             cudagraph_mode="FULL",
-            cudagraph_capture_sizes=[1, 2, 4, 8, 513],
-            max_cudagraph_capture_size=513,
+            cudagraph_capture_sizes=[1, 2, 4, 8, tokens],
+            max_cudagraph_capture_size=tokens,
         )
     ),
 ]
 
-receipt = dict(status="STARTED", command=command, rows=[])
+receipt = dict(status="STARTED", command=command, signature=signature, rows=[])
 path = root / "receipt.json"
 path.write_text(json.dumps(receipt, indent=2))
 log = (root / "server.log").open("w")
@@ -99,17 +104,22 @@ try:
     rpc("arm_mixed_shadow", 2)
     import threading
 
-    for trial in range(2):
-        ready = threading.Event()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-            ongoing = pool.submit(
-                request, url, prompts[512], 64, on_first_content=ready.set
-            )
-            if not ready.wait(120):
+    for trial, length in enumerate(lengths):
+        ready = [threading.Event() for _ in range(decodes)]
+        with concurrent.futures.ThreadPoolExecutor(max_workers=decodes + 1) as pool:
+            ongoing = [
+                pool.submit(request, url, prompts[512], 96, on_first_content=event.set)
+                for event in ready
+            ]
+            if not all(event.wait(120) for event in ready):
                 raise TimeoutError("ongoing request first token")
-            joined = pool.submit(request, url, prompts[512], 4)
+            joined = pool.submit(request, url, prompts[length], 4)
             receipt["rows"].append(
-                dict(trial=trial, ongoing=ongoing.result(), joined=joined.result())
+                dict(
+                    trial=trial,
+                    ongoing=[f.result() for f in ongoing],
+                    joined=joined.result(),
+                )
             )
     receipt["shadow"] = rpc("mixed_shadow_result")
     receipt["status"] = (

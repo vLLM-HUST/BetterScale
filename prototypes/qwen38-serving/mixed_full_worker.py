@@ -6,11 +6,15 @@ different prefill partitions sharing a total; native FIA also keys by total.
 
 import copy
 import dataclasses
+import os
 
 import torch
 from observe_worker import Worker as BaseWorker
 
-SIGNATURE = (1, 512)
+SIGNATURE = tuple(int(n) for n in os.environ.get("MIXED_SIGNATURE", "1,512").split(","))
+DECODES = next(i for i, n in enumerate(SIGNATURE) if n > 1)
+assert DECODES > 0 and all(n == 1 for n in SIGNATURE[:DECODES])
+assert all(n > 1 for n in SIGNATURE[DECODES:])
 TOKENS = sum(SIGNATURE)
 
 
@@ -32,7 +36,10 @@ def install():
         lengths = tuple(m.query_start_loc_cpu.diff().tolist())
         if lengths != SIGNATURE:
             return result
-        assert (result.num_decodes, result.num_prefills) == (1, 1)
+        assert (result.num_decodes, result.num_prefills) == (
+            DECODES,
+            len(SIGNATURE) - DECODES,
+        )
         # Unused by the pinned Ascend conv path; do not retain alternate Triton
         # metadata whose host values need not have graph-stable identity.
         result.nums_dict = result.batch_ptr = result.token_chunk_offset_ptr = None
