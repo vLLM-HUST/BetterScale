@@ -10,11 +10,9 @@ from vllm_ascend.worker.worker import NPUWorker
 from .patches.qwen_prefill import PREFILLS, install
 
 
-@lru_cache(maxsize=1)
-def check_runtime():
-    pins = json.loads(
-        resources.files("betterscale").joinpath("qwen_pins.json").read_text()
-    )
+@lru_cache(maxsize=2)
+def check_runtime(pins_name="qwen_pins.json"):
+    pins = json.loads(resources.files("betterscale").joinpath(pins_name).read_text())
     for name, expected in pins["versions"].items():
         if metadata.version(name).split("+", 1)[0] != expected:
             raise RuntimeError(f"Unqualified Qwen donor version: {name}")
@@ -118,4 +116,49 @@ class Worker(NPUWorker):
                 "Packed %d immutable GDN convolution weights; native MTP execution retained",
                 count,
             )
+        return result
+
+
+class MixedWorker(NPUWorker):
+    """Opt-in owned K-V state and elastic mixed FULL graphs; fresh process only."""
+
+    def __init__(self, vllm_config, *args, **kwargs):
+        check_runtime()
+        check_runtime("qwen_mixed_pins.json")
+        validate_config(vllm_config)
+        if (
+            vllm_config.speculative_config is not None
+            or vllm_config.lora_config is not None
+            or vllm_config.kv_transfer_config is not None
+            or vllm_config.cache_config.mamba_cache_mode != "none"
+        ):
+            raise ValueError(
+                "Owned GDN requires no MTP, LoRA, cache transfer or Mamba prefix cache"
+            )
+        hf = vllm_config.model_config.hf_text_config
+        if tuple(
+            getattr(hf, k, None)
+            for k in (
+                "linear_num_key_heads",
+                "linear_num_value_heads",
+                "linear_key_head_dim",
+                "linear_value_head_dim",
+                "linear_conv_kernel_dim",
+            )
+        ) != (16, 48, 128, 128, 4):
+            raise ValueError(
+                "Owned GDN requires qk8/v24 TP-local heads, K/V128, convolution width4"
+            )
+        from .patches.qwen_gdn import install as install_owned
+
+        install_owned()
+        super().__init__(vllm_config, *args, **kwargs)
+
+    def load_model(self, *args, **kwargs):
+        result = super().load_model(*args, **kwargs)
+        from .patches.qwen_layout import pack_conv_weights
+
+        from .patches.qwen_gdn.execution import forward_core
+
+        pack_conv_weights(self.model_runner.model, consumer=forward_core)
         return result

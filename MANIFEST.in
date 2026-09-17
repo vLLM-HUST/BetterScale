@@ -12,3 +12,5 @@ global-exclude __pycache__ *.py[cod]
 
 include setup.py
 recursive-include src/betterscale/patches/hc_workspace *.so *.patch *.txt
+
+recursive-include src/betterscale/patches/qwen_gdn *.h *.sh

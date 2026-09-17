@@ -228,11 +228,22 @@ def main():
                 max_cudagraph_capture_size=2048,
             )
         )
+    if (
+        os.environ.get("ELASTIC_CANDIDATE") == "1"
+        and comparison == "candidate"
+        and not a.profile
+    ):
+        command[command.index("--worker-cls") + 1] = (
+            "betterscale.qwen_worker.MixedWorker"
+        )
     receipt = dict(
         status="STARTED",
         profile_only=os.environ.get("PROFILE_ONLY") == "1",
         compilation_cache_root=os.environ.get("VLLM_CACHE_ROOT"),
         arm=a.arm,
+        task_queue_enable=os.environ.get("TASK_QUEUE_ENABLE"),
+        elastic_candidate=os.environ.get("ELASTIC_CANDIDATE") == "1"
+        and comparison == "candidate",
         comparison=comparison,
         partition_candidate=os.environ.get("PARTITION_CANDIDATE") == "1"
         and comparison == "candidate",

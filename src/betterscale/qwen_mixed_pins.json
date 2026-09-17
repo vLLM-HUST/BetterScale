@@ -1,0 +1,45 @@
+{
+  "versions": {},
+  "source_files": [
+    {
+      "path": "vllm/model_executor/layers/fla/ops/l2norm.py",
+      "sha256": "520f4513ef4fc97e6b88dc07877cca8e29da0d34e44673fe989e3af002d86381"
+    },
+    {
+      "path": "vllm/v1/attention/backends/utils.py",
+      "sha256": "192e6b5df24ff52ae57a6a23d6cf58d1b4dd34f14c9283ce268e5f88b1123b96"
+    },
+    {
+      "path": "vllm/model_executor/layers/mamba/mamba_utils.py",
+      "sha256": "9aa40a17f77b29915b6df5098b8efc62f1a16511d5ca80d06ea5f2cbb8fde71a"
+    },
+    {
+      "path": "vllm_ascend/ops/triton/fla/cumsum.py",
+      "sha256": "af45679800aa2c49f8587194f6744e3d9c7cabe7658eef9ec37f0a665a70c47d"
+    },
+    {
+      "path": "vllm_ascend/ops/triton/fla/chunk_scaled_dot_kkt.py",
+      "sha256": "624f5438d07c4dcf81fce9bb540b2bee63962ab9291aee9278eb1b7d3b7c6ac7"
+    },
+    {
+      "path": "vllm_ascend/ops/triton/fla/solve_tril.py",
+      "sha256": "2d8cd5d3bd365fa5894c7ee0cddc106d1d2b34dd3f3e05f4dbf15e8010d89fc0"
+    },
+    {
+      "path": "vllm_ascend/ops/triton/fla/wy_fast.py",
+      "sha256": "51e23f0876d91ae09b32ae70aa03318b2440b7bd3ba029c0d9838869359597ef"
+    },
+    {
+      "path": "vllm_ascend/ops/triton/fla/utils.py",
+      "sha256": "4dfc30c479f8a740a965174a4f56706c4c3a95362dd77d2e708cdbaf1c9873d4"
+    },
+    {
+      "path": "vllm_ascend/ops/triton/triton_utils.py",
+      "sha256": "f94d81f163f0076e8243990dd687f7ec8d42ce1ed30d67eea3155bf1c3a073a4"
+    },
+    {
+      "path": "vllm_ascend/device/device_op.py",
+      "sha256": "a0288fca27ce4fb24d67cf5c2e677fcfc71f02b56c311a31a81a496e41be8435"
+    }
+  ]
+}

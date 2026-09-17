@@ -1,0 +1,7 @@
+{
+  "sha256": "f5d9c31a47994369aabee532baa6a3c8be6766ccaf03da0dbfb9cde6b6f9d19f",
+  "source": "f6f1bed",
+  "soc": "Ascend910B2",
+  "owned_init": true,
+  "state_layout": "KV"
+}

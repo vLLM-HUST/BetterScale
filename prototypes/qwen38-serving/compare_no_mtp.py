@@ -11,7 +11,11 @@ import time
 root = Path(os.environ["CAPSULE"])
 receipt = dict(
     status="RUNNING",
-    order=["baseline", "candidate", "candidate", "baseline"],
+    order=(
+        os.environ.get(
+            "SERVING_COMPARE_ORDER", "baseline,candidate,candidate,baseline"
+        ).split(",")
+    ),
     rounds=[],
     scope="No MTP in either arm. Async, TP2, APC off, 6GiB KV, 8 seats, 2048 batch budget, 64 output tokens. Separate-process ABBA after warmup; timings exclude startup/profile.",
 )
@@ -31,6 +35,8 @@ try:
         ]:
             env.pop(key, None)
         env["COMPARE_NO_MTP"] = arm
+        if os.environ.get("ELASTIC_CANDIDATE") == "1":
+            env["TASK_QUEUE_ENABLE"] = "0" if arm == "candidate" else "1"
         env["VLLM_CACHE_ROOT"] = str(root / f"cache-{arm}")
         path.write_text(json.dumps(receipt, indent=2))
         print(f"round {index}: {arm} starting", flush=True)

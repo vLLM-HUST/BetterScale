@@ -1,22 +1,21 @@
 """Keep immutable Conv1d weights in the native consumer's contiguous layout."""
 
 
-def pack_conv_weights(model):
+def pack_conv_weights(model, *, consumer=None):
     from vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn import (
         QwenGatedDeltaNetAttention,
     )
     from vllm_ascend.ops.gdn import AscendGatedDeltaNetAttention
 
+    if consumer is None:
+        consumer = AscendGatedDeltaNetAttention._forward_core
     count = 0
     for layer in model.modules():
         if not isinstance(layer, QwenGatedDeltaNetAttention):
             continue
         # Ascend patches methods onto the donor Qwen class; it does not replace
         # instances with its implementation subclass.
-        if (
-            layer._forward_core.__func__
-            is not AscendGatedDeltaNetAttention._forward_core
-        ):
+        if layer._forward_core.__func__ is not consumer:
             raise ValueError("unqualified GDN consumer")
         weight = layer.conv1d.weight
         if weight.ndim != 3 or weight.shape[1] != 1 or weight.shape[2] != 4:

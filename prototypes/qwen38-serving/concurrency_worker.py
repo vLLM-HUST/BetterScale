@@ -5,7 +5,9 @@ import time
 from profiling import ProfileWindow
 
 if os.environ["COMPARE_NO_MTP"] == "candidate":
-    if os.environ.get("PARTITION_CANDIDATE") == "1":
+    if os.environ.get("ELASTIC_CANDIDATE") == "1":
+        from betterscale.qwen_worker import MixedWorker as Base
+    elif os.environ.get("PARTITION_CANDIDATE") == "1":
         from mixed_full_worker import Worker as Base
     else:
         from betterscale.qwen_worker import Worker as Base
