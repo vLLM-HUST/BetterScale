@@ -14,9 +14,11 @@ experimental model implementation.
   compact passed receipts. Do not transfer the older model's full48 or
   fine-grained-prefix performance qualification onto this new ABI.
 - Qwen38 Python source comes from owned LiveInfer branch
-  `lumi/qwen38-flash-next-serving-plan`,820103bf. It requires TP2 minimum because
-  QSA has two KV heads and adjacent-rank islands. The new client is one TP2 group
-  with one publishing leader, not two independent TP1 sources.
+  `lumi/qwen38-flash-next-serving-plan`,820103bf. That original closure requires
+  TP2 because QSA has two KV heads and adjacent-rank islands. The topology
+  campaign now owns a disconnected TP1 extension; use its tested overlay rather
+  than merely deleting the original TP2 guard. Each source is one TP group,
+  with one publishing leader.
 - The exact IPC helper appeared later than820103bf; `qwen38/ipc_acl.py` is a
   disconnected, attributed copy. The old branch does not contain that import.
 - Keep native binary/config ABI together. The Qwen38 client config has17 words,
@@ -322,3 +324,10 @@ Use the external deadline and bounded role logs; capture native stacks only
 when diagnosing a real failure. The e active per-head gather probe also
 confirmed the vector-scatter tax (371ms ->0.915ms at2heads/count1024); retain
 full-model and throughput qualification separately.
+
+A TP1-EP8 maximum-State fit can present as `HcclImpl::WaitCommThread` while
+native plogs already report device OOM. At33GiB State,211/421MB allocations
+failed; Python did not promptly expose a normal allocator exception. Inspect
+bounded native error slices rather than extending a communication timeout.
+One-off `empty_cache()` after catalog loading did not reduce fragmentation or
+repair this fit; do not retain it as a claimed capacity improvement.

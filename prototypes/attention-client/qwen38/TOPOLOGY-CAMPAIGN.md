@@ -294,3 +294,25 @@ Both match the independent cache-row oracle exactly. See
 the e count128 case; no sample is deleted. This is a layout-lowering repair,
 not an expert-server speedup or a completed end-to-end result. The e full
 publication/gather/FIA graph oracle gates the next topology runs.
+
+The e FULL graph publication/gather/FIA gate passes all10 cases (`qwen38-qsa-active-20260917b/exact`), including two heads,129/257 query rows, and2051 selections. The next matrix uses `affineheads` explicitly, not an overwritten old overlay.
+
+The corrected TP1-EP8 State33 fit still stalls in HCCL initialization
+(`194317Z`; native stack `WaitCommThread/CreateCommByAlg`). A one-time allocator
+cache-reclaim retry (`200716Z`) does not change allocated/reserved memory and
+also stalls. Crucially its native driver log explicitly reports OOM, including
+failed211,812,352/421,527,552-byte allocations and persistent device-OOM status.
+This is now an observed failed fit, not merely an inference from a Python stack.
+The ineffective empty-cache experiment is not retained in the implementation;
+its exact source is in the capsule. Lower31/32GiB fits are the next bounded
+steps. Inspect the native plog when an apparent communication startup wait
+has no Python exception; do not let it consume a whole20-minute timeout blindly.
+
+Matched C40/two-turn e traces now complete for both TP2 layouts:
+`192818Z` separated TP2x2+E4 uses702.869s (20.433 output tok/s), and
+`195256Z` colocated TP2x4/EP8 uses724.010s (19.837 output tok/s).
+Both perform236,306 prefill rows,14,362 outputs and193,043 retained-prefix
+reused tokens. This single pair is only about3% apart, **not** a robust scaling
+win. TTFT P95 is109.21/70.58s; output-interval P99 is43.11/54.38s. The prototype's
+fixed-width prefill and phase scheduling dominate these tails. These remain
+owned-runtime topology controls, not an unmodified vLLM performance claim.
