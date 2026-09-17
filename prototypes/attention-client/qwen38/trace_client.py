@@ -295,10 +295,11 @@ def run_trace(root, cfg, args, rank, stage):
     engine = TraceEngine(root, cfg, args, assigned)
     engine.warm()
     torch.npu.synchronize()
-    (args.directory / f"trace-ready-{2 * args.source + rank}").touch()
+    (args.directory / f"trace-ready-{args.tp_size * args.source + rank}").touch()
     deadline = time.monotonic() + 180
     while not all(
-        (args.directory / f"trace-ready-{i}").exists() for i in range(2 * args.sources)
+        (args.directory / f"trace-ready-{i}").exists()
+        for i in range(args.tp_size * args.sources)
     ):
         if time.monotonic() > deadline:
             raise TimeoutError("trace warmup rendezvous")
@@ -419,17 +420,20 @@ def run_trace(root, cfg, args, rank, stage):
         flat = torch.tensor(
             [t for row in outputs_by_seat for t in row], dtype=torch.int64, device="npu"
         )
-        sizes = [torch.empty((), dtype=torch.int64, device="npu") for _ in range(2)]
+        sizes = [
+            torch.empty((), dtype=torch.int64, device="npu")
+            for _ in range(args.tp_size)
+        ]
         torch.distributed.all_gather(
             sizes,
             torch.tensor(flat.numel(), dtype=torch.int64, device="npu"),
             group=get_tp_group().device_group,
         )
-        if not torch.equal(sizes[0], sizes[1]):
+        if not all(torch.equal(sizes[0], other) for other in sizes[1:]):
             raise RuntimeError("TP output counts disagree")
-        agreed = [torch.empty_like(flat) for _ in range(2)]
+        agreed = [torch.empty_like(flat) for _ in range(args.tp_size)]
         torch.distributed.all_gather(agreed, flat, group=get_tp_group().device_group)
-        if not torch.equal(*agreed):
+        if not all(torch.equal(agreed[0], other) for other in agreed[1:]):
             raise RuntimeError("TP output token IDs disagree")
         receipt = dict(
             prefix_first_page_exact=prefix_exact,
@@ -461,9 +465,9 @@ def run_trace(root, cfg, args, rank, stage):
                 peak_allocated=torch.npu.max_memory_allocated(),
             ),
         )
-        (args.directory / f"attention{2 * args.source + rank}.json").write_text(
-            json.dumps(receipt, indent=2)
-        )
+        (
+            args.directory / f"attention{args.tp_size * args.source + rank}.json"
+        ).write_text(json.dumps(receipt, indent=2))
     finally:
         engine.graph.reset()
         engine.serving.close()

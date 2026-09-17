@@ -1,0 +1,42 @@
+{
+  "scope": "real48+MTP K1, all State zero-filled, long-prefix prefill plus3 FULL decode replays; not quality or populated real-history throughput",
+  "results": [
+    {
+      "topology": "TP2x2+E4",
+      "host": "hw0",
+      "capsule": "qwen38-model-20260917T161622Z",
+      "attention_ranks": 4,
+      "all_roles_pass": true,
+      "state_gib_per_rank": 49.0,
+      "logical_history_tokens_per_group": 3455616,
+      "allocated_history_tokens_whole_machine": 6911232,
+      "requests_total": 32,
+      "pressure_prefix_per_request": 215808,
+      "exercised_history_tokens_whole_machine": 6905856,
+      "minimum_sampled_driver_free_bytes": 561909760,
+      "prefill_rows_per_group": 1024
+    },
+    {
+      "topology": "TP2x4/EP8",
+      "host": "hw0",
+      "capsule": "qwen38-model-20260917T161939Z",
+      "attention_ranks": 8,
+      "all_roles_pass": true,
+      "state_gib_per_rank": 34.0,
+      "logical_history_tokens_per_group": 2448960,
+      "allocated_history_tokens_whole_machine": 9795840,
+      "requests_total": 32,
+      "pressure_prefix_per_request": 261952,
+      "exercised_history_tokens_whole_machine": 8382464,
+      "minimum_sampled_driver_free_bytes": 539041792,
+      "prefill_rows_per_group": 1024
+    }
+  ],
+  "failed_bound": {
+    "topology": "TP2x2+E4",
+    "state_gib": 50,
+    "capsule": "qwen38-model-20260917T161154Z",
+    "reason": "warm-prefill QSA HCCL allocation failed"
+  },
+  "native_upper_bound": "34GiB passed, not exhaustive maximum; remaining sampled free about514MiB"
+}

@@ -16,7 +16,8 @@ p.add_argument("--build", type=Path, required=True)
 p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
 p.add_argument("--artifacts", type=Path)
-p.add_argument("--sources", type=int, choices=(1, 2, 4), default=1)
+p.add_argument("--sources", type=int, choices=(1, 2, 4, 8), default=1)
+p.add_argument("--tp-size", type=int, choices=(1, 2), default=2)
 p.add_argument("--decode-steps", type=int, default=3)
 p.add_argument("--align-steady-start", action="store_true")
 p.add_argument("--observe-pauses", action="store_true")
@@ -33,8 +34,9 @@ p.add_argument("--trace-count", type=int, default=4)
 p.add_argument("--trace-turns", type=int, default=0)
 p.add_argument("--trace-output-cap", type=int, default=0)
 p.add_argument("--trace-max-context", type=int, default=32768)
+p.add_argument("--capacity-probe", action="store_true")
 a = p.parse_args()
-assert (a.sources == 4) if a.colocated else (a.sources in (1, 2))
+assert (a.sources * a.tp_size == 8) if a.colocated else (a.sources in (1, 2))
 assert a.reference_tokens == 0 or 2 <= a.reference_tokens <= min(32, a.decode_steps + 3)
 assert not a.reference_tokens or a.mtp_tokens
 from channel_layout import ChannelLayout
@@ -49,7 +51,11 @@ devices = a.devices.split(",")
 assert (
     len(devices)
     == len(set(devices))
-    == (2 * a.sources if a.construct_only or a.colocated else 2 * a.sources + 4)
+    == (
+        a.tp_size * a.sources
+        if a.construct_only or a.colocated
+        else a.tp_size * a.sources + 4
+    )
 )
 a.directory.mkdir(mode=0o700, parents=True, exist_ok=False)
 children = []
@@ -81,7 +87,7 @@ try:
                 "server.py",
                 [*common, "--owner", str(owner), "--sources", str(a.sources)]
                 + (["--mtp"] if a.mtp_tokens else []),
-                devices[owner + 2 * a.sources],
+                devices[owner + a.tp_size * a.sources],
             )
         deadline = time.monotonic() + 900
         while not all((a.directory / f"expert{i}.sock").exists() for i in range(4)):
@@ -90,8 +96,8 @@ try:
             if time.monotonic() > deadline:
                 raise TimeoutError("server weight load")
             time.sleep(0.5)
-    for physical_rank in range(2 * a.sources):
-        source, rank = divmod(physical_rank, 2)
+    for physical_rank in range(a.tp_size * a.sources):
+        source, rank = divmod(physical_rank, a.tp_size)
         launch(
             f"attention{physical_rank}",
             "model_client.py",
@@ -99,6 +105,8 @@ try:
             + [
                 "--source",
                 str(source),
+                "--tp-size",
+                str(a.tp_size),
                 "--sources",
                 str(a.sources),
                 "--decode-steps",
@@ -124,6 +132,11 @@ try:
             + (["--colocated"] if a.colocated else [])
             + (["--distinct-prompts"] if a.distinct_prompts else [])
             + (
+                ["--capacity-probe", "--trace-max-context", str(a.trace_max_context)]
+                if a.capacity_probe
+                else []
+            )
+            + (
                 [
                     "--trace-plan",
                     str(a.trace_plan),
@@ -142,7 +155,7 @@ try:
             devices[physical_rank],
             RANK=str(physical_rank if a.colocated else rank),
             LOCAL_RANK="0",
-            WORLD_SIZE="8" if a.colocated else "2",
+            WORLD_SIZE="8" if a.colocated else str(a.tp_size),
             MASTER_ADDR="127.0.0.1",
             MASTER_PORT=str(37652 if a.colocated else 37652 + source),
         )

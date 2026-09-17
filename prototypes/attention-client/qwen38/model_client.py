@@ -20,8 +20,9 @@ p.add_argument("--directory", type=Path, required=True)
 p.add_argument("--build", type=Path, required=True)
 p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
-p.add_argument("--source", type=int, choices=range(4), default=0)
-p.add_argument("--sources", type=int, choices=(1, 2, 4), default=1)
+p.add_argument("--source", type=int, choices=range(8), default=0)
+p.add_argument("--sources", type=int, choices=(1, 2, 4, 8), default=1)
+p.add_argument("--tp-size", type=int, choices=(1, 2), default=2)
 p.add_argument("--decode-steps", type=int, default=3)
 p.add_argument("--align-steady-start", action="store_true")
 p.add_argument("--observe-pauses", action="store_true")
@@ -38,6 +39,7 @@ p.add_argument("--trace-count", type=int, default=4)
 p.add_argument("--trace-turns", type=int, default=0)
 p.add_argument("--trace-output-cap", type=int, default=0)
 p.add_argument("--trace-max-context", type=int, default=32768)
+p.add_argument("--capacity-probe", action="store_true")
 a = p.parse_args()
 assert a.reference_tokens == 0 or 2 <= a.reference_tokens <= min(32, a.decode_steps + 3)
 assert not a.reference_tokens or a.mtp_tokens
@@ -49,12 +51,12 @@ token_capacity = ChannelLayout.from_abi(
 ).rows
 assert 1 <= a.prompt_width <= token_capacity
 assert a.batch_size * max(a.prompt_width, a.mtp_tokens + 1) <= token_capacity
-assert 0 < a.state_gib <= 48
+assert 0 < a.state_gib <= 60
 assert 3 <= a.decode_steps <= 96
 assert not a.align_steady_start or a.decode_graph
 assert not a.defer_steady_gc or a.align_steady_start
 physical_rank = int(os.environ["RANK"])
-rank = physical_rank % 2 if a.colocated else physical_rank
+rank = physical_rank % a.tp_size if a.colocated else physical_rank
 faulthandler.dump_traceback_later(240, repeat=False)
 
 
@@ -83,18 +85,18 @@ torch.distributed.init_process_group(
     "hccl",
     init_method="env://",
     rank=physical_rank,
-    world_size=8 if a.colocated else 2,
+    world_size=8 if a.colocated else a.tp_size,
     timeout=timedelta(seconds=600),
 )
 probe = torch.ones(1, device="npu")
 torch.distributed.all_reduce(probe)
-assert float(probe.cpu()[0]) == (8 if a.colocated else 2)
+assert float(probe.cpu()[0]) == (8 if a.colocated else a.tp_size)
 torch.distributed.broadcast(probe, src=0)
 torch.npu.synchronize()
 if a.colocated:
     from colocated_model import bootstrap_groups
 
-    bootstrap_groups()
+    bootstrap_groups(a.tp_size)
 stage("hccl-ready")
 from livemodule import LiveModule, live_runtime
 from livemodule.llm.configuration import set_current_vllm_config
@@ -116,8 +118,9 @@ cfg, runtime = configure(
     state_gib=a.state_gib,
     mtp_tokens=a.mtp_tokens,
     colocated=a.colocated,
+    tp_size=a.tp_size,
     token_capacity=token_capacity,
-    max_model_len=a.trace_max_context if a.trace_plan else 4096,
+    max_model_len=a.trace_max_context if a.trace_plan or a.capacity_probe else 4096,
 )
 with (
     live_runtime(runtime),
@@ -144,15 +147,29 @@ with (
         allocated=torch.npu.memory_allocated(),
         reserved=torch.npu.memory_reserved(),
     )
+    if a.capacity_probe and not a.construct_only:
+        from probe_capacity import run_capacity
+
+        run_capacity(root, cfg, a, rank, stage)
     if a.trace_plan and not a.construct_only:
         from trace_client import run_trace
 
         run_trace(root, cfg, a, rank, stage)
-    if not a.trace_plan and not a.construct_only and a.mtp_tokens:
+    if (
+        not a.capacity_probe
+        and not a.trace_plan
+        and not a.construct_only
+        and a.mtp_tokens
+    ):
         from mtp_client import run_mtp
 
         run_mtp(root, cfg, a, rank, stage)
-    if not a.trace_plan and not a.construct_only and not a.mtp_tokens:
+    if (
+        not a.capacity_probe
+        and not a.trace_plan
+        and not a.construct_only
+        and not a.mtp_tokens
+    ):
         from model_transport import install_transport
 
         install_transport(cfg, a, rank)
@@ -282,11 +299,11 @@ with (
                     # Refcounts remain active; cyclic GC is restored at teardown.
                     gc.collect()
                     gc.disable()
-                (a.directory / f"steady-ready-{2 * a.source + rank}").touch()
+                (a.directory / f"steady-ready-{a.tp_size * a.source + rank}").touch()
                 deadline = time.monotonic() + 180
                 while not all(
                     (a.directory / f"steady-ready-{i}").exists()
-                    for i in range(2 * a.sources)
+                    for i in range(a.tp_size * a.sources)
                 ):
                     if time.monotonic() > deadline:
                         raise TimeoutError("other attention source did not warm up")
@@ -348,11 +365,11 @@ with (
             if a.observe_pauses:
                 phases["logits_readback"] = time.monotonic()
             token = logits.argmax(-1).reshape(a.batch_size)
-            agreed = [torch.empty_like(token) for _ in range(2)]
+            agreed = [torch.empty_like(token) for _ in range(a.tp_size)]
             torch.distributed.all_gather(
                 agreed, token, group=get_tp_group().device_group
             )
-            assert torch.equal(agreed[0], agreed[1])
+            assert all(torch.equal(agreed[0], other) for other in agreed[1:])
             next_ids = token.cpu().tolist()
             ids = [[value] for value in next_ids]
             if a.observe_pauses:
@@ -382,7 +399,7 @@ with (
         ple.close()
         torch.distributed.barrier()
         count = cfg.remote_expert_transport.close() if rank == 0 else None
-        (a.directory / f"attention{2 * a.source + rank}.json").write_text(
+        (a.directory / f"attention{a.tp_size * a.source + rank}.json").write_text(
             json.dumps(
                 dict(
                     status="PASS",

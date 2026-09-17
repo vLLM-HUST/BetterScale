@@ -28,6 +28,7 @@ def configure(
     max_model_len=4096,
     mtp_tokens=0,
     colocated=False,
+    tp_size=2,
     token_capacity=32,
 ):
     hf = Qwen38Config.from_pretrained(MODEL)
@@ -47,9 +48,9 @@ def configure(
         ),
         parallel_config=NS(
             rank=rank,
-            tensor_parallel_size=2,
+            tensor_parallel_size=tp_size,
             pipeline_parallel_size=1,
-            data_parallel_size=4 if colocated else 1,
+            data_parallel_size=8 // tp_size if colocated else 1,
             use_sequence_parallel_moe=False,
             enable_eplb=False,
             enable_expert_parallel=True,

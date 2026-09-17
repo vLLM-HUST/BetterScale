@@ -10,21 +10,23 @@ import torch
 import torch_npu
 from safetensors import safe_open
 from weights import Checkpoint
+from expert_partition import ExpertPartition
 
 
 def target_layer(checkpoint, layer, owner, *, owners=4):
-    assert owners in (4, 8) and 0 <= owner < owners
-    local_experts = 512 // owners
-    up = torch.empty(local_experts, 2560, 1280, dtype=torch.int8)
-    down = torch.empty(local_experts, 640, 2560, dtype=torch.int8)
-    su = torch.empty(local_experts, 1280, dtype=torch.float32)
-    sd = torch.empty(local_experts, 2560, dtype=torch.float32)
+    partition = ExpertPartition(owners)
+    start, stop = partition.bounds(owner)
+    local_experts = partition.slots
+    up = torch.zeros(local_experts, 2560, 1280, dtype=torch.int8)
+    down = torch.zeros(local_experts, 640, 2560, dtype=torch.int8)
+    su = torch.zeros(local_experts, 1280, dtype=torch.float32)
+    sd = torch.zeros(local_experts, 2560, dtype=torch.float32)
     shards = defaultdict(list)
-    for local in range(local_experts):
+    for local in range(stop - start):
         for projection in ("gate_proj", "up_proj", "down_proj"):
             prefix = (
                 f"model.language_model.layers.{layer}.mlp.experts."
-                f"{owner * local_experts + local}.{projection}"
+                f"{start + local}.{projection}"
             )
             for suffix in ("weight", "weight_scale", "weight_offset"):
                 name = f"{prefix}.{suffix}"
@@ -55,18 +57,23 @@ def target_layer(checkpoint, layer, owner, *, owners=4):
 
 
 def mtp_layer(checkpoint, owner, *, owners=4):
-    assert owners in (4, 8) and 0 <= owner < owners
-    local_experts = 512 // owners
+    partition = ExpertPartition(owners)
+    start, stop = partition.bounds(owner)
+    local_experts = partition.slots
     result = []
     for projection in ("gate_up_proj", "down_proj"):
         name = f"mtp.layers.0.mlp.experts.{projection}"
         with safe_open(
             checkpoint.root / checkpoint.index[name], framework="pt", device="cpu"
         ) as f:
-            value = f.get_slice(name)[
-                owner * local_experts : (owner + 1) * local_experts
-            ]
+            value = f.get_slice(name)[start:stop]
             assert value.dtype == torch.bfloat16
+            if value.shape[0] < local_experts:
+                padded = torch.zeros(
+                    (local_experts, *value.shape[1:]), dtype=value.dtype
+                )
+                padded[: value.shape[0]].copy_(value)
+                value = padded
             result.append(
                 torch_npu.npu_format_cast(value.transpose(1, 2).to("npu"), 29)
             )
@@ -74,7 +81,8 @@ def mtp_layer(checkpoint, owner, *, owners=4):
 
 
 def load(owner, *, model=None, layers=48, mtp=False, owners=4):
-    assert owners in (4, 8) and 0 <= owner < owners and 1 <= layers <= 48
+    ExpertPartition(owners).bounds(owner)
+    assert 1 <= layers <= 48
     assert not mtp or layers == 48
     checkpoint = Checkpoint() if model is None else Checkpoint(model)
     result = []

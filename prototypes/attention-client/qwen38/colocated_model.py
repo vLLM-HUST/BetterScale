@@ -10,7 +10,7 @@ from livemodule.llm.forward_context import current_forward_context
 from livemodule.arch.ascend.vllm.moe_runtime.experts_selector import select_experts
 
 
-def bootstrap_groups():
+def bootstrap_groups(tp_size=2):
     import livemodule.llm.distributed as parallel
 
     rank = torch.distributed.get_rank()
@@ -20,8 +20,8 @@ def bootstrap_groups():
         raise RuntimeError("Use the dedicated colocated overlay and WORLD8")
     # Identical group-creation order on every process, including non-members.
     for kind, memberships in (
-        ("tp", [tuple(range(i, i + 2)) for i in range(0, 8, 2)]),
-        ("dp", [tuple(range(i, 8, 2)) for i in range(2)]),
+        ("tp", [tuple(range(i, i + tp_size)) for i in range(0, 8, tp_size)]),
+        ("dp", [tuple(range(i, 8, tp_size)) for i in range(tp_size)]),
     ):
         for ranks in memberships:
             group = torch.distributed.new_group(ranks=list(ranks), backend="hccl")
@@ -37,14 +37,14 @@ def bootstrap_groups():
     probe = torch.ones(1, device="npu")
     torch.distributed.all_reduce(probe, group=get_tp_group().device_group)
     torch.npu.synchronize()
-    assert probe.item() == 2
+    assert probe.item() == tp_size
     # QSA islands are exactly TP2 here. The legacy helper creates new_group
     # from each local TP membership, which is NOT a consistent WORLD8 creation
     # order across four DP sources. Reuse the already-created, warmed TP pair.
     from livemodule.llm.qwen38.parallel import _QSA_GROUP_CACHE
 
     tp = get_tp_group()
-    assert tp.world_size == 2
+    assert tp.world_size == tp_size
     _QSA_GROUP_CACHE[(id(tp.device_group), tuple(tp.ranks))] = tp
 
 
@@ -53,15 +53,16 @@ class ColocatedMoE(RemoteMoE):
         group = get_tp_group()
         flat = hidden.reshape(-1, hidden.shape[-1])
         rows = flat.shape[0]
-        count = (rows + 1) // 2
+        size = group.world_size
+        count = (rows + size - 1) // size
         # TP replicas partition their *token rows* only at EP ingress. Each
         # expert lives on one of8 ranks, never on both ranks of a TP pair.
-        local = flat[group.rank_in_group :: 2].contiguous()
+        local = flat[group.rank_in_group :: size].contiguous()
         active = torch.arange(count, device=flat.device) < local.shape[0]
         context = current_forward_context()
         topology = getattr(context, "batch_topology", None)
         if topology is not None and hasattr(topology, "query_valid"):
-            valid = topology.query_valid.reshape(-1)[group.rank_in_group :: 2]
+            valid = topology.query_valid.reshape(-1)[group.rank_in_group :: size]
             if valid.numel() != local.shape[0]:
                 raise ValueError("EP token rows disagree with attention validity")
             if valid.numel() < count:
@@ -89,14 +90,18 @@ class ColocatedMoE(RemoteMoE):
             shared=lambda: self.shared_expert(flat),
         )
         routed, shared = result
+        if size == 1:
+            return (routed + shared).reshape_as(hidden)
         gathered = torch.empty(
-            2 * count, flat.shape[1], dtype=flat.dtype, device=flat.device
+            size * count, flat.shape[1], dtype=flat.dtype, device=flat.device
         )
         torch.distributed.all_gather_into_tensor(
             gathered, routed, group=group.device_group
         )
         ordered = (
-            gathered.view(2, count, -1).transpose(0, 1).reshape(2 * count, -1)[:rows]
+            gathered.view(size, count, -1)
+            .transpose(0, 1)
+            .reshape(size * count, -1)[:rows]
         )
         return (ordered + shared).reshape_as(hidden)
 

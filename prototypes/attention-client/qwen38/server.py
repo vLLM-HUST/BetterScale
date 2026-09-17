@@ -93,6 +93,14 @@ def main():
         open_service=True,
     )
     engine.replay()
+    # Host-side accounting only; never synchronize the persistent service here.
+    free_bytes, total_bytes = torch.npu.mem_get_info()
+    memory_after_start = dict(
+        allocated=torch.npu.memory_allocated(),
+        reserved=torch.npu.memory_reserved(),
+        driver_free=free_bytes,
+        driver_total=total_bytes,
+    )
     for channel in channels.values():
         channel.send(dict(op="ready"))
     counts = [0, 0]
@@ -157,6 +165,7 @@ def main():
                 completed=sum(counts),
                 sources=a.sources,
                 layers=len(catalog),
+                memory_after_start=memory_after_start,
                 weight_bytes=sum(
                     t.numel() * t.element_size()
                     for layer in catalog

@@ -253,7 +253,8 @@ def run_mtp(root, cfg, args, rank, stage):
             for i in range(48)
         ]
         (
-            args.directory / f"initial-layer-shadow-{2 * args.source + rank}.json"
+            args.directory
+            / f"initial-layer-shadow-{args.tp_size * args.source + rank}.json"
         ).write_text(json.dumps(layer_errors))
         stage("initial-layer-shadow", first_layers=layer_errors[:8])
         fine_errors = {
@@ -265,7 +266,8 @@ def run_mtp(root, cfg, args, rank, stage):
             if isinstance(name, str) and name in initial_layers
         }
         (
-            args.directory / f"initial-layer2-fine-{2 * args.source + rank}.json"
+            args.directory
+            / f"initial-layer2-fine-{args.tp_size * args.source + rank}.json"
         ).write_text(json.dumps(fine_errors, indent=2))
         del initial_layers, reference_layers
     assert bool(first[3][: batch * (k + 1)].all().cpu())
@@ -318,11 +320,11 @@ def run_mtp(root, cfg, args, rank, stage):
     if args.align_steady_start:
         if args.defer_steady_gc:
             gc.collect()
-        (args.directory / f"steady-ready-{2 * args.source + rank}").touch()
+        (args.directory / f"steady-ready-{args.tp_size * args.source + rank}").touch()
         deadline = time.monotonic() + 180
         while not all(
             (args.directory / f"steady-ready-{i}").exists()
-            for i in range(2 * args.sources)
+            for i in range(args.tp_size * args.sources)
         ):
             if time.monotonic() > deadline:
                 raise TimeoutError("MTP source warm-up rendezvous")
@@ -342,11 +344,11 @@ def run_mtp(root, cfg, args, rank, stage):
             accepted, committed, count, observed = outputs
             assert bool(observed[: batch * (k + 1)].all().cpu())
             payload = torch.cat((accepted[:, None], count[:, None], committed), dim=1)
-            agreed = [torch.empty_like(payload) for _ in range(2)]
+            agreed = [torch.empty_like(payload) for _ in range(args.tp_size)]
             torch.distributed.all_gather(
                 agreed, payload, group=get_tp_group().device_group
             )
-            assert torch.equal(agreed[0], agreed[1])
+            assert all(torch.equal(agreed[0], other) for other in agreed[1:])
             rows = payload.cpu().tolist()
             elapsed = time.monotonic() - begin
             starts.append(begin)
@@ -411,7 +413,7 @@ def run_mtp(root, cfg, args, rank, stage):
         timing_scope="post-initialization and post-shadow closed-loop MTP+target+reconciliation+host readback; all measured steps included",
         repaired_ple_metadata=root.repaired_ple_metadata,
     )
-    (args.directory / f"attention{2 * args.source + rank}.json").write_text(
+    (args.directory / f"attention{args.tp_size * args.source + rank}.json").write_text(
         json.dumps(receipt, indent=2)
     )
 

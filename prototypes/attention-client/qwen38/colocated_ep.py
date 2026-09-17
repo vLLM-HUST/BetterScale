@@ -41,14 +41,47 @@ class ColocatedEP:
         Counts, activation scales and dispatch-return metadata stay on device.
         No .item()/CPU route count is used in the forward path.
         """
+        if (
+            hidden.ndim != 2
+            or hidden.shape[1] != 2560
+            or not 1 <= hidden.shape[0] <= 1024
+        ):
+            raise ValueError("native EP wrapper admits1..1024 H2560 source rows")
+        if ids.shape != probabilities.shape or ids.shape != (hidden.shape[0], 10):
+            raise ValueError("native EP routes must match the source rows and topk10")
+        if active is not None and active.shape != (hidden.shape[0],):
+            raise ValueError("native EP validity must match the source rows")
+        # A2 MC2 admits at most256 source rows per dispatch, unlike the
+        # A3 512-row lane. Keep larger attention buckets: every EP rank
+        # visits the same fixed row chunks, including inactive masked rows.
+        # Shared TP computation runs once, overlapped with the first dispatch.
+        if hidden.shape[0] > 256:
+            outputs = []
+            shared_output = None
+            for start in range(0, hidden.shape[0], 256):
+                stop = start + 256
+                callback = shared if start == 0 else None
+                value = self.routed(
+                    layer,
+                    hidden[start:stop],
+                    ids[start:stop],
+                    probabilities[start:stop],
+                    active=None if active is None else active[start:stop],
+                    shared=callback,
+                )
+                if callback is not None:
+                    value, shared_output = value
+                outputs.append(value)
+            output = torch.cat(outputs)
+            return (output, shared_output) if shared is not None else output
         up, down, su, sd = self.catalog[layer]
         quantized = up.dtype == torch.int8
         if (
             hidden.ndim != 2
             or hidden.shape[1] != 2560
-            or not 1 <= hidden.shape[0] <= 512
+            or not 1 <= hidden.shape[0] <= 256
         ):
-            raise ValueError("MC2 leaf admits1..512 source rows/rank")
+            raise ValueError("A2 MC2 leaf admits1..256 source rows/rank")
         if active is None:
             active = torch.ones(hidden.shape[0], dtype=torch.bool, device=hidden.device)
         communication = dict(

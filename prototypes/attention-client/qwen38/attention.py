@@ -115,10 +115,8 @@ class RemoteMoE(ArchQwen38MoE):
 
     def forward(self, hidden):
         group = get_tp_group()
-        if group.world_size != 2:
-            raise ValueError(
-                "First remote Qwen38 integration admits TP2 attention only"
-            )
+        if group.world_size not in (1, 2):
+            raise ValueError("Remote Qwen38 integration admits TP1/TP2 attention")
         flat = hidden.reshape(-1, hidden.shape[-1])
         if group.rank_in_group == 0:
             transport = self.runtime_config.remote_expert_transport
@@ -136,9 +134,10 @@ class RemoteMoE(ArchQwen38MoE):
             # Do not skip this: native shared down projection is collective.
             self.shared_expert(flat)
             result = torch.empty_like(flat)
-        torch.distributed.broadcast(
-            result, src=group.first_rank, group=group.device_group
-        )
+        if group.world_size > 1:
+            torch.distributed.broadcast(
+                result, src=group.first_rank, group=group.device_group
+            )
         return result.reshape_as(hidden)
 
 

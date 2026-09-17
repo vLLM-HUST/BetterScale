@@ -265,3 +265,11 @@ voting instead of mixed target waves. Its decode stalls during other sources'
 prefill. Do not turn the1.1753 pilot ratio into a mature DP+EP or expert-GEMM
 claim. P99 is sample-sensitive (max gaps are9.09/10.11s despite very different
 P99). No full-trajectory,262K fill,maximum-HBM,or full quality gate is implied.
+
+For maximum-fit/TP1/E3 work, enter `qwen38/TOPOLOGY-CAMPAIGN.md`. Equal8GiB State
+budgets do not compare physical topology limits. The49GiB TP2 separated gate
+passes with about536MiB minimum sampled free memory;50GiB fails warmup HCCL
+allocation. Native34GiB first failed A2 MC2's256-source-row bound, **not OOM**.
+Do not confuse staging-slot count2 with source-count2 when expanding the server.
+TP1 needs two-head QSA publication/gather/FIA as well as a parallel-plan change;
+removing the TP2 guard alone silently leaves half of each KV row unpublished.

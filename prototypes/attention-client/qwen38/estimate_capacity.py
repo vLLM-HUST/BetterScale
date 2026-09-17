@@ -16,6 +16,7 @@ p.add_argument(
     type=Path,
     default=Path("/data/shared_models/Qwen3.8-Flash-Next-w8a8-mtp"),
 )
+p.add_argument("--tp-size", type=int, choices=(1, 2), default=2)
 p.add_argument("--mtp-tokens", type=int, choices=range(6), default=0)
 a = p.parse_args()
 from livemodule.core.state_tensor import (
@@ -29,7 +30,7 @@ from livemodule.llm.qwen38.state import Qwen38RequestStateBank
 
 model_config = json.loads((a.model / "config.json").read_text())
 c = Qwen38TextContract.from_model_config(model_config)
-p = Qwen38ParallelPlan(c, 0, 2)
+p = Qwen38ParallelPlan(c, 0, a.tp_size)
 h = StateDomain(ElasticStateCapacity())
 r = StateDomain(ExactStateCapacity(1))
 from livemodule import LiveRuntime, live_runtime
@@ -78,6 +79,7 @@ print(
     json.dumps(
         dict(
             mtp_tokens=a.mtp_tokens,
+            tp_size=a.tp_size,
             model_max_context=model_config.get("text_config", model_config)[
                 "max_position_embeddings"
             ],
@@ -90,7 +92,7 @@ print(
                 dict(
                     state_gib=gib,
                     seats=n,
-                    history_tokens_per_TP2_group=max(
+                    history_tokens_per_attention_group=max(
                         0, (int(gib * 2**30) - n * per_seat) // (64 * bpt)
                     )
                     * 64,
