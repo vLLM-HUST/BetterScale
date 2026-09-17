@@ -79,6 +79,7 @@ from runtime import Kernels
 engine = Kernels(os.environ["ASCENDC_GDN_LIB"], T, N, 12, state_pool=True)
 bank = torch.randn(8, 24, 128, 128, device="npu", dtype=torch.float32) * 0.01
 seed = bank.clone()
+clean_seed = seed.clone()
 
 
 def prepare(lengths, slot_ids, cold):
@@ -131,38 +132,7 @@ def dynamic():
         k=k, v=v, beta=beta, A=a, g_cumsum=g, cu_seqlens=cu, chunk_indices=indices[64]
     )
     qh, kh, wh, uh, gh = [x.transpose(1, 2).contiguous() for x in (q, k, w, u, g)]
-    engine.launch(
-        "h",
-        [
-            kh,
-            wh,
-            uh,
-            gh,
-            bank,
-            cu,
-            state_meta,
-            engine.h,
-            engine.v,
-            bank,
-            engine.ws,
-            engine.th,
-        ],
-    )
-    engine.launch(
-        "o",
-        [
-            qh,
-            kh,
-            engine.v,
-            engine.h,
-            gh,
-            cu,
-            indices[64],
-            engine.o,
-            engine.ws,
-            engine.to,
-        ],
-    )
+    engine.pool_forward(qh, kh, wh, uh, gh, bank, cu, state_meta, indices[64])
     out = engine.o.transpose(1, 2).contiguous()
     return out
 
@@ -200,6 +170,11 @@ with torch.inference_mode():
         ((512,), (2, 1, 0, 3, 4), False),
         ((1, 127, 63, 321), (7, 2, 6, 0, 4), (True, False, True, False)),
     ]:
+        seed.copy_(clean_seed)
+        case_flags = [not cold] * len(lengths) if isinstance(cold, bool) else list(cold)
+        cold_slots = [slot_ids[i] for i, f in enumerate(case_flags) if not f]
+        if cold_slots:
+            seed[cold_slots] = float("nan")
         ends = prepare(lengths, slot_ids, cold)
         n = len(lengths)
         total = sum(lengths)

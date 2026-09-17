@@ -82,102 +82,104 @@ def fused_recurrent_gated_delta_rule_fwd_kernel(
     if SINGLE_TOKEN:
         T = 1
 
-    o_k = i_k * BK + tl.arange(0, BK)
-    o_v = i_v * BV + tl.arange(0, BV)
+    if USE_INITIAL_STATE and IS_CONTINUOUS_BATCHING:
+        if tl.load(ssm_state_indices + i_n * stride_indices_seq) < 0:
+            return
+    for i_v in range((V + BV - 1) // BV):
+        o_k = i_k * BK + tl.arange(0, BK)
+        o_v = i_v * BV + tl.arange(0, BV)
 
-    p_q = q + (bos * H + i_h) * K + o_k
-    p_k = k + (bos * H + i_h) * K + o_k
-    p_v = v + (bos * HV + i_hv) * V + o_v
-    if IS_BETA_HEADWISE:
-        p_beta = beta + (bos * HV + i_hv) * V + o_v
-    else:
-        p_beta = beta + bos * HV + i_hv
-
-    if not IS_KDA:
-        p_g = g + bos * HV + i_hv
-    else:
-        p_gk = g + (bos * HV + i_hv) * K + o_k
-
-    p_o = o + ((i_k * all + bos) * HV + i_hv) * V + o_v
-
-    mask_k = o_k < K
-    mask_v = o_v < V
-    mask_h = mask_k[:, None] & mask_v[None, :]
-
-    b_h = tl.zeros([BK, BV], dtype=tl.float32)
-    if USE_INITIAL_STATE:
-        if IS_CONTINUOUS_BATCHING:
-            if IS_SPEC_DECODING:
-                i_t = tl.load(num_accepted_tokens + i_n).to(tl.int64) - 1
-            else:
-                i_t = 0
-            # Load state index and check for invalid entries
-            state_idx = tl.load(ssm_state_indices + i_n * stride_indices_seq + i_t).to(
-                tl.int64
-            )
-            # Skip if state index is invalid (NULL_BLOCK_ID=0)
-            if state_idx < 0:
-                return
-            p_h0 = h0 + state_idx * stride_init_state_token
-        else:
-            p_h0 = h0 + bos * HV * V * K
-        p_h0 = p_h0 + i_hv * V * K + o_k[:, None] * V + o_v[None, :]
-        b_h += tl.load(p_h0, mask=mask_h, other=0).to(tl.float32)
-
-    for i_t in range(0, T):
-        b_q = tl.load(p_q, mask=mask_k, other=0).to(tl.float32)
-        b_k = tl.load(p_k, mask=mask_k, other=0).to(tl.float32)
-        b_v = tl.load(p_v, mask=mask_v, other=0).to(tl.float32)
-
-        if USE_QK_L2NORM_IN_KERNEL:
-            b_q = b_q / tl.sqrt(tl.sum(b_q * b_q) + 1e-6)
-            b_k = b_k / tl.sqrt(tl.sum(b_k * b_k) + 1e-6)
-        b_q = b_q * scale
-        # [BV, BK]
-        if not IS_KDA:
-            b_g = tl.load(p_g).to(tl.float32)
-            b_h *= exp(b_g)
-        else:
-            b_gk = tl.load(p_gk).to(tl.float32)
-            b_h *= exp(b_gk[:, None])
-        # [BV]
-        b_v -= tl.sum(b_h * b_k[:, None], 0)
+        p_q = q + (bos * H + i_h) * K + o_k
+        p_k = k + (bos * H + i_h) * K + o_k
+        p_v = v + (bos * HV + i_hv) * V + o_v
         if IS_BETA_HEADWISE:
-            b_beta = tl.load(p_beta, mask=mask_v, other=0).to(tl.float32)
+            p_beta = beta + (bos * HV + i_hv) * V + o_v
         else:
-            b_beta = tl.load(p_beta).to(tl.float32)
-        b_v *= b_beta
-        # [BV, BK]
-        b_h = tl.fma(b_k[:, None], b_v[None, :], b_h)
-        # [BV]
-        b_o = tl.sum(b_h * b_q[:, None], 0)
-        tl.store(p_o, b_o.to(p_o.dtype.element_ty), mask=mask_v)
+            p_beta = beta + bos * HV + i_hv
 
-        # keep the states for multi-query tokens
-        if INPLACE_FINAL_STATE:
-            # Load state index and check for invalid entries
-            final_state_idx = tl.load(
-                ssm_state_indices + i_n * stride_indices_seq + i_t
-            ).to(tl.int64)
-            # Only store if state index is valid (not NULL_BLOCK_ID=0)
-            if final_state_idx >= 0:
-                p_ht = ht + final_state_idx * stride_final_state_token
+        if not IS_KDA:
+            p_g = g + bos * HV + i_hv
+        else:
+            p_gk = g + (bos * HV + i_hv) * K + o_k
+
+        p_o = o + ((i_k * all + bos) * HV + i_hv) * V + o_v
+
+        mask_k = o_k < K
+        mask_v = o_v < V
+        mask_h = mask_k[:, None] & mask_v[None, :]
+
+        b_h = tl.zeros([BK, BV], dtype=tl.float32)
+        if USE_INITIAL_STATE:
+            if IS_CONTINUOUS_BATCHING:
+                if IS_SPEC_DECODING:
+                    i_t = tl.load(num_accepted_tokens + i_n).to(tl.int64) - 1
+                else:
+                    i_t = 0
+                # Load state index and check for invalid entries
+                state_idx = tl.load(
+                    ssm_state_indices + i_n * stride_indices_seq + i_t
+                ).to(tl.int64)
+                # Skip if state index is invalid (NULL_BLOCK_ID=0)
+                p_h0 = h0 + state_idx * stride_init_state_token
+            else:
+                p_h0 = h0 + bos * HV * V * K
+            p_h0 = p_h0 + i_hv * V * K + o_k[:, None] * V + o_v[None, :]
+            b_h = tl.load(p_h0, mask=mask_h, other=0).to(tl.float32)
+
+        for i_t in range(0, T):
+            b_q = tl.load(p_q, mask=mask_k, other=0).to(tl.float32)
+            b_k = tl.load(p_k, mask=mask_k, other=0).to(tl.float32)
+            b_v = tl.load(p_v, mask=mask_v, other=0).to(tl.float32)
+
+            if USE_QK_L2NORM_IN_KERNEL:
+                b_q = b_q / tl.sqrt(tl.sum(b_q * b_q) + 1e-6)
+                b_k = b_k / tl.sqrt(tl.sum(b_k * b_k) + 1e-6)
+            b_q = b_q * scale
+            # [BV, BK]
+            if not IS_KDA:
+                b_g = tl.load(p_g).to(tl.float32)
+                b_h *= exp(b_g)
+            else:
+                b_gk = tl.load(p_gk).to(tl.float32)
+                b_h *= exp(b_gk[:, None])
+            # [BV]
+            b_v -= tl.sum(b_h * b_k[:, None], 0)
+            if IS_BETA_HEADWISE:
+                b_beta = tl.load(p_beta, mask=mask_v, other=0).to(tl.float32)
+            else:
+                b_beta = tl.load(p_beta).to(tl.float32)
+            b_v *= b_beta
+            # [BV, BK]
+            b_h = tl.fma(b_k[:, None], b_v[None, :], b_h)
+            # [BV]
+            b_o = tl.sum(b_h * b_q[:, None], 0)
+            tl.store(p_o, b_o.to(p_o.dtype.element_ty), mask=mask_v)
+
+            # keep the states for multi-query tokens
+            if INPLACE_FINAL_STATE:
+                # Load state index and check for invalid entries
+                final_state_idx = tl.load(
+                    ssm_state_indices + i_n * stride_indices_seq + i_t
+                ).to(tl.int64)
+                # Only store if state index is valid (not NULL_BLOCK_ID=0)
+                if final_state_idx >= 0:
+                    p_ht = ht + final_state_idx * stride_final_state_token
+                    p_ht = p_ht + i_hv * V * K + o_k[:, None] * V + o_v[None, :]
+                    tl.store(p_ht, b_h.to(p_ht.dtype.element_ty), mask=mask_h)
+            else:
+                p_ht = ht + (bos + i_t) * stride_final_state_token
                 p_ht = p_ht + i_hv * V * K + o_k[:, None] * V + o_v[None, :]
                 tl.store(p_ht, b_h.to(p_ht.dtype.element_ty), mask=mask_h)
-        else:
-            p_ht = ht + (bos + i_t) * stride_final_state_token
-            p_ht = p_ht + i_hv * V * K + o_k[:, None] * V + o_v[None, :]
-            tl.store(p_ht, b_h.to(p_ht.dtype.element_ty), mask=mask_h)
 
-        p_q += H * K
-        p_k += H * K
-        p_o += HV * V
-        p_v += HV * V
-        if not IS_KDA:
-            p_g += HV
-        else:
-            p_gk += HV * K
-        p_beta += HV * (V if IS_BETA_HEADWISE else 1)
+            p_q += H * K
+            p_k += H * K
+            p_o += HV * V
+            p_v += HV * V
+            if not IS_KDA:
+                p_g += HV
+            else:
+                p_gk += HV * K
+            p_beta += HV * (V if IS_BETA_HEADWISE else 1)
 
 
 def fused_recurrent_gated_delta_rule_fwd(
@@ -194,7 +196,12 @@ def fused_recurrent_gated_delta_rule_fwd(
     num_accepted_tokens: torch.Tensor | None = None,
     use_qk_l2norm_in_kernel: bool = False,
 ) -> tuple[torch.Tensor, torch.Tensor]:
+    # This owned adapter is non-speculative, one token per nonempty cu segment.
+    assert num_accepted_tokens is None and inplace_final_state
+    assert cu_seqlens is not None and ssm_state_indices is not None
+    assert ssm_state_indices.ndim == 1
     B, T, H, K, V = *k.shape, v.shape[-1]
+    assert B == 1 and H == 8 and K == V == 128 and v.shape[2] == 24
     HV = v.shape[2]
     N = B if cu_seqlens is None else len(cu_seqlens) - 1
     BK, BV = triton.next_power_of_2(K), min(triton.next_power_of_2(V), 64)
@@ -219,7 +226,7 @@ def fused_recurrent_gated_delta_rule_fwd(
     else:
         stride_indices_seq, stride_indices_tok = ssm_state_indices.stride()
 
-    grid = (NK, NV, N * HV)
+    grid = (NK, 1, N * HV)
     fused_recurrent_gated_delta_rule_fwd_kernel[grid](
         q=q,
         k=k,

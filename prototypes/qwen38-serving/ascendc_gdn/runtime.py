@@ -33,6 +33,7 @@ class Kernels:
     def __init__(self, library, tokens, requests, chunks, cores=24, state_pool=False):
         assert os.environ.get("TASK_QUEUE_ENABLE") == "0"
         self.lib = C.CDLL(str(library))
+        self.state_pool = state_pool
         self.cores = cores
         self.T, self.N, self.C = tokens, requests, chunks
         self.ws = torch.empty(64 * 1024 * 1024, dtype=torch.uint8, device="npu")
@@ -40,8 +41,12 @@ class Kernels:
             (1, 24, chunks, 128, 128), dtype=torch.bfloat16, device="npu"
         )
         self.v = torch.empty((1, 24, tokens, 128), dtype=torch.bfloat16, device="npu")
-        self.final = torch.empty(
-            (requests, 24, 128, 128), dtype=torch.float32, device="npu"
+        self.final = (
+            None
+            if state_pool
+            else torch.empty(
+                (requests, 24, 128, 128), dtype=torch.float32, device="npu"
+            )
         )
         self.o = torch.empty_like(self.v)
         th, to = tiling_type("h")(), tiling_type("o")()
@@ -104,7 +109,36 @@ class Kernels:
         if code:
             raise RuntimeError(f"AscendC {kind} launch returned {code}")
 
+    def pool_forward(self, q, k, w, u, g, bank, cu, state_meta, indices):
+        """Exclusive valid slots; packed active prefix, empty suffix; K-V FP32 bank.
+
+        The scheduler validates unique in-range slots and token/chunk capacities
+        before publishing metadata. No data-dependent host read occurs here.
+        """
+        assert self.state_pool and bank.shape[1:] == (24, 128, 128)
+        assert bank.dtype == torch.float32 and bank.is_contiguous()
+        assert state_meta.shape == (self.N, 2) and state_meta.dtype == torch.int64
+        assert cu.shape == (self.N + 1,) and cu.dtype == torch.int64
+        assert indices.shape == (self.C, 2) and indices.dtype == torch.int64
+        assert q.shape == k.shape == (1, 8, self.T, 128)
+        assert w.shape == u.shape == (1, 24, self.T, 128)
+        assert g.shape == (1, 24, self.T) and g.dtype == torch.float32
+        assert all(t.dtype == torch.bfloat16 for t in (q, k, w, u))
+        assert all(
+            t.device == bank.device and t.is_contiguous()
+            for t in (q, k, w, u, g, cu, state_meta, indices)
+        )
+        self.launch(
+            "h",
+            [k, w, u, g, bank, cu, state_meta, self.h, self.v, bank, self.ws, self.th],
+        )
+        self.launch(
+            "o", [q, k, self.v, self.h, g, cu, indices, self.o, self.ws, self.to]
+        )
+        return self.o
+
     def __call__(self, q, k, w, u, g, initial, cu, indices):
+        assert not self.state_pool
         for x in (q, k, w, u, g, initial, cu, indices):
             assert x.is_contiguous() and x.device.type == "npu"
         assert q.shape == k.shape == (1, 8, self.T, 128)
