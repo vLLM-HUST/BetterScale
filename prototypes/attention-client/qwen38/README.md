@@ -129,3 +129,16 @@ The target-only GDN adapter normalizes the old metadata's always-present,
 K=0-clamped acceptance selector to `None` at the ordinary-decode backend boundary.
 Candidate handling for K>0 remains unchanged. Earlier first-token gates alone
 could not expose this target-only continuation gap.
+
+## Full target continuation passed
+
+`full-target-result.json`: TP2 attention plus E4, all48 real target layers,
+real original-integer-repaired PLE, one3-token prefill and three1-token decode
+calls. No per-layer diagnostic synchronization. Both attention ranks agree on
+`[7824,11,6326,9703]`; each expert owner completes192 generations and drains
+normally. Each owner retains30,293,360,640bytes of routed weights/scales.
+The full async run passes after replacing the short per-launch deadline.
+
+This is a real end-to-end **mechanism gate**, not a language-quality benchmark,
+throughput gain, multi-source campaign, large-prefill test, or MTP qualification.
+FULL decode graph remains the next separate same-State comparison gate.

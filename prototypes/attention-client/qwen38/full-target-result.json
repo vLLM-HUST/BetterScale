@@ -1,0 +1,92 @@
+{
+  "scope": "repaired Qwen38 W8A8 target, TP2 attention+E4, full48 eager four-wave continuation; not quality/throughput",
+  "capsule": "runs/qwen38-model-20260917T034704Z",
+  "attention": [
+    {
+      "status": "PASS",
+      "scope": "eager full48 target, real PLE, four waves; not quality",
+      "output_ids": [
+        7824,
+        11,
+        6326,
+        9703
+      ],
+      "calls": 192,
+      "decode_graph": false,
+      "graph_shadow_relative_l2": null,
+      "repaired_ple_metadata": [
+        "model.language_model.layers.1.ple.ple_embedding.layer_multipliers",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_heads_offsets",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_heads_vocab_sizes"
+      ]
+    },
+    {
+      "status": "PASS",
+      "scope": "eager full48 target, real PLE, four waves; not quality",
+      "output_ids": [
+        7824,
+        11,
+        6326,
+        9703
+      ],
+      "calls": null,
+      "decode_graph": false,
+      "graph_shadow_relative_l2": null,
+      "repaired_ple_metadata": [
+        "model.language_model.layers.1.ple.ple_embedding.layer_multipliers",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_heads_offsets",
+        "model.language_model.layers.1.ple.ple_embedding.ngram_heads_vocab_sizes"
+      ]
+    }
+  ],
+  "experts": [
+    {
+      "status": "pass",
+      "completed": 192,
+      "layers": 48,
+      "weight_bytes": 30293360640,
+      "waves": 192,
+      "completed_counts": [
+        192,
+        0
+      ],
+      "admitted_promotions": 0
+    },
+    {
+      "status": "pass",
+      "completed": 192,
+      "layers": 48,
+      "weight_bytes": 30293360640,
+      "waves": 192,
+      "completed_counts": [
+        192,
+        0
+      ],
+      "admitted_promotions": 1
+    },
+    {
+      "status": "pass",
+      "completed": 192,
+      "layers": 48,
+      "weight_bytes": 30293360640,
+      "waves": 192,
+      "completed_counts": [
+        192,
+        0
+      ],
+      "admitted_promotions": 0
+    },
+    {
+      "status": "pass",
+      "completed": 192,
+      "layers": 48,
+      "weight_bytes": 30293360640,
+      "waves": 192,
+      "completed_counts": [
+        192,
+        0
+      ],
+      "admitted_promotions": 0
+    }
+  ]
+}
