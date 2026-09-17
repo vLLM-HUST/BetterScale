@@ -49,15 +49,16 @@ def compare(a, b):
 
 
 T, N = 512, 5  # fifth request is a permanent empty sentinel for unused chunk tasks
-cu = torch.zeros(N + 1, dtype=torch.int64, device="npu")
-offsets = torch.zeros(N + 1, dtype=torch.int64, device="npu")
-slots = torch.arange(N, dtype=torch.int64, device="npu")
-active = torch.zeros(N, dtype=torch.bool, device="npu")
-continuing = torch.ones(N, dtype=torch.bool, device="npu")
+# One pinned metadata publication per wave, shared by every GDN layer.
+metadata = torch.empty(67, dtype=torch.int64, device="npu")
+host_metadata = torch.empty(67, dtype=torch.int64, pin_memory=True)
+cu = metadata[:6]
+state_meta = metadata[6:16].view(5, 2)
+slots = metadata[16:21]
 indices = {
-    64: torch.empty((12, 2), dtype=torch.int64, device="npu"),
-    256: torch.empty((6, 2), dtype=torch.int64, device="npu"),
-    1216: torch.empty((5, 2), dtype=torch.int64, device="npu"),
+    64: metadata[21:45].view(12, 2),
+    256: metadata[45:57].view(6, 2),
+    1216: metadata[57:67].view(5, 2),
 }
 torch.manual_seed(173)
 values = dict(
@@ -76,38 +77,33 @@ values["k"] = torch.nn.functional.normalize(values["k"].float(), dim=-1).to(
 from runtime import Kernels
 
 engine = Kernels(os.environ["ASCENDC_GDN_LIB"], T, N, 12, state_pool=True)
-state_meta = torch.empty((N, 2), dtype=torch.int64, device="npu")
 bank = torch.randn(8, 24, 128, 128, device="npu", dtype=torch.float32) * 0.01
 seed = bank.clone()
 
 
 def prepare(lengths, slot_ids, cold):
+    assert 0 < len(lengths) <= 4 and all(n > 0 for n in lengths) and sum(lengths) <= T
+    assert len(set(slot_ids[: len(lengths)])) == len(lengths)
+    assert all(0 <= i < len(bank) for i in slot_ids[: len(lengths)])
     padded = [*lengths, *([0] * (N - len(lengths)))]
     ends = [0]
-    chunks = [0]
-    for length in padded:
-        ends.append(ends[-1] + length)
-        chunks.append(chunks[-1] + (length + 63) // 64)
-    cu.copy_(torch.tensor(ends, dtype=torch.int64, device="npu"))
-    offsets.copy_(torch.tensor(chunks, dtype=torch.int64, device="npu"))
-    slots.copy_(torch.tensor(slot_ids, dtype=torch.int64, device="npu"))
-    active.copy_(torch.tensor([i < len(lengths) for i in range(N)], device="npu"))
+    for n in padded:
+        ends.append(ends[-1] + n)
     flags = (
         [not cold] * N
         if isinstance(cold, bool)
         else [*cold, *([False] * (N - len(cold)))]
     )
-    continuing.copy_(torch.tensor(flags, device="npu"))
-    state_meta.copy_(
-        torch.tensor(list(zip(slot_ids, flags)), device="npu", dtype=torch.int64)
-    )
+    data = [*ends, *[v for pair in zip(slot_ids, flags) for v in pair], *slot_ids]
     for size, dest in indices.items():
         rows = [
             (i, j) for i, n in enumerate(lengths) for j in range((n + size - 1) // size)
         ]
         assert len(rows) <= len(dest)
         rows += [(N - 1, 0)] * (len(dest) - len(rows))
-        dest.copy_(torch.tensor(rows, dtype=torch.int64, device="npu"))
+        data.extend(v for pair in rows for v in pair)
+    host_metadata.copy_(torch.tensor(data, dtype=torch.int64))
+    metadata.copy_(host_metadata, non_blocking=True)
     return ends
 
 
@@ -283,6 +279,103 @@ with torch.inference_mode():
         stateful_graph = torch.npu.NPUGraph()
         with torch.npu.graph(stateful_graph):
             native_stateful()
+        # Actual donor role split: recurrent decode prefix, chunk prefill tail.
+        d = 0
+        while d < n and lengths[d] == 1 and flags[d]:
+            d += 1
+        decode_slots = native_slots[:d].to(torch.int32)
+        actual_lengths = torch.tensor([0] + [1] * d, dtype=torch.int32, device="npu")
+        tail_inputs = {k: v[:, d:] for k, v in inputs.items()}
+        tail_cpu = cpu[d:] - d
+        tail_cu = tail_cpu.to("npu")
+        tail_meta = (
+            _build_non_spec_chunked_prefill_metadata(
+                builder, tail_cpu, torch.device("npu")
+            )
+            if d < n
+            else None
+        )
+
+        def native_roles():
+            dec = None
+            if d:
+                dec = torch.ops._C_ascend.npu_recurrent_gated_delta_rule(
+                    query=inputs["q"][:, :d].squeeze(0),
+                    key=inputs["k"][:, :d].squeeze(0),
+                    value=inputs["v"][:, :d].squeeze(0),
+                    g=inputs["g"][:, :d].squeeze(0),
+                    beta=inputs["beta"][:, :d].squeeze(0),
+                    state=native_bank,
+                    scale=128**-0.5,
+                    actual_seq_lengths=actual_lengths,
+                    ssm_state_indices=decode_slots,
+                ).unsqueeze(0)
+            if d < n:
+                gathered = native_bank[native_slots[d:]].transpose(-1, -2).contiguous()
+                clear_ssm_states(gathered, flag_tensor.flatten()[d:])
+                pre, final_state = chunk.chunk_gated_delta_rule(
+                    **tail_inputs,
+                    initial_state=gathered,
+                    output_final_state=True,
+                    cu_seqlens=tail_cu,
+                    prebuilt_meta=tail_meta,
+                    head_first=False,
+                    use_qk_l2norm_in_kernel=False,
+                )
+                native_bank[native_slots[d:]] = final_state.transpose(
+                    -1, -2
+                ).contiguous()
+                return torch.cat([dec, pre], dim=1) if d else pre
+            return dec
+
+        native_roles()
+        torch.npu.synchronize()
+        roles_graph = torch.npu.NPUGraph()
+        with torch.npu.graph(roles_graph):
+            role_out = native_roles()
+        bank.copy_(seed)
+        native_bank.copy_(seed.transpose(-1, -2))
+        graph.replay()
+        roles_graph.replay()
+        torch.npu.synchronize()
+        row["native_role_checks"] = {
+            "output": compare(output[:, :total], role_out),
+            "state": compare(bank, native_bank.transpose(-1, -2)),
+        }
+        row["decode_prefix"] = d
+        candidate_graph = graph
+        if d == n:
+            from decode_kv import fused_recurrent_gated_delta_rule_fwd as kv_decode
+
+            def pure_decode():
+                return kv_decode(
+                    **values,
+                    scale=128**-0.5,
+                    initial_state=bank,
+                    inplace_final_state=True,
+                    cu_seqlens=cu[:5],
+                    ssm_state_indices=slots[:4],
+                )[0]
+
+            pure_decode()
+            torch.npu.synchronize()
+            candidate_graph = torch.npu.NPUGraph()
+            with torch.npu.graph(candidate_graph):
+                decode_out = pure_decode()
+            bank.copy_(seed)
+            native_bank.copy_(seed.transpose(-1, -2))
+            candidate_graph.replay()
+            roles_graph.replay()
+            torch.npu.synchronize()
+            row["pure_decode_checks"] = {
+                "output": compare(decode_out[:, :total], role_out),
+                "state": compare(bank, native_bank.transpose(-1, -2)),
+            }
+        row["role_policy_graph_ms"] = {"candidate": [], "native": []}
+        for name in ["native", "candidate", "candidate", "native"] * 2:
+            row["role_policy_graph_ms"][name].append(
+                measure(candidate_graph if name == "candidate" else roles_graph)
+            )
         times = {"pool": [], "native_stateful": [], "native_compute_only": []}
         for name in ["native_stateful", "pool", "pool", "native_stateful"] * 2:
             times[name].append(measure(graph if name == "pool" else stateful_graph))
@@ -295,7 +388,12 @@ with torch.inference_mode():
         if all(
             c["close"] and c["finite"]
             for r in receipt["cases"]
-            for c in r["checks"].values()
+            for checkset in [
+                r["checks"],
+                r["native_role_checks"],
+                r.get("pure_decode_checks", {}),
+            ]
+            for c in checkset.values()
         )
         else "NUMERICAL_MISMATCH"
     )
