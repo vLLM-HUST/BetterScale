@@ -158,6 +158,7 @@ public:
     bool useInitialState;
     bool storeFinalState;
     bool statePoolMode;
+    bool statePoolTransposed;
     AscendC::GlobalTensor<int64_t> gmStateMeta;
     uint32_t isVariedLen;
     uint32_t shapeBatch;
@@ -217,6 +218,7 @@ public:
         numChunksWorkspaceOffset = gdnFwdHTilingData->numChunksWorkspaceOffset;
         
         statePoolMode = gdnFwdHTilingData->statePoolMode;
+        statePoolTransposed = gdnFwdHTilingData->statePoolTransposed;
         gmStateMeta.SetGlobalBuffer((__gm__ int64_t *)chunk_indices);
         gmK.SetGlobalBuffer((__gm__ ElementK *)k);
         gmW.SetGlobalBuffer((__gm__ ElementW *)w);
@@ -367,7 +369,23 @@ public:
                                 AscendC::Cast(hUbTensor, stateUbTensor, AscendC::RoundMode::CAST_RINT, stateBlockSize);
                                 AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(event_id);
                                 AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(event_id);
-                                AscendC::DataCopy(gmH[hOffset], hUbTensor, stateBlockSize);
+                                if (statePoolTransposed) {
+                                    auto transposed = stateUbTensor.template ReinterpretCast<ElementH>();
+                                    uint64_t src[16], dst[16];
+                                    for (uint32_t row = 0; row < 128; row += 16) {
+                                        for (uint32_t j = 0; j < 16; ++j) {
+                                            src[j] = (uint64_t)(hUbTensor.GetPhyAddr() + (row + j) * 128);
+                                            dst[j] = (uint64_t)(transposed.GetPhyAddr() + j * 128 + row);
+                                        }
+                                        AscendC::TransDataTo5HDParams params(false, false, 8, 128, 1);
+                                        AscendC::TransDataTo5HD<ElementH>(dst, src, params);
+                                    }
+                                    AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(event_id);
+                                    AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(event_id);
+                                    AscendC::DataCopy(gmH[hOffset], transposed, stateBlockSize);
+                                } else {
+                                    AscendC::DataCopy(gmH[hOffset], hUbTensor, stateBlockSize);
+                                }
                             } else {
                                 AscendC::DataCopy(stateUbTensor, gmInitialState[initialStateSrcOffset], repeatParams);
                                 AscendC::SetFlag<AscendC::HardEvent::MTE2_MTE3>(event_id);
@@ -416,7 +434,7 @@ public:
                             gmH[vec2Offsets.hSrcOffset],
                             gmHWorkspace[vec2Offsets.hWorkOffset],
                             vec2Offsets.blockTokens, kHeadDim, vHeadDim, vecBlockScheduler.cube2Done,
-                            (vec2Offsets.isFinalState && storeFinalState)
+                            (vec2Offsets.isFinalState && storeFinalState), statePoolTransposed
                         );
                     } else {
                         Arch::CrossCoreWaitFlag(vecBlockScheduler.cube2Done);

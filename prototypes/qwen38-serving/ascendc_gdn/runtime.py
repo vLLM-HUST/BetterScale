@@ -56,6 +56,7 @@ class Kernels:
             t.dataType = 1
             t.gDataType = 2
             t.chunkCapacity = chunks
+        th.statePoolTransposed = state_pool
         th.statePoolMode = state_pool
         th.batch = requests
         th.initalStateStride0 = 128

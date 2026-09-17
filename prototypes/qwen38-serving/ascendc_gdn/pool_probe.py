@@ -217,7 +217,7 @@ with torch.inference_mode():
         meta = _build_non_spec_chunked_prefill_metadata(
             builder, cpu, torch.device("npu")
         )
-        initial = seed[list(slot_ids[:n])].clone()
+        initial = seed[list(slot_ids[:n])].transpose(-1, -2).contiguous()
         flags = [not cold] * n if isinstance(cold, bool) else list(cold)
         flag_tensor = torch.tensor(flags, device="npu")[:, None, None, None]
         initial.copy_(torch.where(flag_tensor, initial, 0))
@@ -239,7 +239,7 @@ with torch.inference_mode():
         expected, final = oracle()
         torch.npu.synchronize()
         expected_bank = seed.clone()
-        expected_bank[list(slot_ids[:n])] = final
+        expected_bank[list(slot_ids[:n])] = final.transpose(-1, -2)
         checks = dict(
             output=compare(actual, expected), state=compare(actual_bank, expected_bank)
         )
@@ -252,7 +252,7 @@ with torch.inference_mode():
         initial.copy_(torch.where(flag_tensor, final, 0))
         expected2, final2 = oracle()
         torch.npu.synchronize()
-        expected_bank[list(slot_ids[:n])] = final2
+        expected_bank[list(slot_ids[:n])] = final2.transpose(-1, -2)
         checks.update(
             continuation_output=compare(second, expected2),
             continuation_state=compare(second_bank, expected_bank),
@@ -270,9 +270,17 @@ with torch.inference_mode():
         native_slots = torch.tensor(slot_ids[:n], dtype=torch.int64, device="npu")
 
         def native_stateful():
-            initial.copy_(torch.where(flag_tensor, native_bank[native_slots], 0))
+            initial.copy_(
+                torch.where(
+                    flag_tensor,
+                    native_bank[native_slots].transpose(-1, -2).contiguous(),
+                    0,
+                )
+            )
             output, final_state = oracle()
-            native_bank.index_copy_(0, native_slots, final_state)
+            native_bank.index_copy_(
+                0, native_slots, final_state.transpose(-1, -2).contiguous()
+            )
             return output
 
         native_stateful()
