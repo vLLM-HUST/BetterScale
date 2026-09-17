@@ -1,0 +1,44 @@
+{
+  "turns_per_session": {
+    "count": 32,
+    "sum": 1445,
+    "min": 13,
+    "p50": 42,
+    "p95": 87,
+    "p99": 91,
+    "max": 91
+  },
+  "new_prefill_tokens": {
+    "count": 1445,
+    "sum": 1872933,
+    "min": 15,
+    "p50": 575,
+    "p95": 4732,
+    "p99": 11314,
+    "max": 28861
+  },
+  "decode_tokens": {
+    "count": 1445,
+    "sum": 837431,
+    "min": 70,
+    "p50": 343,
+    "p95": 1818,
+    "p99": 3011,
+    "max": 5457
+  },
+  "context_before_generation": {
+    "count": 1445,
+    "sum": 81628843,
+    "min": 4564,
+    "p50": 49133,
+    "p95": 131051,
+    "p99": 159301,
+    "max": 179189
+  },
+  "prefill_over_32_rows": 1420,
+  "dataset": {
+    "shards": 9,
+    "bytes": 2520770368,
+    "trajectories": 21208
+  }
+}
