@@ -1,4 +1,4 @@
-"""Paired whole-session throughput and per-request latency; retain crossover rounds."""
+"""Whole-session throughput/latency; retain paired or candidate-only rounds."""
 
 import argparse
 import json
@@ -49,7 +49,9 @@ def main():
         for i, s in enumerate(trace["sessions"])
         for t, c in enumerate(s["calls"])
     }
-    cohorts = {arm: {c: [] for c in (4, 8)} for arm in ("baseline", "candidate")}
+    arms = sorted({r["arm"] for r in comparison["rounds"]})
+    assert arms in (["candidate"], ["baseline", "candidate"])
+    cohorts = {arm: {c: [] for c in (4, 8)} for arm in arms}
     rounds = []
     for repeat in range(2):
         for arm in cohorts:
@@ -96,8 +98,9 @@ def main():
                 - 1
             )
             for c in (4, 8)
+            if "baseline" in pooled
         },
-        limits="Eight selected <=8K trajectories, no APC/MTP, fixed output budgets, no tool latency. Two matched repeats (ordering in scope), not population or confidence evidence. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps.",
+        limits="Eight selected <=8K trajectories, no APC/MTP, fixed output budgets, no tool latency. Two repeats per arm (ordering/arms in scope), not population or confidence evidence. No fresh baseline comparison is implied for candidate-only runs. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps.",
     )
     (root / "summary.json").write_text(json.dumps(output, indent=2) + "\n")
     print(

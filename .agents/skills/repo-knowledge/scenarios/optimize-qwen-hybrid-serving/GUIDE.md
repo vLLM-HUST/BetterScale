@@ -684,10 +684,25 @@ paired evidence. Keep fresh-idle admission before each model reload.
 
 TraceLoom f1ccc85 (and older37323af) incorrectly grouped the6 dual-bank invocations
 into one521.6ms legacy overlap envelope because no launch period repeats3times.
-TraceLoom fix2190c3a recovers6 exact single-graph replays /16,177 bodymembers per
+TraceLoom recovery e42dc84 (rebased on0d65fea), with lookup fixc2a6920, recovers6 exact single-graph replays /16,177 bodymembers per
 candidate rank from the same full profiles, using explicit completion/capture
 identity, not a model-step guess. Existing periodic compositions retain priority.
 Native controls still have3 exact decode replays; don't invent missing coverage.
 `qwen-dualbank-traceloom-continuous-timelines.tar.gz` contains four regenerated
 Perfetto timelines and compact reports. NewderivedAugDBs live in
-`dualbank-swe1/traceloom-continuous-fixed`; original captures remain unchanged.
+`dualbank-swe1/traceloom-continuous-qualified`; original captures remain unchanged.
+
+
+`graph-scratch-swe1` (runtime e5460c0): two candidate-only same-pair hw3 6/7
+cohorts,78calls/20,648 outputs each at C4/C8; no new profiler. Pooled75.049/104.440
+tok/s versus retained candidate75.092/104.409 (−0.058%/+0.029%). Against retained
+native70.021/96.774: +7.18%/+7.92%; not a fresh paired comparison. No speedup from
+scratch reclamation is established; capacity gain without observed throughput
+loss is the result. Both servers/admission exit0 and devices are reclaimed.
+`summarize_swe.py` supports candidate-only receipts without manufacturing a
+baseline; prior paired metrics remain byte-for-byte equal as Python values.
+`docs/evidence/qwen-graph-pool.json` owns compact qualification and round metrics.
+Latest TraceLoom export also composes upstream's common-plane graph internals;
+all16,177 member geometries and9,790 replay repeat windows per candidate rank
+are verified. Missing identity lookup indexes were fixed in the writers, so
+new AugDBs need no manual index. Four exported files are in the archive above.

@@ -171,3 +171,14 @@ pass and server exits0. Logged capture delta falls **5.25→0.88GiB per rank**
 (4.37GiB reclaimed), measured with the same1GiB diagnostic KV setting. This
 quantity is capture-time device-memory delta, not a separate descriptor-only
 allocation statistic. Persistent K-V state and both metadata banks remain.
+
+
+`graph-scratch-swe1`, runtime e5460c0, two candidate-only repetitions on hw3
+cards6/7, same original-history SWE fixture/settings and6GiB KV, no profiler:
+C4 **75.049tok/s**, C8 **104.440tok/s**. Relative to the retained dual-bank
+candidate these are−0.058%/+0.029% (effectively unchanged in this observation).
+Retained native controls give+7.18%/+7.92%, **not a fresh paired comparison**.
+All78calls/20,648 outputs per cohort match their prescribed prompt/output budgets;
+both services exit0 and cards are reclaimed. CPU77tests and wheel source-content
+checks pass. See `docs/evidence/qwen-graph-pool.json`. This remains an opt-in
+source configuration; no PyPI publication is implied.
