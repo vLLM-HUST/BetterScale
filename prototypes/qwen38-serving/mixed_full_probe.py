@@ -1,4 +1,4 @@
-"""Two real mixed batches, FULL/NONE hidden and cache shadows; no timing claim."""
+"""Bounded exact mixed shadows or explicitly separate HTTP ABBA timings."""
 
 import concurrent.futures
 import json
@@ -189,3 +189,6 @@ finally:
     receipt["server_exit_code"] = server.returncode
     path.write_text(json.dumps(receipt, indent=2))
     log.close()
+
+if receipt["status"] != "PASS":
+    raise SystemExit(1)

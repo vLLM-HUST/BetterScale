@@ -26,3 +26,24 @@ no arithmetic or scheduler behavior. Initial/final profile drains are excluded
 from steady-gap interpretation. Parse after worker exit and use TraceLoom native
 AugDB and Perfetto exports; do not treat raw task durations as an additive wall
 critical path. Profiles are never mixed into performance statistics.
+
+## Exact mixed FULL pilot
+
+`ARM=mixed-full MIXED_SIGNATURE=1,1,1,514` runs actual HTTP mixed batches through
+`mixed_full_worker.Worker`. Each process captures only one exact partition;
+all other non-decode shapes retain NONE. No padding, MTP or APC support is added.
+The shadow compares FULL with restored-before-state NONE, including all caches,
+then restores FULL's resulting state. It tests fresh and resumed prefill.
+
+`MIXED_TIMING=1` instead runs same-process NONE/FULL/FULL/NONE twice after warmup,
+without shadows, followed by separate three-step profiles for each mode. The
+measured endpoint is the joining request's TTFT, not a general C4 throughput rate.
+`MIXED_SIGNATURE=1,1,1024,1022` is a separate correctness-only two-prefill probe;
+its bounded worker hold stages both HTTP arrivals and must not enter timings.
+
+This is not the packaged Qwen Worker. Different partitions with the same total
+cannot safely share this pilot's key: native FIA task handles are keyed by total
+tokens, while GDN has partition-specific host chunk metadata. General integration
+must resolve that ownership and graph-memory budget, not just remove force_eager.
+Paid receipts and current qualification boundaries live in the repo-knowledge
+`optimize-qwen-hybrid-serving` scenario.

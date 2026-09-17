@@ -1,4 +1,4 @@
-"""Exact [decode=1, prefill=512] FULL shadow pilot, not a serving policy.
+"""One configured exact mixed FULL shadow pilot, not a general serving policy.
 
 One token total owns one signature here. Do not generalize this key scheme to
 different prefill partitions sharing a total; native FIA also keys by total.

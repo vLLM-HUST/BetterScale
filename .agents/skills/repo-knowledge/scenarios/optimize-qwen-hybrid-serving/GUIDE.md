@@ -256,3 +256,57 @@ Engineering direction: extend the FULL metadata/capture contract to real mixed
 prefill/decode batches rather than first altering queue policy or forcibly splitting
 continuous batches into single requests. This is a coverage diagnosis, NOT shipped
 mixedFULL support or proof that the native scheduler policy is inefficient.
+
+## Exact mixed FULL capture: correctness and causal small-shape timing
+
+The next pilot uses the native GDN mixed split (decode prefix, prefill tail),
+stable metadata tensors and invariant host chunk lists per exact partition.
+It does not change queue policy, pad tokens, enable MTP/APC, or modify the package.
+Dummy capture mutates the shared scheduled-length array before query offsets are
+built. Its native max_query_len is conservative even for all-one dummy batches;
+classify decode from actual lengths, not that scalar. `mixed-full1` captured513
+but failed on a later small decode graph for this diagnostic mistake; corrected
+source d678670 passed `mixed-full2` on local4/5.
+
+`mixed-full2`: two actual [1,512] mixed steps, both ranks,129checks/step (valid
+hidden plus128cache tensors), every max_abs0. `mixed-full4req1`, source4fa80d1:
+same proof for [1,1,1,514], first fresh prefill then a2559prompt whose2045chunk
+leaves514tokens. All129checks/rank/step max_abs0. Has-initial-state changes from
+[true,true,true,false] to alltrue and live state slots change, so replay is not
+merely comparing the capture's dummy inputs or one fixed state assignment.
+
+`mixed-full4req-timing1`, source1a0ccdb, same local4/5,1GiBKV, no shadows:
+warmup both modes then NONE/FULL/FULL/NONE twice. Three ongoing512prompt/96output
+requests are already decoding when514prompt/4output joins. Exactly one matching
+mixed dispatch per cohort verified on each rank. Four unprofiled TTFTs/mode:
+NONE466.457/443.506/460.933/460.479ms; FULL246.580/248.021/248.582/248.919ms.
+Means457.844→248.026ms (-45.83%). This is joining-request latency under this staged
+load, not a45.83%general C4 throughput improvement or the earlier6GiB service A/B.
+Full/NONE use identical metadata and unmodified native scheduling in one process.
+
+Separate3step profiles/mode, exported with native_graph_export.py --label:
+both ranks have one517mixed body then two4decode bodies. TraceLoom inspection
+guards304MatMulV2/V3,16FIA,128communications/body. Mixedbody464.18→168.28ms;
+compute union stays~121.5→123.3ms. NONE rank0uncovered302.79ms/rank1comm341.34ms
+becomes FULL~4.4msuncovered/~40.5mscomm. APIs started inside mixedbody fall from
+23440/22827 to458/298. This supports removing host submission starvation/peer
+waiting, not faster compute kernels. Profiling overhead is excluded from timings;
+uncovered still is not a proof of pureidle. Subsequent decode bodies remain~37ms.
+comparison.json, per-rank step-costs and readable Perfetto timelines remain in
+that capsule under native-graph-{none,full}/traceloom.
+
+`mixed-full4req-two-prefill2`, source3aa1494, proves [1,1,1024,1022] FULL as well:
+two steps/rank,129checks/step, max_abs0 throughout. Native scheduling then emits
+[1,1,1,514] and decode continuations. Earlier two-prefill1 completed HTTP requests
+but never hit the exact partition (remaining shadow budget2); its SHADOW_MISMATCH
+label means missing coverage, not a numerical failure. Simultaneous HTTP client
+threads do not guarantee same-step admission. The corrected correctness harness
+briefly holds worker RPC500ms, queues1024then1536prompts, and lets native scheduling
+resume. This explicit arrival-staging hold is NOT used in the successful timing
+experiment. Runtime shape counts now make missing-witness diagnostics explicit.
+
+Integration boundary: this pilot captures only one exact partition/process.
+Native FIA GraphParams keys by total token count; GDN host chunk lists depend on
+the full partition. A2048single and [1,1,1024,1022] must not share handles/buffers.
+Supporting both needs deliberate graph-key ownership and bounded capture memory,
+or a proved padded partition contract; simply removing the mixed fallback is unsafe.
