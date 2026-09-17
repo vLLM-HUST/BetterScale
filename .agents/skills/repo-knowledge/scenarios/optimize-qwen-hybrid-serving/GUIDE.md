@@ -460,3 +460,28 @@ changing it requires preserving producer/consumer readiness, not a naive striped
 copy with existing per-pair signals. O already uses physical token stride but
 logical chunk stride. No compiled fork or measured optimization follows from this
 audit. Avoid attributing the Triton-vs-native whole-pipeline delta to one kernel.
+
+### Owned AscendC fork qualified at operator scope
+
+`prototypes/qwen38-serving/ascendc_gdn/README.md` now owns the build/replay recipe
+and bounded observations. Only pinned H/O arch22 plus common Catlass block helper
+are copied; Catlass41bf90da is an external pinned dependency. Independent CANN
+raw kernel library avoids native schema/GE/installed-runtime modifications.
+Fresh Release build directory is important: mixing empty/Release configuration
+caused duplicate host objects in CANN's legacy linker.
+
+hw3 `ascendc-gdn-fixed1` passes unchanged owned kernel output/state/H/Vnew max0.
+`ascendc-gdn-dynamic1` (build2/2d6cb4b) and `ascendc-gdn-owned-init1`
+(build3/9e49edc) each pass all28 changing-partition/full-state/continuation checks
+max0. The latter restricts initial-state copies to their consuming core pair,
+retaining both AIV subblock signals/copies; no global barrier or algorithm change.
+Host CPU mapping test passes1–64requests, hardware evidence remains4requestcapacity.
+
+Matched H/O stage ABBA probe d8bae04 reports H .109/.134/.160ms native versus
+.078/.086/.065ms owned at [512]/[1,511]/[1,1,256,254]; O .074–.083 versus
+.060–.062ms. Graph-stage savings include wrapper differences, not purekernel
+or end-to-end savings. Whole dynamic pipeline still costs .871–.934ms versus
+fixed native .587–.773ms with unequal capacity/state glue. Runtime is a ctypes
+prototype requiring TASK_QUEUE_ENABLE=0, stable resource lifetimes and packed
+positive request prefix/empty suffix; do not install it into asynchronous Torch
+submission unchanged. No fullmodel/mixed-role/MTP/PCP/service qualification.

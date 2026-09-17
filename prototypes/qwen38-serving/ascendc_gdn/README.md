@@ -32,3 +32,41 @@ Set TASK_QUEUE_ENABLE=0 for this ctypes prototype: it does not integrate with
 Torch-NPU's asynchronous host submission queue. Pass ASCENDC_GDN_LIB as the
 absolute built lib/libbs_gdn.so path. Graph captures must not outlive Kernels.
 Raw calls do not provide dispatcher/autograd integration; this is intentional.
+
+## Hardware acceptance (hw3, September17)
+
+Capsules under `/workspace/my-ascend-workspace/runs/qwen27-partition-serving`:
+
+- `ascendc-gdn-build1/release-build`: unmodified donated arithmetic/scheduler,
+  raw owned ABI. `ascendc-gdn-fixed1` passes output/state/H/Vnew comparisons,
+  all max_abs0 after capture and replay. Initial build attempts exposed a missing
+  toolkit include and mixed empty/Release build objects, not a kernel error.
+- `ascendc-gdn-build2`, source2d6cb4b: immutable token/H-chunk strides.
+  `ascendc-gdn-dynamic1` reuses one512token/4request(+sentinel) capture across seven
+  partitions, shorter totals, changed slots and continuing states. All28 output,
+  whole-bank and second-pass checks are exactly0, versus native active-shape GDN.
+- `ascendc-gdn-build3`, source9e49edc: BS_GDN_OWNED_INIT=ON.
+  `ascendc-gdn-owned-init1` passes the same28 checks exactly. Initialization is
+  assigned to the consuming AIC/AIV pair; both AIV subblocks retain duplicate
+  within-pair copies and their original readiness signals. The CPU ownership
+  check covers the donor head-task mapping for1–64requests; hardware capacity
+  qualification remains4requests, not64.
+
+Full-pipeline dynamic replay with owned initialization: .871–.934ms; same-run
+fixed native control .587–.773ms. Dynamic still includes capacity work, state
+management and different graph glue. This is NOT an end-to-end speedup and must
+not be compared causally with earlier TASK_QUEUE_ENABLE=1 Triton measurements.
+
+`stage_probe.py` removes transposes/state glue and compares matched head-major
+H and O graph stages using native/owned/owned/native twice,30replays/measurement.
+`ascendc-gdn-stages1` PASS, all outputs/intermediates exact. Means in milliseconds:
+
+| lengths | native H | owned H | native O | owned O |
+| --- | ---: | ---: | ---: | ---: |
+|512|.10869|.07768|.07359|.06158|
+|1,511|.13442|.08614|.07699|.06107|
+|1,1,256,254|.16039|.06546|.08289|.06038|
+
+These are graph-stage costs (native adapter tasks versus raw owned launch), not
+an isolated attribution of all H savings to initialization. O's matrix algorithm
+is unchanged. No model/HTTP, msprof/TraceLoom or service integration in this probe.
