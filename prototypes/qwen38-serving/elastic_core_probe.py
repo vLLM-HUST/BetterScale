@@ -19,6 +19,7 @@ import vllm.forward_context
 
 T, N, C = 1024, 9, 5120
 meta = Metadata(T, False, torch.device("npu"))
+meta.engine.retain_intermediates = True
 if os.environ.get("ELASTIC_SEPARATE_INITIAL") == "1":
     launch = meta.engine.launch
 
@@ -104,6 +105,7 @@ with torch.inference_mode():
     graph = torch.npu.NPUGraph()
     with torch.npu.graph(graph):
         out = run()
+    captured_h = meta.engine.h
     for lengths in (
         [513],
         [1, 1, 7, 129, 513],
@@ -132,7 +134,7 @@ with torch.inference_mode():
                     if i < 2
                     else torch.zeros_like(seed[slot], dtype=torch.bfloat16)
                 )
-                actual_h = meta.engine.h[0, :, offset]
+                actual_h = captured_h[0, :, offset]
                 initial_checks.append(
                     dict(
                         request=i,
@@ -159,20 +161,19 @@ with torch.inference_mode():
                     state=compare(sb, bank),
                 )
             )
-    Path(os.environ["CAPSULE"], "receipt.json").write_text(
-        json.dumps(
-            dict(
-                rows=rows,
-                passed=all(
-                    r[k]["max_abs"] == 0 and r[k]["finite"]
-                    for r in rows
-                    for k in ("output", "conv", "state")
-                )
-                and all(
-                    max(check["heads"]) == 0 for r in rows for check in r["initial_h"]
-                ),
-            ),
-            indent=2,
+    receipt = dict(
+        rows=rows,
+        passed=all(
+            r[k]["max_abs"] == 0 and r[k]["finite"]
+            for r in rows
+            for k in ("output", "conv", "state")
         )
+        and all(max(check["heads"]) == 0 for r in rows for check in r["initial_h"]),
     )
-    print(rows)
+    Path(os.environ["CAPSULE"], "receipt.json").write_text(
+        json.dumps(receipt, indent=2)
+    )
+    print(json.dumps(dict(passed=receipt["passed"], cases=len(rows))), flush=True)
+    assert receipt[
+        "passed"
+    ], "Core output/state/initial-H oracle failed; inspect receipt.json"

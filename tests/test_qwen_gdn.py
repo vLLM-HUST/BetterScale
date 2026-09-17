@@ -1,6 +1,7 @@
 """CPU contracts for the owned mixed graph metadata and native-library boundary."""
 
 import os
+import hashlib
 from pathlib import Path
 import tempfile
 import unittest
@@ -43,4 +44,33 @@ class OwnedGDN(unittest.TestCase):
                 {"TASK_QUEUE_ENABLE": "0", "BETTERSCALE_GDN_LIBRARY": str(path)},
             ):
                 with self.assertRaisesRegex(ValueError, "qualified"):
+                    check_library()
+
+    def test_host_adapter_is_required_and_qualified(self):
+        with tempfile.TemporaryDirectory() as root:
+            kernel = Path(root) / "kernel.so"
+            host = Path(root) / "host.so"
+            kernel.write_bytes(b"qualified kernel fixture")
+            host.write_bytes(b"qualified host fixture")
+            manifest = {
+                "sha256": hashlib.sha256(kernel.read_bytes()).hexdigest(),
+                "host_sha256": hashlib.sha256(host.read_bytes()).hexdigest(),
+            }
+            with (
+                patch.dict(
+                    os.environ,
+                    {
+                        "TASK_QUEUE_ENABLE": "0",
+                        "BETTERSCALE_GDN_LIBRARY": str(kernel),
+                        "BETTERSCALE_GDN_HOST_LIBRARY": str(host),
+                    },
+                ),
+                patch("betterscale.patches.qwen_gdn.json.loads", return_value=manifest),
+            ):
+                self.assertEqual(check_library(), str(kernel.resolve()))
+                host.write_bytes(b"stale host ABI")
+                with self.assertRaisesRegex(ValueError, "HOST_LIBRARY"):
+                    check_library()
+                host.unlink()
+                with self.assertRaisesRegex(ValueError, "HOST_LIBRARY"):
                     check_library()

@@ -18,6 +18,14 @@ def check_library():
         raise ValueError(
             "BETTERSCALE_GDN_LIBRARY must name the qualified owned-init KV library"
         )
+    host = Path(os.environ.get("BETTERSCALE_GDN_HOST_LIBRARY", ""))
+    if (
+        not host.is_file()
+        or hashlib.sha256(host.read_bytes()).hexdigest() != contract["host_sha256"]
+    ):
+        raise ValueError(
+            "BETTERSCALE_GDN_HOST_LIBRARY must name the qualified graph-pool host adapter"
+        )
     return str(path.resolve())
 
 

@@ -67,6 +67,15 @@ plan = (
         for repeat in range(2)
     ]
 )
+# Candidate-only regression reuses a retained native control; never labels it a
+# fresh paired comparison. Profiles remain opt-in for this abbreviated route.
+if os.environ.get("SWE_CANDIDATE_ONLY") == "1":
+    assert len(pairs) == 1
+    plan = [(0, [(0, "candidate")]), (1, [(0, "candidate")])]
+    receipt["scope"] = (
+        "Two same-pair candidate-only cohorts; retained controls, no fresh baseline."
+    )
+profile_enabled = os.environ.get("SWE_PROFILE", "1") == "1"
 try:
     for repeat, entries in plan:
         wave = root / f"round{repeat}"
@@ -100,7 +109,7 @@ try:
                     "--port",
                     str(32281 + pair * 10),
                 ]
-                if repeat == 1:
+                if repeat == 1 and profile_enabled:
                     command.append("--profile")
                 log = (out / "run.log").open("w")
                 logs.append(log)
@@ -109,7 +118,11 @@ try:
                         command, env=env, stdout=log, stderr=subprocess.STDOUT
                     )
                 )
-            for phase in (["c4", "c8", "profile"] if repeat == 1 else ["c4", "c8"]):
+            for phase in (
+                ["c4", "c8", "profile"]
+                if repeat == 1 and profile_enabled
+                else ["c4", "c8"]
+            ):
                 deadline = time.monotonic() + 1800
                 while not all(
                     (wave / arm / f"{phase}.ready").exists() for _, arm in entries

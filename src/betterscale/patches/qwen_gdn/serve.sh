@@ -2,6 +2,7 @@
 # Deployment entry, not an admission tool. Acquire the selected NPU leases first.
 set -euo pipefail
 : "${QWEN_MODEL_PATH:?Set the qualified Qwen27 checkpoint path}"
+: "${BETTERSCALE_GDN_HOST_LIBRARY:?Set the qualified graph-pool host adapter path}"
 : "${BETTERSCALE_GDN_LIBRARY:?Set the qualified owned-init K-V library path}"
 : "${ASCEND_RT_VISIBLE_DEVICES:?Set the admitted TP2 device pair}"
 : "${VLLM_CACHE_ROOT:?Set a dedicated text-only compiler cache directory}"

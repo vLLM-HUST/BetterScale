@@ -1,0 +1,48 @@
+{
+  "scope": "Framework-allocator GDN scratch, hw3 cards6/7, TP2 noMTP/APC; diagnostic 1GiB KV.",
+  "core": {
+    "capsule": "graph-scratch-core2",
+    "cases": 12,
+    "passed": true
+  },
+  "service": {
+    "capsule": "graph-scratch-service1",
+    "passed": true,
+    "rank_steps": {
+      "0": 22,
+      "1": 22
+    },
+    "comparisons": 5676,
+    "max_abs": 0,
+    "single_lengths": [
+      1,
+      7,
+      17,
+      129,
+      512,
+      513,
+      1024,
+      1536,
+      2048,
+      2051
+    ],
+    "concurrencies": [
+      4,
+      8
+    ],
+    "server_exit_code": 0,
+    "admission_exit_code": 0
+  },
+  "capture": {
+    "graphs": 26,
+    "before_GiB_per_rank": 5.25,
+    "after_GiB_per_rank": 0.88,
+    "saved_GiB_per_rank": 4.37,
+    "metric": "Logged capture-stage device-memory delta, rounded to .01GiB; same1GiB diagnostic KV. Not descriptor-only memory."
+  },
+  "limitations": [
+    "No extra NPU profile captured for this allocator-only change.",
+    "No change to asynchronous metadata bank fences or native scheduler/sampling/D2H.",
+    "No concurrently replayed compute streams supported."
+  ]
+}

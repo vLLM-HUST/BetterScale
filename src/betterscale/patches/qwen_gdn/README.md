@@ -18,6 +18,8 @@ is not a claim of arbitrary model or scheduling compatibility.
   is distinct from vLLM's asynchronous request scheduler, which stays enabled.
 - `BETTERSCALE_GDN_LIBRARY` must name the qualified Ascend910B2 library identified
   by `native.json`. The content check rejects old ABI / owned-init-OFF binaries.
+  `BETTERSCALE_GDN_HOST_LIBRARY` is also required and content-checked: it names
+  the framework host adapter, not a second kernel implementation.
   Library source/build instructions are in the repository's
   `prototypes/qwen38-serving/ascendc_gdn/README.md`; pool mode MUST use
   `-DBS_GDN_OWNED_INIT=ON`. Native binaries are not committed to Git.
@@ -36,11 +38,17 @@ The owned core receives real convolution endpoints and does not extend a real
 request into padded token space. H/O physical head/chunk strides use capacity,
 not the current logical token/chunk total.
 
-Metadata banks own stable device buffers and one H/O scratch engine per
-capacity/bank/group, shared serially across their layer group. They initialize device PODs
-before capture. Workspace/output lifetimes cover every graph that references
-them. Submission remains the pinned single-runner serial stream protocol;
-concurrent model threads/runners sharing these resources are unsupported.
+Metadata banks own stable device buffers and immutable H/O tiling PODs,
+initialized before capture. They do **not** own workspace/H/V/output arenas.
+The native `host.cpp` operator queries the qualified workspace size (~22MiB,
+including the reserved system prefix) and allocates invocation-local tensors
+through the framework allocator. During capture these allocations use the
+runner's existing shared graph pool. H/V/workspace die after their consuming
+launches; output survives its downstream consumer. Captured addresses are
+retained/reused by the graph allocator, not by manual cross-bank aliasing.
+Submission remains the pinned single-runner serial stream protocol; concurrent
+replay on multiple compute streams is unsupported. Metadata's upload/consume
+fences and persistent state ownership are unchanged.
 
 All GDN groups publish one packed pinned slab per wave on a separate ingress
 stream. Uploaded events protect host-slab reuse; consumed events protect the
@@ -60,11 +68,27 @@ be weakened to only non_blocking=True without both reuse fences.
 
 After sourcing CANN and activating the pinned donor environment, expose this
 checkout's `src` on `PYTHONPATH`. Set `QWEN_MODEL_PATH`,
-`BETTERSCALE_GDN_LIBRARY`, `ASCEND_RT_VISIBLE_DEVICES` (an admitted pair), and a
+`BETTERSCALE_GDN_LIBRARY`, `BETTERSCALE_GDN_HOST_LIBRARY`, `ASCEND_RT_VISIBLE_DEVICES` (an admitted pair), and a
 dedicated `VLLM_CACHE_ROOT`, then invoke the colocated `serve.sh`. It binds only
 127.0.0.1:32181 by default (`SERVING_PORT` overrides the port), uses6GiB KV,
 and does not enable diagnostic RPCs or profile hooks. The launcher deliberately
 does not claim or acquire shared-host leases: use the host's admission protocol.
+
+### Native host adapter build
+
+`host.cpp` and `build_host.py` ship as mod source. Build against the unchanged
+pinned Torch/Torch-NPU environment (CPU-only compilation):
+
+```bash
+python -m betterscale.patches.qwen_gdn.build_host /absolute/path/to/host.cpp /absolute/path/to/libbs_gdn_host.so
+```
+
+The resulting artifact must match the qualified digest in `native.json`;
+different toolchains/RPATHs can produce different binaries and need explicit
+qualification, not disabling the gate. No runtime JIT build, global donor-op
+replacement or new GE path is involved. The old raw non-pool entry is retained
+only for standalone historical operator probes; MixedWorker cannot silently
+fall back to bank-owned scratch.
 
 ## Service qualification (2026-09-17)
 
@@ -117,7 +141,8 @@ in the repository. This source integration has not been published to PyPI.
 banks:5,676 comparisons max_abs0 plus independent host/device checks of every
 GDN metadata field. `dualbank-core1` retains the12 core/initial-H checks. Capture
 uses26 graphs and5.25GiB per rank in the diagnostic service (previous13-graph
-path about2.9GiB): the lower host gap trades extra graph/scratch memory.
+path about2.9GiB). This historical scratch duplication is removed by the
+framework-pool follow-up below; it is not an intrinsic double-graph cost.
 
 `dualbank-swe1` (source7115858), same hw3 cards6/7, sequential ABBA, two full
 8-session/78-call SWE cohorts per concurrency and arm,6GiB KV, no MTP/APC:
@@ -135,3 +160,14 @@ no tool latency or accuracy claim; two matched repeats are not confidence bounds
 The old C1 fixed-prompt regression above was not remeasured or claimed fixed.
 See `docs/evidence/qwen-dualbank.json` and
 `prototypes/qwen38-serving/DUALBANK-RESULTS.zh-CN.md` for provenance and timelines.
+
+### Framework-owned scratch follow-up
+
+`graph-scratch-core2`: all12 graph/NONE output, convolution, whole-state-pool
+and independent initial-H cases pass exactly. The H oracle retains the actual
+captured H tensor; reading the next eager invocation's H is not a valid graph
+check. `graph-scratch-service1`: same26-graph TP2 shadow envelope, all comparisons
+pass and server exits0. Logged capture delta falls **5.25→0.88GiB per rank**
+(4.37GiB reclaimed), measured with the same1GiB diagnostic KV setting. This
+quantity is capture-time device-memory delta, not a separate descriptor-only
+allocation statistic. Persistent K-V state and both metadata banks remain.

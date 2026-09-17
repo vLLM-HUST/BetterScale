@@ -1,11 +1,13 @@
 """Owned raw AscendC launcher. Requires TASK_QUEUE_ENABLE=0, BF16/FP32.
 
-No global operator registration. Tiling/workspace/output tensors owned by this
-object must outlive every graph that captures a call. Metadata is a packed
-positive-length request prefix followed by empty rows, not arbitrary holes.
+Mixed mode uses a native host operator: invocation-local temporary tensors are
+allocated by the framework, hence capture uses the shared graph pool. Only
+immutable tiling survives on this object. The non-pool raw path is a standalone
+operator probe, not a service path. Metadata has an active prefix and empty tail.
 """
 
 import ctypes as C
+from functools import lru_cache
 import os
 from pathlib import Path
 import re
@@ -29,6 +31,13 @@ def device_struct(value):
     return torch.tensor(list(bytes(value)), dtype=torch.uint8, device="npu")
 
 
+@lru_cache(maxsize=1)
+def host_adapter(host_path, kernel_path):
+    torch.ops.load_library(host_path)
+    torch.ops.betterscale_gdn.initialize(kernel_path)
+    return torch.ops.betterscale_gdn
+
+
 class Kernels:
     def __init__(self, library, tokens, requests, chunks, cores=24, state_pool=False):
         assert os.environ.get("TASK_QUEUE_ENABLE") == "0"
@@ -36,11 +45,26 @@ class Kernels:
         self.state_pool = state_pool
         self.cores = cores
         self.T, self.N, self.C = tokens, requests, chunks
-        self.ws = torch.empty(64 * 1024 * 1024, dtype=torch.uint8, device="npu")
-        self.h = torch.empty(
-            (1, 24, chunks, 128, 128), dtype=torch.bfloat16, device="npu"
+        host_path = os.environ["BETTERSCALE_GDN_HOST_LIBRARY"] if state_pool else None
+        self.host = host_adapter(host_path, library) if state_pool else None
+        self.retain_intermediates = False
+        self.ws = (
+            None
+            if self.host
+            else torch.empty(64 * 1024 * 1024, dtype=torch.uint8, device="npu")
         )
-        self.v = torch.empty((1, 24, tokens, 128), dtype=torch.bfloat16, device="npu")
+        self.h = (
+            None
+            if self.host
+            else torch.empty(
+                (1, 24, chunks, 128, 128), dtype=torch.bfloat16, device="npu"
+            )
+        )
+        self.v = (
+            None
+            if self.host
+            else torch.empty((1, 24, tokens, 128), dtype=torch.bfloat16, device="npu")
+        )
         self.final = (
             None
             if state_pool
@@ -48,7 +72,7 @@ class Kernels:
                 (requests, 24, 128, 128), dtype=torch.float32, device="npu"
             )
         )
-        self.o = torch.empty_like(self.v)
+        self.o = None if self.host else torch.empty_like(self.v)
         th, to = tiling_type("h")(), tiling_type("o")()
         for t in (th, to):
             t.seqlen = tokens
@@ -67,7 +91,7 @@ class Kernels:
         th.useInitialState = th.storeFinalState = True
         th.stateDataType = 2
         to.scale = 128**-0.5
-        # Match donor scratch extents, but pass a private user workspace directly.
+        # Match the native host workspace query and immutable kernel offsets.
         for t, sizes in (
             (
                 th,
@@ -94,7 +118,12 @@ class Kernels:
             for name, size in sizes:
                 setattr(t, name, offset)
                 offset += (size + 511) // 512 * 512
-            assert offset < self.ws.numel()
+            available = (
+                self.host.workspace_size(cores, requests)
+                if self.host
+                else self.ws.numel()
+            )
+            assert offset <= available
         self.th, self.to = device_struct(th), device_struct(to)
         self.fn = {}
         for kind, count in [("h", 12), ("o", 10)]:
@@ -128,6 +157,24 @@ class Kernels:
             t.device == bank.device and t.is_contiguous()
             for t in (q, k, w, u, g, cu, state_meta, indices)
         )
+        if self.host:
+            output, h, v = self.host.pool_forward(
+                q,
+                k,
+                w,
+                u,
+                g,
+                bank,
+                cu,
+                state_meta,
+                indices,
+                self.th,
+                self.to,
+                self.cores,
+            )
+            if self.retain_intermediates:
+                self.h, self.v = h, v
+            return output
         self.launch(
             "h",
             [k, w, u, g, bank, cu, state_meta, self.h, self.v, bank, self.ws, self.th],

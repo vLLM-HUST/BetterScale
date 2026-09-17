@@ -651,3 +651,43 @@ original two-pair crossover. Keep the phase files cleared between sequential
 arms, and require fresh idle before every reload. One-pair whole campaign uses
 about50minutes including4model loads; admit with sufficient bounded runtime.
 `elastic_probe.py` owns enabling localhost diagnostic RPC only in shadow mode.
+
+
+### Framework-owned GDN scratch and continuous replay analysis
+
+Double graph count is not double persistent state. The5.25GiB capture delta above
+included27 engines per bank (9mixed capacities ×3GDN groups), each eagerly
+retaining64MiB workspace plus H/V/output. Manual cross-bank sharing was only a
+rejected prototype (`shared-scratch-service1`, interrupted before qualification).
+Fletcher chose native operator allocation through the capture pool instead.
+
+`qwen_gdn/host.cpp` wraps the unchanged build6 H/O launches. Workspace size is
+computed in C++ (~22MiB including the reserved16MiB prefix); temporary H/V/output
+and workspace use invocation-local framework allocations, captured by the native
+shared graph pool. The double-bank metadata and persistent K-V state stay owned
+as before. The final mod requires both qualified library paths; no silent
+state-pool fallback to resident scratch. Build helper is colocated with mod source.
+
+`graph-scratch-core2`:12 exact graph/NONE plus independent initial-H cases.
+`graph-scratch-service1`:26graphs,22shadowsteps/rank,5676comparisons max_abs0;
+10single lengths and C4/C8, exit0/reclaimed. Same1GiB diagnostic KV capture delta
+**5.25→0.88GiB/rank**, not an isolated graph-descriptor statistic. Core1's H oracle
+read the wrong invocation after eager replaced its handle; retain captured H
+explicitly before checking graph initial state. Output/state were already exact,
+but core1 is not a passed qualification. Core harness now fails its process on a
+failed receipt, instead of printing a large failed result with exit0.
+
+For candidate-only SWE regressions, `SWE_CANDIDATE_ONLY=1 SWE_PROFILE=0` runs two
+same-pair candidate cohorts with the existing immutable trace and no new profiler
+or native server. Preserve retained controls as historical controls, not fresh
+paired evidence. Keep fresh-idle admission before each model reload.
+
+TraceLoom f1ccc85 (and older37323af) incorrectly grouped the6 dual-bank invocations
+into one521.6ms legacy overlap envelope because no launch period repeats3times.
+TraceLoom fix2190c3a recovers6 exact single-graph replays /16,177 bodymembers per
+candidate rank from the same full profiles, using explicit completion/capture
+identity, not a model-step guess. Existing periodic compositions retain priority.
+Native controls still have3 exact decode replays; don't invent missing coverage.
+`qwen-dualbank-traceloom-continuous-timelines.tar.gz` contains four regenerated
+Perfetto timelines and compact reports. NewderivedAugDBs live in
+`dualbank-swe1/traceloom-continuous-fixed`; original captures remain unchanged.

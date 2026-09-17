@@ -20,7 +20,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 betterscale = ["pins.json", "qwen_pins.json", "qwen_mixed_pins.json"]
 "*" = ["README.md"]
-"betterscale.patches.qwen_gdn" = ["*.json", "*.h", "*.sh", "README.md"]
+"betterscale.patches.qwen_gdn" = ["*.json", "*.h", "*.cpp", "*.sh", "README.md"]
 "betterscale.patches.hc_workspace" = ["*.json", "*.so", "*.patch", "*.txt", "README.md"]
 
 [project.urls]

@@ -14,8 +14,10 @@ unmodified dependency pinned to41bf90da655bba3c66d0acd7e00abe33960ecfd6
 (the donor gitlink); do not substitute a nearby checkout's current revision.
 
 The two small kernel entries select only the tested dtype specialization.
-Owned POD tiling replaces GE-generated structs; runtime.py creates matching
-ctypes layouts, owns private scratch, outputs, and device tiling tensors.
+Owned POD tiling replaces GE-generated structs. The historical non-pool raw
+probe owns private scratch/output tensors. Current MixedWorker keeps only the
+immutable device PODs and uses the framework host adapter for scoped scratch;
+see `src/betterscale/patches/qwen_gdn/README.md`.
 The raw generated ACL launch functions consume stable device metadata directly.
 No native op-schema override, GE execution, or host-list conversion is needed.
 
@@ -202,3 +204,18 @@ HTTP concurrency, changing mixed partitions and state slots. All valid hidden an
 service/capture correctness, not semantic equivalence to every native arithmetic
 path. The production manifest rejects unfenced build4. Full artifacts remain in
 hw3 capsules and local `runs/qwen38-tp2-serving/hw3-elastic-*` mirrors.
+
+
+## Graph-pool temporary ownership
+
+The service keeps build6's device kernels unchanged. Its native framework host
+adapter (`src/betterscale/patches/qwen_gdn/host.cpp`) computes the workspace
+extent and allocates temporary H/V/workspace/output tensors at invocation time.
+Torch-NPU's allocator places capture-time allocations in the existing shared
+graph pool. `GetWorkspaceSize`-style sizing is not itself an allocator; the
+framework adapter owns the allocation/lifetime boundary. No manually shared
+Python arena or cross-bank pointer registry is needed. Scope is serial compute
+replay with independent fenced metadata banks, not concurrent graph execution.
+`BETTERSCALE_GDN_HOST_LIBRARY` is mandatory for the state-pool runtime and pinned
+alongside the unchanged device library. Build commands and qualifications live
+in the mod README rather than a second prototype deployment path.
