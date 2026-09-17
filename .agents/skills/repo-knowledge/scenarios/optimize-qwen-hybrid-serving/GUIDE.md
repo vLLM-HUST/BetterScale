@@ -192,3 +192,33 @@ uses a fresh capsule-local VLLM_CACHE_ROOT to test that explanation. Fresh-cache
 capsule, document dedicated text-only cache use, and do not claim an upstream fix.
 Package C1/C4/C8 rates41.98/84.19/114.21 vary versus the earlier prototype; this
 reinforces reporting exact graph cost removal rather than a stable concurrency%.
+
+## Direct no-MTP native comparison (September17)
+
+`no-mtp-abba2`, source3d138c2, uses local4/5 in one admitted window, separate
+native/candidate/candidate/native servers. Both noMTP, async, text-only, APCoff,
+6GiBKV,8seats,2048token budget, same synthetic English input IDs and64outputs.
+Native entry is unmodified NPUWorker/default graph policy; candidate is the shipped
+Qwen Worker/FULL policy. Startup, compilation and warmup are excluded. Four measured
+cohorts/case/arm; C1lengths512/1024/2048, C4/C8 mixed512/2048/1024/1536.
+Initial0/1 watcher `no-mtp-abba1` was cancelled without launch due foreign occupancy;
+no historical0/1 timings were mixed into this comparison.
+
+Pooled output tok/s native→candidate:
+- C1/512:26.64→29.25 (+9.80%), TTFT369.18→184.34ms.
+- C1/1024:26.71→28.01 (+4.87%), TTFT373.85→278.03ms.
+- C1/2048:25.37→25.70 (+1.30%), TTFT486.01→471.74ms.
+- C4mixed:66.56→66.30 (-.39%); native roundmeans69.14/64.17, candidate66.48/66.13.
+- C8mixed:101.09→99.98 (-1.10%); native101.00/101.19,candidate99.59/100.38.
+All C1 continuation text sets match. No confidence intervals or population-wide
+accuracy claim; C4 is within observed run spread, not a proven throughput regression.
+Short TTFT improvement is NOT a50%end-to-end throughput gain. Summarizer and complete
+round receipts preserve TPOT=(HTTPcompletion-firstcontent)/63 and workload identity.
+
+Fletcher asks whether concurrent differences are scheduling. Six-step C4 profile
+probes record actual scheduled tokens/request IDs/computed counts and native graph
+mode; don'tinfer from requested configuration alone. Observation hook must attach
+in load_model AFTER NPUWorker.init_device constructs the runner, not Worker.__init__.
+`no-mtp-concurrent-candidate1` failed beforeload on that diagnostic-only mistake;
+its queued native counterpart was cancelled. Corrected native2/candidate2 pending.
+No serving implementation change belongs to these diagnostic probes.
