@@ -103,3 +103,41 @@ makes a large-prefill integration gate essential; feeding everything through
 32-row fragments would benchmark that artificial limit, not the intended
 expert-pooling design. No accelerator run or topology performance comparison
 has been launched for this workload yet.
+
+## Retained-prefix integration (in progress)
+
+`trace_plan.py` owns fixed output budgets and pending-token accounting: the last
+emitted token is not yet target encoded and becomes a single continuation anchor
+before the next recorded input delta. The CPU test protects this from double
+prefill or output-budget overrun. `trace_client.py` is the first fixed-resident
+multi-turn pilot, not yet a qualified performance lane. It captures decode,
+chunks real input, and preserves request GDN/PLE/QSA between turns. The native
+EP arm votes a common phase before collective entry. Pending prefill currently
+has priority; this is a simple shared policy, not a tuned vLLM scheduler.
+
+Before continuation prefill, GDN's accepted recurrent row and convolution slice
+must become canonical row0. The plain prefill reader does not select the decode
+candidate automatically. PLE already reads its own accepted endpoint and resets
+the selector after successful non-speculative forward. These boundaries need a
+hardware continuation gate before whole-workload timings can be trusted.
+
+First admitted gate: four distinct sessions, first two turns, complete input
+(4.6–4.9K initial prompts,679–4204 next-turn deltas), output capped8/turn.
+This intentionally truncated gate is **not throughput evidence**. Whole trace
+runs must omit both truncation options. No repeated session copies are used.
+
+The first retained gate `qwen38-model-20260917T143653Z` failed PLE publication
+on its first real512-token/query chunk after decode warmup; no SWE timing is
+accepted from it. Static inspection found scalar-by-scalar response packing:
+`bytes(cpu_uint8_tensor_row)` creates one Python scalar per byte. A CPU test of
+1024x1024 BF16 responses on hw0 measured4.513s versus5.773ms for bulk byte-copy,
+with byte-exact equality and an empty-wave check (`ple-codec-result.json`). This
+is a codec microtest, not proof of the original failure's complete cause.
+`trace_ple.py` scopes that change to this runner, retains the native byte ABI,
+and acknowledges empty masked waves so idle EP members can participate.
+
+`trace_commit.py` also preserves the *bounded* endpoint: the inherited helper
+limits output count but returns pending/multi from the untruncated speculative
+cabin. A terminal request could discard that State; a retained agent session
+cannot. The CPU probe forces accepted K1 with remaining1 and checks first-output
+pending/multi and the corresponding GDN/PLE selector. No donor/global patches.

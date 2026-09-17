@@ -33,6 +33,11 @@ p.add_argument("--mtp-tokens", type=int, choices=range(0, 6), default=0)
 p.add_argument("--reference-tokens", type=int, default=0)
 p.add_argument("--colocated", action="store_true")
 p.add_argument("--distinct-prompts", action="store_true")
+p.add_argument("--trace-plan", type=Path)
+p.add_argument("--trace-count", type=int, default=4)
+p.add_argument("--trace-turns", type=int, default=0)
+p.add_argument("--trace-output-cap", type=int, default=0)
+p.add_argument("--trace-max-context", type=int, default=32768)
 a = p.parse_args()
 assert a.reference_tokens == 0 or 2 <= a.reference_tokens <= min(32, a.decode_steps + 3)
 assert not a.reference_tokens or a.mtp_tokens
@@ -112,6 +117,7 @@ cfg, runtime = configure(
     mtp_tokens=a.mtp_tokens,
     colocated=a.colocated,
     token_capacity=token_capacity,
+    max_model_len=a.trace_max_context if a.trace_plan else 4096,
 )
 with (
     live_runtime(runtime),
@@ -138,11 +144,15 @@ with (
         allocated=torch.npu.memory_allocated(),
         reserved=torch.npu.memory_reserved(),
     )
-    if not a.construct_only and a.mtp_tokens:
+    if a.trace_plan and not a.construct_only:
+        from trace_client import run_trace
+
+        run_trace(root, cfg, a, rank, stage)
+    if not a.trace_plan and not a.construct_only and a.mtp_tokens:
         from mtp_client import run_mtp
 
         run_mtp(root, cfg, a, rank, stage)
-    if not a.construct_only and not a.mtp_tokens:
+    if not a.trace_plan and not a.construct_only and not a.mtp_tokens:
         from model_transport import install_transport
 
         install_transport(cfg, a, rank)

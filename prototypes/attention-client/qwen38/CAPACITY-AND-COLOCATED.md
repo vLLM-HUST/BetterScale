@@ -92,3 +92,32 @@ and they use a fixed-membership short runner. The downloaded SWE sessions still
 need multi-turn continuation/admission integration with correct retained State;
 the native colocated arm additionally needs coordinated layer/phase submission.
 Do not manufacture performance conclusions from these unequal gate workloads.
+
+## K1 context accounting before SWE (static, not a populated fit)
+
+`estimate_capacity.py --mtp-tokens 1` and `capacity-k1.json` record the selected
+checkpoint's262144-token per-request RoPE limit. The short gate's4096 limit was
+configuration, not capacity. Actual fit also requires activated State pages,
+resident weights, workspace and graph-pool headroom; no maximum-HBM result yet.
+
+At TP2 each rank stores14144 bytes per logical history token, plus233547804
+bytes per request with K1. Fixed GDN active/candidate **and inactive scratch**
+rows account for232390656 bytes/request. Unlike K0, K1 has two endpoint rows and
+a wider convolution state. TP partners shard heads; do not double their logical
+history capacity. The same State geometry applies to both layouts.
+
+For State budget B bytes/rank, n seats/group, payload history tokens/group are
+`64 * floor(max(0, B - n*233547804) / (64*14144))`. For total concurrency32:
+
+| State GiB per attention rank | separated (2 groups ×16 seats) | colocated EP8 (4 groups ×8 seats) |
+| --- | ---: | ---: |
+| 8 | 686208 | 1900800 |
+| 24 | 3115520 | 6759424 |
+| 40 | 5544704 | 11617792 |
+
+These are arithmetic examples, **not evidence that40GiB fits the colocated
+model**. Dedicated expert weights free attention memory in the separated arm,
+but it has half as many attention groups. Do not assert a whole-machine capacity
+advantage before comparing actual sustainable budgets. Fixed-seat State itself
+also constrains concurrency. A single-session limit remains262144 even when
+aggregate history capacity is several million tokens.

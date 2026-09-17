@@ -225,3 +225,25 @@ still is not a multi-turn SWE reactor, and the two gates have unequal workloads;
 do not quote their raw timings as the topology comparison. Catalog load inside
 an NPU default-device context must explicitly enter CPU scope for safetensors
 slices and ND assembly before explicit NZ upload.
+
+## Enter real multi-turn traces
+
+Use `qwen38/SWE-COMPARISON.md` and the prototype `trace_*` files. Do not treat
+fixed-window gates as retained-session qualification. K1 State geometry is in
+`capacity-k1.json`:14144B/history token/rank and233547804B/request/rank. The model
+contract is262144 context tokens, not the old4096 short-gate configuration.
+Two separated attention groups versus four colocated groups can reverse the
+whole-machine capacity comparison despite lighter separated attention weights.
+
+Two continuation traps were found statically: GDN prefill reads canonical row0,
+whereas decode leaves an accepted candidate/convolution slice; and the native
+bounded commit caps output count without reselecting pending/multi at that cap.
+The scoped trace runner handles both; do not silently change the older numeric
+receipts. `probe_trace_cpu.py` checks capped endpoint behavior. Retained hardware
+qualification is still separate.
+
+The PLE CPU response encoder's `bytes(tensor_row)` was measured at4.513s for
+1024x1024 BF16 output versus5.773ms for byte-exact bulk copying. Use the scoped
+`trace_ple.py` bulk codec for this experiment, not a larger device polling bound
+as the first repair. It also acknowledges all-inactive waves; the old host
+worker rejects empty requests, which cannot support idle native EP participants.

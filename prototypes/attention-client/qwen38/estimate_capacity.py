@@ -16,6 +16,7 @@ p.add_argument(
     type=Path,
     default=Path("/data/shared_models/Qwen3.8-Flash-Next-w8a8-mtp"),
 )
+p.add_argument("--mtp-tokens", type=int, choices=range(6), default=0)
 a = p.parse_args()
 from livemodule.core.state_tensor import (
     StateDomain,
@@ -26,9 +27,8 @@ from livemodule.llm.qwen38.contract import Qwen38TextContract
 from livemodule.llm.qwen38.parallel import Qwen38ParallelPlan
 from livemodule.llm.qwen38.state import Qwen38RequestStateBank
 
-c = Qwen38TextContract.from_model_config(
-    json.loads((a.model / "config.json").read_text())
-)
+model_config = json.loads((a.model / "config.json").read_text())
+c = Qwen38TextContract.from_model_config(model_config)
 p = Qwen38ParallelPlan(c, 0, 2)
 h = StateDomain(ElasticStateCapacity())
 r = StateDomain(ExactStateCapacity(1))
@@ -44,7 +44,7 @@ bank = Qwen38RequestStateBank(
     request_domain=r,
     model_dtype=torch.bfloat16,
     max_requests=1,
-    num_speculative_tokens=0,
+    num_speculative_tokens=a.mtp_tokens,
 )
 states = list(bank.named_states())
 history = [(n, s) for n, s in states if s.domain is h]
@@ -55,13 +55,20 @@ conv = (
         2 * p.gdn_key_heads.count * c.linear_key_head_dim
         + p.gdn_value_heads.count * c.linear_value_head_dim
     )
-    * (c.linear_conv_kernel_dim - 1)
+    * (c.linear_conv_kernel_dim - 1 + a.mtp_tokens)
     * 2
 )
 recurrent = (
     p.gdn_value_heads.count * c.linear_key_head_dim * c.linear_value_head_dim * 4
 )
-gdn = (conv + recurrent) * c.layer_types.count("linear_attention") * 2
+# Each seat has K+1 committed/candidate rows AND K+1 inactive scratch rows.
+# See causal_lm.gdn_candidate_domain and Ascend GDN state_shapes.
+gdn = (
+    (conv + recurrent)
+    * c.layer_types.count("linear_attention")
+    * 2
+    * (a.mtp_tokens + 1)
+)
 per_seat = (
     gdn
     + sum(s.logical_block_bytes + s.fixed_bytes for _, s in fixed)
@@ -70,6 +77,10 @@ per_seat = (
 print(
     json.dumps(
         dict(
+            mtp_tokens=a.mtp_tokens,
+            model_max_context=model_config.get("text_config", model_config)[
+                "max_position_embeddings"
+            ],
             history_lanes=len(history),
             history_bytes_per_token_per_rank=bpt,
             gdn_bytes_per_request_per_rank_including_scratch=gdn,
@@ -84,7 +95,7 @@ print(
                     )
                     * 64,
                 )
-                for gib in [4, 8, 40, 48]
+                for gib in [4, 8, 16, 24, 32, 40, 48]
                 for n in [1, 8, 16, 32, 64]
             ],
         ),
