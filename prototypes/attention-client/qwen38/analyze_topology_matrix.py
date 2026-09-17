@@ -47,13 +47,16 @@ def main():
         if (directory / "exit").read_text().strip() != "0":
             raise ValueError(f"case did not pass: {name}")
         capsule = Path((directory / "capsule").read_text().strip())
+        parameters = json.loads((directory / "parameters.json").read_text())
+        if parameters["layout"] != name or parameters["mode"] != "trace":
+            raise ValueError(f"mismatched case metadata: {name}")
         result = summarize(capsule / "roles", groups, tp)
         current = signature(result)
         if expected is not None and current != expected:
             raise ValueError(f"unmatched workload: {name}")
         expected = current
         result.pop("sessions")
-        records[name] = dict(capsule=str(capsule), **result)
+        records[name] = dict(capsule=str(capsule), parameters=parameters, **result)
     report = dict(
         scope="same repaired full48+MTP K1 checkpoint, equal-eight-card topology controls; NOT unmodified vLLM or language quality",
         time_scope="maximum source duration after common warmup rendezvous; not precise globally timestamped makespan",
