@@ -513,3 +513,35 @@ and was removed, not shipped.128-wide recurrent blocks repeatedly exceeded192KiB
 UB; accepted decode uses two64-wide V tiles in a single head program. Earlier
 address-only/one-program-per-Vtile variants were correct but slower than native.
 Do not substitute those or claim an end-to-end service win from the microprobe.
+
+
+### Owned K-V mixed FULL service (September17 integration)
+
+Source ddc8a3d adds opt-in `betterscale.qwen_worker.MixedWorker`, separate from old
+Qwen/DSV4 Workers. Package `patches/qwen_gdn/README.md` owns its deployment contract:
+TP2, eight seats,2048 budget, no MTP/APC, queue0 raw ACL launch, fresh K-V state
+pool, token-capacity graphs, same owned core for uncaptured execution. Native FIA
+updates remain; metadata uses blocking pageable copies, not a new overlap claim.
+Engine scratch/POD construction must occur before capture, not on first core call.
+Conv-weight packing validates the explicit owned consumer, not the native function.
+
+Critical paid failure: build4 was not safe beyond its four-request evidence.
+Five/eight mixed warm/cold rows reuse ping/pong H UB while a previous MTE3 store
+is still reading it. MTE3_MTE2 does not fence vector Duplicate. In core4, erroneous
+initial H head positions exactly match the ownership-loop reuse order. Source
+4e21bb1 adds MTE3_V before the cold fill; no global barrier or bank copy. Separate
+initial-bank snapshot (core3) still failed and was rejected. Core5/build6 passes
+12 graph/NONE full-core cases plus an independent warm-seed/cold-zero initial-H
+invariant. Do not trust FULL/NONE parity alone: both modes can share this bug.
+Native convolution isolation passed. Never deploy old build4 to eight-seat service.
+
+Service9 (hw3 cards6/7,1GiB diagnostic KV,32 outputs) passes ten single-request
+lengths1/7/17/129/512/513/1024/1536/2048/2051 and C4/C8 cohorts.44 rank-step shadows,
+5,676 valid-hidden/full-cache checks all max0. Actual mixed rows include
+[1,1,512,513,17] and [1,1,1,1,18]. Eight active rows are covered by core5, not inferred
+from submitted C8 concurrency. Service5/6/8 failed with the old library; service7
+was a diagnostic wrapper keyword error. Service9 uses production execution without
+layer-debug capture copies. No language-quality or unlimited-context claim.
+Artifacts under established remote qwen27-partition-serving root and local
+qwen38-tp2-serving/hw3-elastic-* mirrors. Binary manifest in package pins build6
+(kernel4e21bb1); the separately built binary is not bundled in Git or PyPI0.4.2.

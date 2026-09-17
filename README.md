@@ -27,6 +27,12 @@ See [commands, measured scope and compiler-cache caveat](src/betterscale/patches
 and [entry acceptance](docs/evidence/qwen-prefill.json). This addition is **not in
 published PyPI0.4.2** and does not change the existing DSV4 Worker behavior.
 
+The separate opt-in `betterscale.qwen_worker.MixedWorker` owns a K-V GDN state
+pool and dynamic mixed FULL graphs keyed by token capacity, not request partitions.
+It requires the qualified external AscendC library and a fresh service process;
+no MTP/APC. See [service contract and launcher](src/betterscale/patches/qwen_gdn/README.md).
+The existing Qwen and DSV4 entries are unchanged; this entry is also source-only.
+
 ## End-to-end service evidence
 
 [September14 HTTP acceptance](docs/E2E-20260914.zh-CN.md) compares retained

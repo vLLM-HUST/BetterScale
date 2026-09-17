@@ -7,8 +7,8 @@ name = "vllm-betterscale"
 version = "0.4.2"
 description = "Modular graph and replay optimizations for vLLM Ascend"
 readme = "docs/PYPI.md"
-license = "Apache-2.0 AND LicenseRef-CANN-1.0 AND LicenseRef-CANN-2.0"
-license-files = ["licenses/Apache-2.0.txt", "licenses/CANN-1.0.txt", "licenses/CANN-2.0.txt", "THIRD_PARTY_NOTICES.md"]
+license = "Apache-2.0 AND MIT AND LicenseRef-CANN-1.0 AND LicenseRef-CANN-2.0"
+license-files = ["licenses/Apache-2.0.txt", "licenses/FLA-MIT.txt", "licenses/CANN-1.0.txt", "licenses/CANN-2.0.txt", "THIRD_PARTY_NOTICES.md"]
 authors = [{name = "Fletcher Tian"}]
 classifiers = ["Development Status :: 4 - Beta", "Programming Language :: Python :: 3.12", "Operating System :: POSIX :: Linux"]
 requires-python = ">=3.12"

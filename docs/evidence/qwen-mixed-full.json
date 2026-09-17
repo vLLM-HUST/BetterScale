@@ -1,0 +1,383 @@
+{
+  "status": "PASS",
+  "date": "2026-09-17",
+  "entry": "betterscale.qwen_worker.MixedWorker",
+  "integration_source": "ddc8a3d",
+  "kernel_source": "4e21bb1",
+  "native": {
+    "sha256": "1c522f04a701d3423798b4b7f157737ef41956be25cf46842b6ba33c7ec41bea",
+    "source": "4e21bb18063e92966a79218f507a93eb961e6f0a",
+    "soc": "Ascend910B2",
+    "owned_init": true,
+    "state_layout": "KV",
+    "cold_fill_dma_fence": true
+  },
+  "host": "hw3",
+  "devices": [
+    6,
+    7
+  ],
+  "scope": "Source-only opt-in integration; no PyPI publication; existing Qwen and DSV4 Workers unchanged.",
+  "service_shadow": {
+    "capsule": "/workspace/strengthen-dsv4/runs/qwen38-tp2-serving/hw3-elastic-service9",
+    "kv_bytes": 1073741824,
+    "output_tokens": 32,
+    "c1_lengths": [
+      1,
+      7,
+      17,
+      129,
+      512,
+      513,
+      1024,
+      1536,
+      2048,
+      2051
+    ],
+    "concurrency": [
+      4,
+      8
+    ],
+    "rank_steps": 44,
+    "checks": 5676,
+    "max_abs": 0.0,
+    "partitions": [
+      [
+        {
+          "lengths": [
+            1
+          ],
+          "slots": [
+            2
+          ],
+          "capacity": 16,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            7
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 16,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            17
+          ],
+          "slots": [
+            2
+          ],
+          "capacity": 32,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            129
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 256,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            512
+          ],
+          "slots": [
+            2
+          ],
+          "capacity": 512,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            513
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 1024,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            1024
+          ],
+          "slots": [
+            2
+          ],
+          "capacity": 1024,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            1536
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 1536,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            2048
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 2048,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            2048
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 2048,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            1
+          ],
+          "slots": [
+            2
+          ],
+          "capacity": 16,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            7
+          ],
+          "slots": [
+            2,
+            6
+          ],
+          "capacity": 16,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            17,
+            129
+          ],
+          "slots": [
+            2,
+            6,
+            10,
+            14
+          ],
+          "capacity": 256,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "slots": [
+            2,
+            6,
+            10,
+            14
+          ],
+          "capacity": 4,
+          "decode": true,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "slots": [
+            2,
+            6,
+            10,
+            14
+          ],
+          "capacity": 4,
+          "decode": true,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "slots": [
+            2,
+            6,
+            10,
+            14
+          ],
+          "capacity": 4,
+          "decode": true,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            7
+          ],
+          "slots": [
+            15
+          ],
+          "capacity": 16,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1
+          ],
+          "slots": [
+            15
+          ],
+          "capacity": 1,
+          "decode": true,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            512,
+            513,
+            17
+          ],
+          "slots": [
+            15,
+            11,
+            7,
+            3,
+            18
+          ],
+          "capacity": 1536,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "slots": [
+            15,
+            11,
+            7,
+            3
+          ],
+          "capacity": 4,
+          "decode": true,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1,
+            18
+          ],
+          "slots": [
+            15,
+            11,
+            7,
+            3,
+            19
+          ],
+          "capacity": 32,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "slots": [
+            15,
+            11,
+            7,
+            3
+          ],
+          "capacity": 4,
+          "decode": true,
+          "mode": "FULL"
+        }
+      ]
+    ]
+  },
+  "operator": {
+    "capsule": "hw3-elastic-core5",
+    "cases": 12,
+    "max_active_requests": 8,
+    "full_core_graph_none_exact": true,
+    "initial_H_warm_seed_or_cold_zero_exact": true
+  },
+  "cpu_tests": 73,
+  "archive_audit": "Fresh sdist-to-wheel build; headers, manifest, launcher and FLA license present; no prototype/run artifacts.",
+  "limits": [
+    "TP2/DP1/PP1, BF16, qualified Qwen27 geometry",
+    "No MTP/APC/LoRA/cache transfer/context parallelism",
+    "TASK_QUEUE_ENABLE=0; fresh K-V pool; separately supplied qualified library",
+    "Native FIA update retained; no sampling capture or metadata-overlap claim",
+    "Bounded correctness, not language quality or long-context equivalence"
+  ]
+}

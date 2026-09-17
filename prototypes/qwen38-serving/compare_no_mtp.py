@@ -1,4 +1,4 @@
-"""One admitted TP2 window, separate native/candidate servers in ABBA order."""
+"""One admitted TP2 window, separate native/candidate servers in the recorded order."""
 
 import json
 import os
@@ -9,6 +9,14 @@ import sys
 import time
 
 root = Path(os.environ["CAPSULE"])
+if os.environ.get("SERVING_QUALIFICATION_RECEIPT"):
+    qualification = json.loads(
+        Path(os.environ["SERVING_QUALIFICATION_RECEIPT"]).read_text()
+    )
+    if qualification["status"] != "PASS":
+        raise RuntimeError(
+            "Service correctness qualification failed; refusing timing run"
+        )
 receipt = dict(
     status="RUNNING",
     order=(
@@ -17,7 +25,7 @@ receipt = dict(
         ).split(",")
     ),
     rounds=[],
-    scope="No MTP in either arm. Async, TP2, APC off, 6GiB KV, 8 seats, 2048 batch budget, 64 output tokens. Separate-process ABBA after warmup; timings exclude startup/profile.",
+    scope="No MTP in either arm. Async, TP2, APC off, 6GiB KV, 8 seats, 2048 batch budget, 64 output tokens. Separate-process order as recorded after warmup; timings exclude startup/profile.",
 )
 path = root / "comparison.json"
 try:

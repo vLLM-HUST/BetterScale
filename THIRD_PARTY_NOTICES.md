@@ -33,6 +33,7 @@ CANN1.0 license text source: https://gitee.com/ascend/cann-ops/raw/master/LICENS
 The opt-in Qwen K-V recurrent kernel in
 `src/betterscale/patches/qwen_gdn/decode_kv.py` adapts pinned vLLM's FLA kernel
 (Apache-2.0), retaining its attribution to Songlin Yang and Yu Zhang and the
-original flash-linear-attention MIT notice. The separately built AscendC H/O
+original flash-linear-attention MIT attribution (license text in
+`licenses/FLA-MIT.txt`). The separately built AscendC H/O
 library retains its original per-file notices under
 `prototypes/qwen38-serving/ascendc_gdn`; it is not a system CANN replacement.

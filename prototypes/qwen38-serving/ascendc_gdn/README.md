@@ -1,8 +1,9 @@
 # Owned AscendC GDN probe
 
 Experimental H/O fork for Ascend910B2, BF16 inputs / FP32 gates and states,
-qk8/v24 heads, K/V128. Not installed or wired into a service. Existing donor
-operators remain the oracle. No MTP/PCP or internal empty-row support claimed.
+qk8/v24 heads, K/V128. The qualified K-V variant is wired into the opt-in
+MixedWorker service; see the final section. Historical probes below retain their
+original scope. No MTP/PCP or internal empty-row support claimed.
 
 `h/`, `o/`, `common/` copied from vllm-ascend commit
 9bf964cb4b87c8cd0d6852c41a55b3c29711fa95, respectively
@@ -172,3 +173,32 @@ probe, hence use pool4 numbers for the full policy table.
 
 Local evidence mirrors capsules with `hw3-` prefixes under the established
 qwen38-tp2-serving evidence root. No installation, service edit or remote Git push.
+
+
+## Eight-request service integration and cold-fill DMA race
+
+Service entry is now `betterscale.qwen_worker.MixedWorker`; its colocated README
+owns deployment and whole-model scope. The earlier build4/pool4 evidence remains
+four-request evidence, NOT qualification for eight active requests.
+
+Five/eight-request cold/warm mixtures exposed a ping/pong H-UB race. The original
+MTE3_MTE2 wait only holds the load engine; a cold-state vector Duplicate can still
+zero a buffer while the previous warm state's MTE3 store is reading it. In
+`elastic-core4`, five requests corrupt first-request head0 and second-request odd
+heads; eight requests corrupt all heads of the first two warm requests. This
+matches ownership-loop buffer reuse. A separate initial-pool copy did not fix it
+(`elastic-core3`); that diagnostic copy is not part of the service.
+
+Kernel source4e21bb1 adds MTE3_V SetFlag/WaitFlag before cold Duplicate. No global
+barrier or state gather/scatter is added. Fresh build6 with OWNED_INIT=ON passes
+`elastic-core5`: all12 full-core graph/NONE output, convolution and full-bank checks
+exact, plus each initial H tile exactly equals the BF16 warm seed or cold zero.
+FULL/NONE parity alone was insufficient because both could share bad initial H.
+Standalone convolution already passed, isolating the failure to owned GDN.
+
+`elastic-service9` then passes 44 rank-step shadows (5,676 comparisons) with real
+HTTP concurrency, changing mixed partitions and state slots. All valid hidden and
+128 cache tensors are exact against owned uncaptured execution. This is bounded
+service/capture correctness, not semantic equivalence to every native arithmetic
+path. The production manifest rejects unfenced build4. Full artifacts remain in
+hw3 capsules and local `runs/qwen38-tp2-serving/hw3-elastic-*` mirrors.
