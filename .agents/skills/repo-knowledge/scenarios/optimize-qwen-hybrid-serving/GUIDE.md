@@ -409,3 +409,45 @@ are packaged locally as `hw3-partition-timelines.tar.gz` in the evidence root
 (~9.4MB). Directory `hw3-partition-timelines/` contains baseline/candidate-rank0/1
 files. Per-rank clocks remain independent. All hw3 probes reclaimed/port32181
 closed; no local NPU job was launched after Fletcher's reassignment.
+
+## Dynamic packed GDN operator feasibility (September17)
+
+Fletcher chose operator-first feasibility, NOT further exact-partition enumeration.
+`dynamic_gdn_probe.py`, source863dc20, `hw3/dynamic-gdn3` PASS on one admitted
+910B2/card6 with TP2-local qk8/v24/KVdim128. No model load or service modification.
+One graph captured at capacity512tokens/4requests plus an empty sentinel replays
+[512], [1,511], [1,1,256,254], [129,63,1], [64,64,64,64], [1,1,1,1], then[512]
+with changed state slots. Stable device cu_seqlens/chunk-index/chunk-offset buffers
+control existing Triton cumsum/KKT/solve/WY/H/O stages. Actual request count and
+total tokens change without recapture; unused chunk tasks target the empty sentinel.
+State gather/masked cold start/writeback are inside the graph. Metadata preparation
+is host-side before replay, not a claim of device-generated scheduling or H2D overlap.
+
+Native chunk pipeline (AscendC H/O) is the oracle on exact active shapes. All28
+output/full-state-bank/second-pass output/state checks pass atol=.01,rtol=.01;
+max output error .0004883, max state error .003380, all finite. Cold cases reset
+on both passes; continuing cases consume the first final state. This is bounded
+random-input recurrence evidence, not long model accuracy, mixed cold/continuing
+flags in one batch, convolution/FIA integration, or arbitrary capacity support.
+Do not call it bitwise parity or full-service mixed support.
+
+20-replay event timing: dynamic .807–.929ms versus fixed native chunk graph
+.564–.744ms; +.186–.268ms per invocation. Dynamic includes state gather/writeback,
+native control excludes that glue. Sequential short timings, no service speedup
+claim; all-one control is chunk, NOT optimized recurrent decode. Dynamic ability
+is demonstrated but replacement compute is not faster. Card6 reclaimed.
+Local receipt: evidence-root/hw3-dynamic-gdn3/receipt.json; remote full capsule
+under the existing qwen27-partition-serving root. dynamic-gdn1 cancelled before
+launch; dynamic-gdn2 captured successfully but its oracle control illegally copied
+CPU cu to NPU inside capture (107030). Fixed by moving that copy outside capture.
+
+Native boundary insight: csrc/moe/chunk_gated_delta_rule_fwd_h/op_host/op_api
+converts aclIntArray metadata into tensors before the AICore launch. Tiling derives
+request capacity from tensor shape, not boundary values. arch22 block scheduler
+reads device cu, removes empty rows, builds chunk counts at runtime. BUT it also
+uses actual totalTokens/totalChunks as head strides; fixed physical capacity with
+shorter logical total cannot blindly reuse a tensor-only wrapper. Empty internal
+rows also imply compact state indexing. Inspect arch20/current device implementation
+before applying this observation. A tensor ABI plus explicit capacity/stride contract
+is a promising native-kernel route, not yet tested. Existing recurrent operator's
+MAX_MTP=16 blocks simply feeding long prefills to that unchanged implementation.
