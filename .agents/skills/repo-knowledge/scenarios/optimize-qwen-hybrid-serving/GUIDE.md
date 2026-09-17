@@ -556,3 +556,47 @@ Do not confuse this new elastic service with partition-abba2's exact enumeration
 No new profile or statistical confidence claimed; all round metrics retained in
 `docs/evidence/qwen-mixed-full.json`. Cards released. CPU73 tests and fresh
 sdist-to-wheel archive contents pass; no PyPI publication/version change.
+
+### SWE whole-session crossover and remaining metadata gap (September17)
+
+Enter `prototypes/qwen38-serving/SWE-TRACE-COMPARISON.zh-CN.md` for the bounded
+real-trace HTTP comparison and paid profile findings. `swe-elastic2`/b05739f uses
+hw3 pairs2/3 and6/7 simultaneously, then swaps arms. Eight whole <=8K
+mini-SWE-agent/Qwen3.8 trajectories (78 calls,20,648 outputs/cohort) selected from
+15,525 rows, not a representative full-dataset claim. APC/MTP off. C4 andC8 both
+replay all8 sessions with at most4/8 active; two repeats perarm/case. Native→owned
+pooled output70.316→71.196 (+1.25%) and97.556→99.860 (+2.36%). Mean TTFT
+1363→1239/1526→1395ms. This supersedes using synthetic short-prompt gains for SWE.
+
+Fixture `swe-qwen27-v5/trace.json` is retained in the evidence root. Reuse it rather
+than rescanning. Old OpenHands trajectories exceed8K; whole-history rejection is
+not grounds to truncate or silently relax Worker admission. Qwen template needs
+JSON tool arguments as mappings; isolated CPU preparation needs pyarrow/jinja2.
+All tool content is inert. Fixed recorded suffix-token budgets, original history,
+zero tool delay; not task solving or model quality. Summarizer checks every call.
+
+Both short profiles have identical6-step schedule:decode1 twice, [1,1472]mixed,
+decode2 three times. Native mixed NONE body507ms→candidateFULL346ms; body APIs
+~23.6k→310. TraceLoom/native export passes per-body compute/communication guards.
+Three decode2 bodies/rank reconstruct exact_direct; unique mixed not reconstructed
+is not absent FULL. Per-rank clocks remain independent. Four exported timelines
+and schedules/analysis are in `qwen-swe-traceloom-timelines.tar.gz` (~4.2MB).
+
+Priority observation: candidate steady model-to-model gaps4.74–4.96ms vs native
+1.52–1.63ms. Three blocking metadata H2Ds (~.14ms actual API sum) plus serialized
+post-drain derivations; each metadata group repeats cu cast/copies and computed
+Sub/Sub/Greater. First wait spans previous model: don't count its full duration
+as new overhead. Profile magnifies host costs; no promise of3.2ms unprofiled gain.
+Second hypothesis: solve16 takes10.52ms/48layers vs native3.01ms;1536capacity's
+large-chunk table has9 tasks, only3 active,6 empty. Donor masks memory but still
+executes fixed recurrence for emptyT. Investigate device-side skip, NOT partition
+keys; native mixed also uses separate recurrent-prefix arithmetic, so timings are
+not an isolated empty-task experiment. Production code was not changed here.
+
+`swe-elastic1` abandoned after0/1 crossover startup free-memory rejection and
+observed unlisted device1 HBM/compute activity. Its first wave is not headline.
+Retain strict idle gates between server reloads, not just initial lease acquisition;
+new wait_reclaimed CPU rejection smoke passed. Do not reduce memory guard to get
+past uncertain occupancy. Final campaign released its cards. Fletcher now permits
+local and hw3 cards5/6/7 for follow-up TP2 work; prefer those, still require fresh
+subset admission and preserve foreign work. This permission does not reserve them.

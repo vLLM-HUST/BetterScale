@@ -1,0 +1,423 @@
+{
+  "status": "PASS",
+  "source": "b05739f",
+  "production_source": "a34462a",
+  "capsule": "/workspace/strengthen-dsv4/runs/qwen38-tp2-serving/hw3-swe-elastic2",
+  "hardware": "hw3 Ascend910B2; baseline/candidate on2,3/6,7 then swapped",
+  "entry": "betterscale.qwen_worker.MixedWorker",
+  "model": "Qwen3.8-27B, TP2, no MTP/APC,6GiB KV,8seats,2048budget,8K context",
+  "service": {
+    "scope": "Simultaneous same-host pairs; swap arms across pairs; closed-loop cohorts synchronized only at start. Shared-host CPU effects are not isolated.",
+    "fixture": {
+      "dataset": "nvidia/Open-SWE-Traces",
+      "revision": "fb0c0dccc7a5cce79b3f6de891848acdede36685",
+      "subset": "data/minisweagent/qwen38_27b",
+      "scanned": 15525,
+      "selection": {
+        "min_turns": 2,
+        "max_turns": 12,
+        "max_context": 8192,
+        "max_output_total": 8192
+      },
+      "transforms": {
+        "truncated": false,
+        "tool_arguments": "JSON strings parsed to mappings",
+        "history": "original recorded messages, not generated responses",
+        "output_budget": "Qwen-tokenized complete assistant serialization suffix (BPE at suffix boundary is independent)",
+        "tool_execution": false,
+        "tool_wait_seconds": 0,
+        "arrival_policy": "one initially ready call per session; next turn after previous completion"
+      },
+      "trajectories": [
+        "7aef38cd-40e8-4d73-bf84-5fb601845f9d",
+        "85d1d00c-dec6-426c-a7c8-d55e307316e8",
+        "41094c57-7aa3-4637-8e61-51148ed2ccf4",
+        "f716c9d4-0e7b-4e36-917f-2a044634d5ed",
+        "19d9e7fc-2c25-4710-a0d1-b3f6b2167a97",
+        "494f7e35-04ec-44fb-a3df-ab508b17b6ed",
+        "ef07f321-97f0-4923-9ac6-a25625ff08b9",
+        "a3969e81-77d8-4f2b-8a58-448704fa890a"
+      ]
+    },
+    "rounds": [
+      {
+        "repeat": 0,
+        "arm": "baseline",
+        "devices": "2,3",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 294.02003865805455,
+        "tokens_per_s": 70.22650596959357,
+        "mean_ttft_ms": 1370.2436075904047,
+        "p95_ttft_ms": 1918.0223860312253,
+        "mean_latency_s": 13.747783748689704,
+        "p95_latency_s": 28.556738673942164,
+        "mean_tpot_ms": 47.836618464235656,
+        "p95_tpot_ms": 60.930913259522114
+      },
+      {
+        "repeat": 0,
+        "arm": "baseline",
+        "devices": "2,3",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 212.6068784389645,
+        "tokens_per_s": 97.11821250377682,
+        "mean_ttft_ms": 1547.4688117541612,
+        "p95_ttft_ms": 2328.056049067527,
+        "mean_latency_s": 17.71294881692395,
+        "p95_latency_s": 38.29078943701461,
+        "mean_tpot_ms": 62.46753484802228,
+        "p95_tpot_ms": 75.53221712270552
+      },
+      {
+        "repeat": 0,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 288.81288504297845,
+        "tokens_per_s": 71.49265517335681,
+        "mean_ttft_ms": 1237.113259264077,
+        "p95_ttft_ms": 1878.7577978800982,
+        "mean_latency_s": 13.496634965463995,
+        "p95_latency_s": 28.37434467417188,
+        "mean_tpot_ms": 47.17733957060192,
+        "p95_tpot_ms": 56.923696097913485
+      },
+      {
+        "repeat": 0,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 206.17964596301317,
+        "tokens_per_s": 100.14567589132474,
+        "mean_ttft_ms": 1400.616277874901,
+        "p95_ttft_ms": 2241.753429174423,
+        "mean_latency_s": 17.107408388165567,
+        "p95_latency_s": 36.47587275295518,
+        "mean_tpot_ms": 60.10612700462153,
+        "p95_tpot_ms": 75.94031528837765
+      },
+      {
+        "repeat": 1,
+        "arm": "baseline",
+        "devices": "6,7",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 293.27136736921966,
+        "tokens_per_s": 70.40578214376039,
+        "mean_ttft_ms": 1356.0837636767433,
+        "p95_ttft_ms": 1884.7720311023295,
+        "mean_latency_s": 13.712604954605922,
+        "p95_latency_s": 28.43598928791471,
+        "mean_tpot_ms": 47.81891843003268,
+        "p95_tpot_ms": 60.71150442164571
+      },
+      {
+        "repeat": 1,
+        "arm": "baseline",
+        "devices": "6,7",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 210.69839563407004,
+        "tokens_per_s": 97.99789855002203,
+        "mean_ttft_ms": 1504.2423816123166,
+        "p95_ttft_ms": 2309.963715961203,
+        "mean_latency_s": 17.547813199409763,
+        "p95_latency_s": 38.09770479402505,
+        "mean_tpot_ms": 62.00785250460309,
+        "p95_tpot_ms": 76.62810127578348
+      },
+      {
+        "repeat": 1,
+        "arm": "candidate",
+        "devices": "2,3",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 291.2164405260701,
+        "tokens_per_s": 70.90259039874353,
+        "mean_ttft_ms": 1241.4506790108787,
+        "p95_ttft_ms": 1883.242096984759,
+        "mean_latency_s": 13.604082799027077,
+        "p95_latency_s": 28.469988559838384,
+        "mean_tpot_ms": 47.57517738850779,
+        "p95_tpot_ms": 57.478824737503636
+      },
+      {
+        "repeat": 1,
+        "arm": "candidate",
+        "devices": "2,3",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 207.35915484512225,
+        "tokens_per_s": 99.57602313446016,
+        "mean_ttft_ms": 1390.2200156052668,
+        "p95_ttft_ms": 2208.348029991612,
+        "mean_latency_s": 17.220234473110533,
+        "p95_latency_s": 36.689641423057765,
+        "mean_tpot_ms": 60.69198570343794,
+        "p95_tpot_ms": 75.47251991440304
+      }
+    ],
+    "pooled": {
+      "baseline": {
+        "4": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 587.2914060272742,
+          "tokens_per_s": 70.3160297872334,
+          "mean_ttft_ms": 1363.163685633574,
+          "p95_ttft_ms": 1908.73924898915,
+          "mean_latency_s": 13.730194351647814,
+          "p95_latency_s": 28.556738673942164,
+          "mean_tpot_ms": 47.82776844713417,
+          "p95_tpot_ms": 60.930913259522114
+        },
+        "8": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 423.3052740730345,
+          "tokens_per_s": 97.5560724832241,
+          "mean_ttft_ms": 1525.855596683239,
+          "p95_ttft_ms": 2328.056049067527,
+          "mean_latency_s": 17.630381008166857,
+          "p95_latency_s": 38.29078943701461,
+          "mean_tpot_ms": 62.23769367631269,
+          "p95_tpot_ms": 76.62810127578348
+        }
+      },
+      "candidate": {
+        "4": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 580.0293255690485,
+          "tokens_per_s": 71.19640021560254,
+          "mean_ttft_ms": 1239.2819691374777,
+          "p95_ttft_ms": 1883.242096984759,
+          "mean_latency_s": 13.550358882245536,
+          "p95_latency_s": 28.469988559838384,
+          "mean_tpot_ms": 47.376258479554856,
+          "p95_tpot_ms": 57.478824737503636
+        },
+        "8": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 413.5388008081354,
+          "tokens_per_s": 99.86003712178777,
+          "mean_ttft_ms": 1395.418146740084,
+          "p95_ttft_ms": 2241.753429174423,
+          "mean_latency_s": 17.163821430638052,
+          "p95_latency_s": 36.689641423057765,
+          "mean_tpot_ms": 60.39905635402973,
+          "p95_tpot_ms": 75.94031528837765
+        }
+      }
+    },
+    "throughput_gain_percent": {
+      "4": 1.2520195338573847,
+      "8": 2.361682445713331
+    },
+    "limits": "Eight selected <=8K trajectories, no APC/MTP, fixed output budgets, no tool latency. Two pair-swapped repeats, not population or confidence evidence. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps."
+  },
+  "profile": {
+    "scope": "Six diagnostic steps/rank after warmup; not HTTP timing. All bodies pass 304 MatMul,16 FIA,128 communication guards. Operator/API sums are not exclusive critical-path time. Rank-local clocks; profile overhead can amplify host submission gaps. Exact graph reconstruction can omit unique/under-repeated shapes.",
+    "schedule": [
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        1,
+        1472
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "timeline_tool": "TraceLoom37323af55aeb5851b9a70b97155f5eacf104eafc",
+    "ranks": {
+      "baseline": [
+        {
+          "body_ms": [
+            34.229404,
+            34.200263,
+            507.113052,
+            35.699133,
+            35.613732,
+            35.608772
+          ],
+          "body_uncovered_compute_comm_ms": [
+            3.577918000000004,
+            3.585497,
+            153.01793499999997,
+            3.5221700000000027,
+            3.5105709999999988,
+            3.51549
+          ],
+          "body_api_calls": [
+            456,
+            363,
+            23604,
+            465,
+            462,
+            243
+          ],
+          "steady_decode_gaps_ms": [
+            1.521971,
+            1.567951,
+            1.632652
+          ],
+          "exact_graph_counts": [
+            [
+              "exact_direct",
+              3
+            ]
+          ]
+        },
+        {
+          "body_ms": [
+            34.225163,
+            34.199223,
+            507.109472,
+            35.684993,
+            35.615452,
+            35.609052
+          ],
+          "body_uncovered_compute_comm_ms": [
+            3.5702250000000006,
+            3.556709000000005,
+            48.096787000000006,
+            3.5534529999999975,
+            3.553822999999994,
+            3.499127999999999
+          ],
+          "body_api_calls": [
+            437,
+            628,
+            23519,
+            208,
+            461,
+            242
+          ],
+          "steady_decode_gaps_ms": [
+            1.523331,
+            1.566031,
+            1.632912
+          ],
+          "exact_graph_counts": [
+            [
+              "exact_direct",
+              3
+            ]
+          ]
+        }
+      ],
+      "candidate": [
+        {
+          "body_ms": [
+            33.045141,
+            33.006839,
+            346.398221,
+            34.470009,
+            34.486449,
+            34.356806
+          ],
+          "body_uncovered_compute_comm_ms": [
+            3.609553000000002,
+            3.663931999999999,
+            4.892736999999954,
+            3.617933999999998,
+            3.5847109999999986,
+            3.5189519999999987
+          ],
+          "body_api_calls": [
+            333,
+            361,
+            310,
+            339,
+            339,
+            243
+          ],
+          "steady_decode_gaps_ms": [
+            4.955259,
+            4.793136,
+            4.741515
+          ],
+          "exact_graph_counts": [
+            [
+              "exact_direct",
+              3
+            ]
+          ]
+        },
+        {
+          "body_ms": [
+            33.05352,
+            33.003479,
+            346.403861,
+            34.470569,
+            34.488589,
+            34.354886
+          ],
+          "body_uncovered_compute_comm_ms": [
+            3.6947639999999993,
+            3.6520849999999996,
+            4.916633999999988,
+            3.512737999999999,
+            3.6110869999999977,
+            3.5424480000000003
+          ],
+          "body_api_calls": [
+            332,
+            355,
+            303,
+            333,
+            338,
+            243
+          ],
+          "steady_decode_gaps_ms": [
+            4.957119,
+            4.792375,
+            4.739715
+          ],
+          "exact_graph_counts": [
+            [
+              "exact_direct",
+              3
+            ]
+          ]
+        }
+      ]
+    }
+  },
+  "findings": [
+    "Matched mixed profile body507.11->346.40ms; API counts~23.6k->310. Not a profiled HTTP speedup claim.",
+    "Candidate steady decode gaps4.74-4.96ms vs native1.52-1.63ms; three blocking metadata H2Ds and post-drain host submissions. First stream wait overlaps previous body; do not count its whole duration as overhead.",
+    "Mixed solve16 stage3.007->10.522ms summed across48 layers; capacity1536 has9 large-block tasks,3 active and6 empty. Source lacks empty-row arithmetic skip. Profile comparison does not isolate its causal contribution."
+  ],
+  "discarded_campaign": {
+    "capsule": "hw3-swe-elastic1",
+    "reason": "Crossover startup on0/1 rejected free48.31GiB<56.08GiB; device1 later showed substantial HBM/AICore without a listed process. First wave retained but excluded from headline. Rerun on2/3+6/7 with fresh idle gate before reload; no memory guard weakened."
+  }
+}
