@@ -63,8 +63,6 @@ public:
         hOutputUbTensor = resource.ubBuf.template GetBufferByByte<HElementOutput>(PING_BUF_1_OFFSET);
         finalOutputUbTensor = resource.ubBuf.template GetBufferByByte<FinalStateElement>(PING_BUF_1_OFFSET);
 
-        transposeIndices = resource.ubBuf.template GetBufferByByte<uint32_t>(0);
-        transposeTemp = resource.ubBuf.template GetBufferByByte<uint32_t>(96 * 1024);
         glastUbTensor = resource.ubBuf.template GetBufferByByte<float>(PING_G_BUF_OFFSET);
 
     }
@@ -83,8 +81,7 @@ public:
         uint32_t kHeadDim,
         uint32_t vHeadDim,
         Arch::CrossCoreFlag cube2Done,
-        bool isFinalState,
-        bool transposeFinal = false
+        bool isFinalState
     )
     {
         uint32_t mActual = kHeadDim;
@@ -155,29 +152,7 @@ public:
             } else {
                 AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
                 AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
-                if (transposeFinal) {
-                    // Each AIV owns 64 K rows; store them as 64-column slices
-                    // of the native [V,K] state. Transposition stays in UB.
-                    AscendC::CreateVecIndex(transposeIndices.template ReinterpretCast<int32_t>(), 0, 8192);
-                    AscendC::PipeBarrier<PIPE_V>();
-                    AscendC::ShiftLeft(transposeTemp, transposeIndices, (uint32_t)26, 8192);
-                    AscendC::PipeBarrier<PIPE_V>();
-                    AscendC::ShiftRight(transposeTemp, transposeTemp, (uint32_t)19, 8192);
-                    AscendC::ShiftRight(transposeIndices, transposeIndices, (uint32_t)6, 8192);
-                    AscendC::PipeBarrier<PIPE_V>();
-                    AscendC::Add(transposeIndices.template ReinterpretCast<int32_t>(), transposeIndices.template ReinterpretCast<int32_t>(), transposeTemp.template ReinterpretCast<int32_t>(), 8192);
-                    AscendC::PipeBarrier<PIPE_V>();
-                    AscendC::ShiftLeft(transposeIndices, transposeIndices, (uint32_t)2, 8192);
-                    AscendC::PipeBarrier<PIPE_V>();
-                    auto result = transposeTemp.template ReinterpretCast<float>();
-                    AscendC::Gather(result, hUpdateUbTensor, transposeIndices, 0, 8192);
-                    AscendC::SetFlag<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
-                    AscendC::WaitFlag<AscendC::HardEvent::V_MTE3>(EVENT_ID0);
-                    AscendC::DataCopyParams params = {128, 8, 0, 8};
-                    AscendC::DataCopy(finalState[mOffset], result, params);
-                } else {
-                    AscendC::DataCopy(finalStateThisSubBlock, hUpdateUbTensor, mActualThisSubBlock * nActual);
-                }
+                AscendC::DataCopy(finalStateThisSubBlock, hUpdateUbTensor, mActualThisSubBlock * nActual);
             }
         } else {
             AscendC::PipeBarrier<PIPE_V>();
@@ -189,7 +164,6 @@ public:
     }
 
 private:
-    AscendC::LocalTensor<uint32_t> transposeIndices, transposeTemp;
     AscendC::LocalTensor<float> calcUbTensor;
 
     AscendC::LocalTensor<HElementInput> hUbTensor;

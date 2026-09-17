@@ -217,7 +217,7 @@ with torch.inference_mode():
         meta = _build_non_spec_chunked_prefill_metadata(
             builder, cpu, torch.device("npu")
         )
-        initial = seed[list(slot_ids[:n])].transpose(-1, -2).contiguous()
+        initial = seed[list(slot_ids[:n])].clone()
         flags = [not cold] * n if isinstance(cold, bool) else list(cold)
         flag_tensor = torch.tensor(flags, device="npu")[:, None, None, None]
         initial.copy_(torch.where(flag_tensor, initial, 0))
@@ -239,7 +239,7 @@ with torch.inference_mode():
         expected, final = oracle()
         torch.npu.synchronize()
         expected_bank = seed.clone()
-        expected_bank[list(slot_ids[:n])] = final.transpose(-1, -2)
+        expected_bank[list(slot_ids[:n])] = final
         checks = dict(
             output=compare(actual, expected), state=compare(actual_bank, expected_bank)
         )
@@ -252,7 +252,7 @@ with torch.inference_mode():
         initial.copy_(torch.where(flag_tensor, final, 0))
         expected2, final2 = oracle()
         torch.npu.synchronize()
-        expected_bank[list(slot_ids[:n])] = final2.transpose(-1, -2)
+        expected_bank[list(slot_ids[:n])] = final2
         checks.update(
             continuation_output=compare(second, expected2),
             continuation_state=compare(second_bank, expected_bank),
@@ -266,7 +266,7 @@ with torch.inference_mode():
         with torch.npu.graph(control):
             ref = oracle()
         row["native_fixed_graph_ms"] = measure(control)
-        native_bank = seed.clone()
+        native_bank = seed.transpose(-1, -2).contiguous()
         native_slots = torch.tensor(slot_ids[:n], dtype=torch.int64, device="npu")
 
         from vllm_ascend.ops.triton.fla.utils import clear_ssm_states
