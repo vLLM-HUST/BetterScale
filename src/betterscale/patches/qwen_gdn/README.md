@@ -24,7 +24,7 @@ is not a claim of arbitrary model or scheduling compatibility.
 
 ## Ownership and capacity
 
-Graphs are keyed by token capacity, not request-length partitions. Metadata has
+Graphs are keyed by token capacity and alternating bank (26 entries), not request-length partitions. Metadata has
 up to eight positive-length requests followed by empty rows and a permanent
 empty sentinel. Logical cu endpoints, request slots/cold flags and chunk-index
 rows change before replay. Unused chunk tasks target the sentinel. A one-token
@@ -36,16 +36,25 @@ The owned core receives real convolution endpoints and does not extend a real
 request into padded token space. H/O physical head/chunk strides use capacity,
 not the current logical token/chunk total.
 
-Metadata builders own stable device buffers and one H/O scratch engine per
-capacity, shared serially across their layer group. They initialize device PODs
+Metadata banks own stable device buffers and one H/O scratch engine per
+capacity/bank/group, shared serially across their layer group. They initialize device PODs
 before capture. Workspace/output lifetimes cover every graph that references
 them. Submission remains the pinned single-runner serial stream protocol;
 concurrent model threads/runners sharing these resources are unsupported.
 
-Metadata publication currently uses blocking pageable-source copies plus ordered
-device copies. It makes no pinned-slab lifetime or H2D-overlap claim. The existing
-native FIA parameter-update path is retained; this change does not claim to
-remove every attention update or capture sampling into the model graph.
+All GDN groups publish one packed pinned slab per wave on a separate ingress
+stream. Uploaded events protect host-slab reuse; consumed events protect the
+old device reader before a bank is overwritten. Compute waits uploaded on device.
+CPU block-table column0 and CPU sequence/query lengths produce slots, cold flags,
+all dtype variants and chunk tables without per-field GPU copies or Sub/Gt ops.
+Only mamba_cache_mode=none is supported. Empty large-block triangular-solve tasks
+skip the recurrence on device; the active arithmetic and donor merge stay intact.
+
+The native FIA parameter-update path has separate resources per bank/capacity
+and is retained. Native model input publication, sampling, D2H, scheduling and
+KV retirement are unchanged. This is not a full N+2 executor or sampling capture.
+The raw-ACL TASK_QUEUE_ENABLE=0 restriction remains. Pinned H2D safety must not
+be weakened to only non_blocking=True without both reuse fences.
 
 ## Deployment
 
@@ -100,3 +109,29 @@ C1/2048. Keep this as an opt-in configuration, not a universal faster default.
 Two warmed samples establish bounded behavior, not statistical certainty.
 Compact receipts and all round metrics: `docs/evidence/qwen-mixed-full.json`
 in the repository. This source integration has not been published to PyPI.
+
+
+### Dual-bank SWE acceptance
+
+`dualbank-service2` repeats the full shadow envelope above with alternating
+banks:5,676 comparisons max_abs0 plus independent host/device checks of every
+GDN metadata field. `dualbank-core1` retains the12 core/initial-H checks. Capture
+uses26 graphs and5.25GiB per rank in the diagnostic service (previous13-graph
+path about2.9GiB): the lower host gap trades extra graph/scratch memory.
+
+`dualbank-swe1` (source7115858), same hw3 cards6/7, sequential ABBA, two full
+8-session/78-call SWE cohorts per concurrency and arm,6GiB KV, no MTP/APC:
+
+| concurrency | native tokens/s | dual-bank MixedWorker | change |
+| --- | ---: | ---: | ---: |
+| 4 |70.021|75.092|+7.24%|
+| 8 |96.774|104.409|+7.89%|
+
+Mean TTFT1389→1205ms /1534→1349ms; mean TPOT48.01→44.96ms /
+63.05→58.03ms. Six-step separate profiles show steady model-to-model gaps
+about1.49ms, down from the prior candidate's4.8ms and near fresh native1.52ms.
+These are selected <=8K original-history traces, fixed recorded output budgets,
+no tool latency or accuracy claim; two matched repeats are not confidence bounds.
+The old C1 fixed-prompt regression above was not remeasured or claimed fixed.
+See `docs/evidence/qwen-dualbank.json` and
+`prototypes/qwen38-serving/DUALBANK-RESULTS.zh-CN.md` for provenance and timelines.

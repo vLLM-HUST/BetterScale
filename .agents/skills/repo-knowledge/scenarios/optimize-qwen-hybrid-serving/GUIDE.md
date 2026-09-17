@@ -601,7 +601,7 @@ past uncertain occupancy. Final campaign released its cards. Fletcher now permit
 local and hw3 cards5/6/7 for follow-up TP2 work; prefer those, still require fresh
 subset admission and preserve foreign work. This permission does not reserve them.
 
-### Alternating metadata banks (qualification in progress, 2026-09-17)
+### Alternating metadata banks (qualified, 2026-09-17)
 
 `qwen_gdn/publication.py` gives each capacity two descriptor keys and separate
 native FIA task-resource banks; partitions remain device metadata, never key
@@ -629,5 +629,25 @@ banks observed, every GDN host/device field independently compared during
 shadow. Diagnostic1GiB KV, not performance. `dualbank-service1` had captured
 successfully but probe RPC returned404: diagnostic `/collective_rpc` needs
 `VLLM_SERVER_DEV_MODE=1`; elastic_probe now sets it only for shadow subprocesses.
-Do not treat that harness failure as a model or graph failure. Whole-trajectory
-SWE and short TraceLoom validation still pending; don't infer net service gain.
+Do not treat that harness failure as a model or graph failure.
+
+`dualbank-swe1`, source7115858, same hw3 cards6/7 sequential native/candidate/
+candidate/native, same full8-session78-call fixture and6GiB KV: pooled C4
+70.021→75.092tok/s (+7.24%), C8 96.774→104.409 (+7.89%). Two repeats, no
+population/quality claim. Native queue1 versus candidate queue0 remains part of
+service configuration. Both arms'6-step profiles have identical schedules.
+TraceLoom rank0 steady gaps: candidate1.496/1.487/1.478ms, native1.478/1.535/
+1.554ms; historical candidate4.955/4.793/4.742ms. Mixed solve16 kernel sum
+10.522→4.604ms against historical candidate; don't attribute the entire native
+NONE→FULL343ms mixed body change to this incremental patch. Async stream40 has
+6copies, subsequent5 wholly inside previous body envelope,2.24–2.76us each;
+metadata-stream ownership is source-informed inference, not provider buffer IDs.
+`DUALBANK-RESULTS.zh-CN.md` and `docs/evidence/qwen-dualbank.json` retain results.
+Archive `runs/qwen38-tp2-serving/qwen-dualbank-traceloom-timelines.tar.gz` contains
+four pristine TraceLoom exports. All owned jobs exited0/cards reclaimed.
+
+`swe_compare.py` supports one physical pair as sequential ABBA as well as the
+original two-pair crossover. Keep the phase files cleared between sequential
+arms, and require fresh idle before every reload. One-pair whole campaign uses
+about50minutes including4model loads; admit with sufficient bounded runtime.
+`elastic_probe.py` owns enabling localhost diagnostic RPC only in shadow mode.

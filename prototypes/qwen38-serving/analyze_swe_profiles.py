@@ -34,6 +34,30 @@ def analyze(root, arm, rank):
                 where t.startNs>=? and t.endNs<=? group by s.value order by 3 desc""",
                 (step["start_ns"], step["end_ns"]),
             ).fetchall()
+        copies = c.execute("""select t.streamId,t.startNs,t.endNs from CANN_API a
+            join STRING_IDS s on s.id=a.name join TASK t using(connectionId)
+            where s.value='aclrtMemcpyAsync' order by t.startNs""").fetchall()
+        data["async_copy_streams"] = {}
+        for stream in sorted({r[0] for r in copies}):
+            rows = [(a, b) for st, a, b in copies if st == stream]
+            entry = dict(
+                count=len(rows), duration_us=sum(b - a for a, b in rows) / 1000
+            )
+            # A six-copy stream is a candidate for per-wave metadata, not buffer
+            # identity proof: the provider does not record our Python owner.
+            if len(rows) == len(data["steps"]):
+                entry["copies"] = [
+                    dict(
+                        duration_us=(b - a) / 1000,
+                        overlapped_model_steps=[
+                            s["step"]
+                            for s in data["steps"]
+                            if s["start_ns"] <= a and b <= s["end_ns"]
+                        ],
+                    )
+                    for a, b in rows
+                ]
+            data["async_copy_streams"][stream] = entry
         for i, (before, after) in enumerate(zip(data["steps"], data["steps"][1:])):
             lo, hi = before["end_ns"], after["start_ns"]
             current, following = dispatch[i]["scheduled"], dispatch[i + 1]["scheduled"]

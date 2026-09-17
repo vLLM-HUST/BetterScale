@@ -97,7 +97,7 @@ def main():
             )
             for c in (4, 8)
         },
-        limits="Eight selected <=8K trajectories, no APC/MTP, fixed output budgets, no tool latency. Two pair-swapped repeats, not population or confidence evidence. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps.",
+        limits="Eight selected <=8K trajectories, no APC/MTP, fixed output budgets, no tool latency. Two matched repeats (ordering in scope), not population or confidence evidence. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps.",
     )
     (root / "summary.json").write_text(json.dumps(output, indent=2) + "\n")
     print(
