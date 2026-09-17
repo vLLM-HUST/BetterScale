@@ -96,7 +96,7 @@ def install():
             num_scheduled_tokens_np[:] = SIGNATURE
             max_num_scheduled_tokens = max(SIGNATURE)
         exact = tuple(num_scheduled_tokens_np.tolist()) == SIGNATURE
-        decode = num_tokens == num_reqs and max_num_scheduled_tokens == 1
+        decode = num_tokens == num_reqs and bool((num_scheduled_tokens_np == 1).all())
         if not exact and not decode:
             kwargs["force_eager"] = True
         return original_determine(
