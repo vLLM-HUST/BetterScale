@@ -19,7 +19,9 @@ assert all(n > 1 for n in SIGNATURE[DECODES:])
 TOKENS = sum(SIGNATURE)
 COEXIST = os.environ.get("MIXED_COEXIST") == "1"
 SIGNATURES = (
-    ((2048,), (1, 1, 1024, 1022), (1, 512), (1, 1, 1, 514)) if COEXIST else (SIGNATURE,)
+    ((2048,), (1, 1, 1024, 1022), (1, 1, 1022, 1024), (1, 512), (1, 1, 1, 514))
+    if COEXIST
+    else (SIGNATURE,)
 )
 
 
@@ -250,6 +252,9 @@ class Worker(BaseWorker):
         assert vllm_config.speculative_config is None
         assert not vllm_config.cache_config.enable_prefix_caching
         assert vllm_config.parallel_config.tensor_parallel_size == 2
+        assert vllm_config.parallel_config.data_parallel_size == 1
+        assert vllm_config.parallel_config.prefill_context_parallel_size == 1
+        assert vllm_config.lora_config is None
         install()
         super().__init__(vllm_config, *args, **kwargs)
 

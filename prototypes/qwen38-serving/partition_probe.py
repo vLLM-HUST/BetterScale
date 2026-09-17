@@ -15,7 +15,7 @@ root = Path(os.environ["CAPSULE"])
 width = 2048
 url = "http://127.0.0.1:32181"
 prompt = json.loads((root / "prompt.json").read_text())["prompt_token_ids"]
-prompts = {n: (prompt * 4)[:n] for n in [512, 514, 1024, 1536, 2048]}
+prompts = {n: (prompt * 4)[:n] for n in [512, 514, 1022, 1024, 1536, 2048]}
 command = [
     sys.executable,
     "-m",
@@ -99,7 +99,11 @@ try:
 
     def joined_cohort(partition):
         decodes = next(i for i, n in enumerate(partition) if n > 1)
-        lengths = [1024, 1536] if len(partition) - decodes == 2 else [partition[-1]]
+        lengths = (
+            [partition[decodes], 1536]
+            if len(partition) - decodes == 2
+            else [partition[-1]]
+        )
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=len(partition) + 1
         ) as pool:
@@ -124,10 +128,12 @@ try:
     order = [
         (2048,),
         (1, 1, 1024, 1022),
+        (1, 1, 1022, 1024),
         (1, 512),
         (1, 1, 1, 514),
         (2048,),
         (1, 1, 1024, 1022),
+        (1, 1, 1022, 1024),
     ]
     for i, partition in enumerate(order):
         rpc("arm_mixed_shadow", 1, list(partition))
@@ -138,6 +144,10 @@ try:
         )
         shadow = rpc("mixed_shadow_result")
         assert all(x["passed"] for x in shadow["results"]), shadow
+        for rank in shadow["results"]:
+            banks = list(rank["resource_banks"].values())
+            assert len(banks) == 5 and len({b["bank_id"] for b in banks}) == 5
+            assert all(b["handles"] == b["events"] == 16 for b in banks)
         receipt["rows"].append(dict(partition=partition, requests=row, shadow=shadow))
         path.write_text(json.dumps(receipt, indent=2))
     receipt["status"] = "PASS"
