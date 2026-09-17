@@ -1,0 +1,44 @@
+{
+  "capsule": "qwen38-model-20260917T120404Z",
+  "source": 0,
+  "rank": 0,
+  "wave": 52,
+  "wave_ms": 424.97673723846674,
+  "phases": {
+    "wave": 52,
+    "begin_prepare": 5362480.171290077,
+    "submitted": 5362480.172428939,
+    "valid_readback": 5362480.593303352,
+    "logits_readback": 5362480.595568506,
+    "token_agreement": 5362480.597096033
+  },
+  "gc_events": [
+    {
+      "kind": "gc",
+      "phase": "start",
+      "time": 5362480.177515923,
+      "thread": 281468416222944,
+      "generation": 2,
+      "collected": 0,
+      "uncollectable": 0
+    },
+    {
+      "kind": "gc",
+      "phase": "stop",
+      "time": 5362480.557422608,
+      "thread": 281468416222944,
+      "generation": 2,
+      "collected": 0,
+      "uncollectable": 0
+    }
+  ],
+  "gc_ms": 379.9066850915551,
+  "interpretation": "Gen2 GC consumed379.9ms inside the slow wave; bounded cyclic-GC deferral removes the pause, leaving wave52 at42.1ms. Not expert GEMM latency. Production GC policy unchanged.",
+  "causal_control": {
+    "capsule": "qwen38-model-20260917T120738Z",
+    "bounded_gc_deferral": true,
+    "wave52_ms": 42.07115061581135,
+    "max_steady_ms": 44.960721395909786,
+    "gc_events_inside_window": 0
+  }
+}

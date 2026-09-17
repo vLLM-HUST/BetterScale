@@ -125,3 +125,30 @@ explicit QWEN38 model/reference/Python environment overrides. Only two original
 Qwen shards are needed for the three PLE integer fields. Do not copy or download
 the entire original model to restore those buffers. A dummy INT8 FULL-graph gate
 passed on hw0; full-model admission waits behind the direct download receipts.
+
+
+hw0 subsequently passed full48 two-source graph service. A cold four-wave test
+observed0 co-batches because independent cold/capture work shifted the sources;
+do not use that as evidence that the coordinator cannot batch. A once-only
+post-capture rendezvous plus63 replays/source produced689–694 paired waves per
+server (calls[3168,3168]); no per-layer barriers were imposed. Same-State errors
+were0 and complete output IDs matched single-source controls. Read the qwen38
+README/result before quoting scaling: both single-source controls had a400–493ms
+pause at wave52, making the raw >2x ratio unsuitable as a clean server gain.
+At that point the cause was unproven; subsequent GC evidence is below.
+Typical source step medians were42–43ms alone and46ms together. These are6-card
+vs8-card, identical-prompt, target-only short windows, not equal-card or online
+workload evaluation. Ring-tail records can contain no pairs despite nonzero
+full-run pairing; never label a vacuous sample check as observed layer parity.
+
+
+The pause is now causally localized:120404Z records a379.9ms generation2 GC
+inside the425ms wave52, collecting0objects. Deferring cyclic GC only for the
+bounded steady window removes it (wave52 becomes42.1ms). Keep default production
+GC unchanged. `--observe-pauses` exposes timestamps; `--defer-steady-gc` is an
+explicit <=96-step measurement control with collection before and after.
+Both controls yield23.24tok/s(one TP2+E4,6cards) vs44.38tok/s(two TP2+E4,8cards),
+zero shadow errors, identical token IDs. In this controlled dual run pairing is
+only48waves/owner, not the earlier689–694: concurrent-source capacity gain is
+not evidence that co-batching alone caused the scaling. See GC result and
+comparison receipts. Do not discard the original pauses or report raw >2x.

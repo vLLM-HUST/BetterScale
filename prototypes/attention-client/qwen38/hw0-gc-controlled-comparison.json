@@ -1,0 +1,74 @@
+{
+  "scope": "hw0 same E4 pool, one vs two TP2 sources, same short prompt; not equal-card colocated baseline or online throughput",
+  "timing": "63 target decode replays/source; excludes prefill and capture, includes all observed pauses; host wall time",
+  "runs": [
+    {
+      "capsule_roles": "runs/qwen38-hw0-results-20260917/gc-single-roles",
+      "attention_sources": 1,
+      "deferred_steady_gc": true,
+      "physical_cards": 6,
+      "steady_seconds": 2.7107615154236555,
+      "output_tokens": 63,
+      "output_tokens_per_second": 23.24070178860937,
+      "sources": [
+        {
+          "source": 0,
+          "steps": 63,
+          "median_ms": 42.093790136277676,
+          "p95_ms": 42.40613430738449,
+          "max_ms": 44.960721395909786,
+          "mean_ms": 42.1380941416063
+        }
+      ],
+      "graph_shadow_relative_l2": [
+        0.0,
+        0.0
+      ],
+      "full_run_paired_waves": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "capsule_roles": "runs/qwen38-hw0-results-20260917/gc-dual-roles",
+      "attention_sources": 2,
+      "deferred_steady_gc": true,
+      "physical_cards": 8,
+      "steady_seconds": 2.838905076496303,
+      "output_tokens": 126,
+      "output_tokens_per_second": 44.38330856609889,
+      "sources": [
+        {
+          "source": 0,
+          "steps": 63,
+          "median_ms": 44.14202179759741,
+          "p95_ms": 45.285845175385475,
+          "max_ms": 46.32032662630081,
+          "mean_ms": 44.12660821680984
+        },
+        {
+          "source": 1,
+          "steps": 63,
+          "median_ms": 43.65698713809252,
+          "p95_ms": 44.82178017497063,
+          "max_ms": 46.37567698955536,
+          "mean_ms": 43.632726406767254
+        }
+      ],
+      "graph_shadow_relative_l2": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "full_run_paired_waves": [
+        48,
+        48,
+        48,
+        48
+      ]
+    }
+  ]
+}

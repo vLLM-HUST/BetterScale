@@ -181,7 +181,7 @@ Reproducer: `bash prototypes/attention-client/qwen38/run_model.sh 2,3,4,5,6,7 --
 The private native closure and repaired original checkpoint dependency described
 above are required. Published Worker defaults and other model lanes are unchanged.
 
-## Two independent attention sources (integration in progress)
+## Two independent attention sources
 
 `run_model.sh 0,1,2,3,4,5,6,7 --sources 2 --decode-graph` starts two
 independent TP2 attention groups on cards0..3 and the shared E4 on cards4..7.
@@ -210,3 +210,90 @@ or dual-source correctness qualification is claimed from that attempt. The
 second admission also reached real weight loading, then stopped for a new
 foreign owner. Both capsules are rejected; no job remains queued. The previously
 passed six-card single-source result remains a separate qualification.
+
+
+### hw0 qualification: two sources sharing the same E4 pool
+
+After direct pinned ModelScope download and exact PLE metadata validation, the
+full48 W8A8 target passed on **two independent TP2 groups plus E4**. All four
+attention ranks have zero same-State eager/FULL-graph hidden relative L2. The
+65-token output sequences match across both sources and both single-source
+controls. No MTP, broad language quality, or large-prefill claim follows.
+
+Cold-start/capture skew made the initial four-wave dual-source gate observe
+**zero** co-batching. The next fixture rendezvous **once** after capture, then
+runs63 continuous decode replays/source without per-step or per-layer barriers.
+The two sources have independent State but the same short prompt, a favorable
+routing-locality case rather than a diverse workload.
+
+| Configuration | Cards | Steady output tokens/s | Per-source step median |
+| --- | ---: | ---: | ---: |
+| One TP2 source + E4, first control | 6 | 19.41 | 43.45 ms |
+| One TP2 source + E4, repeat | 6 | 20.53 | 42.13 ms |
+| Two TP2 sources + the same E4 | 8 | 42.28 aggregate | 46.21–46.45 ms |
+
+**Do not present the raw >2x ratio as a clean scaling gain.** The two controls
+both stall at wave52 (493ms and401ms); the later GC probe below explains why. All pauses
+are retained, not silently excluded. The more conservative observation is that
+serving a second source increases typical step cost by about7–10%, while the
+expert pool stays at four devices. This is a short closed-loop decode test,
+not equal-card native-vs-separated serving or SLO-qualified online throughput.
+
+The dual-source servers each complete `[3168,3168]` layer calls, in5642–5647
+compute waves: **689–694 paired waves per server**, about22% of source calls
+co-batched over the full run (including warm-up). The64-entry ring tail happens
+to contain no pairs, so it supplies no sampled paired-layer verification here;
+the exact aggregate count comes from completed calls minus compute waves.
+
+[Compact comparison](hw0-concurrency-result.json) records all three timing runs
+and capsule identities. `compare_sources.py` recomputes the timing without
+removing outliers; `analyze_concurrency.py` computes owner co-batching counts.
+Full role receipts are retained in local `runs/qwen38-hw0-results-20260917/`
+and the corresponding hw0 capsules. All admitted jobs exited0 and released
+owned devices; the download and campaign waiters finished.
+
+
+### Long-pause cause and controlled comparison
+
+The instrumented single-source run120404Z again pauses at wave52:425ms total.
+Its generation2 Python GC lasts**379.9ms**, entirely inside replay submission to
+validity readback, collecting**zero** objects. The paired TP rank waits too.
+With `--defer-steady-gc`, wave52 becomes42.1ms and max steady latency stays below
+45ms. [GC evidence](hw0-gc-pause-result.json) records the intervals and causal
+control. This is host cyclic-GC interference, not400ms of expert GEMM.
+
+This option collects before the once-only steady-start rendezvous, disables
+cyclic GC for at most96 steps, then restores it and collects after measurement.
+Reference counting stays active. It is a **bounded experimental control**, not
+an adopted production GC policy or permission to disable GC indefinitely.
+`--observe-pauses` records GC/host phase times only when explicitly selected.
+
+The [same-GC-condition comparison](hw0-gc-controlled-comparison.json) is the
+cleaner result (63 post-capture decode steps/source, unchanged output IDs):
+
+| Same E4 pool | Cards | Aggregate output tokens/s | Per-source step median |
+| --- | ---: | ---: | ---: |
+| One TP2 attention source | 6 | 23.24 | 42.09 ms |
+| Two TP2 attention sources | 8 | 44.38 | 43.66–44.14 ms |
+
+That is**1.91x aggregate output rate**, for two additional attention cards and
+about**4–5% higher typical per-source latency**. No steady-window GC occurred;
+all same-State graph errors remain0. This supports the pool's ability to serve
+concurrent attention sources, not an equal-card advantage over colocated vLLM.
+
+Each owner in this controlled dual run completed3168 calls/source but only48
+paired waves over the full run, versus689–694 in the earlier dual run. Pairing
+is sensitive to relative layer phase. **Do not attribute all throughput scaling
+to co-batching, or claim a stable co-batch rate from these short runs.**
+
+Reproduce either source count with the corresponding6/8 admitted cards:
+
+```bash
+bash prototypes/attention-client/qwen38/run_model.sh 0,1,2,3,4,5,6,7 \
+  --sources 2 --decode-graph --decode-steps 64 --align-steady-start \
+  --observe-pauses --defer-steady-gc
+```
+
+The single-source control retains attention cards0/1 and expert cards4..7:
+use devices `0,1,4,5,6,7` and `--sources 1`. The hw0 capsules are120738Z
+(single) and121027Z(dual), both under `runs/qwen38-model-20260917T...`.

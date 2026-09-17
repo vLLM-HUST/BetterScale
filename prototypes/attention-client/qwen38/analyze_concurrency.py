@@ -30,7 +30,7 @@ def summarize(directory):
                 paired_waves=sum(counts) - result["waves"],
                 sampled_waves=len(records),
                 sampled_paired_waves=len(paired),
-                sampled_pairs_same_layer=True,
+                sampled_paired_layer_check="pass" if paired else "no_pairs_in_sample",
                 rolling_trace=result["rolling_trace"],
                 admitted_promotions=result["admitted_promotions"],
             )

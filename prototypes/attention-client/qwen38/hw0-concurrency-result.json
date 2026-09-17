@@ -1,0 +1,126 @@
+{
+  "scope": "hw0 same E4 pool, one vs two TP2 sources, same short prompt; not equal-card colocated baseline or online throughput",
+  "timing": "63 target decode replays/source; excludes prefill and capture, includes all observed pauses; host wall time",
+  "runs": [
+    {
+      "capsule_roles": "runs/qwen38-hw0-results-20260917/single-roles",
+      "attention_sources": 1,
+      "physical_cards": 6,
+      "steady_seconds": 3.245568096637726,
+      "output_tokens": 63,
+      "output_tokens_per_second": 19.41108555548885,
+      "sources": [
+        {
+          "source": 0,
+          "steps": 63,
+          "median_ms": 43.44534873962402,
+          "p95_ms": 44.352260418236256,
+          "max_ms": 493.2908248156309,
+          "mean_ms": 50.63078463787124
+        }
+      ],
+      "graph_shadow_relative_l2": [
+        0.0,
+        0.0
+      ],
+      "full_run_paired_waves": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "capsule_roles": "runs/qwen38-hw0-results-20260917/single-repeat-roles",
+      "attention_sources": 1,
+      "physical_cards": 6,
+      "steady_seconds": 3.068746601231396,
+      "output_tokens": 63,
+      "output_tokens_per_second": 20.52955430556566,
+      "sources": [
+        {
+          "source": 0,
+          "steps": 63,
+          "median_ms": 42.12661460042,
+          "p95_ms": 42.72395186126232,
+          "max_ms": 400.6518889218569,
+          "mean_ms": 47.8489687370639
+        }
+      ],
+      "graph_shadow_relative_l2": [
+        0.0,
+        0.0
+      ],
+      "full_run_paired_waves": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "capsule_roles": "runs/qwen38-hw0-results-20260917/steady-roles",
+      "attention_sources": 2,
+      "physical_cards": 8,
+      "steady_seconds": 2.980136463418603,
+      "output_tokens": 126,
+      "output_tokens_per_second": 42.2799430652453,
+      "sources": [
+        {
+          "source": 0,
+          "steps": 63,
+          "median_ms": 46.44799418747425,
+          "p95_ms": 48.435636796057224,
+          "max_ms": 49.791282042860985,
+          "mean_ms": 46.494177705238734
+        },
+        {
+          "source": 1,
+          "steps": 63,
+          "median_ms": 46.21220100671053,
+          "p95_ms": 48.39088674634695,
+          "max_ms": 49.64171163737774,
+          "mean_ms": 46.397525418017594
+        }
+      ],
+      "graph_shadow_relative_l2": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "full_run_paired_waves": [
+        689,
+        694,
+        693,
+        693
+      ]
+    }
+  ],
+  "qualification": {
+    "model_revision": "c76aa96a5e730de35211d1b0b3d05cc3c67efae5",
+    "checkpoint": "exact original PLE integer metadata repaired",
+    "all_output_sequences_identical": true,
+    "short_initial_dual_source_paired_waves": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "single_source_long_pause_waves": [
+      52,
+      52
+    ],
+    "single_source_long_pause_ms": [
+      493.2908248156309,
+      400.6518889218569
+    ],
+    "interpretation": "Raw >2x is contaminated by repeated single-source GC pauses. See hw0-gc-pause-result.json for cause and hw0-gc-controlled-comparison.json for same-condition1.91x. No equal-card native baseline, large-prefill or quality claim."
+  },
+  "remote_capsules": {
+    "short": "qwen38-model-20260917T114250Z",
+    "dual": "qwen38-model-20260917T115156Z",
+    "single": "qwen38-model-20260917T115515Z",
+    "single_repeat": "qwen38-model-20260917T115843Z"
+  }
+}

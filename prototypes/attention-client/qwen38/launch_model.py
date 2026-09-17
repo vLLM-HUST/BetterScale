@@ -17,6 +17,10 @@ p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
 p.add_argument("--artifacts", type=Path)
 p.add_argument("--sources", type=int, choices=(1, 2), default=1)
+p.add_argument("--decode-steps", type=int, default=3)
+p.add_argument("--align-steady-start", action="store_true")
+p.add_argument("--observe-pauses", action="store_true")
+p.add_argument("--defer-steady-gc", action="store_true")
 a = p.parse_args()
 devices = a.devices.split(",")
 assert (
@@ -68,7 +72,17 @@ try:
             f"attention{physical_rank}",
             "model_client.py",
             common
-            + ["--source", str(source)]
+            + [
+                "--source",
+                str(source),
+                "--sources",
+                str(a.sources),
+                "--decode-steps",
+                str(a.decode_steps),
+            ]
+            + (["--align-steady-start"] if a.align_steady_start else [])
+            + (["--observe-pauses"] if a.observe_pauses else [])
+            + (["--defer-steady-gc"] if a.defer_steady_gc else [])
             + (["--construct-only"] if a.construct_only else [])
             + (["--decode-graph"] if a.decode_graph else []),
             devices[physical_rank],

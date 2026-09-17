@@ -66,3 +66,20 @@ Do not let a cancelled goal leave this waiter or the downloader alive.
 At07:45 UTC the direct download held about22GiB locally and was still running;
 no full-model dual-source qualification had occurred. Recheck receipt/process
 identity rather than inferring completion from that size.
+
+
+## Completion
+
+Direct quantized snapshot completed11:29 UTC; the partial original snapshot
+and exact PLE repair then passed. The scheduled first dual-source gate and the
+subsequent warm dual-source/single-source controls completed normally; receipts
+and interpretation are in README and `hw0-concurrency-result.json`. Downloader
+32973/32974 and campaign35910 have exited. No continuing NPU job or waiter is
+owned by this campaign. Preserve the downloaded snapshots for subsequent work.
+
+
+The follow-up localized the wave52 pause to generation2 Python GC and qualified
+same-GC-condition single/dual controls. Current authoritative performance receipt
+is `hw0-gc-controlled-comparison.json`; prior raw timings remain preserved.
+No production GC default was changed. Final comparison capsules are120738Z and
+121027Z; both exited0, with all role outputs equal and all graph shadows0.

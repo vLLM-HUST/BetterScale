@@ -7,6 +7,8 @@ suite. Decode graph qualification follows the eager all-layer gate.
 import argparse
 import ctypes as C
 import faulthandler
+import gc
+import threading
 import json
 import os
 import time
@@ -19,7 +21,15 @@ p.add_argument("--build", type=Path, required=True)
 p.add_argument("--construct-only", action="store_true")
 p.add_argument("--decode-graph", action="store_true")
 p.add_argument("--source", type=int, choices=(0, 1), default=0)
+p.add_argument("--sources", type=int, choices=(1, 2), default=1)
+p.add_argument("--decode-steps", type=int, default=3)
+p.add_argument("--align-steady-start", action="store_true")
+p.add_argument("--observe-pauses", action="store_true")
+p.add_argument("--defer-steady-gc", action="store_true")
 a = p.parse_args()
+assert 3 <= a.decode_steps <= 96
+assert not a.align_steady_start or a.decode_graph
+assert not a.defer_steady_gc or a.align_steady_start
 rank = int(os.environ["RANK"])
 faulthandler.dump_traceback_later(240, repeat=False)
 
@@ -124,10 +134,32 @@ with (
         ids = [9707, 11, 1879]
         generated = []
         wave_seconds = []
+        wave_started_seconds = []
+        pause_events = []
+        gc_was_enabled = gc.isenabled()
+        wave_phases = []
+
+        def observe_gc(phase, info):
+            pause_events.append(
+                dict(
+                    kind="gc",
+                    phase=phase,
+                    time=time.monotonic(),
+                    thread=threading.get_ident(),
+                    main_thread=threading.get_ident() == threading.main_thread().ident,
+                    **info,
+                )
+            )
+
+        if a.observe_pauses:
+            gc.callbacks.append(observe_gc)
         decode_graph = None
         decode_inputs = None
         graph_shadow_error = None
-        for wave in range(4):
+        for wave in range(1 + a.decode_steps):
+            if a.observe_pauses:
+                phases = {"wave": wave, "begin_prepare": time.monotonic()}
+                wave_phases.append(phases)
             count = len(ids)
             start = 0 if wave == 0 else 3 + wave - 1
             tokens = torch.tensor([ids], dtype=torch.long, device="npu")
@@ -161,7 +193,26 @@ with (
                         destination_generations=identities,
                     )
 
+            if a.align_steady_start and wave == 2:
+                # A single measurement-boundary rendezvous removes cold loading /
+                # capture skew. No per-layer or per-step batching barrier follows.
+                torch.npu.synchronize()
+                if a.defer_steady_gc:
+                    # Causal timing control only: bounded <=96-step window.
+                    # Refcounts remain active; cyclic GC is restored at teardown.
+                    gc.collect()
+                    gc.disable()
+                (a.directory / f"steady-ready-{2 * a.source + rank}").touch()
+                deadline = time.monotonic() + 180
+                while not all(
+                    (a.directory / f"steady-ready-{i}").exists()
+                    for i in range(2 * a.sources)
+                ):
+                    if time.monotonic() > deadline:
+                        raise TimeoutError("other attention source did not warm up")
+                    time.sleep(0.001)
             wave_started = time.monotonic()
+            wave_started_seconds.append(wave_started)
             if a.decode_graph and wave == 1:
                 # Preserve the exact post-prefill State for eager-vs-replay.
                 # Full copies are a correctness-fixture cost, never serving work.
@@ -207,20 +258,34 @@ with (
                 hidden, _, _, valid = graph_output
             else:
                 hidden, _, _, valid = forward()
+            if a.observe_pauses:
+                phases["submitted"] = time.monotonic()
             assert bool(valid[:count].all().cpu())
+            if a.observe_pauses:
+                phases["valid_readback"] = time.monotonic()
             logits = root.compute_logits(hidden[:, -1:])
             assert not bool(torch.isnan(logits).any().cpu())
+            if a.observe_pauses:
+                phases["logits_readback"] = time.monotonic()
             token = logits.argmax(-1).reshape(1)
             agreed = [torch.empty_like(token) for _ in range(2)]
             torch.distributed.all_gather(agreed, token)
             assert torch.equal(agreed[0], agreed[1])
             ids = [int(token.cpu()[0])]
+            if a.observe_pauses:
+                phases["token_agreement"] = time.monotonic()
             generated.extend(ids)
             wave_seconds.append(time.monotonic() - wave_started)
             stage("wave", wave=wave, token=ids[0], seconds=wave_seconds[-1])
             if wave == 0:
                 for hook in hooks:
                     hook.remove()
+        if a.defer_steady_gc:
+            if gc_was_enabled:
+                gc.enable()
+            gc.collect()
+        if a.observe_pauses:
+            gc.callbacks.remove(observe_gc)
         if decode_graph is not None:
             decode_graph.reset()
         ple.close()
@@ -230,10 +295,16 @@ with (
             json.dumps(
                 dict(
                     status="PASS",
-                    scope="full48 target, real PLE, four waves; not quality",
+                    scope="full48 target, real PLE; not quality",
                     output_ids=generated,
                     source=a.source,
                     wave_seconds=wave_seconds,
+                    wave_started_seconds=wave_started_seconds,
+                    decode_steps=a.decode_steps,
+                    aligned_steady_start=a.align_steady_start,
+                    pause_events=pause_events,
+                    deferred_steady_gc=a.defer_steady_gc,
+                    wave_phases=wave_phases if a.observe_pauses else [],
                     timing_scope="host wall time; wave1 includes capture and shadow when enabled",
                     calls=count,
                     decode_graph=bool(a.decode_graph),
