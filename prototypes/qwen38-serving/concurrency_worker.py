@@ -13,8 +13,8 @@ else:
 class Worker(Base):
     window = None
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def load_model(self, *args, **kwargs):
+        result = super().load_model(*args, **kwargs)
         runner = self.model_runner
         original = runner._determine_batch_execution_and_padding
 
@@ -46,6 +46,7 @@ class Worker(Base):
             return result
 
         runner._determine_batch_execution_and_padding = determine
+        return result
 
     def profile(self, is_start=True, profile_prefix=None):
         if is_start:
