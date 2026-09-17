@@ -79,7 +79,12 @@ def main():
     p.add_argument(
         "--arm", choices=["sync", "async", "mtp1", "mtp2", "mtp3"], required=True
     )
-    p.add_argument("--model", default="/models/vllm-ascend-models/Qwen3.8-27B")
+    p.add_argument(
+        "--model",
+        default=os.environ.get(
+            "QWEN_MODEL_PATH", "/models/vllm-ascend-models/Qwen3.8-27B"
+        ),
+    )
     p.add_argument("--port", type=int, default=32181)
     p.add_argument("--profile", action="store_true")
     a = p.parse_args()

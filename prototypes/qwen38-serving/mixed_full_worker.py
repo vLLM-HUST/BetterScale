@@ -53,10 +53,13 @@ def install():
         if lengths not in SIGNATURES:
             return result
         decodes = next(i for i, n in enumerate(lengths) if n > 1)
-        assert (result.num_decodes, result.num_prefills) == (
+        if (result.num_decodes, result.num_prefills) != (
             decodes,
             len(lengths) - decodes,
-        )
+        ):
+            # A one-token tail of a prompt is still prefill, not decode.
+            # Dispatch rejects that role mismatch before choosing a FULL key.
+            return result
         # Unused by the pinned Ascend conv path; do not retain alternate Triton
         # metadata whose host values need not have graph-stable identity.
         result.nums_dict = result.batch_ptr = result.token_chunk_offset_ptr = None
@@ -133,6 +136,11 @@ def install():
             max_num_scheduled_tokens = max(dummy_signature)
         partition = tuple(num_scheduled_tokens_np.tolist())
         exact = partition in SIGNATURES
+        if exact and dummy_signature is None:
+            prefix = next(i for i, n in enumerate(partition) if n > 1)
+            computed = self.input_batch.num_computed_tokens_cpu_tensor[:prefix]
+            prompts = self.input_batch.num_prompt_tokens_cpu_tensor[:prefix]
+            exact = bool((computed >= prompts).all())
         if hasattr(self, "_mixed_shapes"):
             shape = str(tuple(num_scheduled_tokens_np.tolist()))
             self._mixed_shapes[shape] = self._mixed_shapes.get(shape, 0) + 1
