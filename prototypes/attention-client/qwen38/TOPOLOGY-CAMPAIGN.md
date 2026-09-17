@@ -275,3 +275,22 @@ unlike TP2's constant single-head expression. The e overlay replaces them with
 separate affine per-head loads/stores. This is a hypothesis until the paired
 `probe_qsa_gather_cost.py` and full2051-slot correctness gate complete; do not
 quote its expected benefit as measured throughput.
+
+### Timed traceback crash and active-gather result
+
+The TP2-E4 reproduction `191957Z` was observed under GDB. Attention1's SIGSEGV
+is in CPython3.12 `dump_frame -> dump_traceback -> _Py_DumpTracebackThreads ->
+faulthandler_thread`, triggered by our240-second `dump_traceback_later`, not in
+an expert kernel. That scheduled traceback has been removed; external role
+supervision remains bounded. This localizes the reproduced fault, not a claim
+that all historical signals have been independently assigned. Full traces need
+rerunning without the diagnostic timer.
+
+The paired active gather probe validates the e hypothesis. For128 query rows,
+2051 selected slots,2 KV heads and1024 valid selections/query, d takes
+371.23–371.64ms versus e0.911–0.918ms. Head1 is unchanged (~0.73ms).
+Both match the independent cache-row oracle exactly. See
+`qsa-active-result.json` for all three samples, including an outlier41.68ms in
+the e count128 case; no sample is deleted. This is a layout-lowering repair,
+not an expert-server speedup or a completed end-to-end result. The e full
+publication/gather/FIA graph oracle gates the next topology runs.

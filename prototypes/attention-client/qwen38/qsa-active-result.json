@@ -1,0 +1,113 @@
+{
+  "scope": "hw0 single-card dummy QSA gather; 128 rows, 2051 slots, same cache and selection geometry; not model throughput",
+  "versions": {
+    "d": [
+      {
+        "heads": 1,
+        "count": 128,
+        "rows": 128,
+        "selected": 2051,
+        "milliseconds": [
+          0.7608799934387207,
+          0.9659000039100647,
+          0.5432599782943726
+        ],
+        "status": "PASS",
+        "median_ms": 0.7608799934387207
+      },
+      {
+        "heads": 1,
+        "count": 1024,
+        "rows": 128,
+        "selected": 2051,
+        "milliseconds": [
+          0.738860011100769,
+          0.7363600134849548,
+          0.7276800274848938
+        ],
+        "status": "PASS",
+        "median_ms": 0.7363600134849548
+      },
+      {
+        "heads": 2,
+        "count": 128,
+        "rows": 128,
+        "selected": 2051,
+        "milliseconds": [
+          52.6434211730957,
+          93.69635772705078,
+          52.537960052490234
+        ],
+        "status": "PASS",
+        "median_ms": 52.6434211730957
+      },
+      {
+        "heads": 2,
+        "count": 1024,
+        "rows": 128,
+        "selected": 2051,
+        "milliseconds": [
+          371.3756408691406,
+          371.2346496582031,
+          371.6439514160156
+        ],
+        "status": "PASS",
+        "median_ms": 371.3756408691406
+      }
+    ],
+    "e": [
+      {
+        "heads": 1,
+        "count": 128,
+        "rows": 128,
+        "selected": 2051,
+        "milliseconds": [
+          0.7401599884033203,
+          0.9728400111198425,
+          0.5449600219726562
+        ],
+        "status": "PASS",
+        "median_ms": 0.7401599884033203
+      },
+      {
+        "heads": 1,
+        "count": 1024,
+        "rows": 128,
+        "selected": 2051,
+        "milliseconds": [
+          0.7392200231552124,
+          0.7330399751663208,
+          0.7281799912452698
+        ],
+        "status": "PASS",
+        "median_ms": 0.7330399751663208
+      },
+      {
+        "heads": 2,
+        "count": 128,
+        "rows": 128,
+        "selected": 2051,
+        "milliseconds": [
+          0.8351200222969055,
+          41.67610168457031,
+          0.7687199711799622
+        ],
+        "status": "PASS",
+        "median_ms": 0.8351200222969055
+      },
+      {
+        "heads": 2,
+        "count": 1024,
+        "rows": 128,
+        "selected": 2051,
+        "milliseconds": [
+          0.9151399731636047,
+          0.9107999801635742,
+          0.9184399843215942
+        ],
+        "status": "PASS",
+        "median_ms": 0.9151399731636047
+      }
+    ]
+  }
+}

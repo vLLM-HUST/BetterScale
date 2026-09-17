@@ -314,3 +314,11 @@ format before loading weights. See the campaign for the separate full-model
 fit and unresolved long-run SIGSEGV receipts; passing this leaf does not certify
 SWE completion. For head-major two-head gathers, inspect active stores too:
 affine inactive zeroing alone does not remove active vector-scatter lowering.
+
+The observed hw0 long-run SIGSEGV reproduction is inside CPython3.12's timed
+`faulthandler_thread` walking frames, not an NPU operator. Do not reintroduce
+`dump_traceback_later` into these clients as a routine progress diagnostic.
+Use the external deadline and bounded role logs; capture native stacks only
+when diagnosing a real failure. The e active per-head gather probe also
+confirmed the vector-scatter tax (371ms ->0.915ms at2heads/count1024); retain
+full-model and throughput qualification separately.

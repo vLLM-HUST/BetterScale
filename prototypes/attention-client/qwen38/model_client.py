@@ -63,7 +63,9 @@ assert not a.align_steady_start or a.decode_graph
 assert not a.defer_steady_gc or a.align_steady_start
 physical_rank = int(os.environ["RANK"])
 rank = physical_rank % a.tp_size if a.colocated else physical_rank
-faulthandler.dump_traceback_later(240, repeat=False)
+# The Python3.12 timed traceback thread itself SIGSEGVed in dump_frame on
+# hw0 during a long trace. Use the external bounded supervisor; retain
+# signal-triggered faulthandler without a periodic thread walking live frames.
 
 
 def stage(name, **extra):
@@ -439,5 +441,4 @@ with (
         )
     root.close() if hasattr(root, "close") else None
 torch.distributed.destroy_process_group()
-faulthandler.cancel_dump_traceback_later()
 stage("done")
