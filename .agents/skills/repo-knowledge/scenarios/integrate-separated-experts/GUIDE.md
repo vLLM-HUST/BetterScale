@@ -283,3 +283,16 @@ now consumes <=128 queries at a time and gathers directly into head-major FIA
 storage; Q/indexer/top-k remain whole-wave and exact. The8-case leaf gate covers
 one/two heads and chunk boundaries, but does not by itself qualify full-model
 capacity or timing. Apply the same overlay to TP2 controls for fair comparison.
+
+
+The first head-major QSA version (c) passed leaf correctness and long-prefix
+memory fits but made short-prefix prefill catastrophically slow. Layer events
+isolated12 QSA intervals (~2.94s each) while all MoE took only0.232s. Inactive
+padding zero stores must remain affine/contiguous per KV head; vector modulo
+address expressions can trigger costly scatter lowering. The d overlay restores
+that form. Always include full2051 selected slots with mostly inactive padding
+in this gate. A long-prefix capacity gate is not a substitute for short-prefix
+performance. Native MC2 stack snapshots during slow warmup were not proof of a
+collective deadlock. CPU PLE lookup was also measured separately and could not
+explain seconds-long waves; its exact last-position/grouped-shard improvement is
+only millisecond scale. Enter the campaign for receipts and current timing status.

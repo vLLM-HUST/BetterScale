@@ -1,0 +1,18 @@
+{
+  "scope": "same TP2x2+E4 State8GiB C40, one instrumented first SWE prefill wave, 1020 rows/source; diagnosis of a regression, NOT completed workload throughput or topology speedup",
+  "results": {
+    "scatter_padding": {
+      "capsule": "qwen38-model-20260917T181908Z",
+      "rank0_wave_seconds": 38.721860638819635,
+      "sum_layer_device_ms": 35670.664333343506,
+      "sum_moe_device_ms": 231.63379955291748
+    },
+    "affine_padding": {
+      "capsule": "qwen38-model-20260917T182739Z",
+      "rank0_wave_seconds": 1.1247839853167534,
+      "sum_layer_device_ms": 997.0371541976929,
+      "sum_moe_device_ms": 268.7437205314636
+    }
+  },
+  "rank0_wave_ratio": 34.42604192832197
+}

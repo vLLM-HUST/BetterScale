@@ -9,6 +9,7 @@ import struct
 import time
 
 import torch
+from ple_lookup import lookup_last
 from livemodule.serve.qwen38 import Qwen38ServingSession
 from livemodule.serve.qwen38.ple_mailbox import (
     Qwen38PLEHostWorker,
@@ -48,7 +49,7 @@ class IdleSafeWorker(Qwen38PLEHostWorker):
                     tokens = torch.tensor(
                         [r.token_ids for r in rows], dtype=torch.long, device="cpu"
                     )
-                    embeddings = self.table.lookup(tokens)[:, -1].to(torch.bfloat16)
+                    embeddings = lookup_last(self.table, tokens).to(torch.bfloat16)
                 else:
                     embeddings = torch.empty(
                         0,

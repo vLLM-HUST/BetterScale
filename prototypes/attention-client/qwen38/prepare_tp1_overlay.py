@@ -146,8 +146,8 @@ patch(
             "out = (row.to(tl.int64) * HEADS + d[None, :] // 256) * SELECTED * 256 + column[:, None] * 256 + d[None, :] % 256",
         ),
         (
-            "            tl.store(OutK + row.to(tl.int64) * SELECTED * DIM + flat, 0,\n                     flat < SELECTED * DIM)\n            tl.store(OutV + row.to(tl.int64) * SELECTED * DIM + flat, 0,\n                     flat < SELECTED * DIM)",
-            "            flat_out = (row.to(tl.int64) * HEADS + (flat % DIM) // 256) * SELECTED * 256 + (flat // DIM) * 256 + flat % 256\n            tl.store(OutK + flat_out, 0, flat < SELECTED * DIM)\n            tl.store(OutV + flat_out, 0, flat < SELECTED * DIM)",
+            "            flat = (tile % tiles_per_row) * TILE * DIM + tl.arange(0, TILE * DIM)\n            tl.store(OutK + row.to(tl.int64) * SELECTED * DIM + flat, 0,\n                     flat < SELECTED * DIM)\n            tl.store(OutV + row.to(tl.int64) * SELECTED * DIM + flat, 0,\n                     flat < SELECTED * DIM)",
+            "            zeros = (tile % tiles_per_row) * TILE * 256 + tl.arange(0, TILE * 256)\n            for head in tl.static_range(HEADS):\n                base = (row.to(tl.int64) * HEADS + head) * SELECTED * 256\n                tl.store(OutK + base + zeros, 0, zeros < SELECTED * 256)\n                tl.store(OutV + base + zeros, 0, zeros < SELECTED * 256)",
         ),
     ],
 )

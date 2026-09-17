@@ -84,14 +84,13 @@ for heads in (1, 2):
 # Non-degenerate head-major layout, inactive tiles, and both sides of the
 # 128-query workspace boundary. Independent page indexing feeds unchunked FIA.
 for heads in (1, 2):
-    for n in (129, 257):
+    for n, selected in ((129, 33), (257, 33), (129, 2051)):
         cache = torch.randn(6, 64, heads, 256, dtype=torch.bfloat16, device="npu")
         value_cache = torch.randn_like(cache)
         query = torch.randn(n, 1, heads * 12, 256, dtype=torch.bfloat16, device="npu")
         table = torch.tensor([[0, 2], [1, 3]], dtype=torch.int32, device="npu")
         requests = torch.arange(n, device="npu") % 2
-        selected = 33
-        indices = (torch.arange(selected, device="npu") * 3).int().repeat(n, 1)
+        indices = (torch.arange(selected, device="npu") * 3 % 128).int().repeat(n, 1)
         indices[:, 5] = -1
         counts = (torch.arange(n, device="npu") % (selected + 1)).int()
         packed = torch.cat((indices, counts[:, None]), dim=1)

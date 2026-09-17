@@ -166,3 +166,54 @@ TP1-EP8) are being measured, **not yet passed capacities**. Their parent is
 `/workspace/betterscale-hw0/runs/topology-bounded-20260917/`.
 The original queued SWE cases were cancelled before launch so the comparison
 will not mix memory implementations.
+
+
+## Completed bounded fits and padding regression (supersedes pending above)
+
+C-overlay C40 real-State passes: TP2-E4 51GiB (7,082,752 allocated history
+ tokens/machine), TP2-EP8 36GiB (10,271,232), TP1-E4 48GiB (6,828,544),
+TP1-E3 47GiB (8,510,080). Corresponding exercised prefixes/request:
+176,909 / 256,602 / 170,522 / 212,544. E3 48GiB is NOT qualified: one source
+failed warmup `aclnnGather` allocation while the other four completed. E3 47GiB
+passed all sources (`174851Z`), but minimum sampled free was only145,285,120B;
+use46GiB for the throughput pilot rather than presenting this as a safe reserve.
+
+TP1-EP8 33GiB (`173632Z`) and31GiB (`181145Z`) were stopped during extremely
+slow warmup, not certified OOM or collective deadlock. The stack at33GiB was
+inside native MC2 dispatch, but at31GiB it moved to residual injection. A stack
+snapshot is not causal attribution. These are incomplete fits, not capacity
+limits. Old C-layout queued traces were cancelled before launch where marked.
+
+The C head-major layout introduced a performance regression absent from its
+small correctness gate. One instrumented real SWE prefill atState8GiB
+(`181908Z`) takes38.72s: sum of layer device intervals35.67s, MoE0.232s, shared
+0.026s. Each of12 QSA layers is about2.94s. Its inactive gather branch expresses
+zero stores using vector division/remainder, losing the affine contiguous-store
+form. Runtime falls as padding decreases. The d overlay restores contiguous
+stores separately for each KV head; no Q, top-k, cache or attention semantics
+change. Full2051-slot cases were added to the leaf, not merely small33-slot
+cases. `qwen38-bounded-qsa-leaf-20260917/run4` passes all10 cases exactly,
+including FULL replay and independent gather/FIA oracles. End-to-end timing is
+being checked separately; do not call the d optimization successful from the
+leaf's correctness alone. `QWEN38_TRACE_DIAGNOSTIC=1` creates one-wave stage
+receipts labelled DIAGNOSTIC, never usable as completed workload throughput.
+
+A preliminary CPU hypothesis was independently tested and was insufficient:
+PLE lookup was not responsible for the seconds-long QSA intervals. Its separate
+safe improvement (`ple_lookup.py`) retains native n-gram hashing, fetches only
+the last needed history position and groups shard rows once rather than scanning
+every ID for every shard. Six CPU synthetic-shard oracles pass exactly. A real
+checkpoint1020-lane test is also exact: warm native25.59ms versus grouped-last
+6.48ms. The first native call was53.64ms with71 major faults. These are CPU-only
+observations, not an end-to-end speedup. Raw evidence lives under hw0
+`/workspace/betterscale-hw0/runs/qwen38-real-ple-cpu-v2.log`; the reusable probe
+is `probe_ple_lookup_real.py --trace-plan .../qwen38-swe40.json`.
+
+
+The d full-model diagnostic is now complete (`182739Z`), same TP2-E4 State8GiB
+C40 first wave: rank0 wall38.7219 ->1.12478s; summed layer device intervals
+35,670.7 ->997.0ms. See `qsa-padding-result.json`. This is a regression repair,
+not a new topology speedup. All five normal trace cases now select d, with PLE
+lookup fixed identically, under `/workspace/betterscale-hw0/runs/topology-affine-20260917/`.
+Native TP1-EP8 capacity is retried there before its trace, since the old c
+warmup stops cannot establish its limit.

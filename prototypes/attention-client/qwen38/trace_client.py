@@ -6,6 +6,7 @@ vLLM scheduler. Sessions retain KV, GDN and PLE across turns. No trace tool runs
 """
 
 import json
+import os
 import time
 
 import torch
@@ -311,6 +312,12 @@ def run_trace(root, cfg, args, rank, stage):
         reserved=torch.npu.memory_reserved(),
         free=torch.npu.mem_get_info()[0],
     )
+    diagnostic = os.environ.get("QWEN38_TRACE_DIAGNOSTIC") == "1"
+    timers = None
+    if diagnostic:
+        from trace_diagnostic import LayerTimers
+
+        timers = LayerTimers(root)
     started = time.monotonic()
     events = []
     prefixes = []
@@ -410,6 +417,26 @@ def run_trace(root, cfg, args, rank, stage):
             if step % 20 == 0 or prefill:
                 stage("trace-wave", **events[-1])
             step += 1
+            if diagnostic:
+                detail = timers.result()
+                (
+                    args.directory / f"timings{args.tp_size * args.source + rank}.json"
+                ).write_text(json.dumps(detail, indent=2))
+                stage("trace-diagnostic", wave_seconds=elapsed)
+                (
+                    args.directory
+                    / f"attention{args.tp_size * args.source + rank}.json"
+                ).write_text(
+                    json.dumps(
+                        dict(
+                            status="DIAGNOSTIC",
+                            scope="one instrumented prefill wave, not completed workload",
+                            waves=events,
+                        ),
+                        indent=2,
+                    )
+                )
+                return
         torch.npu.synchronize()
         elapsed = time.monotonic() - started
         prefix_exact = all(torch.equal(a, b) for a, b in prefixes)
@@ -439,7 +466,7 @@ def run_trace(root, cfg, args, rank, stage):
             prefix_first_page_exact=prefix_exact,
             tp_output_exact=True,
             output_intervals_seconds=intervals,
-            status="PASS",
+            status="DIAGNOSTIC" if diagnostic else "PASS",
             scope="SWE-derived retained State workload; native EP8 same-model control, not unmodified vLLM",
             topology="colocated" if args.colocated else "separated",
             source=args.source,
@@ -470,6 +497,8 @@ def run_trace(root, cfg, args, rank, stage):
             args.directory / f"attention{args.tp_size * args.source + rank}.json"
         ).write_text(json.dumps(receipt, indent=2))
     finally:
+        if timers is not None:
+            timers.close()
         engine.graph.reset()
         engine.serving.close()
         if rank == 0 or args.colocated:
