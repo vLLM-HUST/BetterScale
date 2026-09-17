@@ -83,7 +83,11 @@ class Worker(Base):
         return result
 
     def sample_tokens(self, grammar_output):
+        window = self.window
+        before = window.count if window is not None else None
         result = super().sample_tokens(grammar_output)
-        if self.window is not None and not self.window.closed:
-            self.window.step()
+        # The partition prototype already inherits the observation Worker's
+        # step hook; native/package Workers do not. Advance exactly once.
+        if window is not None and not window.closed and window.count == before:
+            window.step()
         return result
