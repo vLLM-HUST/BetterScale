@@ -21,7 +21,11 @@ p.add_argument("--decode-steps", type=int, default=3)
 p.add_argument("--align-steady-start", action="store_true")
 p.add_argument("--observe-pauses", action="store_true")
 p.add_argument("--defer-steady-gc", action="store_true")
+p.add_argument("--batch-size", type=int, choices=range(1, 33), default=1)
+p.add_argument("--state-gib", type=float, default=4)
+p.add_argument("--prompt-width", type=int, choices=(1, 3), default=3)
 a = p.parse_args()
+assert a.batch_size * a.prompt_width <= 32
 devices = a.devices.split(",")
 assert (
     len(devices)
@@ -79,6 +83,14 @@ try:
                 str(a.sources),
                 "--decode-steps",
                 str(a.decode_steps),
+            ]
+            + [
+                "--batch-size",
+                str(a.batch_size),
+                "--state-gib",
+                str(a.state_gib),
+                "--prompt-width",
+                str(a.prompt_width),
             ]
             + (["--align-steady-start"] if a.align_steady_start else [])
             + (["--observe-pauses"] if a.observe_pauses else [])

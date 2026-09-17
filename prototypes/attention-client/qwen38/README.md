@@ -297,3 +297,70 @@ bash prototypes/attention-client/qwen38/run_model.sh 0,1,2,3,4,5,6,7 \
 The single-source control retains attention cards0/1 and expert cards4..7:
 use devices `0,1,4,5,6,7` and `--sources 1`. The hw0 capsules are120738Z
 (single) and121027Z(dual), both under `runs/qwen38-model-20260917T...`.
+
+## Active-request batch scaling (September17)
+
+The client now owns a separate State seat, block-table row, PLE slot and token
+sequence for each request. `--batch-size` is **per TP2 group**, not per physical
+attention card. Defaults remain the old single-request gate. Current wire/PLE
+capacity is32 rows per source; `batch-size * prompt-width <= 32`. This is a
+prototype interface ceiling, not a discovered hardware limit.
+
+[Batch receipts](hw0-batch-scaling.json) qualify two TP2 groups sharing unchanged
+E4, real repaired full48 target,8GiB State per attention rank. Each request starts
+with one synthetic token (`9707 + 17 * request`); both sources get the same batch.
+All63 post-capture decode steps are timed, including host work and communication.
+GC is deferred only in that bounded window as described above.
+
+| Requests/group | Total active requests | Aggregate tokens/s | Source step medians | Worst source P95 |
+| ---: | ---: | ---: | ---: | ---: |
+| 8 | 16 | 126.87 | 123.98–124.48ms | 136.33ms |
+| 16 | 32 | 162.83 | 195.63–196.05ms | 202.51ms |
+| 32 | 64 | 189.03 | 337.63–337.89ms | 348.11ms |
+
+All four attention ranks have zero same-State graph/eager hidden error in each
+run. All sources and TP ranks agree on all65 generated tokens/request within
+each run; all owner counts match, and all admitted runs exit0. Changing batch
+size does not preserve every generated sequence; this is not a cross-batch
+numerical-equivalence or language-quality gate.
+
+Increasing batch remains beneficial, but gains diminish: doubling16→32 total
+requests adds28.3% throughput; doubling32→64 adds16.1%. Per-request latency grows.
+Do not transfer the expert-only near-free batching observation into an assertion
+of linear end-to-end scaling. The earlier44.38tok/s two-single-request run uses a
+three-token prompt and4GiB State, so it is contextual, not the matched first row
+of this ladder. These short histories do **not** qualify long-context capacity,
+arrival scheduling, fairness or service-quality limits. No colocated baseline
+was run in this ladder.
+
+Reproduce on hw0 with the existing environment and admission wrapper:
+
+```bash
+bash prototypes/attention-client/qwen38/run_model.sh 0,1,2,3,4,5,6,7 \
+  --sources 2 --batch-size 32 --state-gib 8 --prompt-width 1 \
+  --decode-graph --decode-steps 64 --align-steady-start --defer-steady-gc
+```
+
+### State capacity is not request count
+
+`estimate_capacity.py` declares the owned State tensors on the meta device,
+without weights/storage allocation. [Static estimates](capacity-estimate.json)
+include13 QSA histories (including the currently declared unused MTP history)
+and36 GDN layers' active **and scratch** recurrent state. Current TP2 geometry:
+
+-14,144bytes/history token/attention rank; TP ranks hold different head slices,
+ so summing their HBM does not double logical history capacity.
+-116,581,396bytes/request/rank of fixed payload, of which115,458,048bytes are GDN
+ active+scratch. More seats therefore also reduce room for QSA history.
+-At8GiB State/rank and32 seats, payload arithmetic yields343,552 history tokens
+ **per TP2 group**. At40GiB/32 seats it yields2,772,800. These are rounded static
+ payload bounds, excluding allocator alignment and graph/runtime/weight fit;
+ neither is a measured populated-context capacity.
+
+The fixture currently uses only two64-token pages/request and at most67 input
+positions, despite a model-config max4096. Changing `--state-gib` alone does not
+populate longer contexts or expand the fixture block table. The correctness
+check clones the entire State before capture: do not test40–48GiB resident State
+with that double-allocation fixture and misdiagnose the resulting OOM as a
+serving capacity limit. Separate the already-passed shadow gate from a future
+large-resident-State validation, or snapshot only the touched State correctly.

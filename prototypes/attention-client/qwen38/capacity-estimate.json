@@ -1,0 +1,136 @@
+{
+  "history_lanes": 39,
+  "history_bytes_per_token_per_rank": 14144,
+  "gdn_bytes_per_request_per_rank_including_scratch": 115458048,
+  "all_fixed_bytes_per_request_per_rank": 116581396,
+  "history_owners": [
+    "qsa_3_index_compressed_key",
+    "qsa_3_key",
+    "qsa_7_index_compressed_key",
+    "qsa_7_key",
+    "qsa_11_index_compressed_key",
+    "qsa_11_key",
+    "qsa_15_index_compressed_key",
+    "qsa_15_key",
+    "qsa_19_index_compressed_key",
+    "qsa_19_key",
+    "qsa_23_index_compressed_key",
+    "qsa_23_key",
+    "qsa_27_index_compressed_key",
+    "qsa_27_key",
+    "qsa_31_index_compressed_key",
+    "qsa_31_key",
+    "qsa_35_index_compressed_key",
+    "qsa_35_key",
+    "qsa_39_index_compressed_key",
+    "qsa_39_key",
+    "qsa_43_index_compressed_key",
+    "qsa_43_key",
+    "qsa_47_index_compressed_key",
+    "qsa_47_key",
+    "mtp_qsa_0_index_compressed_key",
+    "mtp_qsa_0_key"
+  ],
+  "estimates": [
+    {
+      "state_gib": 4,
+      "seats": 1,
+      "history_tokens_per_TP2_group": 295360
+    },
+    {
+      "state_gib": 4,
+      "seats": 8,
+      "history_tokens_per_TP2_group": 237696
+    },
+    {
+      "state_gib": 4,
+      "seats": 16,
+      "history_tokens_per_TP2_group": 171776
+    },
+    {
+      "state_gib": 4,
+      "seats": 32,
+      "history_tokens_per_TP2_group": 39872
+    },
+    {
+      "state_gib": 4,
+      "seats": 64,
+      "history_tokens_per_TP2_group": 0
+    },
+    {
+      "state_gib": 8,
+      "seats": 1,
+      "history_tokens_per_TP2_group": 599040
+    },
+    {
+      "state_gib": 8,
+      "seats": 8,
+      "history_tokens_per_TP2_group": 541376
+    },
+    {
+      "state_gib": 8,
+      "seats": 16,
+      "history_tokens_per_TP2_group": 475392
+    },
+    {
+      "state_gib": 8,
+      "seats": 32,
+      "history_tokens_per_TP2_group": 343552
+    },
+    {
+      "state_gib": 8,
+      "seats": 64,
+      "history_tokens_per_TP2_group": 79744
+    },
+    {
+      "state_gib": 40,
+      "seats": 1,
+      "history_tokens_per_TP2_group": 3028352
+    },
+    {
+      "state_gib": 40,
+      "seats": 8,
+      "history_tokens_per_TP2_group": 2970624
+    },
+    {
+      "state_gib": 40,
+      "seats": 16,
+      "history_tokens_per_TP2_group": 2904704
+    },
+    {
+      "state_gib": 40,
+      "seats": 32,
+      "history_tokens_per_TP2_group": 2772800
+    },
+    {
+      "state_gib": 40,
+      "seats": 64,
+      "history_tokens_per_TP2_group": 2509056
+    },
+    {
+      "state_gib": 48,
+      "seats": 1,
+      "history_tokens_per_TP2_group": 3635648
+    },
+    {
+      "state_gib": 48,
+      "seats": 8,
+      "history_tokens_per_TP2_group": 3577920
+    },
+    {
+      "state_gib": 48,
+      "seats": 16,
+      "history_tokens_per_TP2_group": 3512000
+    },
+    {
+      "state_gib": 48,
+      "seats": 32,
+      "history_tokens_per_TP2_group": 3380160
+    },
+    {
+      "state_gib": 48,
+      "seats": 64,
+      "history_tokens_per_TP2_group": 3116352
+    }
+  ]
+}

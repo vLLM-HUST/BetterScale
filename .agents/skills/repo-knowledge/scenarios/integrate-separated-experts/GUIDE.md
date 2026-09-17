@@ -152,3 +152,25 @@ zero shadow errors, identical token IDs. In this controlled dual run pairing is
 only48waves/owner, not the earlier689–694: concurrent-source capacity gain is
 not evidence that co-batching alone caused the scaling. See GC result and
 comparison receipts. Do not discard the original pauses or report raw >2x.
+
+## Multi-request capacity and batch gates
+
+Qwen38 `--batch-size` now provides independent request State/PLE/block-table rows
+within each TP2 source. The full-model wire still caps32rows/source; this is not
+hardware capacity. `hw0-batch-scaling.json` qualifies per-source8/16/32 short-context
+requests on two TP2 groups+E4:126.87/162.83/189.03tok/s, with increasing124/196/338ms
+step medians. All same-State shadows are0 and within-run output IDs agree across
+sources/ranks. Batching gains diminish; expert-only batching efficiency does not
+prove linear end-to-end scaling. See README for inputs, cards and exclusions.
+
+Use `qwen38/estimate_capacity.py` with the selected runtime overlay to recover
+State payload geometry without NPU allocation. It needs plain
+`LiveRuntime(device="meta")`, **not** AscendArchitectureBinding(meta). Current
+TP2 payload is14,144B/history token/rank plus116,581,396B/request/rank (mostly GDN
+active+scratch). Unused MTP QSA State is still declared and included. Never count
+TP2 head slices as two independent copies of logical token capacity.
+
+Large resident-budget testing must not blindly reuse the full-State cloning
+shadow fixture: a40GiB State would be cloned to another40GiB. The current8GiB
+batch tests avoid this confound and use only two64-token pages/request; static
+40GiB estimates do not qualify graph fit or populated long contexts.

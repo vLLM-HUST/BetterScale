@@ -19,20 +19,20 @@ class ModelConfig(NS):
         return int(self.hf_text_config.num_experts)
 
 
-def configure(rank, stage):
+def configure(rank, stage, *, batch_size=1, state_gib=4, max_model_len=4096):
     hf = Qwen38Config.from_pretrained(MODEL)
     cfg = NS(
         model_config=ModelConfig(
             hf_config=hf,
             hf_text_config=hf.get_text_config(),
             dtype=torch.bfloat16,
-            max_model_len=4096,
+            max_model_len=max_model_len,
             model=str(MODEL),
             enable_return_routed_experts=False,
             enforce_eager=False,
         ),
         cache_config=NS(block_size=64, cache_dtype="auto"),
-        scheduler_config=NS(max_num_batched_tokens=32, max_num_seqs=1),
+        scheduler_config=NS(max_num_batched_tokens=32, max_num_seqs=batch_size),
         parallel_config=NS(
             rank=rank,
             tensor_parallel_size=2,
@@ -76,7 +76,7 @@ def configure(rank, stage):
         architecture=RemoteAscend(),
         device=cfg.device_config.device,
         state_backend=TorchStateBackend(
-            cfg.device_config.device, memory_budget_bytes=4 * 2**30
+            cfg.device_config.device, memory_budget_bytes=int(state_gib * 2**30)
         ),
         rank_binding=capture_vllm_rank_binding(),
     )

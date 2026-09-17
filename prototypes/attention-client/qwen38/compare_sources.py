@@ -28,6 +28,8 @@ def summarize(directory):
             dict(
                 source=client["source"],
                 steps=len(times),
+                batch_size=client.get("batch_size", 1),
+                output_tokens=len(times) * client.get("batch_size", 1),
                 median_ms=statistics.median(times) * 1000,
                 p95_ms=sorted(times)[math.ceil(0.95 * len(times)) - 1] * 1000,
                 max_ms=max(times) * 1000,
@@ -41,8 +43,8 @@ def summarize(directory):
         deferred_steady_gc=all(c.get("deferred_steady_gc", False) for c in clients),
         physical_cards=len(clients) + 4,
         steady_seconds=duration,
-        output_tokens=sum(r["steps"] for r in rows),
-        output_tokens_per_second=sum(r["steps"] for r in rows) / duration,
+        output_tokens=sum(r["output_tokens"] for r in rows),
+        output_tokens_per_second=sum(r["output_tokens"] for r in rows) / duration,
         sources=rows,
         graph_shadow_relative_l2=[c["graph_shadow_relative_l2"] for c in clients],
         full_run_paired_waves=[sum(o["completed_counts"]) - o["waves"] for o in owners],
@@ -56,8 +58,8 @@ if __name__ == "__main__":
     print(
         json.dumps(
             dict(
-                scope="hw0 same E4 pool, one vs two TP2 sources, same short prompt; not equal-card colocated baseline or online throughput",
-                timing="63 target decode replays/source; excludes prefill and capture, includes all observed pauses; host wall time",
+                scope="hw0 same E4 pool, one vs two TP2 sources, synthetic short-context target decode; not equal-card colocated baseline or online throughput",
+                timing="warm target decode replays/source; excludes prefill and capture, includes all observed pauses; host wall time",
                 runs=[summarize(d) for d in args.directories],
             ),
             indent=2,

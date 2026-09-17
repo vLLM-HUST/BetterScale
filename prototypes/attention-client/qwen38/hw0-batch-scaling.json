@@ -1,0 +1,157 @@
+{
+  "scope": "hw0 two TP2 attention groups + unchanged E4; full48 real repaired Qwen38 target, no MTP; closed-loop synthetic short-context decode, not online or language-quality qualification",
+  "conditions": {
+    "batch_per_group": [
+      8,
+      16,
+      32
+    ],
+    "state_gib_per_attention_rank": 8,
+    "prompt_tokens_per_request": 1,
+    "decode_steps": 64,
+    "measured_warm_steps": 63,
+    "once_only_post_capture_alignment": true,
+    "bounded_steady_gc_deferral": true,
+    "request_inputs": "9707 + 17 * request index; same batch across independent sources; different batches may produce different generated sequences"
+  },
+  "runs": [
+    {
+      "capsule_roles": "runs/qwen38-hw0-results-20260917/batch8-roles",
+      "attention_sources": 2,
+      "deferred_steady_gc": true,
+      "physical_cards": 8,
+      "steady_seconds": 7.945022962987423,
+      "output_tokens": 1008,
+      "output_tokens_per_second": 126.87188000536376,
+      "sources": [
+        {
+          "source": 0,
+          "steps": 63,
+          "batch_size": 8,
+          "output_tokens": 504,
+          "median_ms": 123.97522293031216,
+          "p95_ms": 136.3315749913454,
+          "max_ms": 139.603472314775,
+          "mean_ms": 124.86847080585974
+        },
+        {
+          "source": 1,
+          "steps": 63,
+          "batch_size": 8,
+          "output_tokens": 504,
+          "median_ms": 124.48364961892366,
+          "p95_ms": 136.0613014549017,
+          "max_ms": 139.89349640905857,
+          "mean_ms": 124.96348207313864
+        }
+      ],
+      "graph_shadow_relative_l2": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "full_run_paired_waves": [
+        1235,
+        1240,
+        1236,
+        1249
+      ],
+      "hw0_capsule": "/workspace/betterscale-hw0/repo/runs/qwen38-model-20260917T122452Z",
+      "all_sources_and_tp_ranks_output_ids_equal": true,
+      "tokens_per_request_including_prefill_output": 65
+    },
+    {
+      "capsule_roles": "runs/qwen38-hw0-results-20260917/batch16-roles",
+      "attention_sources": 2,
+      "deferred_steady_gc": true,
+      "physical_cards": 8,
+      "steady_seconds": 12.380902803502977,
+      "output_tokens": 2016,
+      "output_tokens_per_second": 162.83142126191356,
+      "sources": [
+        {
+          "source": 0,
+          "steps": 63,
+          "batch_size": 16,
+          "output_tokens": 1008,
+          "median_ms": 195.62670961022377,
+          "p95_ms": 202.50544045120478,
+          "max_ms": 204.55330424010754,
+          "mean_ms": 195.21623919348394
+        },
+        {
+          "source": 1,
+          "steps": 63,
+          "batch_size": 16,
+          "output_tokens": 1008,
+          "median_ms": 196.05033472180367,
+          "p95_ms": 201.78178139030933,
+          "max_ms": 202.8529029339552,
+          "mean_ms": 195.1935798195856
+        }
+      ],
+      "graph_shadow_relative_l2": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "full_run_paired_waves": [
+        33,
+        27,
+        25,
+        27
+      ],
+      "hw0_capsule": "/workspace/betterscale-hw0/repo/runs/qwen38-model-20260917T122943Z",
+      "all_sources_and_tp_ranks_output_ids_equal": true,
+      "tokens_per_request_including_prefill_output": 65
+    },
+    {
+      "capsule_roles": "runs/qwen38-hw0-results-20260917/batch32-roles",
+      "attention_sources": 2,
+      "deferred_steady_gc": true,
+      "physical_cards": 8,
+      "steady_seconds": 21.329428725875914,
+      "output_tokens": 4032,
+      "output_tokens_per_second": 189.03459871424297,
+      "sources": [
+        {
+          "source": 0,
+          "steps": 63,
+          "batch_size": 32,
+          "output_tokens": 2016,
+          "median_ms": 337.6268306747079,
+          "p95_ms": 348.10905251652,
+          "max_ms": 357.7949143946171,
+          "mean_ms": 337.03213669951
+        },
+        {
+          "source": 1,
+          "steps": 63,
+          "batch_size": 32,
+          "output_tokens": 2016,
+          "median_ms": 337.8936043009162,
+          "p95_ms": 346.8168964609504,
+          "max_ms": 362.1437940746546,
+          "mean_ms": 337.2138809590113
+        }
+      ],
+      "graph_shadow_relative_l2": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "full_run_paired_waves": [
+        76,
+        62,
+        54,
+        53
+      ],
+      "hw0_capsule": "/workspace/betterscale-hw0/repo/runs/qwen38-model-20260917T123318Z",
+      "all_sources_and_tp_ranks_output_ids_equal": true,
+      "tokens_per_request_including_prefill_output": 65
+    }
+  ]
+}

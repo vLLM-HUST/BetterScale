@@ -26,7 +26,12 @@ p.add_argument("--decode-steps", type=int, default=3)
 p.add_argument("--align-steady-start", action="store_true")
 p.add_argument("--observe-pauses", action="store_true")
 p.add_argument("--defer-steady-gc", action="store_true")
+p.add_argument("--batch-size", type=int, choices=range(1, 33), default=1)
+p.add_argument("--state-gib", type=float, default=4)
+p.add_argument("--prompt-width", type=int, choices=(1, 3), default=3)
 a = p.parse_args()
+assert a.batch_size * a.prompt_width <= 32
+assert 0 < a.state_gib <= 48
 assert 3 <= a.decode_steps <= 96
 assert not a.align_steady_start or a.decode_graph
 assert not a.defer_steady_gc or a.align_steady_start
@@ -80,7 +85,7 @@ from attention import AttentionRoot
 from model_setup import configure
 from client import Session
 
-cfg, runtime = configure(rank, stage)
+cfg, runtime = configure(rank, stage, batch_size=a.batch_size, state_gib=a.state_gib)
 with (
     live_runtime(runtime),
     set_current_vllm_config(cfg),
@@ -128,11 +133,17 @@ with (
         status = torch.zeros((), dtype=torch.int32, device="npu")
         slots = torch.zeros(codec.lanes, dtype=torch.int64, device="npu")
         identities = torch.ones_like(slots)
-        blocks = torch.arange(2, dtype=torch.int32, device="npu")[None]
+        blocks = torch.arange(2 * a.batch_size, dtype=torch.int32, device="npu").view(
+            a.batch_size, 2
+        )
         # Identical short token sequence on both attention ranks; tokenizer
         # prompt/quality sampling is a later gate after all-layer transport.
-        ids = [9707, 11, 1879]
+        ids = [
+            [9707 + 17 * request, 11, 1879][: a.prompt_width]
+            for request in range(a.batch_size)
+        ]
         generated = []
+        generated_by_request = [[] for _ in range(a.batch_size)]
         wave_seconds = []
         wave_started_seconds = []
         pause_events = []
@@ -160,17 +171,30 @@ with (
             if a.observe_pauses:
                 phases = {"wave": wave, "begin_prepare": time.monotonic()}
                 wave_phases.append(phases)
-            count = len(ids)
-            start = 0 if wave == 0 else 3 + wave - 1
-            tokens = torch.tensor([ids], dtype=torch.long, device="npu")
-            positions = torch.arange(start, start + count, device="npu")[None]
+            count = len(ids[0])
+            start = 0 if wave == 0 else a.prompt_width + wave - 1
+            tokens = torch.tensor(ids, dtype=torch.long, device="npu")
+            slots.copy_(
+                torch.div(
+                    torch.arange(codec.lanes, device="npu"),
+                    count,
+                    rounding_mode="floor",
+                )
+            )
+            positions = (
+                torch.arange(start, start + count, device="npu")[None]
+                .expand(a.batch_size, -1)
+                .contiguous()
+            )
             context = ForwardContext({}, {}, {})
             context.batch_topology = Qwen35DeviceBatchTopology(
-                sequence_lengths=torch.tensor(
-                    [start + count], dtype=torch.int32, device="npu"
+                sequence_lengths=torch.full(
+                    (a.batch_size,), start + count, dtype=torch.int32, device="npu"
                 ),
-                query_lengths=torch.tensor([count], dtype=torch.int32, device="npu"),
-                active=torch.ones(1, dtype=torch.bool, device="npu"),
+                query_lengths=torch.full(
+                    (a.batch_size,), count, dtype=torch.int32, device="npu"
+                ),
+                active=torch.ones(a.batch_size, dtype=torch.bool, device="npu"),
                 block_table=blocks,
                 query_length=count,
                 fresh_prefill=wave == 0,
@@ -222,7 +246,7 @@ with (
                 ]
                 eager_hidden, _, _, eager_valid = forward()
                 expected = eager_hidden.clone()
-                assert bool(eager_valid[:count].all().cpu())
+                assert bool(eager_valid[: a.batch_size * count].all().cpu())
                 for state, saved in states:
                     state.copy_(saved)
                 capture_stream = torch.npu.Stream()
@@ -260,23 +284,32 @@ with (
                 hidden, _, _, valid = forward()
             if a.observe_pauses:
                 phases["submitted"] = time.monotonic()
-            assert bool(valid[:count].all().cpu())
+            assert bool(valid[: a.batch_size * count].all().cpu())
             if a.observe_pauses:
                 phases["valid_readback"] = time.monotonic()
             logits = root.compute_logits(hidden[:, -1:])
             assert not bool(torch.isnan(logits).any().cpu())
             if a.observe_pauses:
                 phases["logits_readback"] = time.monotonic()
-            token = logits.argmax(-1).reshape(1)
+            token = logits.argmax(-1).reshape(a.batch_size)
             agreed = [torch.empty_like(token) for _ in range(2)]
             torch.distributed.all_gather(agreed, token)
             assert torch.equal(agreed[0], agreed[1])
-            ids = [int(token.cpu()[0])]
+            next_ids = token.cpu().tolist()
+            ids = [[value] for value in next_ids]
             if a.observe_pauses:
                 phases["token_agreement"] = time.monotonic()
-            generated.extend(ids)
+            generated.extend(next_ids)
+            for request, value in enumerate(next_ids):
+                generated_by_request[request].append(value)
             wave_seconds.append(time.monotonic() - wave_started)
-            stage("wave", wave=wave, token=ids[0], seconds=wave_seconds[-1])
+            stage(
+                "wave",
+                wave=wave,
+                token=next_ids[0],
+                batch_size=a.batch_size,
+                seconds=wave_seconds[-1],
+            )
             if wave == 0:
                 for hook in hooks:
                     hook.remove()
@@ -297,6 +330,10 @@ with (
                     status="PASS",
                     scope="full48 target, real PLE; not quality",
                     output_ids=generated,
+                    output_ids_by_request=generated_by_request,
+                    batch_size=a.batch_size,
+                    state_gib=a.state_gib,
+                    prompt_width=a.prompt_width,
                     source=a.source,
                     wave_seconds=wave_seconds,
                     wave_started_seconds=wave_started_seconds,
