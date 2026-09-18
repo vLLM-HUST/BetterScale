@@ -182,3 +182,20 @@ All78calls/20,648 outputs per cohort match their prescribed prompt/output budget
 both services exit0 and cards are reclaimed. CPU77tests and wheel source-content
 checks pass. See `docs/evidence/qwen-graph-pool.json`. This remains an opt-in
 source configuration; no PyPI publication is implied.
+
+### GDN inter-projection fusion
+
+MixedWorker now fuses convolution-output unpacking, Q/K normalization, V packing
+and gating into one layout-aware Triton kernel. BF16 normalized Q/K and beta
+rounding boundaries are preserved. The mixed path shares head-major beta/g
+between KKT, WY and H/O instead of repeating three gate-layout conversions.
+The native recurrence library, state layout, graph pool and metadata bank fences
+are unchanged. No new service flag is required within this opt-in Worker.
+
+`gdn-fusion-core1` compares with the frozen pre-fusion core:12 mixed and12 decode
+cases, changing slots/partitions/inputs and poisoned padding, all output and
+whole-state comparisons exact. `gdn-fusion-service1` repeats the26-graph TP2
+shadow envelope:5,676 comparisons across22 steps/rank, all max_abs0; logged
+capture delta0.84GiB/rank with1GiB diagnostic KV. CPU77tests pass.
+See `docs/evidence/qwen-gdn-fusion.json` for bounded microbenchmarks and evidence;
+these isolated kernel savings are not a service-throughput claim.

@@ -743,3 +743,42 @@ For mixed, first share head-major beta/g across KKT/WY/H/O; later let producers
 emit consumers' layouts to remove W/U and output transposes. Output norm already
 fuses its z gate, so don't count those as two unimplemented-fusion opportunities.
 No fused kernel, NPU correctness or speedup has been qualified by this audit.
+
+### GDN fusion implementation (September18)
+
+`preprocess.py` now reads packed convolution output directly, emits BF16 normalized
+Q/K, copies V, and computes FP32 g/BF16 beta in one Triton launch. It preserves
+rsqrt and BF16 rounding rather than fusing normalization into recurrent FP32 math.
+`chunk_wy.py` shares one head-major beta/g conversion across pinned KKT, WY and
+owned H/O; neither recurrence, AscendC binary, workspace allocator nor publication
+fences change. Only MixedWorker uses this path.
+
+Paid lowering lesson: flattening token/head rows and using `%24` produced scalar
+GM gathers in the generated `preprocess_kernel.ttadapter` (including 32 individual
+gate loads), despite mathematically contiguous access. `gdn-fusion-preprocess2`
+was exact but ~847us at T2 versus ~22us control: reject it. A runtime-branch/pointer
+selection experiment also exited -11 during compilation; its root cause was not
+isolated. The branch-free explicit token/head axes avoid that path. One token per
+program recovered decode performance but regressed T2048 (151us versus93us).
+Four-token tiles above T16 recover large-capacity efficiency; do not undo this
+layout on the strength of source-level operation counts alone.
+
+`gdn-fusion-preprocess6`: T1/2/4/8/16/129/512/1024/1536/2048, three changed-input
+replays each, all five intermediates exactly match pinned donor. Captured ABBA
+micro timings: T1 18.4->3.81us, T8 23.0->4.18us, T1536 72.6->33.0us,
+T2048 85.9->41.6us. Not HTTP savings. `gdn-fusion-core1`: 12 mixed cases
+(changing partitions/slots, NaN padding, independent initial H) and12 decode cases
+(changing input/slots/inactive lanes), output and entire conv/GDN pools maxabs0
+against the pre-fusion core frozen in the capsule. `gdn-shared-gates-core2` isolates
+only shared layout: ~60-67us/layer (~5%) less core time at capacity1536.
+
+The donor gating kernel assumes contiguous a/b. Its caller makes them contiguous;
+passing raw stride48 views directly is an invalid oracle, not a fusion failure.
+`gdn-fusion-strides1` records that rejected oracle. `gdn-fusion-strides2` compares
+stride-aware fusion with donor fed `.contiguous()` at T1/8/16/129/1536/2048:
+all changed-input intermediates exact. These receipts and frozen sources live in
+the evidence root; keep oracle input contracts explicit when extending fusion.
+
+`gdn-fusion-service1`: same26-graph TP2 full-model shadow envelope passes all5,676
+comparisons (22steps/rank); server/admission exit0. Diagnostic capture delta is
+0.84GiB/rank at1GiB KV. CPU77tests pass. See `docs/evidence/qwen-gdn-fusion.json`.

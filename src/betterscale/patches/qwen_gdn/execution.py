@@ -5,8 +5,7 @@ import torch
 
 def forward_core(self, mixed_qkv, b, a, core_attn_out):
     from vllm.forward_context import get_forward_context
-    from vllm_ascend.device.device_op import DeviceOperator
-    from vllm_ascend.ops.gdn import l2norm_fwd
+    from .preprocess import preprocess
 
     context = get_forward_context()
     if context.attn_metadata is None:
@@ -33,9 +32,7 @@ def forward_core(self, mixed_qkv, b, a, core_attn_out):
         pad_slot_id=-1,
         run_mode=1 if meta.decode else 0,
     )
-    q, k, v = self.rearrange_mixed_qkv(transformed)
-    q, k = l2norm_fwd(q), l2norm_fwd(k)
-    g, beta = DeviceOperator.fused_gdn_gating(self.A_log, a, b, self.dt_bias)
+    q, k, v, g, beta = preprocess(transformed, a, b, self.A_log, self.dt_bias)
     if meta.decode:
         from .decode_kv import fused_recurrent_gated_delta_rule_fwd
 
@@ -57,33 +54,10 @@ def forward_core(self, mixed_qkv, b, a, core_attn_out):
         g = chunk.chunk_local_cumsum(
             g, chunk_size=64, cu_seqlens=meta.cu, block_indices=meta.indices[256]
         )
-        matrix = chunk.chunk_scaled_dot_kkt_fwd(
-            k=k,
-            beta=beta,
-            g_cumsum=g,
-            cu_seqlens=meta.cu,
-            chunk_indices=meta.indices[64],
-            output_dtype=torch.float32,
-        )
-        from .solve_tril import solve_tril
+        from .chunk_wy import chunk_wy
 
-        matrix = solve_tril(
-            matrix,
-            cu_seqlens=meta.cu,
-            chunk_indices_large_block=meta.indices[1216],
-            chunk_indices_bt=meta.indices[64],
-            output_dtype=k.dtype,
-        )
-        w, u = chunk.recompute_w_u_fwd(
-            k=k,
-            v=v,
-            beta=beta,
-            A=matrix,
-            g_cumsum=g,
-            cu_seqlens=meta.cu,
-            chunk_indices=meta.indices[64],
-        )
-        qh, kh, wh, uh, gh = [x.transpose(1, 2).contiguous() for x in (q, k, w, u, g)]
+        w, u, gh = chunk_wy(k, v, beta, g, meta)
+        qh, kh, wh, uh = [x.transpose(1, 2).contiguous() for x in (q, k, w, u)]
         output = (
             meta.engine.pool_forward(
                 qh, kh, wh, uh, gh, bank, meta.cu, meta.state, meta.indices[64]

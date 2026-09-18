@@ -1,0 +1,231 @@
+{
+  "scope": "Qwen3.8-27B TP2 BF16 MixedWorker GDN preprocessing fusion and shared gate layout; no scheduler or native recurrence changes.",
+  "reference_runtime_commit": "7e76b64",
+  "micro": {
+    "capsule": "gdn-fusion-preprocess6",
+    "passed": true,
+    "comparison": "Captured ABBA mean us/call; 20 calls per graph, 20 timings per arm; three changed-input exact checks per shape.",
+    "rows": [
+      {
+        "tokens": 1,
+        "control_us": [
+          18.601999878883362,
+          18.20774994790554
+        ],
+        "candidate_us": [
+          3.932349979877472,
+          3.678349982947111
+        ]
+      },
+      {
+        "tokens": 2,
+        "control_us": [
+          20.729200169444084,
+          20.767600163817406
+        ],
+        "candidate_us": [
+          3.9243000000715256,
+          3.984999991953373
+        ]
+      },
+      {
+        "tokens": 4,
+        "control_us": [
+          21.134100034832954,
+          21.006399914622307
+        ],
+        "candidate_us": [
+          3.932850006967783,
+          3.9013000018894672
+        ]
+      },
+      {
+        "tokens": 8,
+        "control_us": [
+          22.95414999127388,
+          23.06135006248951
+        ],
+        "candidate_us": [
+          4.238550029695034,
+          4.1292499750852585
+        ]
+      },
+      {
+        "tokens": 16,
+        "control_us": [
+          23.51420007646084,
+          23.592900037765503
+        ],
+        "candidate_us": [
+          4.5199500024318695,
+          4.615849945694208
+        ]
+      },
+      {
+        "tokens": 129,
+        "control_us": [
+          28.373049944639206,
+          28.2990500330925
+        ],
+        "candidate_us": [
+          7.364049926400185,
+          7.387750037014484
+        ]
+      },
+      {
+        "tokens": 512,
+        "control_us": [
+          41.71694993972778,
+          41.62449985742569
+        ],
+        "candidate_us": [
+          15.153649970889091,
+          15.127999931573868
+        ]
+      },
+      {
+        "tokens": 1024,
+        "control_us": [
+          60.12830048799515,
+          60.15089929103851
+        ],
+        "candidate_us": [
+          24.187350049614906,
+          24.24654982984066
+        ]
+      },
+      {
+        "tokens": 1536,
+        "control_us": [
+          72.65990018844604,
+          72.6101005077362
+        ],
+        "candidate_us": [
+          32.89970010519028,
+          33.03424969315529
+        ]
+      },
+      {
+        "tokens": 2048,
+        "control_us": [
+          85.90495020151138,
+          85.83060026168823
+        ],
+        "candidate_us": [
+          41.57429948449135,
+          41.57134994864464
+        ]
+      }
+    ]
+  },
+  "core": {
+    "capsule": "gdn-fusion-core1",
+    "mixed_cases": 12,
+    "decode_cases": 12,
+    "max_abs": 0,
+    "whole_state": true
+  },
+  "shared_layout": {
+    "capsule": "gdn-shared-gates-core2",
+    "rows": [
+      {
+        "lengths": [
+          1,
+          1472
+        ],
+        "old_us": [
+          1325.369954109192,
+          1325.7499933242798
+        ],
+        "new_us": [
+          1260.2799534797668,
+          1264.8500204086304
+        ]
+      },
+      {
+        "lengths": [
+          1,
+          1,
+          7,
+          129,
+          513
+        ],
+        "old_us": [
+          1242.5900101661682,
+          1239.7399544715881
+        ],
+        "new_us": [
+          1181.4600229263306,
+          1180.8599829673767
+        ]
+      },
+      {
+        "lengths": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "old_us": [
+          1155.7599902153015,
+          1154.4800400733948
+        ],
+        "new_us": [
+          1096.21000289917,
+          1095.5299735069275
+        ]
+      },
+      {
+        "lengths": [
+          128,
+          128,
+          128,
+          128,
+          128,
+          128,
+          128,
+          128
+        ],
+        "old_us": [
+          1303.700029850006,
+          1303.0699491500854
+        ],
+        "new_us": [
+          1236.7799878120422,
+          1236.370027065277
+        ]
+      }
+    ]
+  },
+  "validation": {
+    "cpu_tests": 77
+  },
+  "service": {
+    "capsule": "gdn-fusion-service1",
+    "passed": true,
+    "rank_steps": {
+      "0": 22,
+      "1": 22
+    },
+    "comparisons": 5676,
+    "max_abs": 0,
+    "graphs": 26,
+    "capture_GiB_per_rank": 0.84,
+    "server_exit_code": 0
+  },
+  "strided_inputs": {
+    "capsule": "gdn-fusion-strides2",
+    "passed": true,
+    "gate_row_stride": 48,
+    "oracle": "Pinned donor receives contiguous logical gate inputs, as required by its native caller."
+  },
+  "limitations": [
+    "Service performance and short-profile qualification are pending.",
+    "No change to native model input publication, sampling, scheduler, D2H or recurrence arithmetic.",
+    "No MTP/APC or model-quality qualification."
+  ]
+}
