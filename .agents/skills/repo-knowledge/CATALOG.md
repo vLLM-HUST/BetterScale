@@ -16,7 +16,8 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 
 - **Investigate donor dispatch gaps and extend DSV4 FULL prefill/mixed:**
   read [extend-dsv4-full-graph](scenarios/extend-dsv4-full-graph/GUIDE.md)
-  before changing graph coverage or interpreting the eight-rank trace.
+  before changing donor graph coverage or replay scheduling. This entry does
+  not own separated expert service.
 
 - **Study native donor DP+EP, skew and cache ownership:** read
   [study-native-dp](scenarios/study-native-dp/GUIDE.md) before launching native
@@ -28,4 +29,6 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 
 - **Integrate separated attention/expert serving:** read
   [integrate-separated-experts](scenarios/integrate-separated-experts/GUIDE.md)
-  before changing the persistent expert ABI or adapting Qwen38 checkpoints.
+  before changing client/collect, persistent expert scheduling, Qwen38
+  checkpoints or topology/workload gates. Its short question table selects
+  only the relevant evidence; do not read the donor history first.
