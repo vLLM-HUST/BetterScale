@@ -1,6 +1,9 @@
 #pragma once
 #include "persistent_protocol.hpp"
 #include "quant_vector.hpp"
+#ifdef QWEN38_PIPELINED_EXPORT
+#include "quant_export.hpp"
+#endif
 #ifdef QWEN38_BATCH_ACTIVATE
 #include "quant_batch.hpp"
 #endif
@@ -113,6 +116,11 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
         }
       }
     } else {
+#ifdef QWEN38_PIPELINED_EXPORT
+      QuantExport exporter(io.words);
+      bool pipelineExport = kind == SEND && int8;
+      if (pipelineExport) exporter.Init();
+#endif
       for (int c = 0; c < 2; ++c) {
         io.Read(desc + c * MAP, 8);
         int gen = io.words.GetValue(0), n = io.words.GetValue(1);
@@ -156,6 +164,17 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
                           (__gm__ int32_t *)auxiliary[1] + row * 8, 8);
               } else if (int8) {
                 int expert = RowExpert(ends, row);
+#ifdef QWEN38_PIPELINED_EXPORT
+                __gm__ int32_t *routeFlag = nullptr;
+#ifdef QWEN38_ROUTE_READY
+                routeFlag = (__gm__ int32_t *)cfg[2 + c] + 64 + ROUTES * HIDDEN / 2 + route * 16;
+#endif
+                exporter.Submit((__gm__ int32_t *)ptr[4] + row * HIDDEN,
+                                (__gm__ float *)weights[3] + expert * HIDDEN,
+                                (__gm__ float *)auxiliary[2] + row * 8,
+                                (__gm__ bfloat16_t *)((__gm__ int32_t *)cfg[2 + c] + 64) + route * HIDDEN,
+                                routeFlag, gen);
+#else
                 quant.Dequant((__gm__ int32_t *)ptr[4] + row * HIDDEN,
                               (__gm__ float *)weights[3] + expert * HIDDEN,
                               (__gm__ float *)auxiliary[2] + row * 8, HIDDEN);
@@ -163,6 +182,7 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
                     (__gm__ bfloat16_t *)((__gm__ int32_t *)cfg[2 + c] + 64) +
                         route * HIDDEN,
                     HIDDEN);
+#endif
               } else
                 io.Copy((__gm__ int32_t *)ptr[4] + row * HIDDEN / 2,
                         (__gm__ int32_t *)cfg[2 + c] + 64 + route * HIDDEN / 2,
@@ -170,7 +190,11 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
 #ifdef QWEN38_ROUTE_READY
               // SEND owns this route. ToBf16/Copy already waited for MTE3;
               // publish generation only after the exported BF16 row is visible.
-              if (kind == SEND)
+              if (kind == SEND
+#ifdef QWEN38_PIPELINED_EXPORT
+                  && !int8
+#endif
+              )
                 io.Publish((__gm__ int32_t *)cfg[2 + c] + 64 +
                                ROUTES * HIDDEN / 2 + route * 16,
                            gen);
@@ -179,6 +203,9 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
           }
         }
       }
+#ifdef QWEN38_PIPELINED_EXPORT
+      if (pipelineExport) exporter.Finish();
+#endif
     }
     PipeBarrier<PIPE_ALL>();
     WorkTime(cfg, 0, next, worker, begin);

@@ -20,6 +20,9 @@ p.add_argument("--owners", type=int, choices=(3, 4), default=4)
 p.add_argument("--sources", type=int, choices=(2, 4, 5), default=2)
 p.add_argument("--route-ready", action="store_true")
 p.add_argument(
+    "--pipelined-export", action="store_true", help="opt-in double-buffered target SEND"
+)
+p.add_argument(
     "--batch-activate",
     action=argparse.BooleanOptionalAction,
     default=True,
@@ -32,6 +35,8 @@ p.add_argument(
     help="initialize/publish only live routing metadata (default)",
 )
 a = p.parse_args()
+if a.pipelined_export and a.route_ready:
+    p.error("pipelined export is currently qualified only without --route-ready")
 layout = ChannelLayout(a.rows, a.owners, a.sources, a.route_ready)
 partition = ExpertPartition(a.owners)
 groups = (partition.slots + 3) // 4 * 4
@@ -47,6 +52,7 @@ for name in ("actual_gmm.cpp", "priority_policy.hpp"):
 for name in (
     "server_workers.hpp",
     "quant_vector.hpp",
+    "quant_export.hpp",
     "quant_batch.hpp",
     "quant_gmm.cpp",
     "launch.cpp",
@@ -121,6 +127,8 @@ for filename in ("server_workers.hpp", "persistent_cube.cpp"):
         text = "#define QWEN38_BATCH_ACTIVATE 1\n" + text
     if filename == "server_workers.hpp" and a.route_ready:
         text = "#define QWEN38_ROUTE_READY 1\n" + text
+    if filename == "server_workers.hpp" and a.pipelined_export:
+        text = "#define QWEN38_PIPELINED_EXPORT 1\n" + text
     path.write_text(text)
 client = (local.parent / "qwen-next/client_kernel.cpp").read_text()
 assert "constexpr int H = 2048" in client
@@ -225,6 +233,7 @@ for script, unit, name in (
             pipelined_client_collect=True,
             route_ready=a.route_ready,
             batch_activate=a.batch_activate,
+            pipelined_export=a.pipelined_export,
             compact_maps=a.compact_maps,
         ),
         indent=2,

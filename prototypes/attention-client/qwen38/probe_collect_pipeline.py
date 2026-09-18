@@ -105,6 +105,11 @@ for n in sorted({1, 7, 32, 127, min(512, session.layout.rows), session.layout.ro
             snapshots[mode] = outputs[mode].clone()
             torch.npu.synchronize()
         assert torch.equal(snapshots["serial"], snapshots["pipeline"]), (n, generation)
+        if os.environ.get("QWEN38_SAVE_COLLECT_OUTPUTS") == "1":
+            torch.save(
+                snapshots["serial"].cpu(),
+                a.directory / f"output-{a.source}-{n}-{generation}.pt",
+            )
         numeric.append(dict(generation=generation, exact=True))
     leaf = measure(graphs, 1)
     # No publication/retirement: all outputs and source generation remain stable.

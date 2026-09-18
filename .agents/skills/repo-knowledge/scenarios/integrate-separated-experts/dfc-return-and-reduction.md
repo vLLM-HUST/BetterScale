@@ -110,3 +110,16 @@ times. This diagnostic closure still publishes route-ready flags unused by
 fixed-order collect; standard builds default those flags off. Preserve the ABI
 when testing their removal, and do not confuse broad-hit GEMM time with the
 earlier hot10 fixture.
+
+## Server-side successor
+
+`prototypes/attention-client/qwen38/EXPORT-PIPELINE.md` now owns the SEND follow-up.
+Two input/scale and output slots pipeline the unchanged INT32/scale/BF16 math
+inside64KiB UB. No-route-ready control versus candidate at1024rows gives
+3.425->3.228ms complete leaf, with convert/export intervals roughly370–386us
+falling to191–207us.24 full output tensors match bitwise across server builds.
+The real A2TP1+E3 full-model gate also passes12 shadows each129/129exact.
+These are bounded observations; the capped model run does NOT establish an
+end-to-end gain. `--pipelined-export` remains opt-in and rejects combination
+with route-ready pending that separate gate. Do not accidentally enable the
+unqualified online notification branch when reusing the helper.
