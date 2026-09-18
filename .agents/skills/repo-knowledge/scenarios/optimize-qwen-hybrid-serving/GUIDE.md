@@ -1112,3 +1112,18 @@ branches matching independent cold output. Diagnostic1GiBKV onhw3 6/7, AIV,
 noMTP; resources reclaimed. Reproducer: `elastic_probe.py` with
 `ELASTIC_APC=1 ELASTIC_SHADOW=1`, uses colocated prototype `apc_checks.py`.
 These are bounded correctness witnesses, not APC throughput/accuracy claims.
+
+`apc-swe-scaling1` (source4d08136) completes the matched APCon/noMTP/AIV-both
+same-hw3-pair ABBA comparison: C1/C2/C4/C8 pooled native
+30.2309/51.7082/86.0309/122.7842 versus candidate
+34.2073/59.4052/101.3831/149.0147 output tokens/s;
+rounded gains13.15/14.89/17.85/21.36%. Use `summary.json` for exact numbers.
+Every arm/repeat/cohort completes78 requests and20648 output tokens; actual
+cached prompt tokens match (247296 atC1/C2/C4,238080 atC8). NativeC8 varies
+119.7352→125.9926; candidate149.0582→148.9711. Keep both observations. Means
+andp95 HTTP TTFT/TPOT improve in these four cohorts; do not generalize to
+population or SWE task accuracy. No profiler/shadow in timing. Admission ends
+exit0 and cards6/7 are idle/reclaimed. APC-off `fia-swe-scaling1` remains an
+abandoned non-paired reference, never mix its native result into these gains.
+Website draft uses separate Qwen evidence/methods and waits for exact public-copy
+approval; no new PyPI availability or official leaderboard claim.
