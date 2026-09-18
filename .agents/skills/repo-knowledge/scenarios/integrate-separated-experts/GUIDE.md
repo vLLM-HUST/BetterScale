@@ -14,6 +14,7 @@ Paths beginning `prototypes/` are repository-relative.
 | Qwen38 checkpoint, PLE repair, INT8 math or bootstrap? | [loading and wire gates](qwen38-loading-and-wire.md#paid-numeric-and-loading-lessons), then `qwen38/README.md` under `prototypes/attention-client` |
 | Multi-source EOF, layer identity or IPC lifetime? | [two-source contract](qwen38-loading-and-wire.md#two-source-extension-and-admission-boundary); [Next completion race](native-client-and-server-gates.md#a2e4-efficient-server-confluence-and-long-lifetime-completion-race) |
 | MTP, TP1/E3, State fit, retained SWE or QSA peaks? | [capacity and traces](qwen38-capacity-and-traces.md), then `qwen38/TOPOLOGY-CAMPAIGN.md` |
+| Fused W8A8 GEMM scheduler, C/V pipeline or ACTIVATE optimization? | [upstream SwiGLU scheduling](upstream-swiglu-scheduling.md) |
 | Fine-grained GEMM/input readiness or fair DFC comparison? | `device-service/FINE-PACK.md`, `FAIR-DFC.md`, `ROUTE-PULL.md` under `prototypes/attention-client`; [bounded gates](native-client-and-server-gates.md#fine-grained-expert-input-readiness-2026-09-16) |
 | Priority/promotion/fairness? | `prototypes/attention-client/qwen-next/priority/README.md` |
 | Native attention layer cut and FULL graph metadata? | [native-client gates](native-client-and-server-gates.md#split-qwen-attention-around-an-asynchronous-expert-boundary) |
