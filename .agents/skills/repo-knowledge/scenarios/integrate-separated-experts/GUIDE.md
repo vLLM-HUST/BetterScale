@@ -11,6 +11,7 @@ Paths beginning `prototypes/` are repository-relative.
 |---|---|
 | Current throughput/topology/capacity claims? | `prototypes/attention-client/qwen38/TOPOLOGY-RESULTS.md` |
 | Client/shared overlap, input pack or expensive collect? | `prototypes/attention-client/qwen38/PREFILL-PROFILE.md`, `client-pack-result.json` beside it |
+| Choose an upstream Qwen38 Ascend attention/QSA implementation? | [upstream paths and adoption boundaries](qwen38-upstream-paths.md) |
 | Qwen38 checkpoint, PLE repair, INT8 math or bootstrap? | [loading and wire gates](qwen38-loading-and-wire.md#paid-numeric-and-loading-lessons), then `qwen38/README.md` under `prototypes/attention-client` |
 | Multi-source EOF, layer identity or IPC lifetime? | [two-source contract](qwen38-loading-and-wire.md#two-source-extension-and-admission-boundary); [Next completion race](native-client-and-server-gates.md#a2e4-efficient-server-confluence-and-long-lifetime-completion-race) |
 | MTP, TP1/E3, State fit, retained SWE or QSA peaks? | [capacity and traces](qwen38-capacity-and-traces.md), then `qwen38/TOPOLOGY-CAMPAIGN.md` |

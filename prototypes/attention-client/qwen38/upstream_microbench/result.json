@@ -1,0 +1,1571 @@
+{
+  "date": "2026-09-18",
+  "host": "hw0",
+  "device": "Ascend 910B2",
+  "torch": "2.10.0+cpu",
+  "torch_npu": "2.10.0.post2",
+  "cann": "9.0.1",
+  "scope": "Dummy matched single-device graph leaf probes, not whole-model or serving gains",
+  "timing": "7 alternating-order rounds, 3 replays per sample, NPU-event median",
+  "memory": "Incremental peak allocated bytes during capture, not reserved-pool size or complete model peak",
+  "sources": [
+    {
+      "repo": "sgl-project/sgl-kernel-npu",
+      "sha": "7ede76da2f3e12fa16f7cad3161b199b24aeb6e1",
+      "path": "python/sgl_kernel_npu/sgl_kernel_npu/qwen3_8_flash_next/mqa.py",
+      "local": "sglang/mqa.py",
+      "url": "https://raw.githubusercontent.com/sgl-project/sgl-kernel-npu/7ede76da2f3e12fa16f7cad3161b199b24aeb6e1/python/sgl_kernel_npu/sgl_kernel_npu/qwen3_8_flash_next/mqa.py"
+    },
+    {
+      "repo": "sgl-project/sgl-kernel-npu",
+      "sha": "7ede76da2f3e12fa16f7cad3161b199b24aeb6e1",
+      "path": "python/sgl_kernel_npu/sgl_kernel_npu/qwen3_8_flash_next/sparse_attention.py",
+      "local": "sglang/sparse_attention.py",
+      "url": "https://raw.githubusercontent.com/sgl-project/sgl-kernel-npu/7ede76da2f3e12fa16f7cad3161b199b24aeb6e1/python/sgl_kernel_npu/sgl_kernel_npu/qwen3_8_flash_next/sparse_attention.py"
+    },
+    {
+      "repo": "sgl-project/sgl-kernel-npu",
+      "sha": "7ede76da2f3e12fa16f7cad3161b199b24aeb6e1",
+      "path": "python/sgl_kernel_npu/sgl_kernel_npu/qwen3_8_flash_next/hc.py",
+      "local": "sglang/hc.py",
+      "url": "https://raw.githubusercontent.com/sgl-project/sgl-kernel-npu/7ede76da2f3e12fa16f7cad3161b199b24aeb6e1/python/sgl_kernel_npu/sgl_kernel_npu/qwen3_8_flash_next/hc.py"
+    },
+    {
+      "repo": "sgl-project/sgl-kernel-npu",
+      "sha": "7ede76da2f3e12fa16f7cad3161b199b24aeb6e1",
+      "path": "python/sgl_kernel_npu/sgl_kernel_npu/qwen3_8_flash_next/expansion.py",
+      "local": "sglang/expansion.py",
+      "url": "https://raw.githubusercontent.com/sgl-project/sgl-kernel-npu/7ede76da2f3e12fa16f7cad3161b199b24aeb6e1/python/sgl_kernel_npu/sgl_kernel_npu/qwen3_8_flash_next/expansion.py"
+    },
+    {
+      "repo": "sgl-project/sgl-kernel-npu",
+      "sha": "7ede76da2f3e12fa16f7cad3161b199b24aeb6e1",
+      "path": "LICENSE",
+      "local": "sglang/LICENSE",
+      "url": "https://raw.githubusercontent.com/sgl-project/sgl-kernel-npu/7ede76da2f3e12fa16f7cad3161b199b24aeb6e1/LICENSE"
+    },
+    {
+      "repo": "vllm-project/vllm-ascend",
+      "sha": "9082742026e64e0311b4f4913850817dbc752875",
+      "path": "vllm_ascend/models/qwen4_exp/lightning_indexer.py",
+      "local": "ascend/lightning_indexer.py",
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm-ascend/9082742026e64e0311b4f4913850817dbc752875/vllm_ascend/models/qwen4_exp/lightning_indexer.py"
+    },
+    {
+      "repo": "vllm-project/vllm-ascend",
+      "sha": "9082742026e64e0311b4f4913850817dbc752875",
+      "path": "vllm_ascend/ops/triton/qwen4_exp/qsa.py",
+      "local": "ascend/qsa.py",
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm-ascend/9082742026e64e0311b4f4913850817dbc752875/vllm_ascend/ops/triton/qwen4_exp/qsa.py"
+    },
+    {
+      "repo": "vllm-project/vllm-ascend",
+      "sha": "9082742026e64e0311b4f4913850817dbc752875",
+      "path": "LICENSE",
+      "local": "ascend/LICENSE",
+      "url": "https://raw.githubusercontent.com/vllm-project/vllm-ascend/9082742026e64e0311b4f4913850817dbc752875/LICENSE"
+    }
+  ],
+  "current_overlay": "/workspace/betterscale-hw0/repo/runs/qwen38-bounded-qsa-runtime-20260917e/overlay",
+  "selected_candidate": "BorrowedHCLeaves: norm/mix only, <=32 rows, no production default change",
+  "cases": [
+    {
+      "kind": "indexer",
+      "rows": 1,
+      "context": 8192,
+      "status": "MEASURED_NOT_PROMOTED",
+      "agreements": [
+        {
+          "generation": 0,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 0,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 0,
+          "arm": "sgl_mqa_topk",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "sgl_mqa_topk",
+          "rows_with_different_set": 0
+        }
+      ],
+      "capsule": "indexer",
+      "timings": {
+        "current_bsnd": {
+          "median_ms": 0.03430666774511337,
+          "capture_peak_allocated_bytes": 73454592
+        },
+        "native_tnd": {
+          "median_ms": 0.03336666772762934,
+          "capture_peak_allocated_bytes": 73452544
+        },
+        "sgl_mqa_topk": {
+          "median_ms": 0.03344666709502538,
+          "capture_peak_allocated_bytes": 20480
+        }
+      }
+    },
+    {
+      "kind": "indexer",
+      "rows": 4,
+      "context": 65536,
+      "status": "MEASURED_NOT_PROMOTED",
+      "agreements": [
+        {
+          "generation": 0,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 0,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 0,
+          "arm": "sgl_mqa_topk",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "sgl_mqa_topk",
+          "rows_with_different_set": 0
+        }
+      ],
+      "capsule": "indexer",
+      "timings": {
+        "current_bsnd": {
+          "median_ms": 0.05159999926884969,
+          "capture_peak_allocated_bytes": 73459712
+        },
+        "native_tnd": {
+          "median_ms": 0.05084666609764099,
+          "capture_peak_allocated_bytes": 73458688
+        },
+        "sgl_mqa_topk": {
+          "median_ms": 0.19266666968663534,
+          "capture_peak_allocated_bytes": 561664
+        }
+      }
+    },
+    {
+      "kind": "indexer",
+      "rows": 32,
+      "context": 8192,
+      "status": "MEASURED_NOT_PROMOTED",
+      "agreements": [
+        {
+          "generation": 0,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 0,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 0,
+          "arm": "sgl_mqa_topk",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "sgl_mqa_topk",
+          "rows_with_different_set": 0
+        }
+      ],
+      "capsule": "indexer",
+      "timings": {
+        "current_bsnd": {
+          "median_ms": 0.04876000185807546,
+          "capture_peak_allocated_bytes": 73517056
+        },
+        "native_tnd": {
+          "median_ms": 0.05301333467165629,
+          "capture_peak_allocated_bytes": 73516032
+        },
+        "sgl_mqa_topk": {
+          "median_ms": 0.19476000467936197,
+          "capture_peak_allocated_bytes": 528384
+        }
+      }
+    },
+    {
+      "kind": "indexer",
+      "rows": 128,
+      "context": 65536,
+      "status": "MEASURED_NOT_PROMOTED",
+      "agreements": [
+        {
+          "generation": 0,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 0,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 0,
+          "arm": "sgl_mqa_topk",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "sgl_mqa_topk",
+          "rows_with_different_set": 0
+        }
+      ],
+      "capsule": "indexer",
+      "timings": {
+        "current_bsnd": {
+          "median_ms": 0.29059332609176636,
+          "capture_peak_allocated_bytes": 73715200
+        },
+        "native_tnd": {
+          "median_ms": 0.279039998849233,
+          "capture_peak_allocated_bytes": 73712640
+        },
+        "sgl_mqa_topk": {
+          "median_ms": 4.2241865793863935,
+          "capture_peak_allocated_bytes": 13636096
+        }
+      }
+    },
+    {
+      "kind": "indexer",
+      "rows": 512,
+      "context": 8192,
+      "status": "MEASURED_NOT_PROMOTED",
+      "agreements": [
+        {
+          "generation": 0,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 0,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        }
+      ],
+      "capsule": "indexer",
+      "timings": {
+        "current_bsnd": {
+          "median_ms": 0.2274799942970276,
+          "capture_peak_allocated_bytes": 74506240
+        },
+        "native_tnd": {
+          "median_ms": 0.24260665973027548,
+          "capture_peak_allocated_bytes": 74499072
+        }
+      }
+    },
+    {
+      "kind": "indexer",
+      "rows": 2048,
+      "context": 65536,
+      "status": "MEASURED_NOT_PROMOTED",
+      "agreements": [
+        {
+          "generation": 0,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 0,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "current_bsnd",
+          "rows_with_different_set": 0
+        },
+        {
+          "generation": 1,
+          "arm": "native_tnd",
+          "rows_with_different_set": 0
+        }
+      ],
+      "capsule": "indexer",
+      "timings": {
+        "current_bsnd": {
+          "median_ms": 4.03380012512207,
+          "capture_peak_allocated_bytes": 77670400
+        },
+        "native_tnd": {
+          "median_ms": 3.919833183288574,
+          "capture_peak_allocated_bytes": 77644800
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 1,
+      "kv_heads": 1,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.07314666608969371,
+          "capture_peak_allocated_bytes": 33833984
+        },
+        "sgl_including_slots": {
+          "median_ms": 0.36735999584198,
+          "capture_peak_allocated_bytes": 115200
+        },
+        "sgl_ready_slots": {
+          "median_ms": 0.1648466686407725,
+          "capture_peak_allocated_bytes": 106496
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002340196166187525
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016686805756762624
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016686805756762624
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 4,
+      "kv_heads": 1,
+      "context": 65536,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.1178266704082489,
+          "capture_peak_allocated_bytes": 40164352
+        },
+        "sgl_including_slots": {
+          "median_ms": 1.7707133293151855,
+          "capture_peak_allocated_bytes": 456192
+        },
+        "sgl_ready_slots": {
+          "median_ms": 1.463706652323405,
+          "capture_peak_allocated_bytes": 422912
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0023623527958989143
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016785574844107032
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016785574844107032
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 32,
+      "kv_heads": 1,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.3146599928538005,
+          "capture_peak_allocated_bytes": 99257344
+        },
+        "sgl_including_slots": {
+          "median_ms": 4.866346677144368,
+          "capture_peak_allocated_bytes": 3631616
+        },
+        "sgl_ready_slots": {
+          "median_ms": 4.1721601486206055,
+          "capture_peak_allocated_bytes": 3368960
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002287195762619376
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.001676382147707045
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.001676382147707045
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 128,
+      "kv_heads": 1,
+      "context": 65536,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 1.053380012512207,
+          "capture_peak_allocated_bytes": 301861888
+        },
+        "sgl_including_slots": {
+          "median_ms": 20.033306121826172,
+          "capture_peak_allocated_bytes": 15555584
+        },
+        "sgl_ready_slots": {
+          "median_ms": 18.425033569335938,
+          "capture_peak_allocated_bytes": 13469696
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002303160261362791
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.001647252938710153
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.001647252938710153
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 512,
+      "kv_heads": 1,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 4.202080090840657,
+          "capture_peak_allocated_bytes": 304222720
+        },
+        "sgl_including_slots": {
+          "median_ms": 65.90220642089844,
+          "capture_peak_allocated_bytes": 58073600
+        },
+        "sgl_ready_slots": {
+          "median_ms": 61.50542195638021,
+          "capture_peak_allocated_bytes": 53872640
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0023240356240421534
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.001671269885264337
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.001671269885264337
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 128,
+      "kv_heads": 1,
+      "context": 8192,
+      "selected": 128,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.13886666297912598,
+          "capture_peak_allocated_bytes": 36473344
+        },
+        "sgl_including_slots": {
+          "median_ms": 8.174620310465494,
+          "capture_peak_allocated_bytes": 13535744
+        },
+        "sgl_ready_slots": {
+          "median_ms": 7.822733561197917,
+          "capture_peak_allocated_bytes": 13469696
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002220243215560913
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0017069780733436346
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0017069780733436346
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 1,
+      "kv_heads": 2,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.0873733361562093,
+          "capture_peak_allocated_bytes": 35939328
+        },
+        "sgl_including_slots": {
+          "median_ms": 0.4290533463160197,
+          "capture_peak_allocated_bytes": 220672
+        },
+        "sgl_ready_slots": {
+          "median_ms": 0.23209333419799805,
+          "capture_peak_allocated_bytes": 211968
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.00229284493252635
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016729030758142471
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016729030758142471
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 4,
+      "kv_heads": 2,
+      "context": 65536,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.1313266654809316,
+          "capture_peak_allocated_bytes": 48589824
+        },
+        "sgl_including_slots": {
+          "median_ms": 2.8048998514811196,
+          "capture_peak_allocated_bytes": 877056
+        },
+        "sgl_ready_slots": {
+          "median_ms": 2.485473314921061,
+          "capture_peak_allocated_bytes": 843776
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002289566909894347
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016587729332968593
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016587729332968593
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 32,
+      "kv_heads": 2,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.42675332228342694,
+          "capture_peak_allocated_bytes": 166661120
+        },
+        "sgl_including_slots": {
+          "median_ms": 9.658093134562174,
+          "capture_peak_allocated_bytes": 6998528
+        },
+        "sgl_ready_slots": {
+          "median_ms": 8.948026657104492,
+          "capture_peak_allocated_bytes": 6735872
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0022892258130013943
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.001644373289309442
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.001644373289309442
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 128,
+      "kv_heads": 2,
+      "context": 65536,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 1.6241466204325359,
+          "capture_peak_allocated_bytes": 571607040
+        },
+        "sgl_including_slots": {
+          "median_ms": 28.31682586669922,
+          "capture_peak_allocated_bytes": 28511232
+        },
+        "sgl_ready_slots": {
+          "median_ms": 26.747220357259113,
+          "capture_peak_allocated_bytes": 27460608
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0023126692976802588
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016508527332916856
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016508527332916856
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 512,
+      "kv_heads": 2,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 6.4210866292317705,
+          "capture_peak_allocated_bytes": 576457216
+        },
+        "sgl_including_slots": {
+          "median_ms": 102.4493408203125,
+          "capture_peak_allocated_bytes": 78126080
+        },
+        "sgl_ready_slots": {
+          "median_ms": 97.9812520345052,
+          "capture_peak_allocated_bytes": 73925120
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0022834809496998787
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016528717242181301
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016528717242181301
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "rows": 128,
+      "kv_heads": 2,
+      "context": 8192,
+      "selected": 128,
+      "status": "PASS",
+      "capsule": "attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.17827999591827393,
+          "capture_peak_allocated_bytes": 54560256
+        },
+        "sgl_including_slots": {
+          "median_ms": 10.704832712809244,
+          "capture_peak_allocated_bytes": 27526656
+        },
+        "sgl_ready_slots": {
+          "median_ms": 10.37797991434733,
+          "capture_peak_allocated_bytes": 27460608
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0022123551461845636
+        },
+        "sgl_including_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016758658457547426
+        },
+        "sgl_ready_slots": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0016758658457547426
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 1,
+      "kv_heads": 1,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.07833333313465118,
+          "capture_peak_allocated_bytes": 33833984
+        },
+        "ascend_including_metadata": {
+          "median_ms": 0.10334666570027669,
+          "capture_peak_allocated_bytes": 3002368
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 0.10490000247955322,
+          "capture_peak_allocated_bytes": 2993152
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002340196166187525
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0020296256989240646
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0020296256989240646
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 4,
+      "kv_heads": 1,
+      "context": 65536,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.11630666255950928,
+          "capture_peak_allocated_bytes": 40164352
+        },
+        "ascend_including_metadata": {
+          "median_ms": 0.7511200110117594,
+          "capture_peak_allocated_bytes": 12000256
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 0.726526657740275,
+          "capture_peak_allocated_bytes": 11966464
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0023623527958989143
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0020259390585124493
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0020259390585124493
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 32,
+      "kv_heads": 1,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.3094866673151652,
+          "capture_peak_allocated_bytes": 99257344
+        },
+        "ascend_including_metadata": {
+          "median_ms": 1.0771400133768718,
+          "capture_peak_allocated_bytes": 26688000
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 1.03166667620341,
+          "capture_peak_allocated_bytes": 26424832
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002287195762619376
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0021772838663309813
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0021772838663309813
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 128,
+      "kv_heads": 1,
+      "context": 65536,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 1.0577466487884521,
+          "capture_peak_allocated_bytes": 301861888
+        },
+        "ascend_including_metadata": {
+          "median_ms": 3.791026751200358,
+          "capture_peak_allocated_bytes": 104649728
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 3.746493339538574,
+          "capture_peak_allocated_bytes": 103598080
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002303160261362791
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0021198545582592487
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0021198545582592487
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 512,
+      "kv_heads": 1,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 4.1853532791137695,
+          "capture_peak_allocated_bytes": 304222720
+        },
+        "ascend_including_metadata": {
+          "median_ms": 10.47249984741211,
+          "capture_peak_allocated_bytes": 212970496
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 10.412839889526367,
+          "capture_peak_allocated_bytes": 208766976
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0023240356240421534
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0022032384295016527
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0022032384295016527
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 128,
+      "kv_heads": 1,
+      "context": 8192,
+      "selected": 128,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.14239333073298135,
+          "capture_peak_allocated_bytes": 36473344
+        },
+        "ascend_including_metadata": {
+          "median_ms": 0.6057533423105875,
+          "capture_peak_allocated_bytes": 27081728
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 0.5713466803232828,
+          "capture_peak_allocated_bytes": 27014656
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002220243215560913
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0021595126017928123
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0021595126017928123
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 1,
+      "kv_heads": 2,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.08012000223000844,
+          "capture_peak_allocated_bytes": 35939328
+        },
+        "ascend_including_metadata": {
+          "median_ms": 0.1448799967765808,
+          "capture_peak_allocated_bytes": 5993472
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 0.14072666565577188,
+          "capture_peak_allocated_bytes": 5984256
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.00229284493252635
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0020014236215502024
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0020014236215502024
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 4,
+      "kv_heads": 2,
+      "context": 65536,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.13642666737238565,
+          "capture_peak_allocated_bytes": 48589824
+        },
+        "ascend_including_metadata": {
+          "median_ms": 0.9253933429718018,
+          "capture_peak_allocated_bytes": 12024832
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 0.9069399833679199,
+          "capture_peak_allocated_bytes": 11991040
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002289566909894347
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002043819986283779
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002043819986283779
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 32,
+      "kv_heads": 2,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.4609866539637248,
+          "capture_peak_allocated_bytes": 166661120
+        },
+        "ascend_including_metadata": {
+          "median_ms": 1.9844800631205242,
+          "capture_peak_allocated_bytes": 53111296
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 1.954026699066162,
+          "capture_peak_allocated_bytes": 52848128
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0022892258130013943
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0021422982681542635
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0021422982681542635
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 128,
+      "kv_heads": 2,
+      "context": 65536,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 1.6262133916219075,
+          "capture_peak_allocated_bytes": 571607040
+        },
+        "ascend_including_metadata": {
+          "median_ms": 7.2504533131917315,
+          "capture_peak_allocated_bytes": 208245760
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 7.207246780395508,
+          "capture_peak_allocated_bytes": 207194112
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0023126692976802588
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002148942556232214
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.002148942556232214
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 512,
+      "kv_heads": 2,
+      "context": 8192,
+      "selected": 2051,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 6.380886713663737,
+          "capture_peak_allocated_bytes": 576457216
+        },
+        "ascend_including_metadata": {
+          "median_ms": 14.117513020833334,
+          "capture_peak_allocated_bytes": 100673536
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 14.022806803385416,
+          "capture_peak_allocated_bytes": 96470016
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0022834809496998787
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0022496655583381653
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0022496655583381653
+        }
+      }
+    },
+    {
+      "kind": "attention",
+      "family": "ascend",
+      "rows": 128,
+      "kv_heads": 2,
+      "context": 8192,
+      "selected": 128,
+      "status": "PASS",
+      "capsule": "ascend-attention",
+      "timings": {
+        "current_gather_fia": {
+          "median_ms": 0.1774466633796692,
+          "capture_peak_allocated_bytes": 54560256
+        },
+        "ascend_including_metadata": {
+          "median_ms": 1.1107333501180012,
+          "capture_peak_allocated_bytes": 54094848
+        },
+        "ascend_ready_metadata": {
+          "median_ms": 1.0721999804178874,
+          "capture_peak_allocated_bytes": 54027776
+        }
+      },
+      "errors": {
+        "current_gather_fia": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0022123551461845636
+        },
+        "ascend_including_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0021400325931608677
+        },
+        "ascend_ready_metadata": {
+          "comparisons": 2,
+          "max_relative_l2": 0.0021400325931608677
+        }
+      }
+    },
+    {
+      "kind": "prefill_indexer",
+      "rows": 128,
+      "context": 8192,
+      "status": "MEASURED_NOT_PROMOTED",
+      "rows_with_different_set": [
+        {
+          "current_causal_lanes": 0,
+          "upstream_row_tnd": 0,
+          "tnd_unit_weights": 0
+        },
+        {
+          "current_causal_lanes": 0,
+          "upstream_row_tnd": 0,
+          "tnd_unit_weights": 0
+        }
+      ],
+      "capsule": "prefill-final",
+      "timings": {
+        "current_causal_lanes": {
+          "median_ms": 0.1318666636943817,
+          "capture_peak_allocated_bytes": 73851392
+        },
+        "upstream_row_tnd": {
+          "median_ms": 0.1137933333714803,
+          "capture_peak_allocated_bytes": 73723392
+        },
+        "tnd_unit_weights": {
+          "median_ms": 0.11506666739781697,
+          "capture_peak_allocated_bytes": 73722368
+        }
+      }
+    },
+    {
+      "kind": "prefill_indexer",
+      "rows": 512,
+      "context": 8192,
+      "status": "MEASURED_NOT_PROMOTED",
+      "rows_with_different_set": [
+        {
+          "current_causal_lanes": 0,
+          "upstream_row_tnd": 0,
+          "tnd_unit_weights": 0
+        },
+        {
+          "current_causal_lanes": 0,
+          "upstream_row_tnd": 1,
+          "tnd_unit_weights": 1
+        }
+      ],
+      "capsule": "prefill-final",
+      "timings": {
+        "current_causal_lanes": {
+          "median_ms": 0.29063334067662555,
+          "capture_peak_allocated_bytes": 75039232
+        },
+        "upstream_row_tnd": {
+          "median_ms": 0.25704000393549603,
+          "capture_peak_allocated_bytes": 74535936
+        },
+        "tnd_unit_weights": {
+          "median_ms": 0.26797332366307575,
+          "capture_peak_allocated_bytes": 74531840
+        }
+      }
+    },
+    {
+      "kind": "prefill_indexer",
+      "rows": 2048,
+      "context": 8192,
+      "status": "MEASURED_NOT_PROMOTED",
+      "rows_with_different_set": [
+        {
+          "current_causal_lanes": 0,
+          "upstream_row_tnd": 0,
+          "tnd_unit_weights": 0
+        },
+        {
+          "current_causal_lanes": 0,
+          "upstream_row_tnd": 0,
+          "tnd_unit_weights": 0
+        }
+      ],
+      "capsule": "prefill-final",
+      "timings": {
+        "current_causal_lanes": {
+          "median_ms": 0.9300999641418457,
+          "capture_peak_allocated_bytes": 79794688
+        },
+        "upstream_row_tnd": {
+          "median_ms": 0.7638333638509115,
+          "capture_peak_allocated_bytes": 77786112
+        },
+        "tnd_unit_weights": {
+          "median_ms": 0.8024000326792399,
+          "capture_peak_allocated_bytes": 77769728
+        }
+      }
+    },
+    {
+      "kind": "prefill_indexer",
+      "rows": 4096,
+      "context": 65536,
+      "status": "MEASURED_NOT_PROMOTED",
+      "rows_with_different_set": [
+        {
+          "current_causal_lanes": 0,
+          "upstream_row_tnd": 2,
+          "tnd_unit_weights": 2
+        },
+        {
+          "current_causal_lanes": 0,
+          "upstream_row_tnd": 1,
+          "tnd_unit_weights": 1
+        }
+      ],
+      "capsule": "prefill-final",
+      "timings": {
+        "current_causal_lanes": {
+          "median_ms": 5.227286656697591,
+          "capture_peak_allocated_bytes": 86136320
+        },
+        "upstream_row_tnd": {
+          "median_ms": 7.729746500651042,
+          "capture_peak_allocated_bytes": 83348480
+        },
+        "tnd_unit_weights": {
+          "median_ms": 7.845693588256836,
+          "capture_peak_allocated_bytes": 83315712
+        }
+      }
+    },
+    {
+      "kind": "hc",
+      "rows": 1,
+      "status": "PASS",
+      "capsule": "hc-final",
+      "timings": {
+        "current_hc": {
+          "median_ms": 0.07032000025113423,
+          "capture_peak_allocated_bytes": 70144
+        },
+        "sgl_hc": {
+          "median_ms": 0.062080000837643944,
+          "capture_peak_allocated_bytes": 49664
+        },
+        "borrowed_norm_mix": {
+          "median_ms": 0.06889999906222026,
+          "capture_peak_allocated_bytes": 69120
+        }
+      },
+      "differences": {
+        "sgl_hc": {
+          "comparisons": 24,
+          "max_relative_l2": 0.0,
+          "non_bitwise_comparisons": 0
+        },
+        "borrowed_norm_mix": {
+          "comparisons": 24,
+          "max_relative_l2": 0.0,
+          "non_bitwise_comparisons": 0
+        }
+      }
+    },
+    {
+      "kind": "hc",
+      "rows": 4,
+      "status": "PASS",
+      "capsule": "hc-final",
+      "timings": {
+        "current_hc": {
+          "median_ms": 0.08171333372592926,
+          "capture_peak_allocated_bytes": 268800
+        },
+        "sgl_hc": {
+          "median_ms": 0.07275333503882091,
+          "capture_peak_allocated_bytes": 192000
+        },
+        "borrowed_norm_mix": {
+          "median_ms": 0.07725999752680461,
+          "capture_peak_allocated_bytes": 268800
+        }
+      },
+      "differences": {
+        "sgl_hc": {
+          "comparisons": 24,
+          "max_relative_l2": 0.0,
+          "non_bitwise_comparisons": 0
+        },
+        "borrowed_norm_mix": {
+          "comparisons": 24,
+          "max_relative_l2": 0.0,
+          "non_bitwise_comparisons": 0
+        }
+      }
+    },
+    {
+      "kind": "hc",
+      "rows": 32,
+      "status": "PASS",
+      "capsule": "hc-final",
+      "timings": {
+        "current_hc": {
+          "median_ms": 0.16980665922164917,
+          "capture_peak_allocated_bytes": 4589568
+        },
+        "sgl_hc": {
+          "median_ms": 0.10439999898274739,
+          "capture_peak_allocated_bytes": 1518080
+        },
+        "borrowed_norm_mix": {
+          "median_ms": 0.10753333568572998,
+          "capture_peak_allocated_bytes": 2132480
+        }
+      },
+      "differences": {
+        "sgl_hc": {
+          "comparisons": 24,
+          "max_relative_l2": 7.609841850353405e-05,
+          "non_bitwise_comparisons": 11
+        },
+        "borrowed_norm_mix": {
+          "comparisons": 24,
+          "max_relative_l2": 7.609841850353405e-05,
+          "non_bitwise_comparisons": 11
+        }
+      }
+    },
+    {
+      "kind": "expansion",
+      "rows": 1,
+      "status": "PASS",
+      "capsule": "expansion-final",
+      "timings": {
+        "current_expand": {
+          "median_ms": 0.028019999464352924,
+          "capture_peak_allocated_bytes": 9728
+        },
+        "sgl_expand": {
+          "median_ms": 0.06667999923229218,
+          "capture_peak_allocated_bytes": 11264
+        },
+        "ascend_expand": {
+          "median_ms": 0.056559999783833824,
+          "capture_peak_allocated_bytes": 8704
+        }
+      }
+    },
+    {
+      "kind": "expansion",
+      "rows": 4,
+      "status": "PASS",
+      "capsule": "expansion-final",
+      "timings": {
+        "current_expand": {
+          "median_ms": 0.027880000571409862,
+          "capture_peak_allocated_bytes": 33280
+        },
+        "sgl_expand": {
+          "median_ms": 0.07202666501204173,
+          "capture_peak_allocated_bytes": 41984
+        },
+        "ascend_expand": {
+          "median_ms": 0.06069999933242798,
+          "capture_peak_allocated_bytes": 33280
+        }
+      }
+    },
+    {
+      "kind": "expansion",
+      "rows": 32,
+      "status": "PASS",
+      "capsule": "expansion-final",
+      "timings": {
+        "current_expand": {
+          "median_ms": 0.027453333139419556,
+          "capture_peak_allocated_bytes": 263168
+        },
+        "sgl_expand": {
+          "median_ms": 0.30081333716710407,
+          "capture_peak_allocated_bytes": 328704
+        },
+        "ascend_expand": {
+          "median_ms": 0.29672666390736896,
+          "capture_peak_allocated_bytes": 262656
+        }
+      }
+    },
+    {
+      "kind": "expansion",
+      "rows": 128,
+      "status": "PASS",
+      "capsule": "expansion-final",
+      "timings": {
+        "current_expand": {
+          "median_ms": 0.05381999909877777,
+          "capture_peak_allocated_bytes": 1051136
+        },
+        "sgl_expand": {
+          "median_ms": 1.0396599769592285,
+          "capture_peak_allocated_bytes": 1313792
+        },
+        "ascend_expand": {
+          "median_ms": 1.1352933247884114,
+          "capture_peak_allocated_bytes": 1050624
+        }
+      }
+    }
+  ]
+}
