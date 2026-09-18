@@ -120,6 +120,11 @@ inside64KiB UB. No-route-ready control versus candidate at1024rows gives
 falling to191–207us.24 full output tensors match bitwise across server builds.
 The real A2TP1+E3 full-model gate also passes12 shadows each129/129exact.
 These are bounded observations; the capped model run does NOT establish an
-end-to-end gain. `--pipelined-export` remains opt-in and rejects combination
-with route-ready pending that separate gate. Do not accidentally enable the
+end-to-end gain. New ordinary builds now default to pipelined export;
+`--no-pipelined-export` keeps the serial control. Route-ready builds default to
+the old backend; explicitly combining both still fails pending that separate gate. Do not accidentally enable the
 unqualified online notification branch when reusing the helper.
+
+After default promotion, candidate broad1024-row post-fetch/pre-pack is still
+429–437us and PACK225–236us. Prefer investigating serial coordinator Group and
+row/scale copy organization before blaming the genuine wide-expert GEMM traffic.

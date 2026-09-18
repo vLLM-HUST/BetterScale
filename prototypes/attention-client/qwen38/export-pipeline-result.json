@@ -1288,5 +1288,22 @@
         ]
       }
     ]
+  },
+  "remaining_post_fetch_pre_pack": {
+    "expert0": {
+      "routed_rows": 3392,
+      "samples": 26,
+      "median_us": 429.03999999999996
+    },
+    "expert1": {
+      "routed_rows": 3427,
+      "samples": 26,
+      "median_us": 437.07000000000005
+    },
+    "expert2": {
+      "routed_rows": 3421,
+      "samples": 26,
+      "median_us": 429.98
+    }
   }
 }

@@ -20,7 +20,10 @@ p.add_argument("--owners", type=int, choices=(3, 4), default=4)
 p.add_argument("--sources", type=int, choices=(2, 4, 5), default=2)
 p.add_argument("--route-ready", action="store_true")
 p.add_argument(
-    "--pipelined-export", action="store_true", help="opt-in double-buffered target SEND"
+    "--pipelined-export",
+    action=argparse.BooleanOptionalAction,
+    default=None,
+    help="double-buffered target SEND (default without route-ready); --no-pipelined-export keeps the serial control",
 )
 p.add_argument(
     "--batch-activate",
@@ -35,6 +38,10 @@ p.add_argument(
     help="initialize/publish only live routing metadata (default)",
 )
 a = p.parse_args()
+# Preserve the separately qualified online/route-ready backend. Explicitly
+# requesting the unqualified combination remains an error, not a silent fallback.
+if a.pipelined_export is None:
+    a.pipelined_export = not a.route_ready
 if a.pipelined_export and a.route_ready:
     p.error("pipelined export is currently qualified only without --route-ready")
 layout = ChannelLayout(a.rows, a.owners, a.sources, a.route_ready)

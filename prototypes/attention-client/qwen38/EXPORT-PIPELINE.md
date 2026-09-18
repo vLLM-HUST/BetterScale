@@ -1,7 +1,11 @@
 # Pipeline server SEND without changing the expert arithmetic
 
-This opt-in prototype extends the fixed-order collection work upstream to the
-expert server. Use `build.py --pipelined-export` for a new closure, or:
+This prototype extends the fixed-order collection work upstream to the expert
+server. New ordinary `build.py` closures enable it BY DEFAULT. Use
+`--no-pipelined-export` for the serial SEND control. Route-ready builds retain
+the old SEND backend by default; explicitly combining `--pipelined-export` and
+`--route-ready` is rejected until separately qualified. Frozen existing binaries
+are not silently rebuilt or overwritten. For matched isolated experiments:
 
 ```
 python prototypes/attention-client/qwen38/build_server_export.py BASE CONTROL
@@ -12,7 +16,8 @@ The latter copies a frozen closure and rebuilds only `persistent_vector.o` plus
 the host launcher. Cube and client binaries stay identical. Both commands above
 disable route-ready flags and advertise that fact in the channel ABI; do not
 mix this with an online collector. Builders reject pipeline+route-ready until
-that additional notification mode is qualified. Ordinary defaults remain intact.
+that additional notification mode is qualified. The matched helper intentionally
+keeps its explicit control/candidate choices, independently of build.py defaults.
 
 ## Consumer/producer ownership
 
@@ -97,3 +102,19 @@ gate, not an interleaved whole-model performance control; it does not establish
 an end-to-end throughput gain despite the isolated leaf improvement. No full
 quality benchmark or uncapped trajectory claim is made. Owned hardware was
 released after the gate.
+
+## Remaining visible cost after this change
+
+Reanalysis of the candidate's retained ring, selecting the stable broad1024-row
+case rather than the two all-expert0 diagnostic calls, finds post-fetch/pre-pack
+intervals429.04/437.07/429.98us (26 samples each). They still contain single-
+coordinator admission/Group work, not a pure Group measurement. Source inspection
+shows live-route histogram and map construction remain serial on that coordinator.
+This is the strongest next preparation target; no claim that all430us is removable.
+
+PACK remains224.81–235.66us. Each routed token copy and padded scale copy still
+uses synchronous Transfer::Copy. Some duplication is intrinsic to expert-major
+GEMM input, but batching DMA/scale transfers or pipelining them is a smaller next
+change than redesigning the whole service. Up487–545us and down242–296us in this
+broad-expert fixture are NOT automatically wasted time; wide weight coverage
+and low per-expert M differ from the old hot-expert fixture.
