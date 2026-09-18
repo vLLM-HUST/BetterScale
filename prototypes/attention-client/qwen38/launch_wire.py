@@ -15,6 +15,11 @@ p = argparse.ArgumentParser()
 p.add_argument("--devices", required=True)
 p.add_argument("--directory", type=Path, required=True)
 p.add_argument("--build", type=Path, required=True)
+p.add_argument(
+    "--client-probe",
+    choices=("probe_wire.py", "probe_shared_overlap.py"),
+    default="probe_wire.py",
+)
 p.add_argument("--sources", type=int, default=1)
 p.add_argument("--artifacts", type=Path)
 a = p.parse_args()
@@ -74,7 +79,7 @@ try:
         launch(
             f"client{source}",
             [
-                "probe_wire.py",
+                a.client_probe,
                 "--build",
                 str(a.build),
                 "--directory",

@@ -46,12 +46,17 @@ class Bank:
             device="npu",
         )
         assert self.config.numel() == 17
+        # Events belong to warmed banks; no event/stream construction in capture.
+        self.shared_input_ready = torch.npu.Event()
+        self.shared_done = torch.npu.Event()
 
 
 class Session:
     def __init__(self, directory, build, source=0):
         self.directory = Path(directory)
         self.diagnostics = os.environ.get("QWEN38_DIAGNOSTICS") == "1"
+        self.shared_overlap = os.environ.get("QWEN38_SHARED_OVERLAP") == "1"
+        self.shared_stream = torch.npu.Stream() if self.shared_overlap else None
         self.kernels = Kernels(build)
         self.layout = self.kernels.layout
         contract = self.layout.contract()
@@ -116,6 +121,11 @@ class Session:
                 raise RuntimeError("Warm this expert row bucket before capture")
             self.banks[key] = Bank(self, *key)
         bank = self.banks[key]
+        main_stream = torch.npu.current_stream()
+        if self.shared_overlap:
+            # Fork BEFORE client quantization/packing. The read-only hidden input
+            # is ready here; shared does not consume routing or published buffers.
+            bank.shared_input_ready.record(main_stream)
         bank.config[5] = layer
         bank.config[15] = priority
         bank.ids.copy_(ids)
@@ -135,7 +145,19 @@ class Session:
             )
             print("submit layer", layer, "ids", ids.cpu().tolist(), flush=True)
         self.kernels.call(self.submit, bank.config, bank.input, bank.ids_storage)
-        shared_result = shared(hidden)
+        if self.shared_overlap:
+            with torch.npu.stream(self.shared_stream):
+                self.shared_stream.wait_event(bank.shared_input_ready)
+                shared_result = shared(hidden)
+                bank.shared_done.record(self.shared_stream)
+            # Submit precedes this join on main. Promotion therefore observes
+            # BOTH this generation's READY and shared completion, never old READY.
+            # Keep collect after the join in this first experiment: its busy-poll
+            # AIV must not confound the isolated submit/shared overlap comparison.
+            main_stream.wait_event(bank.shared_done)
+            shared_result.record_stream(main_stream)
+        else:
+            shared_result = shared(hidden)
         if priority:
             self.kernels.call(self.promote, bank.config, bank.input, bank.ids_storage)
         self.kernels.call(self.collect, bank.config, bank.input, bank.ids_storage, 16)
