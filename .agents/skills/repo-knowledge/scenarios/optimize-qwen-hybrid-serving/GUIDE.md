@@ -706,3 +706,40 @@ Latest TraceLoom export also composes upstream's common-plane graph internals;
 all16,177 member geometries and9,790 replay repeat windows per candidate rank
 are verified. Missing identity lookup indexes were fixed in the writers, so
 new AugDBs need no manual index. Four exported files are in the archive above.
+
+### GDN inter-projection fusion audit (September18; investigation, not shipped)
+
+Use the existing `dualbank-swe1/traceloom-continuous-qualified/candidate-rank{0,1}.db`
+exact launch/member surface, not a new NPU capture. `graph-scratch-swe1` did not
+recapture a profile; the audit uses the older, arithmetically unchanged GDN path.
+Raw aggregates are in evidence-root `gdn-fusion-audit/kernel-costs.json`.
+
+`rearrange_mixed_qkv` in pinned core `qwen_gdn_linear_attn.py` splits convolution
+output then flattens/cats Q/K/V into one contiguous buffer. Its comment expects a
+compiled single-copy kernel, but the custom attention core actually launches
+ConcatD. This is layout packing, NOT concatenation of requests/decode+prefill.
+At T>1 each split's flatten can also materialize a copy. CPU checks at T1/2/17/1536
+confirm view-only Q/K/V have identical values/shared input storage. For T>1 their
+token stride is5120, versus packed1024/1024/3072. Existing norm/recurrence kernels
+assume packed addressing: deleting the cat without adapting consumers is unsafe.
+
+Observed kernel-duration sums across48GDN layers (NOT projected HTTP savings):
+- Decode1: concat .788/.855ms, QKnorm .173/.172ms, gating .642/.700ms (rank0/1).
+  Conv-start to output-projection-start spans sum2.896/3.051ms.
+- Decode2: concat .754/.845ms, gating .623/.676ms.
+- Mixed[1,1472] at capacity1536:480transposes sum10.424/10.355ms; concat .903/.974ms.
+  KKT and WY each repack beta+cumulative-g, then H/O repacks g again. With B=1,
+  [H,B,T] and [B,H,T] have identical contiguous storage order. Three duplicate
+  gate-layout conversions/layer account for2.234/2.170ms by source/sequence mapping.
+  The other transposes include Q/K/W/U packing and O's output conversion.
+
+Promising first bounded prototype: packed-convolution-input-aware QK normalization
+plus V packing (optionally gating), replacing cat+two norm launches while keeping
+normalized Q/K and beta BF16 rounding boundaries. Decode can then consume packed
+input/gating directly in its owned recurrence; don't merely flip existing inline
+norm: it uses sqrt division/FP32 intermediates, unlike current rsqrt→BF16 storage.
+Maintain exclusive state slots, empty sentinel and two-bank publication unchanged.
+For mixed, first share head-major beta/g across KKT/WY/H/O; later let producers
+emit consumers' layouts to remove W/U and output transposes. Output norm already
+fuses its z gate, so don't count those as two unimplemented-fusion opportunities.
+No fused kernel, NPU correctness or speedup has been qualified by this audit.
