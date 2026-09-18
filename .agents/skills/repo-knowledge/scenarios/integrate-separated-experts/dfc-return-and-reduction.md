@@ -87,3 +87,17 @@ Only after measurement consider route-ready pulls before all-owner DONE. That
 needs readiness plus final drain, and in-order reduction can cause head-of-line
 waiting. Push is a separate memory/protocol tradeoff, not a prerequisite for the
 first optimization. No speedup or production default change is claimed here.
+
+## Implemented bounded successor
+
+The two-slot fixed-order prototype is now in
+`prototypes/attention-client/qwen38/client_reduce_pipeline.cpp`. Read its sibling
+`COLLECT-PIPELINE.md` and `collect-pipeline-result.json` before rerunning the leaf.
+At1024rows, warm ready collect falls1.029->0.921ms and full real-layer leaf
+3.745->3.640ms;24 changed-input comparisons are exact. This is a modest measured
+consumer improvement, not evidence that the remaining server wait is removable.
+Explicit `QWEN38_PIPELINED_COLLECT=1` requires its ABI-marked binary; old binaries
+and defaults remain usable.
+The same candidate also passes real48-layer+MTP A2TP1+E3 FULL continuation:
+12 eager/captured shadows each129/129exact, four capped two-turn SWE traces,
+and all roles exit0. This is a correctness gate, not a matched throughput gain.

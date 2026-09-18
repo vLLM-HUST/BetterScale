@@ -92,8 +92,17 @@ class Session:
         self.fused_collect = os.environ.get("QWEN38_FUSED_COLLECT") == "1"
         if self.fused_collect and not self.kernels.fused_client_collect:
             raise RuntimeError("Fused collect requires matching client binary exports")
+        pipelined = os.environ.get("QWEN38_PIPELINED_COLLECT") == "1"
+        if pipelined and (
+            not self.fused_collect or not self.kernels.pipelined_client_collect
+        ):
+            raise RuntimeError(
+                "Pipelined collect requires fused mode and a matching binary"
+            )
         self.collect_fused = (
-            self.kernels.load("neural_collect_fused")
+            self.kernels.load(
+                "neural_collect_pipelined" if pipelined else "neural_collect_fused"
+            )
             if self.kernels.fused_client_collect
             else None
         )

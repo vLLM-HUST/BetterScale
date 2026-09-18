@@ -17,7 +17,7 @@ p.add_argument("--directory", type=Path, required=True)
 p.add_argument("--build", type=Path, required=True)
 p.add_argument(
     "--client-probe",
-    choices=("probe_wire.py", "probe_shared_overlap.py"),
+    choices=("probe_wire.py", "probe_shared_overlap.py", "probe_collect_pipeline.py"),
     default="probe_wire.py",
 )
 p.add_argument("--sources", type=int, default=1)

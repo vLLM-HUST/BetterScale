@@ -177,9 +177,10 @@ client = client.replace("owner < 4", f"owner < {a.owners}").replace(
 from build_client_pack import append_pack
 from build_client_reduce import append_reduce
 from build_client_online import append_online
+from build_client_pipeline import append_pipeline
 
 (source / "client_kernel.cpp").write_text(
-    append_online(append_reduce(append_pack(client, layout), a.owners))
+    append_pipeline(append_online(append_reduce(append_pack(client, layout), a.owners)))
 )
 if a.sources > 2:
     from topology_codegen import expand_sources
@@ -221,6 +222,7 @@ for script, unit, name in (
             prefix_pipeline=False,
             parallel_client_pack=True,
             fused_client_collect=True,
+            pipelined_client_collect=True,
             route_ready=a.route_ready,
             batch_activate=a.batch_activate,
             compact_maps=a.compact_maps,

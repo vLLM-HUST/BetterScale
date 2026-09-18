@@ -29,6 +29,7 @@ class Kernels:
             and not abi["prefix_pipeline"]
         )
         self.fused_client_collect = abi.get("fused_client_collect", False)
+        self.pipelined_client_collect = abi.get("pipelined_client_collect", False)
         self.parallel_client_pack = abi.get("parallel_client_pack", False)
         self.layout = ChannelLayout.from_abi(abi)
         self.root = root
