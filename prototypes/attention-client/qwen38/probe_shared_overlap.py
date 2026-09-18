@@ -73,6 +73,11 @@ if os.environ.get("QWEN38_TEST_PACK") == "1":
             torch.npu.synchronize()
             assert torch.equal(backing, expected), (n, quantized, "wire bytes")
             pack_checks.append(dict(rows=n, quantized=quantized, bytes_equal=True))
+if os.environ.get("QWEN38_TEST_FUSED") == "1":
+    assert session.kernels.fused_client_collect
+    modes.update(fused=(False, True), fused_overlap=(True, True))
+    if os.environ.get("QWEN38_SWEEP_COLLECT") == "1":
+        modes.update(fused32=(False, True), fused48=(False, True))
 records = []
 for n in sorted({1, 32, session.layout.rows}):
     x = torch.randn(n, 2560, device="npu", dtype=torch.bfloat16)
@@ -87,6 +92,10 @@ for n in sorted({1, 32, session.layout.rows}):
         for mode, (overlap, pack) in modes.items():
             session.shared_overlap = overlap
             session.parallel_pack = pack
+            session.fused_collect = mode.startswith("fused")
+            session.collect_blocks = (
+                32 if mode == "fused32" else 48 if mode == "fused48" else 16
+            )
             for _ in range(2):
                 session.forward_routed(0, x, ids, probs, shared, priority=priority)
             torch.npu.synchronize()
@@ -104,12 +113,23 @@ for n in sorted({1, 32, session.layout.rows}):
             x.copy_(torch.randn_like(x))
             # Alternate route order as well as input content in stable buffers.
             ids.copy_(ids.roll(1, dims=1))
+            if os.environ.get("QWEN38_TEST_FUSED") == "1":
+                weights = torch.rand(n, 10, device="npu")
+                probs.copy_(weights / weights.sum(-1, keepdim=True))
             for mode, (overlap, pack) in modes.items():
                 graphs[mode].replay()
                 torch.npu.synchronize()
-            assert all(
-                torch.equal(outputs["serial"], out) for out in outputs.values()
-            ), (n, priority, generation)
+            for mode, out in outputs.items():
+                ref = outputs["serial"].float()
+                error = float((out.float() - ref).norm() / ref.norm().clamp_min(1e-9))
+                assert torch.equal(outputs["serial"], out), (
+                    n,
+                    priority,
+                    generation,
+                    mode,
+                    error,
+                    float((out.float() - ref).abs().max()),
+                )
         times = {mode: [] for mode in modes}
         for repeat in range(10):
             for mode in (list(modes) if repeat % 2 == 0 else list(reversed(modes))):
@@ -157,6 +177,31 @@ for n in sorted({1, 32, session.layout.rows}):
                 ready_times.append(start.elapsed_time(end))
             records[-1]["ready_collect_ms"] = statistics.median(ready_times)
             records[-1]["ready_collect_samples"] = ready_times
+            fused_ready_graph = None
+            if "fused" in modes:
+                fused_bank = session.banks[(n, True, True)]
+                fused_ready_graph = torch.npu.NPUGraph()
+                with torch.npu.stream(ready_stream):
+                    with torch.npu.graph(fused_ready_graph):
+                        session.kernels.call(
+                            session.collect_fused,
+                            fused_bank.config,
+                            fused_bank.input,
+                            fused_bank.ids_storage,
+                            16,
+                        )
+                ready_stream.synchronize()
+                fused_times = []
+                for _ in range(10):
+                    start, end = torch.npu.Event(enable_timing=True), torch.npu.Event(
+                        enable_timing=True
+                    )
+                    start.record()
+                    fused_ready_graph.replay()
+                    end.record()
+                    end.synchronize()
+                    fused_times.append(start.elapsed_time(end))
+                records[-1]["ready_fused_ms"] = statistics.median(fused_times)
             profile_dir = a.directory / f"profile-client{a.source}"
             with torch_npu.profiler.profile(
                 activities=[
@@ -177,6 +222,12 @@ for n in sorted({1, 32, session.layout.rows}):
                 with torch.profiler.record_function("collect_already_ready"):
                     ready_graph.replay()
                     torch.npu.synchronize()
+                if fused_ready_graph is not None:
+                    with torch.profiler.record_function("fused_collect_already_ready"):
+                        fused_ready_graph.replay()
+                        torch.npu.synchronize()
+            if fused_ready_graph is not None:
+                fused_ready_graph.reset()
             ready_graph.reset()
         for graph in graphs.values():
             graph.reset()

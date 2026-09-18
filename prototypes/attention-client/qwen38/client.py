@@ -11,19 +11,31 @@ from livemodule.arch.ascend.vllm.moe_runtime.experts_selector import select_expe
 
 
 class Bank:
-    def __init__(self, session, rows, quantized):
+    def __init__(self, session, rows, quantized, fused=False):
         self.input = torch.empty(
             rows, 2560, dtype=torch.int8 if quantized else torch.bfloat16, device="npu"
         )
         self.ids_storage = torch.empty(
-            ((rows * 10 + 7) // 8 * 8,), dtype=torch.int32, device="npu"
+            ((rows * 10 + 7) // 8 * 8 + 8,), dtype=torch.int32, device="npu"
         )
         self.ids = self.ids_storage[: rows * 10].view(rows, 10)
-        self.probs = torch.empty(rows, 10, dtype=torch.bfloat16, device="npu")
+        self.probs_storage = torch.empty(
+            (rows * 10 + 15) // 16 * 16 + 16, dtype=torch.bfloat16, device="npu"
+        )
+        self.probs = self.probs_storage[: rows * 10].view(rows, 10)
         self.scales = torch.zeros(
             (rows + 7) // 8 * 8, dtype=torch.float32, device="npu"
         )
-        self.raw = torch.empty(rows * 10, 2560, dtype=torch.bfloat16, device="npu")
+        self.raw = (
+            None
+            if fused
+            else torch.empty(rows * 10, 2560, dtype=torch.bfloat16, device="npu")
+        )
+        self.reduced = (
+            torch.empty(rows, 2560, dtype=torch.bfloat16, device="npu")
+            if fused
+            else None
+        )
         self.indices = torch.arange(rows * 10, dtype=torch.int32, device="npu")
         self.config = torch.tensor(
             [
@@ -34,9 +46,9 @@ class Bank:
                 session.counter.data_ptr(),
                 1,
                 1000000 if session.diagnostics else 20000000,
-                self.raw.data_ptr(),
-                0,
-                0,
+                self.raw.data_ptr() if self.raw is not None else 0,
+                self.probs.data_ptr(),
+                self.reduced.data_ptr() if self.reduced is not None else 0,
                 0,
                 0,
                 0,
@@ -69,6 +81,17 @@ class Session:
         self.publish = (
             self.kernels.load("neural_publish")
             if self.kernels.parallel_client_pack
+            else None
+        )
+        self.collect_blocks = int(os.environ.get("QWEN38_COLLECT_BLOCKS", "16"))
+        if self.collect_blocks not in (16, 32, 48):
+            raise ValueError("collect blocks must be16,32,48")
+        self.fused_collect = os.environ.get("QWEN38_FUSED_COLLECT") == "1"
+        if self.fused_collect and not self.kernels.fused_client_collect:
+            raise RuntimeError("Fused collect requires matching client binary exports")
+        self.collect_fused = (
+            self.kernels.load("neural_collect_fused")
+            if self.kernels.fused_client_collect
             else None
         )
         self.layout = self.kernels.layout
@@ -126,7 +149,7 @@ class Session:
 
     def forward_routed(self, layer, hidden, ids, probs, shared, *, priority=0):
         """Same device wire with externally checked routing (also a leaf-test seam)."""
-        key = (hidden.shape[0], layer < 48)
+        key = (hidden.shape[0], layer < 48) + ((True,) if self.fused_collect else ())
         if not 1 <= key[0] <= self.layout.rows:
             raise ValueError(f"rows exceed channel capacity {self.layout.rows}")
         if key not in self.banks:
@@ -177,7 +200,13 @@ class Session:
             shared_result = shared(hidden)
         if priority:
             self.kernels.call(self.promote, bank.config, bank.input, bank.ids_storage)
-        self.kernels.call(self.collect, bank.config, bank.input, bank.ids_storage, 16)
+        self.kernels.call(
+            self.collect_fused if self.fused_collect else self.collect,
+            bank.config,
+            bank.input,
+            bank.ids_storage,
+            self.collect_blocks if self.fused_collect else 16,
+        )
         if self.diagnostics:
             torch.npu.synchronize()
             value = int(self.counter.cpu()[0])
@@ -196,8 +225,12 @@ class Session:
                     f"expert collect rejected layer {layer}: counter {value}"
                 )
         self.kernels.call(self.retire, bank.config, bank.input, bank.ids_storage)
-        routed = torch_npu.npu_moe_token_unpermute(
-            bank.raw, bank.indices, probs=bank.probs
+        routed = (
+            bank.reduced
+            if self.fused_collect
+            else torch_npu.npu_moe_token_unpermute(
+                bank.raw, bank.indices, probs=bank.probs
+            )
         )
         return routed + shared_result
 

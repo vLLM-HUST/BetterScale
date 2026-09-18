@@ -218,3 +218,57 @@ Results: `client-pack-result.json`; compressed four-arm native TraceLoom view:
 All four owned roles drained/exited and the hw0 lease was released. The new
 client object was compiled with the frozen server objects unchanged. MTP wire
 bytes pass, but full MTP computation is not covered by the layer0 loop.
+
+## Fused collection, without changing completion semantics
+
+`client_reduce.cpp::neural_collect_fused` retains the all-owner generation join.
+Each AIV owns complete tokens, reads the corresponding10 remote BF16 expert
+outputs, multiplies BF16 routing probabilities in FP32, accumulates in top-k
+order, and rounds once to BF16. Only final `[rows,2560]` output is written to
+local HBM. No atomics or inter-core reduction is needed. Publication, promotion,
+retirement and remote output lifetime are unchanged. This is NOT early token
+completion or overlapping collection with unfinished expert computation.
+
+The fused bank omits `[rows*10,2560]` raw output (50MiB at1024 rows) and owns
+5MiB of final output instead. Native unpermute is bypassed. Do not equate this
+bank-level accounting with measured whole-model allocator peak reduction.
+Routing/probability storage has small padded tails for bounded aligned reads;
+only the valid10 values per token participate. UB holds the input, FP32
+conversion and FP32 token accumulator in disjoint ranges of one64KiB buffer.
+
+`build_client_reduce.py PACK_BUILD NEW_BUILD` retains the frozen server and adds
+an explicitly advertised `fused_client_collect` export; regular `build.py`
+includes it for future closures. `QWEN38_FUSED_COLLECT=1` selects the path and
+rejects incompatible binaries. `QWEN38_COLLECT_BLOCKS` allows16/32/48 for the
+bounded resource experiment. All changes remain prototype-only and opt-in.
+
+`QWEN38_TEST_FUSED=1` extends the existing gate with fused and fused+shared
+arms; it changes probabilities as well as hidden values and route order between
+FULL replays. `QWEN38_SWEEP_COLLECT=1` adds32/48-block fused arms. Each arm uses
+the same input/route state, original server computation, and alternating timing
+order. This validates the real layer0 ten-expert fixture, not arbitrary routing,
+full48 layers, full MTP computation or serving throughput.
+
+Both fused gates passed exact FULL output equality for1/32/1024rows and both
+priority classes, including changed hidden/probabilities and rotated routes.
+In the first gate,1024-row priority1 pack-only3.937ms became fused3.850ms.
+The follow-up resource sweep measured pack-only4.080ms, fused16=4.003ms,
+fused32=3.994ms, fused48=4.111ms (ten alternating samples/arm). Original serial
+in that same sweep was4.678ms. The added fusion saves about2% in this leaf;
+packing+fusion together about14%. These are not full-model throughput claims.
+No compelling32-block advantage supports complexity;48 blocks regress, and
+small-row shapes do not show a consistent gain. Keep16 blocks and opt-in flags.
+
+Warm results-ready fused collection measured1.067ms versus the prior roughly
+1.10ms unfused pull (which still owes unpermute). Profile samples show
+unfused1073.56us and fused1033.80us. Most of the remote output reads remain:
+eliminating local intermediate storage does not eliminate50MiB of remote payload.
+The all-owner join still makes collect wait for unfinished server work. Early
+per-token collection needs a separate readiness/lifetime protocol and is not
+implemented or claimed by this result. No hardware saturation cause is inferred
+from the48-block regression alone.
+
+Receipt: `client-collect-result.json`. Native TraceLoom compressed profile:
+`/workspace/betterscale-confluence/runs/fused-collect-sweep-20260918/fused-collect-eight-arms.json.gz`.
+All four roles exited and released the lease. Existing nine CPU tests, Python
+compilation and diff checks pass; no release/default changes were made.

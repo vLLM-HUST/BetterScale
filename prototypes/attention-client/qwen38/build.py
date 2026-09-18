@@ -124,8 +124,11 @@ client = client.replace("owner < 4", f"owner < {a.owners}").replace(
     "/ 128", f"/ {partition.slots}"
 )
 from build_client_pack import append_pack
+from build_client_reduce import append_reduce
 
-(source / "client_kernel.cpp").write_text(append_pack(client, layout))
+(source / "client_kernel.cpp").write_text(
+    append_reduce(append_pack(client, layout), a.owners)
+)
 if a.sources > 2:
     from topology_codegen import expand_sources
 
@@ -165,6 +168,7 @@ for script, unit, name in (
             mtp_input="bf16",
             prefix_pipeline=False,
             parallel_client_pack=True,
+            fused_client_collect=True,
         ),
         indent=2,
     )
