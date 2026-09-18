@@ -178,3 +178,15 @@ included. The different capacity timings are bounded observations, not a
 universal capacity-independent guarantee. V2 performance/selection and a fair
 same-resource fused-vs-current ACTIVATE comparison remain unmeasured. Probe
 exited0 and released its device/lease; no production default was changed.
+
+## First transfer into our implementation
+
+The opt-in `build.py --batch-activate` now implements opportunity1 above in
+`prototypes/attention-client/qwen38/quant_batch.hpp`: four rows, contiguous
+worker ranges, expert-boundary clipping, cached scales, existing64KiB UB.
+Exact old/new quantized outputs and scales passed the standalone dynamic FULL
+gate. Real layer0 A1+E3 online leaf time fell about8%; A2+E3 sampled independent
+oracle also passed. See the **Four-row ACTIVATE** section in `PREFILL-PROFILE.md`
+and its `batch-activate-*-result.json` receipts for conditions and boundaries.
+This does not yet implement opportunity2's incremental up/activate/down pipeline;
+keep that distinct from the now-measured batched ACTIVATE improvement.

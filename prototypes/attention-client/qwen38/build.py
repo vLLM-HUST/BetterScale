@@ -19,6 +19,7 @@ p.add_argument("--rows", type=int, default=32)
 p.add_argument("--owners", type=int, choices=(3, 4), default=4)
 p.add_argument("--sources", type=int, choices=(2, 4, 5), default=2)
 p.add_argument("--route-ready", action="store_true")
+p.add_argument("--batch-activate", action="store_true")
 a = p.parse_args()
 layout = ChannelLayout(a.rows, a.owners, a.sources, a.route_ready)
 partition = ExpertPartition(a.owners)
@@ -32,7 +33,13 @@ source = out / "source"
 source.mkdir(parents=True, exist_ok=True)
 for name in ("actual_gmm.cpp", "priority_policy.hpp"):
     shutil.copyfile(base / name, source / name)
-for name in ("server_workers.hpp", "quant_vector.hpp", "quant_gmm.cpp", "launch.cpp"):
+for name in (
+    "server_workers.hpp",
+    "quant_vector.hpp",
+    "quant_batch.hpp",
+    "quant_gmm.cpp",
+    "launch.cpp",
+):
     shutil.copyfile(local / name, source / name)
 protocol = (base / "persistent_protocol.hpp").read_text()
 assert "HIDDEN = 2048, INNER = 512" in protocol
@@ -71,6 +78,8 @@ for filename in ("server_workers.hpp", "persistent_cube.cpp"):
     path = source / filename
     text = path.read_text().replace("e < 128", "e < LOCAL_EXPERTS")
     text = text.replace("offset < 256", f"offset < {ends_storage * 2}")
+    if filename == "server_workers.hpp" and a.batch_activate:
+        text = "#define QWEN38_BATCH_ACTIVATE 1\n" + text
     if filename == "server_workers.hpp" and a.route_ready:
         text = "#define QWEN38_ROUTE_READY 1\n" + text
     path.write_text(text)
@@ -174,6 +183,7 @@ for script, unit, name in (
             parallel_client_pack=True,
             fused_client_collect=True,
             route_ready=a.route_ready,
+            batch_activate=a.batch_activate,
         ),
         indent=2,
     )

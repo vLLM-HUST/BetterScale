@@ -1,6 +1,9 @@
 #pragma once
 #include "persistent_protocol.hpp"
 #include "quant_vector.hpp"
+#ifdef QWEN38_BATCH_ACTIVATE
+#include "quant_batch.hpp"
+#endif
 using namespace AscendC;
 using namespace Persistent;
 __aicore__ inline int ScalarMin(int a, int b) { return a < b ? a : b; }
@@ -85,6 +88,14 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
       Refresh((__gm__ int32_t *)ends + offset);
     uint64_t begin = GetSystemCycle();
     if (kind == ACTIVATE) {
+#ifdef QWEN38_BATCH_ACTIVATE
+      if (int8) {
+        ActivateBatched(io.words, worker, VW, extra, ends, LOCAL_EXPERTS,
+                        (__gm__ int32_t *)ptr[2], (__gm__ float *)weights[2],
+                        (__gm__ float *)auxiliary[1], (__gm__ int8_t *)ptr[3],
+                        (__gm__ float *)auxiliary[2]);
+      } else
+#endif
       for (int row = worker; row < extra; row += VW) {
         if (int8) {
           int expert = RowExpert(ends, row);

@@ -372,3 +372,64 @@ scales and fences vector stages. Prioritize metadata construction and batched
 vector processing before changing GEMM micro-scheduling. Preserve provenance:
 this Qwen38 W8A8 whole-up/down path is not the earlier Next BF16 fine pipeline,
 and these layer0 numbers are not an equal-work DFC comparison.
+
+## Four-row ACTIVATE: reuse scales and batch UB work (September18)
+
+`build.py --batch-activate` opts the target INT8 server into `quant_batch.hpp`.
+This borrows upstream's row batching/scale reuse, **not** its whole mixed kernel
+or its per-region Cube/Vector pipeline. The group-count GEMM, command protocol,
+route-ready export, client retirement and BF16 MTP branch remain unchanged.
+
+Each of16 movers receives a contiguous row range. Four-row batches stop at
+expert boundaries; channel scales remain in UB until the expert changes. Cast,
+SwiGLU stages and exports are batched, while rowwise maxabs/quantization retains
+the previous operation order, rounding and padded8-float scale ABI. The existing
+64KiB worker scratch fits all intermediates; no new GM workspace is allocated.
+MTE3 completion fences protect reuse. Empty/tail workers still acknowledge the
+original command. Binary and `abi.json` expose the compile-time option together.
+
+`probe_activate_batch.py` loads `activate_probe.o` and compares both algorithms
+inside one binary,16 AIV, FULL graphs,12 alternating event samples/mode.
+`batch-activate-result.json` covers1/7/32/129/1024/4096/10003 rows, single/sparse/
+wide expert distributions, changing inputs/scales/device group boundaries,
+zero-valued rows and shrinking active M with sentinel tails. All compared
+quantized output and padded scales are **bitwise identical**. These are dummy
+INT32 intermediates, not language-model accuracy tests. Tiny shapes show no
+reliable gain; absolute event times include replay/launch supply effects.
+
+| Actual routed rows | Distribution | Old / batch median |
+|---:|---|---:|
+|1024|sparse|76.14 /58.75us|
+|4096|sparse|222.27 /137.36us|
+|4096|wide|317.83 /144.35us|
+|10003|wide|731.30 /307.83us|
+
+Fresh hw0 real layer0 A1+E3 runs compare the prior route-ready server with this
+build, same five-source capacity/1024-row closure, same client and shared dummy
+weights. They ran sequentially (not cross-run randomized), with alternating
+client modes within each run. `batch-activate-server-result.json` preserves
+capsules, both priorities, phase summaries and dual-source oracle results.
+
+At1024 client tokens, online collection gives3.479/3.469ms ->3.194/3.194ms
+(priority0/1): about8% shorter full leaf calls. Conventional fused collection
+also improves4.050/4.041ms ->3.707/3.695ms. At32 tokens online is0.792/0.782ms
+->0.770/0.760ms. Do not turn these leaf figures into a model throughput claim.
+
+Coordinator ACTIVATE intervals fall257–258us ->126–128us on the3072-row owners,
+and394.88us ->161.64us on the4096-row owner. They include worker dispatch/join;
+the retained event ring mixes client arms, not an isolated kernel benchmark.
+The improvement survives integration rather than merely moving work elsewhere.
+
+A2+E3 independent true-weight oracle gate then passed:25 calls/source, matched
+by every server, maximum sampled relativeL2 6.541e-6; eager/replay outputs exact.
+Full48-layer/MTP and SWE serving qualification remain outside this gate. Public
+Worker defaults and the default prototype build remain unchanged; pass
+`--batch-activate --route-ready` when selecting this measured candidate.
+
+Reproduce the leaf build using `device-service/build.sh`, with
+`SOURCE=<qwen38>/activate_probe.cpp`, `OBJECT_NAME=activate_probe`,
+`LAUNCH_SOURCE=<qwen38>/launch.cpp`, and a fresh `OUTPUT_DIR`; then run
+`probe_activate_batch.py --build <OUTPUT_DIR> --output <receipt>` under single
+card admission. The initial probe forgot the AIV kernel metadata section and
+failed binary loading (no timing evidence); `activate_probe.cpp` now includes it.
+All three admitted integration jobs exited0 and released their devices/leases.
