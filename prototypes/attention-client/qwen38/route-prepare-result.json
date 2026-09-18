@@ -1,0 +1,359 @@
+{
+  "host": "hw0",
+  "topology": "A1+E3 real layer0 H2560 K10; dummy shared; 16 collect AIVs; rows1024 capacity",
+  "scope": "Sequential same-host control/three candidates/final control; all fixed-order pipelined client+SEND, route-ready off. Coordinator interval is not pure Group time. No full-model or throughput qualification.",
+  "decision": "No production/default promotion; preserve the current qualified path.",
+  "arms": {
+    "control": {
+      "capsule": "qwen38-wire-20260918T122554Z",
+      "status": "PASS",
+      "calls": 216,
+      "cases": [
+        {
+          "rows": 1,
+          "leaf_ms": 0.2484399974346161,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 7,
+          "leaf_ms": 0.30767999589443207,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 32,
+          "leaf_ms": 0.5694699883460999,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 127,
+          "leaf_ms": 1.0995000004768372,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 512,
+          "leaf_ms": 2.1131900548934937,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 1024,
+          "leaf_ms": 3.2751799821853638,
+          "client_numeric_exact": true,
+          "leaf_samples_ms": [
+            3.272200107574463,
+            3.4665400981903076,
+            3.280139923095703,
+            3.449700117111206,
+            3.276020050048828,
+            3.255500078201294,
+            3.2743399143218994,
+            3.2815001010894775,
+            3.2692599296569824,
+            3.2741200923919678,
+            3.2708799839019775,
+            3.299959897994995
+          ]
+        }
+      ],
+      "phases": {
+        "expert0": {
+          "routed_rows": 3392,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 437.63
+        },
+        "expert1": {
+          "routed_rows": 3427,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 447.4
+        },
+        "expert2": {
+          "routed_rows": 3421,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 432.43
+        }
+      }
+    },
+    "ub_tiles": {
+      "capsule": "qwen38-wire-20260918T122637Z",
+      "status": "PASS",
+      "calls": 216,
+      "cases": [
+        {
+          "rows": 1,
+          "leaf_ms": 0.2580000013113022,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 7,
+          "leaf_ms": 0.32321999967098236,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 32,
+          "leaf_ms": 0.5795900225639343,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 127,
+          "leaf_ms": 1.1948099732398987,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 512,
+          "leaf_ms": 2.2173200845718384,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 1024,
+          "leaf_ms": 3.405850052833557,
+          "client_numeric_exact": true,
+          "leaf_samples_ms": [
+            3.409600019454956,
+            3.416179895401001,
+            3.3973801136016846,
+            3.402899980545044,
+            3.419140100479126,
+            3.4035398960113525,
+            3.412260055541992,
+            3.406280040740967,
+            3.425220012664795,
+            3.371840000152588,
+            3.3999199867248535,
+            3.4054200649261475
+          ]
+        }
+      ],
+      "phases": {
+        "expert0": {
+          "routed_rows": 3392,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 553.2
+        },
+        "expert1": {
+          "routed_rows": 3427,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 553.2
+        },
+        "expert2": {
+          "routed_rows": 3421,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 551.14
+        }
+      }
+    },
+    "local_ids": {
+      "capsule": "qwen38-wire-20260918T123034Z",
+      "status": "PASS",
+      "calls": 216,
+      "cases": [
+        {
+          "rows": 1,
+          "leaf_ms": 0.24740999937057495,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 7,
+          "leaf_ms": 0.3071800023317337,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 32,
+          "leaf_ms": 0.5674799978733063,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 127,
+          "leaf_ms": 1.119350016117096,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 512,
+          "leaf_ms": 2.1220099925994873,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 1024,
+          "leaf_ms": 3.288800001144409,
+          "client_numeric_exact": true,
+          "leaf_samples_ms": [
+            3.337860107421875,
+            3.2975800037384033,
+            3.2916998863220215,
+            3.2695000171661377,
+            3.2634999752044678,
+            3.298799991607666,
+            3.274280071258545,
+            3.2918999195098877,
+            3.3097400665283203,
+            3.282020092010498,
+            3.2773399353027344,
+            3.285900115966797
+          ]
+        }
+      ],
+      "phases": {
+        "expert0": {
+          "routed_rows": 3392,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 316.40999999999997
+        },
+        "expert1": {
+          "routed_rows": 3427,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 320.11
+        },
+        "expert2": {
+          "routed_rows": 3421,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 312.08000000000004
+        }
+      }
+    },
+    "local_counts": {
+      "capsule": "qwen38-wire-20260918T123354Z",
+      "status": "PASS",
+      "calls": 216,
+      "cases": [
+        {
+          "rows": 1,
+          "leaf_ms": 0.2598099857568741,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 7,
+          "leaf_ms": 0.3189300000667572,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 32,
+          "leaf_ms": 0.5729099810123444,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 127,
+          "leaf_ms": 1.1459600329399109,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 512,
+          "leaf_ms": 2.1072800159454346,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 1024,
+          "leaf_ms": 3.225950002670288,
+          "client_numeric_exact": true,
+          "leaf_samples_ms": [
+            3.2013800144195557,
+            3.243259906768799,
+            3.233299970626831,
+            3.219559907913208,
+            3.2387399673461914,
+            3.2314200401306152,
+            3.220020055770874,
+            3.2265000343322754,
+            3.2201600074768066,
+            3.2402400970458984,
+            3.225399971008301,
+            3.2237401008605957
+          ]
+        }
+      ],
+      "phases": {
+        "expert0": {
+          "routed_rows": 3392,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 176.42
+        },
+        "expert1": {
+          "routed_rows": 3427,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 175.70999999999998
+        },
+        "expert2": {
+          "routed_rows": 3421,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 167.70999999999998
+        }
+      }
+    },
+    "control_after": {
+      "capsule": "qwen38-wire-20260918T123625Z",
+      "status": "PASS",
+      "calls": 216,
+      "cases": [
+        {
+          "rows": 1,
+          "leaf_ms": 0.2556599974632263,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 7,
+          "leaf_ms": 0.3039399981498718,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 32,
+          "leaf_ms": 0.576200008392334,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 127,
+          "leaf_ms": 1.1246100068092346,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 512,
+          "leaf_ms": 2.1160800457000732,
+          "client_numeric_exact": true
+        },
+        {
+          "rows": 1024,
+          "leaf_ms": 3.2814000844955444,
+          "client_numeric_exact": true,
+          "leaf_samples_ms": [
+            3.2902400493621826,
+            3.3053998947143555,
+            3.2923998832702637,
+            3.273979902267456,
+            3.2800800800323486,
+            3.2913999557495117,
+            3.2715001106262207,
+            3.2618799209594727,
+            3.2686800956726074,
+            3.2864201068878174,
+            3.2827200889587402,
+            3.279560089111328
+          ]
+        }
+      ],
+      "phases": {
+        "expert0": {
+          "routed_rows": 3392,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 440.15
+        },
+        "expert1": {
+          "routed_rows": 3427,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 447.19
+        },
+        "expert2": {
+          "routed_rows": 3421,
+          "samples": 26,
+          "post_fetch_pre_pack_us": 434.40999999999997
+        }
+      }
+    }
+  },
+  "cross_server_numeric": {
+    "reference": "control",
+    "candidates": [
+      "ub_tiles",
+      "local_ids",
+      "local_counts"
+    ],
+    "full_output_tensors_per_candidate": 24,
+    "bitwise_equal": true,
+    "comparison": "Identical seeded inputs, varied routes/probabilities, repeated expert0/empty owners, saved final BF16 routed+shared outputs loaded on CPU."
+  }
+}

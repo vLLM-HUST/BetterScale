@@ -128,3 +128,15 @@ unqualified online notification branch when reusing the helper.
 After default promotion, candidate broad1024-row post-fetch/pre-pack is still
 429–437us and PACK225–236us. Prefer investigating serial coordinator Group and
 row/scale copy organization before blaming the genuine wide-expert GEMM traffic.
+
+## Route preparation: paid negative result
+
+Before touching coordinator metadata, read
+`prototypes/attention-client/qwen38/ROUTE-PREPARE.md` and its receipt. UB-tiling
+scalar route IDs regresses the complete1024-row leaf3.275->3.406ms. Preclassifying
+owner-local IDs shortens Group but leaves the complete leaf unchanged; counting
+at admission removes a scan yet gives only1.5–1.7% at1024rows and no consistent
+smaller-shape benefit. No default or production-builder change was adopted.
+All three candidates match24 complete control outputs. The apparent430->170us
+preparation improvement is NOT260us of end-to-end saving. A future attempt must
+measure acceptance plus grouping/publication, not relocate a named interval.
