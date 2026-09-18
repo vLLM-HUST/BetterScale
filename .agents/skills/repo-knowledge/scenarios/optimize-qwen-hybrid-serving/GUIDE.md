@@ -843,3 +843,116 @@ qualification. AIV is a separate experiment afterward: workspace's relocated
 and `prototypes/hccl-aiv-a2-actual-path` already prove CANN9.0.0/A2 AIV graph
 capability, not performance on this9.0.1 BF16 workload. Reuse that evidence rather
 than claiming AIV is A3-only or equating an environment flag with actual dispatch.
+
+### Same-stream allreduce isolation result (September18; not shipped)
+
+`evidence-root/allreduce-stream1` retains source/probe.py, launch/admission,
+receipt-rank{0,1}.json, analyze_profiles.py, analyze_gaps.py and six TraceLoom
+AugDB/Perfetto pairs. hw3 cards6/7, CANN9.0.1, TASK_QUEUE_ENABLE=0, HCCL_BUFFSIZE256,
+no HCCL_ALGO/OP_EXPANSION override. Three arms: ordinary PG, raw HCCL with explicit
+compute/comm ready+done events, and raw HCCL on compute stream. Both raw arms use
+ONE communicator, same in-place BF16 allreduce and producer/consumer Add kernels.
+Each graph contains16 serial chains; two independent graph banks/arm/shape.
+8 changed-input generations alternate banks; final y/z full-tensor checks pass
+72/rank,144 total. This checks the final chain, not separately saved outputs from
+all16 chains, and is not whole-model/service qualification.
+
+Non-profiled NPU event time, us/chain (includes both Adds and replay amortization),
+mean of two block medians; each block30 alternating-bank samples after4warmups;
+order PG/split/same/same/split/PG:
+
+| BF16 payload | PG rank0/1 | raw split rank0/1 | raw same rank0/1 |
+| --- | --- | --- | --- |
+| 10KiB | 30.177/30.659 | 29.833/30.354 | 26.714/26.942 |
+| 20KiB | 33.099/33.501 | 32.708/33.248 | 29.073/29.526 |
+| 15MiB | 913.773/914.380 | 913.099/913.648 | 909.683/910.035 |
+
+Separate short10KiB profiles: two exact graph replays and32 collective ops per
+arm/rank, all MESH-RING-NHR/count5120. Every collective still has4SDMA+2WriteValue+
+2NotifyWait. Same-stream moves communication onto the compute stream and removes
+all CAPTURE_RECORD/WAIT rows inside graph bodies; PG/split retain them. Peer
+handshakes remain. Median profiled pre/post gaps: PG~22/12us, split~22/12us,
+same~1.4/1.7us, inner span~19us for all. **Do not equate these profiled gap savings
+with production savings:** second replay member span/16 on rank0 is55.59/58.24/
+25.82us (PG/split/same), whereas non-profiled timing is~30/30/27us. First profiled
+replays have additional startup outliers. Observation supports strong measurement
+sensitivity of the cross-stream path; does not identify the profiler mechanism.
+
+Accepted bounded result: same raw communicator saves~3.1-3.7us/chain at10/20KiB,
+not the~24us previously visible in service profiles. Multiplying by129 suggests
+~0.4-0.5ms/step, NOT a measured service win. No service path or communicator owner
+changed. Before integration, qualify real model ordering/lifetimes and measure
+unprofiled service; before claiming large idle recovery, control profiler effects.
+
+Protocol prior art (September18; research, not a new hardware qualification):
+- vLLM main csrc/custom_all_reduce.cuh `cross_device_reduce_1stage` directly
+  reads registered peer input pointers and reduces locally; TP2 selects one-stage.
+  custom_collective_common.cuh still implements both start and final peer barriers.
+  Borrow peer-pull structure, not a claim that upstream already removes end waits.
+- FlashInfer main include/flashinfer/comm/trtllm_mnnvl_allreduce.cuh implements
+  Lamport payload polling and three rotating buffers (LamportBufferLayout,
+  LamportFlags); dirty-buffer clearing and per-CTA arrival bookkeeping remain.
+  Sentinel checking/sanitization is representation-sensitive. This CUDA/NVLink
+  implementation is protocol prior art, not an Ascend drop-in or permission to
+  port volatile loads as sufficient NPU ordering. Downloaded research snapshot:
+  evidence-root/allreduce-protocol-audit/trtllm_mnnvl_allreduce.cuh (unpinned main).
+- CANN SHMEM official gitcode.com/cann/shmem documents device RMA, MTE/xDMA and
+  A2/A3 build support. Exact installed CANN9.0.1 API/graph compatibility untested.
+- Existing local A2 AIV paid evidence above is the cheapest native comparison;
+  do not fork private HCOMM ABI before testing its public AIV selection at10/20KiB.
+
+Design inference: retirement need not gate result consumption. Publish a per-slot
+read-complete epoch asynchronously and check it before the next overwrite, or
+prove a later collective's arrival causally implies the prior reads completed.
+Such proof must include same-graph allocator alias/reuse, not only next replay;
+separate output is required if peers still read the input. Whole-model graph
+banks do not automatically provide per-collective peer-stable storage. Model
+phase readiness may absorb retirement, but readiness to pull current data remains.
+
+### Native AIV small-message switch qualification (September18)
+
+Fletcher authorized trying native switches before building a custom TP2 protocol.
+**Found an effective existing path:** `HCCL_OP_EXPANSION_MODE=AIV`, set before
+worker/HCCL initialization. No installed/runtime/service edits. Same hw3 cards6/7,
+CANN9.0.1, BF16 shapes and three-arm microprobe as allreduce-stream1. Capsule
+`allreduce-aiv1` changes only the expansion mode;144 final-chain output checks
+pass. PG10KiB ~14.1/14.6us versus retained30.2/30.7; raw same~9.9us versus~26.8.
+
+Adjacent strengthened controls `allreduce-host2` then `allreduce-aiv2` retain
+ALL16 chain consumer outputs, use signed varying per-element exact integer BF16
+values,24generations/arm/shape with alternating banks and deliberate3ms rank
+skew. Each run passes216checks/rank (432total), each checks16 full consumer
+outputs and final allreduce y. All admissions exit0 and reclaim6/7. These are
+serialized replay validations, not unbounded asynchronous service qualification.
+Unprofiled mean of two block medians, rank0/rank1 us per producer+AR+consumer:
+
+| Payload | default PG | AIV PG | default raw same | AIV raw same |
+| --- | --- | --- | --- | --- |
+| 10KiB | 30.211/30.113 | 15.168/14.394 | 26.538/26.585 | 11.339/10.476 |
+| 20KiB | 32.831/33.019 | 18.236/17.384 | 28.827/29.030 | 13.608/13.275 |
+| 15MiB | 927.339/927.945 | 909.354/908.522 | 925.006/924.945 | 906.319/905.607 |
+
+`allreduce-aiv1/traceloom`: six two-replay profiles exported from raw nativePROF
+and analyzed byc2a6920. Each graph contains16 hcom_allReduce_ KERNEL_AIVEC members,
+no old inner SDMA/WriteValue/NotifyWait members. Provider COMMUNICATION_OP.algType
+still reports MESH-RING-NHR: **that label alone does not identify AIV vs SDMA**.
+Same-stream collective kernel median4.54–4.71us; PG6.02–6.50us. This proves AIV
+execution, not the absence of synchronization inside its kernel. Cross-stream
+profile gap inflation persists. Only10KiB profiled;15MiB dispatch not established.
+`profile-summary.json`, `paired-summary.json` and README.md retain compact results.
+
+Conclusion: native switch roughly halves small-message PG chain cost, much larger
+than moving the old SDMA path to the compute stream.129*~15us suggests~2ms/step,
+NOT an HTTP measured gain. Existing public switch is preferred over a private
+HCOMM fork/custom peer protocol until real-model qualification shows another gap.
+Do not enable globally for unrelated workers: process-level expansion mode may
+change other collectives; actual Qwen service/bank lifetime/performance remains
+unqualified. Same-stream communicator ownership is a separate optional change.
+
+Fletcher then explicitly chose enabling the existing switch in the mod. The
+packaged qwen_gdn/serve.sh now exports HCCL_OP_EXPANSION_MODE=AIV before exec;
+README documents the same pre-start requirement for direct MixedWorker launches.
+No import-time process-wide mutation, communicator replacement, DSV4 change or
+native-Qwen Worker change. Shell syntax plus a fake-Python exec environment probe
+verify AIV overrides an inherited HOST value and preserves MixedWorker/TASK_QUEUE.
+This deployment choice does not convert microprobe results into service metrics.

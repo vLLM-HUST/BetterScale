@@ -74,6 +74,16 @@ dedicated `VLLM_CACHE_ROOT`, then invoke the colocated `serve.sh`. It binds only
 and does not enable diagnostic RPCs or profile hooks. The launcher deliberately
 does not claim or acquire shared-host leases: use the host's admission protocol.
 
+This launcher sets `HCCL_OP_EXPANSION_MODE=AIV` before starting vLLM, enabling
+native device-side HCCL collectives for this Qwen mixed configuration. Direct
+`MixedWorker` deployments should export the same variable before process startup;
+changing it after communicator creation or graph capture is not supported here.
+The DSV4 and native-Qwen launch paths are unchanged. TP2 BF16 10/20KiB isolated
+graph tests show substantially lower allreduce latency, including alternating
+banks and rank-skew correctness checks; this switch has not yet received a new
+whole-model service performance qualification. It does not install a custom
+communicator or change the existing PG stream protocol.
+
 ### Native host adapter build
 
 `host.cpp` and `build_host.py` ship as mod source. Build against the unchanged

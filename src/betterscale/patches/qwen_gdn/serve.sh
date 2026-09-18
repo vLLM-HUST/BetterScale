@@ -7,6 +7,8 @@ set -euo pipefail
 : "${ASCEND_RT_VISIBLE_DEVICES:?Set the admitted TP2 device pair}"
 : "${VLLM_CACHE_ROOT:?Set a dedicated text-only compiler cache directory}"
 export TASK_QUEUE_ENABLE=0
+# Select device-side collectives before workers initialize HCCL or capture graphs.
+export HCCL_OP_EXPANSION_MODE=AIV
 exec "${PYTHON:-python}" -m vllm.entrypoints.cli.main serve "$QWEN_MODEL_PATH" \
   --host 127.0.0.1 --port "${SERVING_PORT:-32181}" --served-model-name qwen27 \
   --tensor-parallel-size 2 --distributed-executor-backend mp \
