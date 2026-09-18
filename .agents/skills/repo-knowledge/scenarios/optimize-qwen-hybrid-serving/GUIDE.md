@@ -799,3 +799,47 @@ Model gaps remain~1.3-1.5ms; don't relabel in-graph work reduction as host-gap w
 member/structure verification. Use MatMulV2 **or V3** for the out-projection
 boundary; mixed capacity1536 uses V3. Compact qualification and all HTTP metrics
 are in `docs/evidence/qwen-gdn-fusion.json`.
+
+### TP2 allreduce synchronization audit (September18; no runtime change)
+
+Use `evidence-root/allreduce-audit/{analyze.py,summary.json,collectives.json,
+one-layer-witness.json}` against the existing fused AugDBs before another profile.
+Pinned NPUCommunicator inherits DeviceCommunicatorBase.all_reduce -> c10d
+ProcessGroupHCCL; its PyHcclCommunicator helper is NOT the service path. Both
+local/hw3 torch-npu version files identify2.10.0.post2/git8751b36d5d6959e499e6bf6530c1928060ced030.
+Downloaded exact-source ProcessGroupHCCL: syncStreams255 (producer stream event
+-> private HCCL stream), collective3821/3987 (entry fence/end event), Work
+synchronizeInternal901 (consumer stream waits HCCL end). Normal Work.wait is not
+necessarily a host device-wide synchronize; the barrier branch is separate.
+
+Both ranks, graph-launch-1:129 allreduces (embedding+2/layer),5120 BF16 elements
+=10KiB. Every op has4 SDMA +2WriteValue +2NotifyWait observations. Internal
+COMMUNICATION_TASK_INFO distinguishes the two4-byte Reduce_Inline endpoint tasks
+from two10KiB payload tasks; don't count four full payload transfers. Rank0 shows
+local-copy/notify/wait/local-copy/notify/wait, rank1 wait/remote-inline-reduce/
+notify/wait/remote-copy/notify. Exact notify IDs pair the two ranks independently
+of clock alignment. This establishes protocol stages, not a proof any peer
+handshake is redundant or an exact private executor class identity. Provider alg
+label is MESH-RING-NHR. Mixed capacity1536 uses15MiB payload and14 inner tasks.
+
+Stable decode1 rank0/rank1: entry-gap median11.90/11.78us, exit12.02/11.98us;
+entry+exit sums3.223/3.207ms per body. Inner allreduce spans sum2.611/2.647ms.
+Decode2 gaps sum~3.28ms; mixed~3.98/4.02ms but inner spans~113.75/113.36ms.
+These are disjoint nearest-main-compute/first-last-member boundaries per rank,
+not pure idle or guaranteed recoverable time. Raw TASK has CAPTURE_RECORD/WAIT
+inside the gaps; one wait task may have multiple context observations, so don't
+count each row as a distinct fence. No cross-rank clock offset was calibrated.
+The symmetric~12us boundary floor supports investigating graph stream handoffs,
+not attributing every gap to peer arrival skew. No host per-layer submission is
+implied by these already-captured device controls.
+
+First discriminating prototype should keep HCCL's algorithm fixed and submit its
+AllReduce directly on the producer/consumer compute stream, comparing changed
+input/generation correctness plus captured producer->collective->consumer time.
+This could remove PG stream round trips by FIFO ordering, NOT by deleting peer
+readiness/completion fences. Do not ship before graph/alternating-bank lifetime
+qualification. AIV is a separate experiment afterward: workspace's relocated
+`notes/archive/communication-stack-2026-07/hccl-rework2/aiv-a2-actual-path-results.md`
+and `prototypes/hccl-aiv-a2-actual-path` already prove CANN9.0.0/A2 AIV graph
+capability, not performance on this9.0.1 BF16 workload. Reuse that evidence rather
+than claiming AIV is A3-only or equating an environment flag with actual dispatch.
