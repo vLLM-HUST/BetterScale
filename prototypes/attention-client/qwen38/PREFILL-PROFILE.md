@@ -338,3 +338,37 @@ Receipt: `client-online-result.json`. Single-source compressed TraceLoom profile
 All owned hardware roles exited, leases released. Ten CPU tests and syntax/diff
 checks pass. Published Worker defaults and releases are untouched. No per-token
 ACK/reuse or eager advance to the next attention layer has been introduced.
+
+## Where the remaining collect span comes from
+
+Reused the single-source capsule without a new NPU run. For1024rows priority1,
+client per-core median entry-to-first-contribution is1975.87us;
+first-contribution-to-last-reduction1242.65us; final drain1.86us. The middle
+span includes waiting for subsequent contributions; it is NOT pure copy time.
+These per-core medians are not a disjoint whole-system wall-time decomposition.
+
+The server already retains a512-record coordinator event ring. Restore sequence
+order before reading it. `analyze_server_phases.py` produces
+`server-phase-result.json`, preserving source files, sampled routed-row counts,
+cycle units and scope. Its retained tail mixes the different test arms; it is
+not a per-arm latency attribution. No cross-device clock fit is needed for
+same-device durations.
+
+Heaviest owner2 (4096 routed rows,1024 source tokens, top-k10 split across E3):
+fetch161.44us; post-fetch/pre-pack gap562.80us; pack349.46us;
+up95.66us; activate/quant381.60us; down84.97us; convert/export563.61us.
+These are coordinator command intervals, including dispatch/join overhead, not
+pure instruction timestamps. Other owners handle3072 routed rows and show the
+same qualitative imbalance. The two GEMM commands together are about181us:
+most visible cost is not the matrix multiplication itself.
+
+Source maps the post-fetch gap to another Accept check plus Group/descriptor
+construction. Group runs on one coordinator, traverses route IDs for counts and
+mapping, and clears/writes MAP entries even for inactive source slots (the binary
+has5-source capacity although this run uses1). That is a concrete optimization
+candidate, not proof that all562.8us belongs to one loop. Workers also read
+per-route maps rowwise, and row-local quant/dequant repeatedly loads channel
+scales and fences vector stages. Prioritize metadata construction and batched
+vector processing before changing GEMM micro-scheduling. Preserve provenance:
+this Qwen38 W8A8 whole-up/down path is not the earlier Next BF16 fine pipeline,
+and these layer0 numbers are not an equal-work DFC comparison.

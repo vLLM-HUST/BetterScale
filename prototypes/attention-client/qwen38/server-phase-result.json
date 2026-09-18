@@ -1,0 +1,153 @@
+{
+  "cycles_per_us": 50,
+  "scope": "Coordinator command intervals; post-fetch gap includes Accept/Group/descriptor preparation, not an isolated Group measurement. Retained ring mixes test arms.",
+  "owners": {
+    "expert0": {
+      "source": "/workspace/betterscale-confluence/runs/online-collect-single-20260918/expert0.json",
+      "sequence_range": [
+        3856,
+        4367
+      ],
+      "phases": [
+        {
+          "phase": "activate_quant",
+          "routed_rows": 3072,
+          "samples": 85,
+          "median_us": 267.84
+        },
+        {
+          "phase": "convert_export",
+          "routed_rows": 3072,
+          "samples": 86,
+          "median_us": 651.05
+        },
+        {
+          "phase": "down",
+          "routed_rows": 3072,
+          "samples": 86,
+          "median_us": 68.12
+        },
+        {
+          "phase": "fetch",
+          "routed_rows": 3072,
+          "samples": 85,
+          "median_us": 162.36
+        },
+        {
+          "phase": "pack",
+          "routed_rows": 3072,
+          "samples": 85,
+          "median_us": 356.32
+        },
+        {
+          "phase": "up",
+          "routed_rows": 3072,
+          "samples": 85,
+          "median_us": 75.94
+        }
+      ],
+      "post_fetch_pre_pack": {
+        "samples": 85,
+        "median_us": 555.88
+      }
+    },
+    "expert1": {
+      "source": "/workspace/betterscale-confluence/runs/online-collect-single-20260918/expert1.json",
+      "sequence_range": [
+        3856,
+        4367
+      ],
+      "phases": [
+        {
+          "phase": "activate_quant",
+          "routed_rows": 3072,
+          "samples": 85,
+          "median_us": 265.48
+        },
+        {
+          "phase": "convert_export",
+          "routed_rows": 3072,
+          "samples": 86,
+          "median_us": 536.55
+        },
+        {
+          "phase": "down",
+          "routed_rows": 3072,
+          "samples": 86,
+          "median_us": 63.8
+        },
+        {
+          "phase": "fetch",
+          "routed_rows": 3072,
+          "samples": 85,
+          "median_us": 159.16
+        },
+        {
+          "phase": "pack",
+          "routed_rows": 3072,
+          "samples": 85,
+          "median_us": 349.42
+        },
+        {
+          "phase": "up",
+          "routed_rows": 3072,
+          "samples": 85,
+          "median_us": 73.0
+        }
+      ],
+      "post_fetch_pre_pack": {
+        "samples": 85,
+        "median_us": 553.38
+      }
+    },
+    "expert2": {
+      "source": "/workspace/betterscale-confluence/runs/online-collect-single-20260918/expert2.json",
+      "sequence_range": [
+        3856,
+        4367
+      ],
+      "phases": [
+        {
+          "phase": "activate_quant",
+          "routed_rows": 4096,
+          "samples": 85,
+          "median_us": 381.6
+        },
+        {
+          "phase": "convert_export",
+          "routed_rows": 4096,
+          "samples": 86,
+          "median_us": 563.61
+        },
+        {
+          "phase": "down",
+          "routed_rows": 4096,
+          "samples": 86,
+          "median_us": 84.97
+        },
+        {
+          "phase": "fetch",
+          "routed_rows": 4096,
+          "samples": 85,
+          "median_us": 161.44
+        },
+        {
+          "phase": "pack",
+          "routed_rows": 4096,
+          "samples": 85,
+          "median_us": 349.46
+        },
+        {
+          "phase": "up",
+          "routed_rows": 4096,
+          "samples": 85,
+          "median_us": 95.66
+        }
+      ],
+      "post_fetch_pre_pack": {
+        "samples": 85,
+        "median_us": 562.8
+      }
+    }
+  }
+}
