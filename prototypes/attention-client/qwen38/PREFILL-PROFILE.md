@@ -496,3 +496,33 @@ actual new default closure:25 calls/source, both ABI feature fields true,
 all-row eager/replay exact. The receipt and sampled oracle errors are retained
 as `compact-maps-result.json.final_default`. All admitted jobs exited0; devices
 and leases were released. Full-model MTP/SWE performance remains a separate gate.
+
+## Graph coverage audit after the default promotion
+
+Do not conflate the recent FULL **leaf** gates with the earlier eager whole-
+model SWE prefill profile. `probe_shared_overlap.py` captures the single-layer
+Session forward (publication/shared/collect); both control and candidate replay
+those graphs. The measured ACTIVATE/map gains are not an eager-to-graph gain.
+
+The whole-model retained-trace runner remains different:
+`trace_client.py::TraceEngine.warm` warms prefill eagerly and captures only
+`wave` (decode/MTP). `run_trace` calls `prefill` directly when any pending input
+exists; otherwise it replays `engine.graph`. There is no mixed-wave branch.
+`model_setup.py` sets donor cudagraph mode NONE; decode FULL is manually owned
+by the outer graph, not enabled by that configuration field.
+
+Before using the earlier SWE timeline to rank remaining host-side overhead,
+qualify a whole-root prefill graph with stable input/topology buffers, retained
+metadata lifetime, and separate fresh/continuation Python specializations.
+Move the target-validity CPU read and token-result CPU conversion to the wave
+boundary, not inside capture. Include GDN accepted-state canonicalization, PLE
+mailbox/generation, target and MTP state updates in the exact-State oracle.
+A no-mutation replay of only its output is insufficient. Existing DSV4 donor
+FULL/mixed work supplies the method, not a switch compatible with this owned
+Qwen38/LiveModule trace runner. Mixed scheduling is a separate missing behavior.
+
+On the latest compact-map leaf's most-loaded owner, coordinator medians still
+show convert/export~530us, post-fetch/pre-pack~416us, pack~336us, ACTIVATE~155us,
+up~88us/down~76us. These command intervals include dispatch/join and the ring
+mixes client modes. They identify candidates for study, not a sum of removable
+latency or a claim that collect time is copying alone.
