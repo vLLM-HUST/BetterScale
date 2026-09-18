@@ -296,6 +296,12 @@ def run_trace(root, cfg, args, rank, stage):
     engine = TraceEngine(root, cfg, args, assigned)
     engine.warm()
     torch.npu.synchronize()
+    profile = None
+    profile_steps = int(os.environ.get("QWEN38_PROFILE_STEPS", "0"))
+    if profile_steps:
+        from trace_profile import start
+
+        profile = start(args.tp_size * args.source + rank)
     (args.directory / f"trace-ready-{args.tp_size * args.source + rank}").touch()
     deadline = time.monotonic() + 180
     while not all(
@@ -346,7 +352,12 @@ def run_trace(root, cfg, args, rank, stage):
             if prefill:
                 width = min(512, engine.lanes // engine.batch)
                 chunks = [s.take(width) if not s.done and s.todo else [] for s in seats]
-                tokens = engine.prefill(chunks, [s.cursor for s in seats])
+                if profile is not None:
+                    label = f"swe_prefill/source{args.source}/wave{step}/valid{sum(map(len, chunks))}/bucket{engine.batch * width}"
+                    with torch.profiler.record_function(label):
+                        tokens = engine.prefill(chunks, [s.cursor for s in seats])
+                else:
+                    tokens = engine.prefill(chunks, [s.cursor for s in seats])
                 for i, (seat, chunk, token) in enumerate(zip(seats, chunks, tokens)):
                     if chunk:
                         if seat.finish_prefill(len(chunk), token):
@@ -412,6 +423,8 @@ def run_trace(root, cfg, args, rank, stage):
                     seconds=elapsed,
                     output_tokens=sum(counts),
                     contexts=[s.cursor for s in seats],
+                    prefill_lengths=[len(c) for c in chunks] if prefill else [],
+                    bucket_rows=engine.batch * width if prefill else engine.batch * 2,
                 )
             )
             if step % 20 == 0 or prefill:
@@ -424,6 +437,22 @@ def run_trace(root, cfg, args, rank, stage):
                     )
                 stage("trace-wave", **events[-1], **memory)
             step += 1
+            if profile is not None and step >= profile_steps:
+                (
+                    args.directory
+                    / f"attention{args.tp_size * args.source + rank}.json"
+                ).write_text(
+                    json.dumps(
+                        dict(
+                            status="PROFILE",
+                            scope="bounded instrumented waves, not throughput",
+                            source=args.source,
+                            waves=events,
+                        ),
+                        indent=2,
+                    )
+                )
+                return
             if diagnostic:
                 detail = timers.result()
                 (
@@ -504,6 +533,8 @@ def run_trace(root, cfg, args, rank, stage):
             args.directory / f"attention{args.tp_size * args.source + rank}.json"
         ).write_text(json.dumps(receipt, indent=2))
     finally:
+        if profile is not None:
+            profile.stop()
         if timers is not None:
             timers.close()
         engine.graph.reset()

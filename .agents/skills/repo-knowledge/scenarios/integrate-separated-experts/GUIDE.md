@@ -342,3 +342,12 @@ failed; Python did not promptly expose a normal allocator exception. Inspect
 bounded native error slices rather than extending a communication timeout.
 One-off `empty_cache()` after catalog loading did not reduce fragmentation or
 repair this fit; do not retain it as a claimed capacity improvement.
+
+For Qwen38 prefill cost or scheduler padding, enter `qwen38/PREFILL-PROFILE.md`.
+The C40 E3 trace uses only39.6% of fixed prefill bucket rows; its first two fully
+occupied waves also have substantial collect waits. The bounded profiler marks
+receipts PROFILE, not throughput PASS. Use same-host provider timestamps for
+combined attention lanes; never align independent sources by their first event.
+Native source markers provide useful input/bucket bands. Relocated TraceLoom
+needs all three rule TSVs, and offline parsing can create an auxiliary analysis.db
+alongside the real ascend_pytorch_profiler DB; only ingest the latter.

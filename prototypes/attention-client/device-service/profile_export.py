@@ -42,7 +42,7 @@ def main(
         paths = list((root / "profile").glob(f"{role}_*"))
         assert len(paths) == 1, (role, paths)
         profile = paths[0]
-        databases = list((profile / "ASCEND_PROFILER_OUTPUT").glob("*.db"))
+        databases = list((profile / "ASCEND_PROFILER_OUTPUT").glob("ascend_pytorch_profiler*.db"))
         if not databases:
             code = (
                 "from torch_npu.profiler.profiler import analyse; import sys; "
