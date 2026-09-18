@@ -28,6 +28,7 @@ class Kernels:
             and abi["client_config_words"] == 17
             and not abi["prefix_pipeline"]
         )
+        self.parallel_client_pack = abi.get("parallel_client_pack", False)
         self.layout = ChannelLayout.from_abi(abi)
         self.root = root
         self.lib = C.CDLL(str(root / "launch.so"))

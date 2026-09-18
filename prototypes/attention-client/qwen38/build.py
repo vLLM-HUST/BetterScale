@@ -123,7 +123,9 @@ client = client.replace("META(neural_collect_reduce)", "")
 client = client.replace("owner < 4", f"owner < {a.owners}").replace(
     "/ 128", f"/ {partition.slots}"
 )
-(source / "client_kernel.cpp").write_text(client)
+from build_client_pack import append_pack
+
+(source / "client_kernel.cpp").write_text(append_pack(client, layout))
 if a.sources > 2:
     from topology_codegen import expand_sources
 
@@ -162,6 +164,7 @@ for script, unit, name in (
             target_input="native_dynamic_int8_and_fp32_scale",
             mtp_input="bf16",
             prefix_pipeline=False,
+            parallel_client_pack=True,
         ),
         indent=2,
     )

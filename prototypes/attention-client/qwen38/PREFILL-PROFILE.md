@@ -172,3 +172,49 @@ earlier collect can simply wait longer. Reducing time to READY and improving
 collect remain distinct opportunities. Do not enable by default or claim a
 serving win just because two streams visibly overlap. The hardware roles and
 lease were released; profile analysis was CPU-only afterwards.
+
+## Parallel input publication
+
+`client_pack.cpp` adds a16-AIV `neural_pack` and a separate one-AIV
+`neural_publish`. Pack assigns contiguous32KiB tiles across cores, including
+route-ID tiles; it expands eight compact scales into eight padded wire entries
+per read/write pair. Target INT8 and MTP BF16 retain the existing wire geometry.
+A same-stream kernel boundary joins ALL packing blocks before publication.
+There is no spinning cross-block barrier, and READY is never visible while a
+packing block is still writing. The existing serial submit export stays intact.
+
+Build new server/client closures normally through `build.py`, or use
+`build_client_pack.py OLD_BUILD NEW_BUILD` to copy a frozen closure and rebuild
+only its client object. This preserves the server binary and wire ABI, adding
+an explicit `parallel_client_pack` capability bit. Do not mix a new client flag
+with an old object: Session rejects that before opening channels.
+
+`QWEN38_PARALLEL_PACK=1` selects this prototype; shared overlap remains separately
+controlled. The four-arm gate uses `QWEN38_TEST_PACK=1` with
+`--client-probe probe_shared_overlap.py`. It checks private staging bytes against
+legacy submit for1/7/32/127/1024 rows in both input dtypes, then compares FULL
+serial/shared/pack/pack+shared output under changed inputs and route order. The
+warm, already-ready collect control publishes no new generation and leaves the
+server output immutable; it is a copy-cost control, not a cold-link benchmark.
+
+The four-arm hw0 E3 leaf passes all10 staging-byte cases and all6 FULL graph
+shape/priority cases (three changed-input/rotated-route checks each). The first
+run measured1024-row priority1 serial4.541ms, pack3.951ms, pack+shared3.946ms.
+The follow-up added the ready-collect control (not another search for a win):
+serial4.655ms, pack4.038ms, pack+shared4.053ms. Ten alternating observations per
+arm; roughly13% net reduction, **not a whole-model serving speedup**. At1row,
+extra launch overhead provides no win;32row improvements are much smaller.
+Keep the flags opt-in, with the serial control and shared overlap independently
+available. No source/server scheduling or expert computation was changed.
+
+Profile of the follow-up: serial client625.90us; pack17.50us + publish1.42us.
+Normal collect3810.52us in the pack arm; already-ready collect1075.32us in the
+profile and1.102ms median across ten unprofiled event measurements. Do not take
+their difference as an exact remote-GEMM time: normal collect includes remaining
+scheduling/compute wait, while the ready control has warmed source/output data.
+It does establish that both substantial pull cost and remote wait remain.
+Results: `client-pack-result.json`; compressed four-arm native TraceLoom view:
+`/workspace/betterscale-confluence/runs/parallel-pack-ready-20260918/client-pack-four-arms.json.gz`.
+All four owned roles drained/exited and the hw0 lease was released. The new
+client object was compiled with the frozen server objects unchanged. MTP wire
+bytes pass, but full MTP computation is not covered by the layer0 loop.

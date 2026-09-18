@@ -7,7 +7,7 @@ from pathlib import Path
 import statistics
 import torch
 import torch_npu
-from client import Session
+from client import Session, Bank
 
 p = argparse.ArgumentParser()
 p.add_argument("--directory", type=Path, required=True)
@@ -33,6 +33,46 @@ experts = (
     if session.layout.owners == 3
     else [0, 1, 127, 128, 129, 255, 256, 383, 384, 511]
 )
+# Optional four-arm experiment keeps shared overlap and packing independent.
+modes = {"serial": (False, False), "overlap": (True, False)}
+pack_checks = []
+if os.environ.get("QWEN38_TEST_PACK") == "1":
+    assert session.kernels.parallel_client_pack
+    modes.update(pack=(False, True), pack_overlap=(True, True))
+    # Private, unexported backing verifies both target and MTP wire layouts;
+    # publishing here cannot wake any real server or alter its generation.
+    for n in (1, 7, 32, 127, session.layout.rows):
+        for quantized in (False, True):
+            bank = Bank(session, n, quantized)
+            bank.input.copy_(
+                torch.randint(-100, 100, bank.input.shape, device="npu").to(
+                    bank.input.dtype
+                )
+            )
+            bank.scales.copy_(torch.rand_like(bank.scales))
+            bank.ids_storage.copy_(
+                torch.arange(bank.ids_storage.numel(), device="npu", dtype=torch.int32)
+            )
+            backing = torch.zeros(
+                session.layout.source_bytes // 4, device="npu", dtype=torch.int32
+            )
+            counter = torch.zeros(8, device="npu", dtype=torch.int32)
+            bank.config[0] = backing.data_ptr()
+            bank.config[7] = counter.data_ptr()
+            session.kernels.call(
+                session.submit, bank.config, bank.input, bank.ids_storage
+            )
+            expected = backing.clone()
+            backing.zero_()
+            session.kernels.call(
+                session.pack, bank.config, bank.input, bank.ids_storage, 16
+            )
+            session.kernels.call(
+                session.publish, bank.config, bank.input, bank.ids_storage
+            )
+            torch.npu.synchronize()
+            assert torch.equal(backing, expected), (n, quantized, "wire bytes")
+            pack_checks.append(dict(rows=n, quantized=quantized, bytes_equal=True))
 records = []
 for n in sorted({1, 32, session.layout.rows}):
     x = torch.randn(n, 2560, device="npu", dtype=torch.bfloat16)
@@ -44,8 +84,9 @@ for n in sorted({1, 32, session.layout.rows}):
     probs = torch.full((n, 10), 0.1, device="npu", dtype=torch.bfloat16)
     for priority in (0, 1):
         graphs, outputs = {}, {}
-        for overlap in (False, True):
+        for mode, (overlap, pack) in modes.items():
             session.shared_overlap = overlap
+            session.parallel_pack = pack
             for _ in range(2):
                 session.forward_routed(0, x, ids, probs, shared, priority=priority)
             torch.npu.synchronize()
@@ -54,41 +95,68 @@ for n in sorted({1, 32, session.layout.rows}):
             stream.wait_stream(torch.npu.current_stream())
             with torch.npu.stream(stream):
                 with torch.npu.graph(graph):
-                    outputs[overlap] = session.forward_routed(
+                    outputs[mode] = session.forward_routed(
                         0, x, ids, probs, shared, priority=priority
                     )
             stream.synchronize()
-            graphs[overlap] = graph
+            graphs[mode] = graph
         for generation in range(3):
             x.copy_(torch.randn_like(x))
             # Alternate route order as well as input content in stable buffers.
             ids.copy_(ids.roll(1, dims=1))
-            for overlap in (False, True):
-                graphs[overlap].replay()
+            for mode, (overlap, pack) in modes.items():
+                graphs[mode].replay()
                 torch.npu.synchronize()
-            assert torch.equal(outputs[False], outputs[True]), (n, priority, generation)
-        times = {False: [], True: []}
+            assert all(
+                torch.equal(outputs["serial"], out) for out in outputs.values()
+            ), (n, priority, generation)
+        times = {mode: [] for mode in modes}
         for repeat in range(10):
-            for overlap in ((False, True) if repeat % 2 == 0 else (True, False)):
+            for mode in (list(modes) if repeat % 2 == 0 else list(reversed(modes))):
                 start, end = torch.npu.Event(enable_timing=True), torch.npu.Event(
                     enable_timing=True
                 )
                 start.record()
-                graphs[overlap].replay()
+                graphs[mode].replay()
                 end.record()
                 end.synchronize()
-                times[overlap].append(start.elapsed_time(end))
+                times[mode].append(start.elapsed_time(end))
         records.append(
             dict(
                 rows=n,
                 priority=priority,
                 exact=True,
-                serial_ms=statistics.median(times[False]),
-                overlap_ms=statistics.median(times[True]),
+                serial_ms=statistics.median(times["serial"]),
+                overlap_ms=statistics.median(times["overlap"]),
+                medians_ms={mode: statistics.median(ts) for mode, ts in times.items()},
                 samples=times,
             )
         )
         if n == session.layout.rows and priority == 1:
+            # All servers have finished this generation. Replay only collect:
+            # no submit, no mutation or retirement, so this isolates warm pull
+            # cost from remote scheduling/compute wait (not a cold-bandwidth test).
+            bank = session.banks[(n, True)]
+            ready_graph = torch.npu.NPUGraph()
+            ready_stream = torch.npu.Stream()
+            ready_stream.wait_stream(torch.npu.current_stream())
+            with torch.npu.stream(ready_stream):
+                with torch.npu.graph(ready_graph):
+                    session.kernels.call(
+                        session.collect, bank.config, bank.input, bank.ids_storage, 16
+                    )
+            ready_stream.synchronize()
+            ready_times = []
+            for _ in range(10):
+                start = torch.npu.Event(enable_timing=True)
+                end = torch.npu.Event(enable_timing=True)
+                start.record()
+                ready_graph.replay()
+                end.record()
+                end.synchronize()
+                ready_times.append(start.elapsed_time(end))
+            records[-1]["ready_collect_ms"] = statistics.median(ready_times)
+            records[-1]["ready_collect_samples"] = ready_times
             profile_dir = a.directory / f"profile-client{a.source}"
             with torch_npu.profiler.profile(
                 activities=[
@@ -102,16 +170,21 @@ for n in sorted({1, 32, session.layout.rows}):
                     profiler_level=torch_npu.profiler.ProfilerLevel.Level1
                 ),
             ):
-                for overlap in (False, True):
-                    with torch.profiler.record_function(
-                        "shared_overlap" if overlap else "shared_serial"
-                    ):
-                        graphs[overlap].replay()
+                for mode, (overlap, pack) in modes.items():
+                    with torch.profiler.record_function("shared_" + mode):
+                        graphs[mode].replay()
                         torch.npu.synchronize()
+                with torch.profiler.record_function("collect_already_ready"):
+                    ready_graph.replay()
+                    torch.npu.synchronize()
+            ready_graph.reset()
         for graph in graphs.values():
             graph.reset()
         print(records[-1], flush=True)
 count = session.close()
 (a.directory / f"client{a.source}.json").write_text(
-    json.dumps(dict(status="PASS", calls=count, cases=records), indent=2)
+    json.dumps(
+        dict(status="PASS", calls=count, cases=records, pack_checks=pack_checks),
+        indent=2,
+    )
 )

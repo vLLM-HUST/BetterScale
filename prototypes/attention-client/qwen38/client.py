@@ -58,6 +58,19 @@ class Session:
         self.shared_overlap = os.environ.get("QWEN38_SHARED_OVERLAP") == "1"
         self.shared_stream = torch.npu.Stream() if self.shared_overlap else None
         self.kernels = Kernels(build)
+        self.parallel_pack = os.environ.get("QWEN38_PARALLEL_PACK") == "1"
+        if self.parallel_pack and not self.kernels.parallel_client_pack:
+            raise RuntimeError("Parallel pack requires matching client binary exports")
+        self.pack = (
+            self.kernels.load("neural_pack")
+            if self.kernels.parallel_client_pack
+            else None
+        )
+        self.publish = (
+            self.kernels.load("neural_publish")
+            if self.kernels.parallel_client_pack
+            else None
+        )
         self.layout = self.kernels.layout
         contract = self.layout.contract()
         self.api = acl_api()
@@ -144,7 +157,11 @@ class Session:
                 self.directory / "last-client-input.pt",
             )
             print("submit layer", layer, "ids", ids.cpu().tolist(), flush=True)
-        self.kernels.call(self.submit, bank.config, bank.input, bank.ids_storage)
+        if self.parallel_pack:
+            self.kernels.call(self.pack, bank.config, bank.input, bank.ids_storage, 16)
+            self.kernels.call(self.publish, bank.config, bank.input, bank.ids_storage)
+        else:
+            self.kernels.call(self.submit, bank.config, bank.input, bank.ids_storage)
         if self.shared_overlap:
             with torch.npu.stream(self.shared_stream):
                 self.shared_stream.wait_event(bank.shared_input_ready)
