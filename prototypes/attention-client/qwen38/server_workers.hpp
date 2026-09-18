@@ -152,6 +152,14 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
                 io.Copy((__gm__ int32_t *)ptr[4] + row * HIDDEN / 2,
                         (__gm__ int32_t *)cfg[2 + c] + 64 + route * HIDDEN / 2,
                         HIDDEN / 2);
+#ifdef QWEN38_ROUTE_READY
+              // SEND owns this route. ToBf16/Copy already waited for MTE3;
+              // publish generation only after the exported BF16 row is visible.
+              if (kind == SEND)
+                io.Publish((__gm__ int32_t *)cfg[2 + c] + 64 +
+                               ROUTES * HIDDEN / 2 + route * 16,
+                           gen);
+#endif
             }
           }
         }

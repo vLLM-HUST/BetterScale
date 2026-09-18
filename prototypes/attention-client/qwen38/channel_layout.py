@@ -19,6 +19,7 @@ class ChannelLayout:
     rows: int = 32
     owners: int = 4
     sources: int = 2
+    route_ready: bool = False
 
     def __post_init__(self):
         if self.sources not in (2, 4, 5):
@@ -52,11 +53,16 @@ class ChannelLayout:
 
     @property
     def output_bytes(self):
-        return align(64 * 4 + self.routes * 2560 * 2, ALIGN)
+        return align(
+            64 * 4
+            + self.routes * 2560 * 2
+            + (self.routes * 64 if self.route_ready else 0),
+            ALIGN,
+        )
 
     def contract(self):
         return dict(
-            version=1,
+            version=2 if self.route_ready else 1,
             model="qwen38",
             hidden=2560,
             inner=640,
@@ -72,7 +78,12 @@ class ChannelLayout:
 
     @classmethod
     def from_abi(cls, abi):
-        layout = cls(abi["rows"], abi.get("owners", 4), abi.get("sources", 2))
+        layout = cls(
+            abi["rows"],
+            abi.get("owners", 4),
+            abi.get("sources", 2),
+            abi.get("route_ready", False),
+        )
         if (
             abi.get("version") == 2
             and layout.rows == 32

@@ -18,8 +18,9 @@ p.add_argument("output", type=Path)
 p.add_argument("--rows", type=int, default=32)
 p.add_argument("--owners", type=int, choices=(3, 4), default=4)
 p.add_argument("--sources", type=int, choices=(2, 4, 5), default=2)
+p.add_argument("--route-ready", action="store_true")
 a = p.parse_args()
-layout = ChannelLayout(a.rows, a.owners, a.sources)
+layout = ChannelLayout(a.rows, a.owners, a.sources, a.route_ready)
 partition = ExpertPartition(a.owners)
 groups = (partition.slots + 3) // 4 * 4
 ends_storage = (groups + 7) // 8 * 8
@@ -70,6 +71,8 @@ for filename in ("server_workers.hpp", "persistent_cube.cpp"):
     path = source / filename
     text = path.read_text().replace("e < 128", "e < LOCAL_EXPERTS")
     text = text.replace("offset < 256", f"offset < {ends_storage * 2}")
+    if filename == "server_workers.hpp" and a.route_ready:
+        text = "#define QWEN38_ROUTE_READY 1\n" + text
     path.write_text(text)
 client = (local.parent / "qwen-next/client_kernel.cpp").read_text()
 assert "constexpr int H = 2048" in client
@@ -125,9 +128,10 @@ client = client.replace("owner < 4", f"owner < {a.owners}").replace(
 )
 from build_client_pack import append_pack
 from build_client_reduce import append_reduce
+from build_client_online import append_online
 
 (source / "client_kernel.cpp").write_text(
-    append_reduce(append_pack(client, layout), a.owners)
+    append_online(append_reduce(append_pack(client, layout), a.owners))
 )
 if a.sources > 2:
     from topology_codegen import expand_sources
@@ -169,6 +173,7 @@ for script, unit, name in (
             prefix_pipeline=False,
             parallel_client_pack=True,
             fused_client_collect=True,
+            route_ready=a.route_ready,
         ),
         indent=2,
     )

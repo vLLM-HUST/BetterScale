@@ -11,7 +11,7 @@ from livemodule.arch.ascend.vllm.moe_runtime.experts_selector import select_expe
 
 
 class Bank:
-    def __init__(self, session, rows, quantized, fused=False):
+    def __init__(self, session, rows, quantized, fused=False, online=False):
         self.input = torch.empty(
             rows, 2560, dtype=torch.int8 if quantized else torch.bfloat16, device="npu"
         )
@@ -37,6 +37,9 @@ class Bank:
             else None
         )
         self.indices = torch.arange(rows * 10, dtype=torch.int32, device="npu")
+        self.timings = (
+            torch.zeros(48, 8, dtype=torch.int64, device="npu") if online else None
+        )
         self.config = torch.tensor(
             [
                 session.local,
@@ -49,8 +52,8 @@ class Bank:
                 self.raw.data_ptr() if self.raw is not None else 0,
                 self.probs.data_ptr(),
                 self.reduced.data_ptr() if self.reduced is not None else 0,
-                0,
-                0,
+                self.timings.data_ptr() if self.timings is not None else 0,
+                250 if online else 0,
                 0,
                 self.scales.data_ptr(),
             ],
@@ -92,6 +95,14 @@ class Session:
         self.collect_fused = (
             self.kernels.load("neural_collect_fused")
             if self.kernels.fused_client_collect
+            else None
+        )
+        self.online_collect = os.environ.get("QWEN38_ONLINE_COLLECT") == "1"
+        if self.online_collect and not self.kernels.layout.route_ready:
+            raise RuntimeError("Online collect requires route-ready producer ABI")
+        self.collect_online = (
+            self.kernels.load("neural_collect_online")
+            if self.kernels.layout.route_ready
             else None
         )
         self.layout = self.kernels.layout
@@ -149,7 +160,13 @@ class Session:
 
     def forward_routed(self, layer, hidden, ids, probs, shared, *, priority=0):
         """Same device wire with externally checked routing (also a leaf-test seam)."""
-        key = (hidden.shape[0], layer < 48) + ((True,) if self.fused_collect else ())
+        if self.online_collect and not self.fused_collect:
+            raise RuntimeError("Online collect requires fused output bank")
+        key = (hidden.shape[0], layer < 48) + (
+            (True, True)
+            if self.online_collect
+            else (True,) if self.fused_collect else ()
+        )
         if not 1 <= key[0] <= self.layout.rows:
             raise ValueError(f"rows exceed channel capacity {self.layout.rows}")
         if key not in self.banks:
@@ -201,7 +218,11 @@ class Session:
         if priority:
             self.kernels.call(self.promote, bank.config, bank.input, bank.ids_storage)
         self.kernels.call(
-            self.collect_fused if self.fused_collect else self.collect,
+            (
+                self.collect_online
+                if self.online_collect
+                else self.collect_fused if self.fused_collect else self.collect
+            ),
             bank.config,
             bank.input,
             bank.ids_storage,

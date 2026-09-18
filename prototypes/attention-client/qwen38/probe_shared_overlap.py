@@ -78,6 +78,35 @@ if os.environ.get("QWEN38_TEST_FUSED") == "1":
     modes.update(fused=(False, True), fused_overlap=(True, True))
     if os.environ.get("QWEN38_SWEEP_COLLECT") == "1":
         modes.update(fused32=(False, True), fused48=(False, True))
+if os.environ.get("QWEN38_TEST_ONLINE") == "1":
+    assert session.layout.route_ready
+    modes.update(online=(False, True), online_overlap=(True, True))
+protocol_fault_checked = False
+if os.environ.get("QWEN38_PROTOCOL_EDGES") == "1":
+    bank = Bank(session, 1, True, True, True)
+    fake_source = torch.zeros(8, dtype=torch.int32, device="npu")
+    fake_peer = torch.zeros(
+        session.layout.output_bytes // 4, dtype=torch.int32, device="npu"
+    )
+    fake_counter = torch.zeros(8, dtype=torch.int32, device="npu")
+    fake_source[0] = 2
+    fake_peer[0] = 2  # All-owner DONE cannot license stale route generations.
+    flag_start = 64 + session.layout.routes * 2560 // 2
+    fake_peer[flag_start : flag_start + 10 * 16 : 16] = 1
+    bank.ids.zero_()
+    bank.probs.fill_(0.1)
+    bank.config[0] = fake_source.data_ptr()
+    for owner in range(session.layout.owners):
+        bank.config[owner + 1] = fake_peer.data_ptr()
+    bank.config[7] = fake_counter.data_ptr()
+    bank.config[9] = 2
+    bank.config[14] = 0
+    session.kernels.call(
+        session.collect_online, bank.config, bank.input, bank.ids_storage, 16
+    )
+    torch.npu.synchronize()
+    assert int(fake_counter.cpu()[0]) == -101, "stale route generation was consumed"
+    protocol_fault_checked = True
 records = []
 for n in sorted({1, 32, session.layout.rows}):
     x = torch.randn(n, 2560, device="npu", dtype=torch.bfloat16)
@@ -92,7 +121,8 @@ for n in sorted({1, 32, session.layout.rows}):
         for mode, (overlap, pack) in modes.items():
             session.shared_overlap = overlap
             session.parallel_pack = pack
-            session.fused_collect = mode.startswith("fused")
+            session.online_collect = mode.startswith("online")
+            session.fused_collect = mode.startswith("fused") or session.online_collect
             session.collect_blocks = (
                 32 if mode == "fused32" else 48 if mode == "fused48" else 16
             )
@@ -109,10 +139,20 @@ for n in sorted({1, 32, session.layout.rows}):
                     )
             stream.synchronize()
             graphs[mode] = graph
+        numeric = []
         for generation in range(3):
             x.copy_(torch.randn_like(x))
             # Alternate route order as well as input content in stable buffers.
             ids.copy_(ids.roll(1, dims=1))
+            if os.environ.get("QWEN38_PROTOCOL_EDGES") == "1":
+                if generation == 1:
+                    ids.fill_(0)  # Repeated routes, and two entirely empty owners.
+                elif generation == 2:
+                    ids.copy_(
+                        torch.tensor(experts, dtype=torch.int32, device="npu").expand(
+                            n, -1
+                        )
+                    )
             if os.environ.get("QWEN38_TEST_FUSED") == "1":
                 weights = torch.rand(n, 10, device="npu")
                 probs.copy_(weights / weights.sum(-1, keepdim=True))
@@ -122,14 +162,19 @@ for n in sorted({1, 32, session.layout.rows}):
             for mode, out in outputs.items():
                 ref = outputs["serial"].float()
                 error = float((out.float() - ref).norm() / ref.norm().clamp_min(1e-9))
-                assert torch.equal(outputs["serial"], out), (
-                    n,
-                    priority,
-                    generation,
-                    mode,
-                    error,
-                    float((out.float() - ref).abs().max()),
+                exact = torch.equal(outputs["serial"], out)
+                numeric.append(
+                    dict(
+                        mode=mode, generation=generation, exact=exact, relative_l2=error
+                    )
                 )
+                if mode.startswith("online"):
+                    assert error < 0.0002, (n, priority, generation, mode, error)
+                    torch.testing.assert_close(
+                        out, outputs["serial"], rtol=0.016, atol=0.0002
+                    )
+                else:
+                    assert exact, (n, priority, generation, mode, error)
         times = {mode: [] for mode in modes}
         for repeat in range(10):
             for mode in (list(modes) if repeat % 2 == 0 else list(reversed(modes))):
@@ -145,13 +190,18 @@ for n in sorted({1, 32, session.layout.rows}):
             dict(
                 rows=n,
                 priority=priority,
-                exact=True,
+                exact=all(item["exact"] for item in numeric),
+                numeric=numeric,
                 serial_ms=statistics.median(times["serial"]),
                 overlap_ms=statistics.median(times["overlap"]),
                 medians_ms={mode: statistics.median(ts) for mode, ts in times.items()},
                 samples=times,
             )
         )
+        if "online" in modes:
+            records[-1]["online_timing_cycles"] = (
+                session.banks[(n, True, True, True)].timings[:16].cpu().tolist()
+            )
         if n == session.layout.rows and priority == 1:
             # All servers have finished this generation. Replay only collect:
             # no submit, no mutation or retirement, so this isolates warm pull
@@ -235,7 +285,13 @@ for n in sorted({1, 32, session.layout.rows}):
 count = session.close()
 (a.directory / f"client{a.source}.json").write_text(
     json.dumps(
-        dict(status="PASS", calls=count, cases=records, pack_checks=pack_checks),
+        dict(
+            status="PASS",
+            calls=count,
+            cases=records,
+            pack_checks=pack_checks,
+            stale_route_rejected=protocol_fault_checked,
+        ),
         indent=2,
     )
 )

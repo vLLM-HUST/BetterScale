@@ -1,0 +1,1997 @@
+{
+  "scope": "hw0 one source + E3 performance; two sources + E3 protocol gate; real target layer0 ten-expert fixture and dummy BF16 shared. Not full-model/MTP/language qualification.",
+  "single_source": {
+    "calls": 728,
+    "cases": [
+      {
+        "rows": 1,
+        "priority": 0,
+        "medians_ms": {
+          "serial": 0.7049799859523773,
+          "overlap": 0.7111299932003021,
+          "pack": 0.7094700038433075,
+          "pack_overlap": 0.7135500013828278,
+          "fused": 0.7114499807357788,
+          "fused_overlap": 0.7164300084114075,
+          "online": 0.7023099958896637,
+          "online_overlap": 0.7118099927902222
+        },
+        "numeric": [
+          {
+            "mode": "serial",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "serial",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "serial",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          }
+        ],
+        "online_timing_cycles": [
+          [
+            271765556077455,
+            271765556107620,
+            271765556108780,
+            271765556109804,
+            261,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077444,
+            0,
+            271765556077449,
+            271765556109793,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077464,
+            0,
+            271765556077470,
+            271765556109814,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077449,
+            0,
+            271765556077453,
+            271765556109801,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077466,
+            0,
+            271765556077471,
+            271765556109820,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077471,
+            0,
+            271765556077476,
+            271765556109793,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077482,
+            0,
+            271765556077488,
+            271765556109805,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077479,
+            0,
+            271765556077483,
+            271765556109810,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077491,
+            0,
+            271765556077495,
+            271765556109786,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077495,
+            0,
+            271765556077500,
+            271765556109813,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077510,
+            0,
+            271765556077515,
+            271765556109819,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077514,
+            0,
+            271765556077518,
+            271765556109780,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077551,
+            0,
+            271765556077555,
+            271765556109779,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077502,
+            0,
+            271765556077508,
+            271765556109790,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077518,
+            0,
+            271765556077523,
+            271765556109801,
+            0,
+            114,
+            0,
+            0
+          ],
+          [
+            271765556077507,
+            0,
+            271765556077513,
+            271765556109797,
+            0,
+            114,
+            0,
+            0
+          ]
+        ]
+      },
+      {
+        "rows": 1,
+        "priority": 1,
+        "medians_ms": {
+          "serial": 0.7053300142288208,
+          "overlap": 0.6979400217533112,
+          "pack": 0.7118000090122223,
+          "pack_overlap": 0.706089973449707,
+          "fused": 0.7109299898147583,
+          "fused_overlap": 0.7148599922657013,
+          "online": 0.7019799947738647,
+          "online_overlap": 0.7073799967765808
+        },
+        "numeric": [
+          {
+            "mode": "serial",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "serial",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "serial",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          }
+        ],
+        "online_timing_cycles": [
+          [
+            271765564110266,
+            271765564140169,
+            271765564142108,
+            271765564142480,
+            260,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110289,
+            0,
+            271765564110295,
+            271765564142477,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110270,
+            0,
+            271765564110275,
+            271765564142462,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110287,
+            0,
+            271765564110292,
+            271765564142462,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110294,
+            0,
+            271765564110299,
+            271765564142483,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110315,
+            0,
+            271765564110320,
+            271765564142472,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110297,
+            0,
+            271765564110302,
+            271765564142458,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110299,
+            0,
+            271765564110304,
+            271765564142472,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110295,
+            0,
+            271765564110300,
+            271765564142483,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110332,
+            0,
+            271765564110337,
+            271765564142468,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110338,
+            0,
+            271765564110348,
+            271765564142457,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110346,
+            0,
+            271765564110351,
+            271765564142446,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110344,
+            0,
+            271765564110349,
+            271765564142453,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110349,
+            0,
+            271765564110353,
+            271765564142448,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110352,
+            0,
+            271765564110356,
+            271765564142448,
+            0,
+            234,
+            0,
+            0
+          ],
+          [
+            271765564110355,
+            0,
+            271765564110360,
+            271765564142468,
+            0,
+            234,
+            0,
+            0
+          ]
+        ]
+      },
+      {
+        "rows": 32,
+        "priority": 0,
+        "medians_ms": {
+          "serial": 0.8295799791812897,
+          "overlap": 0.843099981546402,
+          "pack": 0.809110015630722,
+          "pack_overlap": 0.8131600022315979,
+          "fused": 0.8095699846744537,
+          "fused_overlap": 0.8162800073623657,
+          "online": 0.7770400047302246,
+          "online_overlap": 0.7679199874401093
+        },
+        "numeric": [
+          {
+            "mode": "serial",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "serial",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "serial",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          }
+        ],
+        "online_timing_cycles": [
+          [
+            271765575998593,
+            271765576030340,
+            271765576032913,
+            271765576033474,
+            420,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998616,
+            271765576030238,
+            271765576032450,
+            271765576033461,
+            422,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998608,
+            271765576030501,
+            271765576033124,
+            271765576033470,
+            426,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998628,
+            271765576030413,
+            271765576033225,
+            271765576033470,
+            420,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998629,
+            271765576030292,
+            271765576033088,
+            271765576033456,
+            423,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998651,
+            271765576030432,
+            271765576032852,
+            271765576033463,
+            431,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998614,
+            271765576030409,
+            271765576033130,
+            271765576033466,
+            427,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998618,
+            271765576030185,
+            271765576033459,
+            271765576033546,
+            414,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998611,
+            271765576030152,
+            271765576033268,
+            271765576033439,
+            430,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998640,
+            271765576030278,
+            271765576032999,
+            271765576033443,
+            424,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998638,
+            271765576030353,
+            271765576033276,
+            271765576033456,
+            396,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998659,
+            271765576030862,
+            271765576033399,
+            271765576033485,
+            418,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998653,
+            271765576030187,
+            271765576033426,
+            271765576033510,
+            420,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998666,
+            271765576030215,
+            271765576033191,
+            271765576033439,
+            430,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998670,
+            271765576030440,
+            271765576033323,
+            271765576033460,
+            432,
+            354,
+            0,
+            0
+          ],
+          [
+            271765575998679,
+            271765576030438,
+            271765576033575,
+            271765576033660,
+            419,
+            354,
+            0,
+            0
+          ]
+        ]
+      },
+      {
+        "rows": 32,
+        "priority": 1,
+        "medians_ms": {
+          "serial": 0.8236200213432312,
+          "overlap": 0.8446400165557861,
+          "pack": 0.8098199963569641,
+          "pack_overlap": 0.8080700039863586,
+          "fused": 0.8087599873542786,
+          "fused_overlap": 0.814160019159317,
+          "online": 0.7710700035095215,
+          "online_overlap": 0.7719399929046631
+        },
+        "numeric": [
+          {
+            "mode": "serial",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "serial",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "serial",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          }
+        ],
+        "online_timing_cycles": [
+          [
+            271765584771287,
+            271765584802535,
+            271765584805425,
+            271765584806291,
+            416,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771291,
+            271765584802620,
+            271765584805596,
+            271765584806304,
+            427,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771299,
+            271765584802627,
+            271765584805042,
+            271765584806312,
+            426,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771306,
+            271765584802564,
+            271765584805068,
+            271765584806313,
+            417,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771308,
+            271765584802176,
+            271765584805360,
+            271765584806317,
+            420,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771320,
+            271765584802420,
+            271765584805410,
+            271765584806283,
+            430,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771326,
+            271765584802297,
+            271765584805506,
+            271765584806276,
+            432,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771321,
+            271765584802310,
+            271765584805207,
+            271765584806304,
+            416,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771333,
+            271765584802960,
+            271765584805574,
+            271765584806291,
+            422,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771345,
+            271765584802908,
+            271765584805585,
+            271765584806280,
+            425,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771362,
+            271765584802524,
+            271765584805457,
+            271765584806275,
+            402,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771365,
+            271765584803027,
+            271765584805347,
+            271765584806308,
+            418,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771373,
+            271765584802414,
+            271765584805541,
+            271765584806283,
+            426,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771330,
+            271765584802476,
+            271765584805512,
+            271765584806295,
+            433,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771355,
+            271765584802639,
+            271765584805579,
+            271765584806300,
+            432,
+            474,
+            0,
+            0
+          ],
+          [
+            271765584771346,
+            271765584802275,
+            271765584805555,
+            271765584806295,
+            418,
+            474,
+            0,
+            0
+          ]
+        ]
+      },
+      {
+        "rows": 1024,
+        "priority": 0,
+        "medians_ms": {
+          "serial": 4.581690073013306,
+          "overlap": 4.596100091934204,
+          "pack": 3.9592700004577637,
+          "pack_overlap": 3.965009927749634,
+          "fused": 3.912169933319092,
+          "fused_overlap": 3.908679962158203,
+          "online": 3.40080988407135,
+          "online_overlap": 3.417509913444519
+        },
+        "numeric": [
+          {
+            "mode": "serial",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 0,
+            "exact": false,
+            "relative_l2": 2.9807367809553398e-06
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 0,
+            "exact": false,
+            "relative_l2": 2.9807367809553398e-06
+          },
+          {
+            "mode": "serial",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "serial",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          }
+        ],
+        "online_timing_cycles": [
+          [
+            271765611612391,
+            271765611711614,
+            271765611773425,
+            271765611773523,
+            1504,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612397,
+            271765611711868,
+            271765611772980,
+            271765611773075,
+            1525,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612402,
+            271765611711558,
+            271765611772714,
+            271765611772816,
+            1536,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612414,
+            271765611711548,
+            271765611772070,
+            271765611772197,
+            1506,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612435,
+            271765611711473,
+            271765611772627,
+            271765611772738,
+            1524,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612451,
+            271765611711622,
+            271765611772584,
+            271765611772688,
+            1542,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612417,
+            271765611711787,
+            271765611773548,
+            271765611773638,
+            1510,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612423,
+            271765611711764,
+            271765611773169,
+            271765611773270,
+            1484,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612410,
+            271765611711886,
+            271765611773626,
+            271765611773714,
+            1504,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612438,
+            271765611711433,
+            271765611773908,
+            271765611773996,
+            1516,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612436,
+            271765611712005,
+            271765611773061,
+            271765611773147,
+            1428,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612452,
+            271765611711767,
+            271765611774053,
+            271765611774140,
+            1495,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612454,
+            271765611711782,
+            271765611772994,
+            271765611773088,
+            1506,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612465,
+            271765611711666,
+            271765611772803,
+            271765611772904,
+            1529,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612463,
+            271765611712162,
+            271765611773010,
+            271765611773104,
+            1530,
+            594,
+            0,
+            0
+          ],
+          [
+            271765611612474,
+            271765611711953,
+            271765611773841,
+            271765611773926,
+            1500,
+            594,
+            0,
+            0
+          ]
+        ]
+      },
+      {
+        "rows": 1024,
+        "priority": 1,
+        "medians_ms": {
+          "serial": 4.594470024108887,
+          "overlap": 4.617670059204102,
+          "pack": 3.990530014038086,
+          "pack_overlap": 3.9964599609375,
+          "fused": 3.904289960861206,
+          "fused_overlap": 3.927280068397522,
+          "online": 3.4093199968338013,
+          "online_overlap": 3.4168200492858887
+        },
+        "numeric": [
+          {
+            "mode": "serial",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 0,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 0,
+            "exact": false,
+            "relative_l2": 1.488460384280188e-06
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 0,
+            "exact": false,
+            "relative_l2": 1.488460384280188e-06
+          },
+          {
+            "mode": "serial",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 1,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 1,
+            "exact": false,
+            "relative_l2": 2.356264303671196e-06
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 1,
+            "exact": false,
+            "relative_l2": 2.356264303671196e-06
+          },
+          {
+            "mode": "serial",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "pack_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "fused_overlap",
+            "generation": 2,
+            "exact": true,
+            "relative_l2": 0.0
+          },
+          {
+            "mode": "online",
+            "generation": 2,
+            "exact": false,
+            "relative_l2": 3.0558985599782318e-06
+          },
+          {
+            "mode": "online_overlap",
+            "generation": 2,
+            "exact": false,
+            "relative_l2": 3.0558985599782318e-06
+          }
+        ],
+        "online_timing_cycles": [
+          [
+            271765639482237,
+            271765639581021,
+            271765639643152,
+            271765639643242,
+            1507,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482243,
+            271765639581048,
+            271765639641838,
+            271765639641956,
+            1537,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482246,
+            271765639580998,
+            271765639642618,
+            271765639642709,
+            1544,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482257,
+            271765639581013,
+            271765639642964,
+            271765639643062,
+            1506,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482260,
+            271765639581297,
+            271765639642402,
+            271765639642530,
+            1524,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482283,
+            271765639581018,
+            271765639642668,
+            271765639642771,
+            1548,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482263,
+            271765639581297,
+            271765639643879,
+            271765639643969,
+            1507,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482278,
+            271765639580768,
+            271765639643235,
+            271765639643324,
+            1490,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482273,
+            271765639581329,
+            271765639643463,
+            271765639643561,
+            1498,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482288,
+            271765639580838,
+            271765639643863,
+            271765639643951,
+            1516,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482293,
+            271765639580938,
+            271765639642828,
+            271765639642949,
+            1441,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482304,
+            271765639581299,
+            271765639643908,
+            271765639643996,
+            1501,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482299,
+            271765639581010,
+            271765639643392,
+            271765639643479,
+            1507,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482311,
+            271765639581285,
+            271765639644201,
+            271765639644289,
+            1528,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482317,
+            271765639581197,
+            271765639643002,
+            271765639643125,
+            1538,
+            714,
+            0,
+            0
+          ],
+          [
+            271765639482321,
+            271765639581124,
+            271765639643648,
+            271765639643743,
+            1508,
+            714,
+            0,
+            0
+          ]
+        ]
+      }
+    ]
+  },
+  "dual_edges": {
+    "client0": {
+      "status": "PASS",
+      "calls": 728,
+      "stale_route_rejected": true,
+      "max_relative_l2": 2.9807367809553398e-06,
+      "conditions": "Changed hidden/probabilities; all-owner routes -> repeated expert0 routes with empty owners -> original routes; FULL capture/replay at1/32/1024rows and priorities0/1."
+    },
+    "client1": {
+      "status": "PASS",
+      "calls": 728,
+      "stale_route_rejected": true,
+      "max_relative_l2": 2.9807367809553398e-06,
+      "conditions": "Changed hidden/probabilities; all-owner routes -> repeated expert0 routes with empty owners -> original routes; FULL capture/replay at1/32/1024rows and priorities0/1."
+    }
+  },
+  "server_edges": {
+    "expert0": {
+      "status": "pass",
+      "completed_counts": [
+        728,
+        728,
+        0,
+        0,
+        0
+      ],
+      "waves": 1087
+    },
+    "expert1": {
+      "status": "pass",
+      "completed_counts": [
+        728,
+        728,
+        0,
+        0,
+        0
+      ],
+      "waves": 1086
+    },
+    "expert2": {
+      "status": "pass",
+      "completed_counts": [
+        728,
+        728,
+        0,
+        0,
+        0
+      ],
+      "waves": 1085
+    }
+  },
+  "profile": "/workspace/betterscale-confluence/runs/online-collect-single-20260918/online-contribution-collect.json.gz",
+  "remote_single": "/workspace/betterscale-hw0/runs/online-collect-single-20260918",
+  "remote_edges": "/workspace/betterscale-hw0/runs/online-collect-edges-20260918",
+  "comparison": "Same route-ready server binaries for all performance arms. Producer flag-publication overhead versus the older non-route-ready build is not separately isolated.",
+  "producer_boundary": "Route flags after BF16 output DMA completes in SEND; no per-expert down-GEMM completion publication.",
+  "defaults": "Opt-in prototype only; shared overlap and parallel pack retained independently."
+}

@@ -272,3 +272,69 @@ Receipt: `client-collect-result.json`. Native TraceLoom compressed profile:
 `/workspace/betterscale-confluence/runs/fused-collect-sweep-20260918/fused-collect-eight-arms.json.gz`.
 All four roles exited and released the lease. Existing nine CPU tests, Python
 compilation and diff checks pass; no release/default changes were made.
+
+## Online contribution accumulation (route-ready protocol)
+
+`build.py --route-ready` opts both binary roles into a version2 channel contract.
+Each server output window appends one64-byte generation line per route, after
+its fixed-capacity BF16 payload. The geometry is negotiated before IPC export;
+version1 clients cannot silently pair with version2 producers. Old generations
+need not be cleared. The32-byte publication occupies its own64-byte line.
+
+In `server_workers.hpp`, SEND publishes a route generation only after that
+route's ToBf16/Copy has waited for MTE3 completion. REPACK never publishes it.
+The current Qwen38 producer still starts SEND at its existing down-completion
+boundary: this exposes contributions during output conversion/export, NOT
+per-expert down-GEMM/FIXPIPE completion. Do not attribute its gain to a finer
+Cube schedule that has not been implemented.
+
+`client_online.cpp` keeps two active tokens per AIV in bounded UB accumulators.
+It scans only owners required by unfinished routes, reads each token/owner flag
+block together, and immediately pulls, weights and adds every ready contribution.
+A per-token bitmask prevents duplicates. It never waits for all contributions
+before beginning accumulation. Finished tokens are written to the small final
+buffer and the core moves to its next pair. This bounded pairing can still cause
+head-of-line blocking; it is not an unbounded all-token task queue.
+
+After all assigned contributions have been consumed, every client core drains
+all owner DONE generations, including owners with no selected experts. Only
+then does the existing retire authorize the next source publication. Server
+output for a source remains immutable until that source's next generation;
+serving other sources does not authorize overwriting it. No new per-token ACK,
+slot recycling, or cross-layer early execution is introduced.
+
+Select `QWEN38_FUSED_COLLECT=1 QWEN38_ONLINE_COLLECT=1` with a route-ready build;
+parallel input pack and shared overlap stay independent. No-progress polling
+uses the existing250-cycle pause (50cycles/us in this environment), and per-core
+cycle receipts record entry, first contribution, last reduction, final drain,
+poll count and generation. These are local clocks, not cross-rank alignment.
+Arrival-order FP32 addition intentionally differs from fixed top-k order; retain
+exactness results and bounded numeric errors separately. The leaf test still
+requires exact output for all non-online arms; online additionally requires
+relative L2<2e-4 and elementwise rtol=.016/atol=.0002. This is a numeric leaf
+boundary, not a language-quality gate.
+
+Single-source hw0 gate:1024 rows, priority1, all-owner fused3.904ms -> online
+3.409ms (about13%);32 rows .809ms -> .771ms. Ten alternating samples per arm.
+Both arms use the SAME route-ready producer, so this isolates consumption policy,
+not the producer flag-publication cost versus the older build. Shared overlap
+remains independent (online+shared3.417ms at1024rows). Keep these leaf results
+separate from serving throughput. Non-online controls remain exact. Online's
+largest observed relative L2 in the single-source gate is3.06e-6, consistent with
+changed FP32 addition order but not proof of full-model language equivalence.
+
+Two independent-source gates subsequently pass, each728 calls/source and matched
+server completion counts. The final gate rotates from cross-owner routes to
+repeated expert0 routes (two entirely empty owners), then restores cross-owner
+routes, while changing inputs/probabilities. An isolated unpublished fake window
+sets all owner DONE to generation2 but route flags to generation1: online collect
+returns -101 under a bounded poll limit rather than consuming stale outputs.
+Both clients pass that rejection and finish the real generation stream normally.
+No server buffer is mutated by this fault fixture. Missing/stale generation
+rejection is not a complete distributed fault-recovery qualification.
+
+Receipt: `client-online-result.json`. Single-source compressed TraceLoom profile:
+`/workspace/betterscale-confluence/runs/online-collect-single-20260918/online-contribution-collect.json.gz`.
+All owned hardware roles exited, leases released. Ten CPU tests and syntax/diff
+checks pass. Published Worker defaults and releases are untouched. No per-token
+ACK/reuse or eager advance to the next attention layer has been introduced.

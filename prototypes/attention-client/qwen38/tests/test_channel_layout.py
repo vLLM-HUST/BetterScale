@@ -57,6 +57,25 @@ class ChannelLayoutTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             Layout.from_abi(abi)
 
+    def test_route_flags_are_disjoint_and_negotiated(self):
+        for rows in (32, 128, 256, 512, 1024):
+            old = Layout(rows, 3, 5)
+            new = Layout(rows, 3, 5, True)
+            payload_end = 256 + rows * 10 * 2560 * 2
+            self.assertEqual(payload_end % 64, 0)
+            self.assertLessEqual(payload_end + rows * 10 * 64, new.output_bytes)
+            self.assertNotEqual(old.contract(), new.contract())
+            abi = dict(
+                version=5,
+                rows=rows,
+                owners=3,
+                sources=5,
+                source_scale_words=new.scales,
+                source_payload_words=new.payload,
+                route_ready=True,
+            )
+            self.assertEqual(Layout.from_abi(abi), new)
+
     def test_unknown_capacity_fails_before_export(self):
         for rows in (0, 31, 33, 4096):
             with self.assertRaises(ValueError):
