@@ -1,0 +1,124 @@
+{
+  "scope": "Current worker maps + parallel pack + fixed-order fused collect + shared overlap, whole-model FULL. Profiled synthetic fixture, not a throughput control. Summed task durations are not overlap-safe wall time.",
+  "tool_commit": "c2a6920",
+  "exact_partition": [
+    {
+      "tree_id": "native-report-tree",
+      "db_idx": 0,
+      "device_id": 0,
+      "replay_interval_count": 7,
+      "exact_replay_count": 7,
+      "unsupported_interval_count": 0,
+      "invalid_bound_count": 0,
+      "overlap_count": 0,
+      "support_state": "supported",
+      "reason_code": "ordered_disjoint_exact_replays"
+    }
+  ],
+  "templates": [
+    {
+      "graph_template_id": 0,
+      "replay_count": 1
+    },
+    {
+      "graph_template_id": 1,
+      "replay_count": 2
+    },
+    {
+      "graph_template_id": 2,
+      "replay_count": 4
+    }
+  ],
+  "top_prefill_tasks": [
+    {
+      "identity": "neural_collect_fused",
+      "positions": 49,
+      "summed_median_ms": 99.04
+    },
+    {
+      "identity": "aclnnMatmul_MatMulCommon_MatMulV2",
+      "positions": 732,
+      "summed_median_ms": 27.133
+    },
+    {
+      "identity": "FusedInferAttentionScore",
+      "positions": 52,
+      "summed_median_ms": 25.735
+    },
+    {
+      "identity": "_gather_0",
+      "positions": 52,
+      "summed_median_ms": 24.437
+    },
+    {
+      "identity": "_prepare_0",
+      "positions": 36,
+      "summed_median_ms": 20.866
+    },
+    {
+      "identity": "mapped_host_mailbox_pull_bounded_7",
+      "positions": 1,
+      "summed_median_ms": 17.471
+    },
+    {
+      "identity": "aclnnMul_MulAiCore_Mul",
+      "positions": 524,
+      "summed_median_ms": 13.16
+    },
+    {
+      "identity": "aclnnSWhere_SelectV2AiCore_SelectV2",
+      "positions": 274,
+      "summed_median_ms": 6.825
+    },
+    {
+      "identity": "aclnnInplaceIndexCopy_ScatterUpdateAiCore_ScatterUpdate",
+      "positions": 157,
+      "summed_median_ms": 6.168
+    },
+    {
+      "identity": "aclnnInplaceCopy_TransposeAiCore_Transpose",
+      "positions": 360,
+      "summed_median_ms": 5.927
+    },
+    {
+      "identity": "recompute_w_u_fwd_kernel_0",
+      "positions": 36,
+      "summed_median_ms": 5.621
+    },
+    {
+      "identity": "aclnnChunkGatedDeltaRuleFwdH_ChunkGatedDeltaRuleFwdH_ChunkGatedDeltaRuleFwdH",
+      "positions": 36,
+      "summed_median_ms": 5.402
+    },
+    {
+      "identity": "aclnnMean_ReduceMeanAiCore_ReduceMean",
+      "positions": 204,
+      "summed_median_ms": 4.857
+    },
+    {
+      "identity": "_expand_0",
+      "positions": 13,
+      "summed_median_ms": 4.634
+    },
+    {
+      "identity": "merge_16x16_to_64x64_inverse_kernel_0",
+      "positions": 36,
+      "summed_median_ms": 4.163
+    },
+    {
+      "identity": "aclnnInplaceCopy_CastAiCore_Cast",
+      "positions": 461,
+      "summed_median_ms": 3.641
+    },
+    {
+      "identity": "solve_tril_16x16_kernel_0",
+      "positions": 36,
+      "summed_median_ms": 3.573
+    },
+    {
+      "identity": "aclnnAdd_AddAiCore_Add",
+      "positions": 259,
+      "summed_median_ms": 3.251
+    }
+  ]
+}

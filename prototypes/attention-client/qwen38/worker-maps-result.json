@@ -1,0 +1,219 @@
+{
+  "host": "hw0",
+  "hardware": "910B2",
+  "scope": "Real layer0 A1+E3 FULL leaf; sequential same-host builds, not a whole-model throughput claim",
+  "control": "qwen38-wire-20260918T094304Z",
+  "candidate": "qwen38-wire-20260918T094351Z",
+  "builds": [
+    "qwen38-compact-maps-20260918",
+    "qwen38-worker-maps-20260918"
+  ],
+  "calls_per_arm": 364,
+  "cases": [
+    {
+      "rows": 1,
+      "priority": 0,
+      "control_ms": {
+        "serial": 0.2471100017428398,
+        "overlap": 0.25971999764442444,
+        "online": 0.24393999576568604,
+        "online_overlap": 0.24729999899864197
+      },
+      "candidate_ms": {
+        "serial": 0.23100999742746353,
+        "overlap": 0.2403699979186058,
+        "online": 0.23347999900579453,
+        "online_overlap": 0.22798000276088715
+      },
+      "exact": true
+    },
+    {
+      "rows": 1,
+      "priority": 1,
+      "control_ms": {
+        "serial": 0.24749000370502472,
+        "overlap": 0.2464900091290474,
+        "online": 0.2500000074505806,
+        "online_overlap": 0.24678000062704086
+      },
+      "candidate_ms": {
+        "serial": 0.24195000529289246,
+        "overlap": 0.2420400008559227,
+        "online": 0.2370999976992607,
+        "online_overlap": 0.24768999963998795
+      },
+      "exact": true
+    },
+    {
+      "rows": 32,
+      "priority": 0,
+      "control_ms": {
+        "serial": 0.3578000068664551,
+        "overlap": 0.3630000054836273,
+        "online": 0.2938999980688095,
+        "online_overlap": 0.2990500032901764
+      },
+      "candidate_ms": {
+        "serial": 0.35218000411987305,
+        "overlap": 0.35119999945163727,
+        "online": 0.2830200046300888,
+        "online_overlap": 0.2815600037574768
+      },
+      "exact": true
+    },
+    {
+      "rows": 32,
+      "priority": 1,
+      "control_ms": {
+        "serial": 0.36044999957084656,
+        "overlap": 0.36812999844551086,
+        "online": 0.303399994969368,
+        "online_overlap": 0.30733999609947205
+      },
+      "candidate_ms": {
+        "serial": 0.3461900055408478,
+        "overlap": 0.3516699969768524,
+        "online": 0.28019000589847565,
+        "online_overlap": 0.2796200066804886
+      },
+      "exact": true
+    },
+    {
+      "rows": 1024,
+      "priority": 0,
+      "control_ms": {
+        "serial": 3.8703300952911377,
+        "overlap": 3.8774800300598145,
+        "online": 2.6686700582504272,
+        "online_overlap": 2.677620053291321
+      },
+      "candidate_ms": {
+        "serial": 3.6682499647140503,
+        "overlap": 3.695780038833618,
+        "online": 2.5856900215148926,
+        "online_overlap": 2.585659980773926
+      },
+      "exact": true
+    },
+    {
+      "rows": 1024,
+      "priority": 1,
+      "control_ms": {
+        "serial": 3.8603299856185913,
+        "overlap": 3.8846800327301025,
+        "online": 2.682490110397339,
+        "online_overlap": 2.6874300241470337
+      },
+      "candidate_ms": {
+        "serial": 3.65530002117157,
+        "overlap": 3.700659990310669,
+        "online": 2.5881699323654175,
+        "online_overlap": 2.594599962234497
+      },
+      "exact": true
+    }
+  ],
+  "oracle": {
+    "client": {
+      "status": "PASS",
+      "calls": 25,
+      "max_rl2": 6.540666163346032e-06,
+      "eager_replay_exact": true
+    },
+    "client1": {
+      "status": "PASS",
+      "calls": 25,
+      "max_rl2": 6.540666163346032e-06,
+      "eager_replay_exact": true
+    }
+  },
+  "phase_interval_scope": "Coordinator command intervals include joins; rings mix modes; clock/thermal variation can affect untouched phases.",
+  "compact_owner0": {
+    "phases": [
+      {
+        "phase": "activate_quant",
+        "routed_rows": 3072,
+        "samples": 81,
+        "median_us": 132.12
+      },
+      {
+        "phase": "convert_export",
+        "routed_rows": 3072,
+        "samples": 82,
+        "median_us": 576.06
+      },
+      {
+        "phase": "down",
+        "routed_rows": 3072,
+        "samples": 82,
+        "median_us": 69.86
+      },
+      {
+        "phase": "fetch",
+        "routed_rows": 3072,
+        "samples": 81,
+        "median_us": 163.98
+      },
+      {
+        "phase": "pack",
+        "routed_rows": 3072,
+        "samples": 81,
+        "median_us": 359.4
+      },
+      {
+        "phase": "up",
+        "routed_rows": 3072,
+        "samples": 81,
+        "median_us": 78.74
+      }
+    ],
+    "post_fetch_pre_pack": {
+      "samples": 85,
+      "median_us": 416.74
+    }
+  },
+  "worker_owner0": {
+    "phases": [
+      {
+        "phase": "activate_quant",
+        "routed_rows": 3072,
+        "samples": 81,
+        "median_us": 120.48
+      },
+      {
+        "phase": "convert_export",
+        "routed_rows": 3072,
+        "samples": 82,
+        "median_us": 453.73
+      },
+      {
+        "phase": "down",
+        "routed_rows": 3072,
+        "samples": 82,
+        "median_us": 60.22
+      },
+      {
+        "phase": "fetch",
+        "routed_rows": 3072,
+        "samples": 81,
+        "median_us": 156.24
+      },
+      {
+        "phase": "pack",
+        "routed_rows": 3072,
+        "samples": 81,
+        "median_us": 251.6
+      },
+      {
+        "phase": "up",
+        "routed_rows": 3072,
+        "samples": 81,
+        "median_us": 67.56
+      }
+    ],
+    "post_fetch_pre_pack": {
+      "samples": 85,
+      "median_us": 393.82
+    }
+  }
+}

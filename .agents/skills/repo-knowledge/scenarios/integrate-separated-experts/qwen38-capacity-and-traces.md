@@ -188,3 +188,22 @@ combined attention lanes; never align independent sources by their first event.
 Native source markers provide useful input/bucket bands. Relocated TraceLoom
 needs all three rule TSVs, and offline parsing can create an auxiliary analysis.db
 alongside the real ascend_pytorch_profiler DB; only ingest the latter.
+
+Whole-model prefill capture now has an explicit owned runner in
+`qwen38/trace_prefill.py`; enter `qwen38/FULL-PREFILL.md` before changing it.
+Do not transplant the Qwen27 donor GDN state layout. This backend already has
+stable device topology; the needed work is whole-root capture ownership and
+moving CPU validity/result reads outside it. Cold/continuation graphs must keep
+PLE generations monotonic even during a same-State shadow. The initial hw0
+A1TP1+E3 gate compared129 states per variant exactly, then ran prefill/decode/MTP/
+continuation. This does not create a mixed scheduler or prove all topologies.
+
+Expanded A2TP1+E3 gate: fixed-order fused collect + parallel pack + shared
+stream passed12 whole-root shadows,129 tensors each exact, then four SWE traces'
+first two turns (full input, output capped8). Whole-model online collect had a
+QSA compressed-index-key shadow failure followed by a fully exact rerun; cause
+is unresolved, so a leaf pass is not permission to promote that combination.
+`QWEN38_PREFILL_SHADOW=1` is a separate startup oracle; keep it **off** for
+capacity/serving runs because two complete State snapshots can exceed HBM.
+Native-export/TraceLoomc2a6920 proves7 exact prefill+decode replay intervals;
+Torch-only export is not the graph-coverage authority.

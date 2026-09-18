@@ -10,8 +10,8 @@ import os
 import time
 
 import torch
-from livemodule.llm.forward_context import ForwardContext
 from livemodule.llm.qwen35.batch import Qwen35DeviceBatchTopology as Topology
+from trace_prefill import PrefillGraphRunner
 from trace_ple import TraceSession
 from trace_commit import RetainedCommit
 from livemodule.serve.qwen38.wave import qwen38_decode_cabin_topologies
@@ -71,110 +71,10 @@ class TraceEngine:
         self.after_prefill = torch.zeros(self.batch, dtype=torch.bool, device="npu")
         self.eos = torch.full((self.batch,), -1, dtype=torch.int64, device="npu")
         self.graph = None
+        self.prefills = PrefillGraphRunner(self)
 
     def prefill(self, chunks, cursors):
-        # One qualified bucket; tails use validity masks rather than triggering
-        # dozens of first-use Triton compilations inside the measured session.
-        width = min(512, self.lanes // self.batch)
-        if max(map(len, chunks)) > width:
-            raise ValueError("prefill exceeds warmed bucket")
-        b = self.batch
-        lengths = torch.tensor(list(map(len, chunks)), dtype=torch.int64, device="npu")
-        active = lengths.gt(0)
-        before = torch.tensor(cursors, dtype=torch.int64, device="npu")
-        fresh = before.eq(0) & active
-        ids = torch.zeros(b, width, dtype=torch.int64, device="npu")
-        for row, values in enumerate(chunks):
-            if values:
-                ids[row, -len(values) :] = torch.tensor(
-                    values, dtype=torch.int64, device="npu"
-                )
-        pos = (
-            before[:, None]
-            + torch.arange(width, device="npu")[None]
-            - width
-            + lengths[:, None]
-        ).clamp_min(0)
-        is_fresh = all(c == 0 for c in cursors)
-        topology = Topology(
-            before + lengths,
-            lengths,
-            active,
-            self.blocks,
-            width,
-            is_fresh,
-            continuation_prefill=not is_fresh,
-            query_padding=True,
-        )
-        # Continuation prefill reads canonical GDN row0; speculative decode
-        # selects a candidate and a convolution slice. Materialize only those
-        # endpoints before switching phase. PLE consumes its own selector later.
-        accepted = self.root.request_state.accepted_tokens.tensor[:b].clamp(
-            1, self.k + 1
-        )
-        for layer in self.root.model.language_model.layers:
-            gdn = getattr(layer, "linear_attn", None)
-            if gdn is None:
-                continue
-            rows = (
-                torch.arange(b, device="npu") * (self.k + 1)
-                + gdn.conv_state.leading_physical_blocks
-            )
-            indices = rows[:, None] + torch.arange(self.k + 1, device="npu")[None]
-            _, conv, recurrent = gdn._backend._accepted_state(gdn, indices, accepted)
-            old_conv = gdn.conv_state.tensor.index_select(0, rows)
-            canonical = torch.zeros_like(old_conv)
-            canonical[..., : gdn.conv_kernel_size - 1] = conv
-            gdn.conv_state.tensor.index_copy_(
-                0, rows, torch.where(active[:, None, None], canonical, old_conv)
-            )
-            old_rec = gdn.recurrent_state.tensor.index_select(0, rows)
-            gdn.recurrent_state.tensor.index_copy_(
-                0, rows, torch.where(active[:, None, None, None], recurrent, old_rec)
-            )
-        context = ForwardContext({}, {}, {})
-        context.batch_topology = topology
-        self.cfg.remote_expert_priority = 1
-        self.generation.add_(1)
-        self.status.zero_()
-        with context.activate():
-            hidden, multi, _, valid = self.root.forward_request_owned_continuous_ple(
-                ids,
-                positions=pos,
-                mailbox=self.mailbox,
-                generation=self.generation,
-                response_payload=self.response,
-                status=self.status,
-                slot_ids=torch.arange(self.lanes, device="npu") // width,
-                request_generations=self.identities,
-                destination_generations=self.identities,
-            )
-        valid_mask = topology.query_valid.reshape(-1)
-        if not bool((valid[: b * width] | ~valid_mask).all().cpu()):
-            raise RuntimeError(
-                f"PLE prefill publication failed: status={self.status.cpu().tolist()}, valid={int(valid.sum().cpu())}, generation={self.generation.cpu().tolist()}, worker_errors={[str(w._error) for w in self.serving._workers.values()]}"
-            )
-        # Pair each real input token with its immediately preceding target row.
-        # Right padding is NOT a preceding row: replace that boundary explicitly.
-        previous = torch.cat((self.multi, multi[:, :-1]), dim=1)
-        rowids = torch.arange(b, device="npu")
-        previous[rowids, (width - lengths).clamp_max(width - 1)] = self.multi[:, 0]
-        mtp_lengths = (lengths - fresh.to(lengths.dtype)).clamp_min(0)
-        mtp_topology = Topology(
-            (before + lengths - 1).clamp_min(0),
-            mtp_lengths,
-            mtp_lengths.gt(0),
-            self.blocks,
-            width,
-            is_fresh,
-            continuation_prefill=not is_fresh,
-            query_padding=True,
-        )
-        self.serving.draft_cabin._run_mtp(
-            ids, (pos - 1).clamp_min(0), previous, mtp_topology
-        )
-        self.multi.copy_(torch.where(active[:, None, None], multi[:, -1:], self.multi))
-        return self.root.compute_top_tokens(hidden[:, -1:])[:, 0].cpu().tolist()
+        return self.prefills.run(chunks, cursors)
 
     def wave(self):
         # Initial scheme-A prompt pairing ends at position p-2. Its first pending
@@ -251,6 +151,7 @@ class TraceEngine:
     def warm(self):
         self.prefill([[9707, 11, 1879] for _ in range(self.batch)], [0] * self.batch)
         self.prefill([[9707, 11, 1879] for _ in range(self.batch)], [3] * self.batch)
+        self.prefills.capture()
         self.positions.fill_(6)
         self.pending.fill_(11)
         self.remaining.fill_(32)
@@ -510,6 +411,9 @@ def run_trace(root, cfg, args, rank, stage):
             seconds=elapsed,
             truncated_gate=bool(args.trace_turns or args.trace_output_cap),
             mtp_tokens=args.mtp_tokens,
+            prefill_full_graph=engine.prefills.enabled,
+            prefill_graph_shadows=engine.prefills.receipts,
+            prefill_shadow=engine.prefills.shadow_enabled,
             sessions=[
                 dict(
                     trace_id=s.session["trace_id"],
@@ -538,6 +442,7 @@ def run_trace(root, cfg, args, rank, stage):
         if timers is not None:
             timers.close()
         engine.graph.reset()
+        engine.prefills.close()
         engine.serving.close()
         if rank == 0 or args.colocated:
             cfg.remote_expert_transport.close()

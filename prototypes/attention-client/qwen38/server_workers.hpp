@@ -133,12 +133,16 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
           // A bounded map tile survives the row transfer's reuse of UB.
           // Capacity does not increase the worker's scalar-stack footprint.
           for (int begin = 0; begin < n * TOPK; begin += 256) {
-            int count = ScalarMin(256, n * TOPK - begin), map[256];
+            int count = ScalarMin(256, n * TOPK - begin);
+            // Every worker needs only its own strided routes. Keep those values
+            // across the row transfer (which reuses UB), not all 256 entries on
+            // every AIV. Route ownership and final publication stay unchanged.
+            int map[(256 + VW - 1) / VW];
             io.Read(desc + c * MAP + 8 + begin, (count + 7) / 8 * 8);
-            for (int i = 0; i < count; ++i)
-              map[i] = io.words.GetValue(i);
+            for (int offset = worker; offset < count; offset += VW)
+              map[offset / VW] = io.words.GetValue(offset);
             for (int offset = worker; offset < count; offset += VW) {
-              int route = begin + offset, row = map[offset];
+              int route = begin + offset, row = map[offset / VW];
               if (row < 0)
                 continue;
               if (kind == REPACK) {

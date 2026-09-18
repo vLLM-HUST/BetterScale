@@ -36,6 +36,16 @@ See [PREFILL-PROFILE.md](PREFILL-PROFILE.md) for the measured leaf gains and
 whole-model qualification boundary. This changes the separated expert prototype,
 not the published BetterScale Worker or package release.
 
+## Whole-model prefill FULL graph (opt-in)
+
+The trace runner now supports `QWEN38_PREFILL_GRAPH=1`, including target, PLE,
+GDN state maintenance and MTP prefill. See [FULL-PREFILL.md](FULL-PREFILL.md)
+for scope, state shadows and the Qwen27 reference; use
+[PREFILL-PROFILE.md](PREFILL-PROFILE.md) for measured eager/FULL and worker-map
+comparisons. Decode already had its own FULL graph. This is not a mixed
+scheduler or a public Worker change. Advanced client transport options remain
+separately selected and must pass the whole-model state gate when combined.
+
 ## Initial execution/placement plan
 
 First one TP2 attention group plus four expert owners (six devices); later two

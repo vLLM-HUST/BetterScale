@@ -1,0 +1,442 @@
+{
+  "scope": "Synthetic two-seat, two-turn whole-model fixture; not SWE throughput or language-model quality",
+  "host": "hw0",
+  "configuration": {
+    "attention_sources": 1,
+    "tp": 1,
+    "experts": 3,
+    "state_gib": 1,
+    "physical_prefill_rows": 512,
+    "mtp": 1
+  },
+  "variants": {
+    "eager": {
+      "capsule": "qwen38-model-20260918T094522Z",
+      "status": "PASS",
+      "seconds": 2.9616976184770465,
+      "prefill_wave_ms": [
+        911.8381626904011,
+        906.5576810389757,
+        903.0972011387348
+      ],
+      "decode_wave_ms": [
+        67.38311797380447,
+        70.46197354793549,
+        52.176822908222675,
+        46.755749732255936
+      ],
+      "memory": {
+        "allocated": 10778436608,
+        "reserved": 12746489856,
+        "peak_allocated": 11453064192
+      },
+      "states": [],
+      "sessions": [
+        {
+          "trace_id": "0",
+          "completed_turns": 2,
+          "output_tokens": 8,
+          "prefill_tokens": 310,
+          "prefix_reused_tokens": 303,
+          "final_encoded_context": 316
+        },
+        {
+          "trace_id": "1",
+          "completed_turns": 2,
+          "output_tokens": 8,
+          "prefill_tokens": 310,
+          "prefix_reused_tokens": 303,
+          "final_encoded_context": 316
+        }
+      ]
+    },
+    "full": {
+      "capsule": "qwen38-model-20260918T094813Z",
+      "status": "PASS",
+      "seconds": 1.202071525156498,
+      "prefill_wave_ms": [
+        334.4806134700775,
+        329.69666831195354,
+        322.7406479418278
+      ],
+      "decode_wave_ms": [
+        47.3919166252017,
+        71.08625117689371,
+        46.7813303694129,
+        46.101272106170654
+      ],
+      "memory": {
+        "allocated": 10778443776,
+        "reserved": 13922992128,
+        "peak_allocated": 12949640192
+      },
+      "states": [
+        {
+          "fresh": true,
+          "states": 129,
+          "exact": 129,
+          "max_rl2": 0.0
+        },
+        {
+          "fresh": false,
+          "states": 129,
+          "exact": 129,
+          "max_rl2": 0.0
+        }
+      ],
+      "sessions": [
+        {
+          "trace_id": "0",
+          "completed_turns": 2,
+          "output_tokens": 8,
+          "prefill_tokens": 310,
+          "prefix_reused_tokens": 303,
+          "final_encoded_context": 316
+        },
+        {
+          "trace_id": "1",
+          "completed_turns": 2,
+          "output_tokens": 8,
+          "prefill_tokens": 310,
+          "prefix_reused_tokens": 303,
+          "final_encoded_context": 316
+        }
+      ]
+    }
+  },
+  "memory_scope": "Peak includes startup and full-State shadow clones; reserved is endpoint allocator reservation, not live graph scratch alone.",
+  "advanced_data_plane_first_gate": {
+    "capsule": "qwen38-model-20260918T095745Z",
+    "configuration": "A2TP1+E3,4GiB State/source,parallel pack,fused online collect,shared overlap,worker-local maps",
+    "status": "FAIL_SHADOW",
+    "errors": {
+      "source0_qsa31_index_compressed_key_rl2": 0.02089738999053134,
+      "source1_qsa43_index_compressed_key_rl2": 0.005545687151923961
+    },
+    "interpretation": "Not yet attributed to capture; repeat-eager and fixed-order fused controls are pending. Do not promote combined options."
+  },
+  "advanced_data_plane_repeat": {
+    "capsule": "qwen38-model-20260918T100354Z",
+    "scope": "four distinct SWE traces, first two turns, full input deltas, each output capped to8; not a throughput comparison",
+    "status": "PASS_WITH_PRIOR_UNRESOLVED_FAILURE",
+    "sources": [
+      {
+        "source": 0,
+        "status": "PASS",
+        "seconds": 8.746981773525476,
+        "prefill_full_graph": true,
+        "prefill_graph_shadows": [
+          {
+            "fresh": true,
+            "length": 2,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": true,
+            "length": 1,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": true,
+            "length": 256,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 2,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 1,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 256,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          }
+        ],
+        "prefix_first_page_exact": true,
+        "sessions": [
+          {
+            "trace_id": "measure/swe/96234584-93e5-47f8-a4a6-73766261a38c",
+            "completed_turns": 2,
+            "output_tokens": 16,
+            "prefill_tokens": 5544,
+            "prefix_reused_tokens": 4717,
+            "final_encoded_context": 5558
+          },
+          {
+            "trace_id": "measure/swe/667efd70-9b33-4cf0-9b61-9520a163e7eb",
+            "completed_turns": 2,
+            "output_tokens": 16,
+            "prefill_tokens": 5544,
+            "prefix_reused_tokens": 4871,
+            "final_encoded_context": 5558
+          }
+        ]
+      },
+      {
+        "source": 1,
+        "status": "PASS",
+        "seconds": 8.697117197327316,
+        "prefill_full_graph": true,
+        "prefill_graph_shadows": [
+          {
+            "fresh": true,
+            "length": 2,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": true,
+            "length": 1,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": true,
+            "length": 256,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 2,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 1,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 256,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          }
+        ],
+        "prefix_first_page_exact": true,
+        "sessions": [
+          {
+            "trace_id": "measure/swe/cb0c1b1a-cc1e-43db-b49f-2ec820a43f09",
+            "completed_turns": 2,
+            "output_tokens": 16,
+            "prefill_tokens": 5383,
+            "prefix_reused_tokens": 4758,
+            "final_encoded_context": 5397
+          },
+          {
+            "trace_id": "measure/swe/81356185-3e36-4e6c-8248-4d6c88239951",
+            "completed_turns": 2,
+            "output_tokens": 16,
+            "prefill_tokens": 5605,
+            "prefix_reused_tokens": 4656,
+            "final_encoded_context": 5619
+          }
+        ]
+      }
+    ],
+    "interpretation": "Both sources passed6 shadows each with129/129 states exact and completed the workload. Prior first-run drift is not erased by this pass; the added repeat-eager diagnostic did not trigger."
+  },
+  "fixed_order_fused_gate": {
+    "capsule": "qwen38-model-20260918T100723Z",
+    "status": "PASS",
+    "scope": "same capped four-trace/two-turn smoke, online collect disabled; not throughput comparison",
+    "sources": [
+      {
+        "source": 0,
+        "status": "PASS",
+        "seconds": 9.350723127834499,
+        "prefill_full_graph": true,
+        "prefill_graph_shadows": [
+          {
+            "fresh": true,
+            "length": 2,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": true,
+            "length": 1,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": true,
+            "length": 256,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 2,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 1,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 256,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          }
+        ],
+        "prefix_first_page_exact": true,
+        "sessions": [
+          {
+            "trace_id": "measure/swe/96234584-93e5-47f8-a4a6-73766261a38c",
+            "completed_turns": 2,
+            "output_tokens": 16,
+            "prefill_tokens": 5544,
+            "prefix_reused_tokens": 4717,
+            "final_encoded_context": 5558
+          },
+          {
+            "trace_id": "measure/swe/667efd70-9b33-4cf0-9b61-9520a163e7eb",
+            "completed_turns": 2,
+            "output_tokens": 16,
+            "prefill_tokens": 5544,
+            "prefix_reused_tokens": 4871,
+            "final_encoded_context": 5558
+          }
+        ]
+      },
+      {
+        "source": 1,
+        "status": "PASS",
+        "seconds": 9.264091587625444,
+        "prefill_full_graph": true,
+        "prefill_graph_shadows": [
+          {
+            "fresh": true,
+            "length": 2,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": true,
+            "length": 1,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": true,
+            "length": 256,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 2,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 1,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          },
+          {
+            "fresh": false,
+            "length": 256,
+            "states": 129,
+            "exact": 129,
+            "max_rl2": 0.0
+          }
+        ],
+        "prefix_first_page_exact": true,
+        "sessions": [
+          {
+            "trace_id": "measure/swe/cb0c1b1a-cc1e-43db-b49f-2ec820a43f09",
+            "completed_turns": 2,
+            "output_tokens": 16,
+            "prefill_tokens": 5383,
+            "prefix_reused_tokens": 4758,
+            "final_encoded_context": 5397
+          },
+          {
+            "trace_id": "measure/swe/81356185-3e36-4e6c-8248-4d6c88239951",
+            "completed_turns": 2,
+            "output_tokens": 16,
+            "prefill_tokens": 5605,
+            "prefix_reused_tokens": 4656,
+            "final_encoded_context": 5619
+          }
+        ]
+      }
+    ]
+  },
+  "serving_without_shadow": {
+    "capsule": "qwen38-model-20260918T101145Z",
+    "scope": "Same capped four-trace/two-turn fixture, fixed-order fused client; optional snapshot oracle disabled",
+    "status": "PASS",
+    "sources": [
+      {
+        "source": 0,
+        "status": "PASS",
+        "seconds": 9.345772341825068,
+        "prefill_full_graph": true,
+        "prefill_shadow": false,
+        "prefix_first_page_exact": true,
+        "memory": {
+          "allocated": 13968491520,
+          "reserved": 17385390080,
+          "peak_allocated": 14638698496
+        }
+      },
+      {
+        "source": 1,
+        "status": "PASS",
+        "seconds": 9.473908262327313,
+        "prefill_full_graph": true,
+        "prefill_shadow": false,
+        "prefix_first_page_exact": true,
+        "memory": {
+          "allocated": 13968491520,
+          "reserved": 17385390080,
+          "peak_allocated": 14638698496
+        }
+      }
+    ]
+  }
+}

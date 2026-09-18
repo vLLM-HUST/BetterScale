@@ -526,3 +526,89 @@ show convert/export~530us, post-fetch/pre-pack~416us, pack~336us, ACTIVATE~155us
 up~88us/down~76us. These command intervals include dispatch/join and the ring
 mixes client modes. They identify candidates for study, not a sum of removable
 latency or a claim that collect time is copying alone.
+
+## Whole-model prefill capture (September18)
+
+The preceding coverage audit is now addressed by the opt-in
+`QWEN38_PREFILL_GRAPH=1` path in `trace_prefill.py`. See `FULL-PREFILL.md` for
+capture ownership and the Qwen27 reference. The control uses the same extracted
+prefill body; moving the CPU validity read to its end is shared by both arms.
+
+Fresh same-host hw0 A1TP1+E3, two seats,512 physical rows,1GiB State, K1 MTP,
+real48-layer weights, synthetic two-turn fixture:
+
+| Wave | Eager | Whole-model FULL |
+|---|---:|---:|
+|Cold256 rows/seat|911.84ms|334.48ms|
+|Continuation44 rows/seat|906.56ms|329.70ms|
+|Next-turn10 rows/seat|903.10ms|322.74ms|
+
+Seven waves and identical workload counts in each arm; complete fixture elapsed
+2.962 ->1.202s. This is a bounded synthetic fixture, **not SWE throughput**.
+Captures were prepared before timing. Both fresh/continuation same-State shadows
+were129/129 exact. Receipt: `full-prefill-result.json`. Endpoint reserved memory
+rose11.87 ->12.97GiB; allocated memory is essentially unchanged. Reported peak
+includes startup and state-shadow clones, not just serving graph workspace.
+Do not attribute that peak delta entirely to capture.
+
+## Worker-local routing maps (September18)
+
+REPACK and SEND previously copied all256 scalar map entries onto **every** AIV
+worker, although each worker visits only its strided subset. The compact map
+now retains only those consumed entries across UB reuse. No route ownership,
+DMA payload, generation, readiness or retirement semantics changed. This also
+reduces each worker's scalar map stack from256 integers to ceil(256/VW).
+
+Matched A1+E3 FULL leaf,1024tokens, online collect: priority0 median
+2.669 ->2.586ms; priority1 2.682 ->2.588ms (~3–4%). Legacy serial collect also
+improved3.870 ->3.668ms. Each arm passed364 calls, changed inputs, repeated
+expert0/empty-owner routes and stale-route rejection. Independent A2+E3 sampled
+real-weight oracle passed25 calls/source with eager/replay exact. Receipt:
+`worker-maps-result.json`.
+
+On owner0's3072-row work, command intervals moved pack359 ->252us and
+convert/export576 ->454us. These include handoff/join, and the ring mixes client
+modes; untouched GEMM/ACTIVATE timings moved too. Treat this as a bounded
+same-host observation, not a pure-kernel or universal percentage claim. The
+post-fetch/pre-pack coordinator gap remains~394us: this patch does not eliminate
+coordinator route grouping. Full-model integration is a separate gate below.
+
+Native `msprof` export followed by TraceLoom c2a6920 confirms **7/7 exact replay
+intervals** in the FULL profile: one cold prefill, two continuation prefills,
+four decode/MTP waves. Eager control has exactly its4 decode/MTP replays. No
+periodic step guessing was used. Compressed local views are under
+`runs/full-prefill-20260918/timelines/`; compact evidence is
+`full-prefill-timeline-result.json`. Relocated TraceLoom requires all three
+rule TSVs explicitly; `export_native_profile.py` records this recipe.
+
+In the cold prefill graph,49 `neural_collect` members sum~95.8ms, native MatMul
+members~26.7ms, FIA~25.8ms, QSA `_gather_0`~24.4ms, GDN `_prepare_0`~21.2ms,
+and49 legacy `neural_client` members~15.5ms. These are summed task durations,
+not an overlap-safe latency decomposition; collect includes server wait. The
+profile deliberately uses the old client selection to isolate graph coverage.
+Do not relabel it as the later parallel-pack/fused-collect serving configuration.
+
+A2TP1+E3 with the new worker maps, parallel pack, **fixed-order fused collect**
+and shared overlap passed four distinct SWE traces' first two turns with full
+prompt deltas and output capped8. All12 startup shadows were129/129 exact;
+prefix-first-page checks and clean role exits passed. The online-collector
+combination had a first-run QSA-key state failure followed by an all-exact pass;
+see `FULL-PREFILL.md`. It remains separately opt-in and is not promoted on the
+strength of the passing rerun. No accuracy tolerance was relaxed.
+
+The final serving-startup gate also passes with `QWEN38_PREFILL_SHADOW` absent
+(default0): both attention sources completed the same capped SWE smoke with
+prefix checks true. Each retains~13.01GiB allocated/~16.19GiB reserved; the
+startup-inclusive allocated peak is~13.63GiB. This confirms that enabling FULL
+does not require the two complete State snapshots used by the diagnostic gate.
+No throughput comparison is inferred from this single capped run.
+
+A final current-path profile (`qwen38-model-20260918T101509Z`) uses worker-local
+maps, parallel pack, fixed-order fused collect and shared overlap. It also has
+7/7 exact graph intervals. `current-full-timeline-result.json` records the
+remaining cold-prefill body totals: fused collect~99ms including remote wait,
+QSA gather~24.4ms, GDN prepare~20.9ms, and host PLE pull~17.5ms. These are
+candidate investigation areas, not additive removable wall time. The compressed
+viewer artifact is `runs/full-prefill-20260918/timelines/current-full-fused.json.gz`.
+This capture supersedes the legacy-client view when inspecting the current
+integration; retain the older pair only for isolating the graph change.

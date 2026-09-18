@@ -1,0 +1,226 @@
+{
+  "tool_commit": "c2a6920",
+  "scope": "Native msprof export; single-device attention timelines. Summed median body task time is not overlap-safe wall time; neural_collect includes remote wait.",
+  "arms": {
+    "eager-profile": {
+      "exact_partition": [
+        {
+          "tree_id": "native-report-tree",
+          "db_idx": 0,
+          "device_id": 0,
+          "replay_interval_count": 4,
+          "exact_replay_count": 4,
+          "unsupported_interval_count": 0,
+          "invalid_bound_count": 0,
+          "overlap_count": 0,
+          "support_state": "supported",
+          "reason_code": "ordered_disjoint_exact_replays"
+        }
+      ],
+      "templates": [
+        {
+          "graph_template_id": 0,
+          "replay_count": 4
+        }
+      ],
+      "timeline": "/workspace/betterscale-hw0/runs/full-prefill-20260918/eager-profile/native-analysis/timeline.json.gz"
+    },
+    "full-profile": {
+      "exact_partition": [
+        {
+          "tree_id": "native-report-tree",
+          "db_idx": 0,
+          "device_id": 0,
+          "replay_interval_count": 7,
+          "exact_replay_count": 7,
+          "unsupported_interval_count": 0,
+          "invalid_bound_count": 0,
+          "overlap_count": 0,
+          "support_state": "supported",
+          "reason_code": "ordered_disjoint_exact_replays"
+        }
+      ],
+      "templates": [
+        {
+          "graph_template_id": 0,
+          "replay_count": 1
+        },
+        {
+          "graph_template_id": 1,
+          "replay_count": 2
+        },
+        {
+          "graph_template_id": 2,
+          "replay_count": 4
+        }
+      ],
+      "timeline": "/workspace/betterscale-hw0/runs/full-prefill-20260918/full-profile/native-analysis/timeline.json.gz",
+      "prefill_top_tasks": {
+        "0": [
+          {
+            "identity": "neural_collect",
+            "positions": 49,
+            "summed_median_ms": 95.806
+          },
+          {
+            "identity": "aclnnMatmul_MatMulCommon_MatMulV2",
+            "positions": 732,
+            "summed_median_ms": 26.736
+          },
+          {
+            "identity": "FusedInferAttentionScore",
+            "positions": 52,
+            "summed_median_ms": 25.786
+          },
+          {
+            "identity": "_gather_0",
+            "positions": 52,
+            "summed_median_ms": 24.417
+          },
+          {
+            "identity": "_prepare_0",
+            "positions": 36,
+            "summed_median_ms": 21.206
+          },
+          {
+            "identity": "neural_client",
+            "positions": 49,
+            "summed_median_ms": 15.467
+          },
+          {
+            "identity": "aclnnMul_MulAiCore_Mul",
+            "positions": 524,
+            "summed_median_ms": 13.426
+          },
+          {
+            "identity": "mapped_host_mailbox_pull_bounded_7",
+            "positions": 1,
+            "summed_median_ms": 11.438
+          },
+          {
+            "identity": "aclnnSWhere_SelectV2AiCore_SelectV2",
+            "positions": 274,
+            "summed_median_ms": 6.893
+          },
+          {
+            "identity": "aclnnInplaceIndexCopy_ScatterUpdateAiCore_ScatterUpdate",
+            "positions": 157,
+            "summed_median_ms": 6.164
+          },
+          {
+            "identity": "aclnnInplaceCopy_TransposeAiCore_Transpose",
+            "positions": 360,
+            "summed_median_ms": 5.736
+          },
+          {
+            "identity": "recompute_w_u_fwd_kernel_0",
+            "positions": 36,
+            "summed_median_ms": 5.593
+          },
+          {
+            "identity": "aclnnChunkGatedDeltaRuleFwdH_ChunkGatedDeltaRuleFwdH_ChunkGatedDeltaRuleFwdH",
+            "positions": 36,
+            "summed_median_ms": 5.445
+          },
+          {
+            "identity": "aclnnMean_ReduceMeanAiCore_ReduceMean",
+            "positions": 204,
+            "summed_median_ms": 5.122
+          },
+          {
+            "identity": "_expand_0",
+            "positions": 13,
+            "summed_median_ms": 4.395
+          },
+          {
+            "identity": "aclnnInplaceCopy_CastAiCore_Cast",
+            "positions": 461,
+            "summed_median_ms": 3.99
+          }
+        ],
+        "1": [
+          {
+            "identity": "neural_collect",
+            "positions": 49,
+            "summed_median_ms": 115.464
+          },
+          {
+            "identity": "aclnnMatmul_MatMulCommon_MatMulV2",
+            "positions": 732,
+            "summed_median_ms": 26.697
+          },
+          {
+            "identity": "FusedInferAttentionScore",
+            "positions": 52,
+            "summed_median_ms": 25.699
+          },
+          {
+            "identity": "_gather_0",
+            "positions": 52,
+            "summed_median_ms": 23.504
+          },
+          {
+            "identity": "_prepare_0",
+            "positions": 36,
+            "summed_median_ms": 20.824
+          },
+          {
+            "identity": "neural_client",
+            "positions": 49,
+            "summed_median_ms": 15.564
+          },
+          {
+            "identity": "aclnnMul_MulAiCore_Mul",
+            "positions": 524,
+            "summed_median_ms": 13.461
+          },
+          {
+            "identity": "aclnnSWhere_SelectV2AiCore_SelectV2",
+            "positions": 274,
+            "summed_median_ms": 6.927
+          },
+          {
+            "identity": "aclnnInplaceIndexCopy_ScatterUpdateAiCore_ScatterUpdate",
+            "positions": 157,
+            "summed_median_ms": 6.142
+          },
+          {
+            "identity": "aclnnInplaceCopy_TransposeAiCore_Transpose",
+            "positions": 360,
+            "summed_median_ms": 5.602
+          },
+          {
+            "identity": "recompute_w_u_fwd_kernel_0",
+            "positions": 36,
+            "summed_median_ms": 5.558
+          },
+          {
+            "identity": "aclnnChunkGatedDeltaRuleFwdH_ChunkGatedDeltaRuleFwdH_ChunkGatedDeltaRuleFwdH",
+            "positions": 36,
+            "summed_median_ms": 5.4
+          },
+          {
+            "identity": "aclnnMean_ReduceMeanAiCore_ReduceMean",
+            "positions": 204,
+            "summed_median_ms": 5.139
+          },
+          {
+            "identity": "_expand_0",
+            "positions": 13,
+            "summed_median_ms": 4.268
+          },
+          {
+            "identity": "aclnnInplaceCopy_CastAiCore_Cast",
+            "positions": 497,
+            "summed_median_ms": 3.959
+          },
+          {
+            "identity": "merge_16x16_to_64x64_inverse_kernel_0",
+            "positions": 36,
+            "summed_median_ms": 3.895
+          }
+        ]
+      }
+    }
+  }
+}
