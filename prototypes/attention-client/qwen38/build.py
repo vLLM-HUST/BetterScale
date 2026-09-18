@@ -19,7 +19,18 @@ p.add_argument("--rows", type=int, default=32)
 p.add_argument("--owners", type=int, choices=(3, 4), default=4)
 p.add_argument("--sources", type=int, choices=(2, 4, 5), default=2)
 p.add_argument("--route-ready", action="store_true")
-p.add_argument("--batch-activate", action="store_true")
+p.add_argument(
+    "--batch-activate",
+    action=argparse.BooleanOptionalAction,
+    default=True,
+    help="batch target INT8 activation (default); --no-batch-activate keeps the rowwise control",
+)
+p.add_argument(
+    "--compact-maps",
+    action=argparse.BooleanOptionalAction,
+    default=True,
+    help="initialize/publish only live routing metadata (default)",
+)
 a = p.parse_args()
 layout = ChannelLayout(a.rows, a.owners, a.sources, a.route_ready)
 partition = ExpertPartition(a.owners)
@@ -63,6 +74,34 @@ coordinator = coordinator[coordinator.index("struct Slot {") :].replace(
 # Route IDs belong to the persistent slot, not the AIV function stack.
 # Only the coordinator accesses this scratch; workers consume published maps.
 coordinator = coordinator.replace("int ids[2][ROUTES],", "__gm__ int32_t *ids[2]; int")
+if a.compact_maps:
+    # FETCH reads only the eight-word frame, never an unbuilt route map.
+    old = """    for (int j = 0; j < MAP; ++j)
+      io.words.SetValue(
+          j, j == 0 ? s.gen[c]
+                    : (j == 1 ? s.rows[c] : (j == 2 ? s.layer[c] : -1)));
+    io.Write((__gm__ int32_t *)ptr[5] + c * MAP, MAP);"""
+    assert coordinator.count(old) == 1
+    coordinator = coordinator.replace(
+        old, old.replace("j < MAP", "j < 8").replace("c * MAP, MAP)", "c * MAP, 8)")
+    )
+    old = """    for (int i = 0; i < MAP; ++i)
+      io.words.SetValue(i, -1);"""
+    assert coordinator.count(old) == 1
+    coordinator = coordinator.replace(
+        old,
+        """    // Inactive source: only its frame. Active source: initialized live map,
+    // rounded to one DMA line; stale capacity tail is deliberately not read.
+    int mapWords = s.gen[c] ? (8 + s.rows[c] * TOPK + 7) / 8 * 8 : 8;
+    Duplicate(io.words, int32_t(-1), mapWords);
+    SetFlag<HardEvent::V_S>(EVENT_ID0);
+    WaitFlag<HardEvent::V_S>(EVENT_ID0);""",
+    )
+    old = "    io.Write((__gm__ int32_t *)ptr[5] + c * MAP, MAP);"
+    assert coordinator.count(old) == 1
+    coordinator = coordinator.replace(
+        old, old.replace("c * MAP, MAP)", "c * MAP, mapWords)")
+    )
 coordinator = coordinator.replace(
     "Slot s[2];",
     """Slot s[2];
@@ -184,6 +223,7 @@ for script, unit, name in (
             fused_client_collect=True,
             route_ready=a.route_ready,
             batch_activate=a.batch_activate,
+            compact_maps=a.compact_maps,
         ),
         indent=2,
     )

@@ -35,12 +35,14 @@ case "$qsa" in
   original) ;;
   *) echo "unknown QSA implementation" >&2; exit 2 ;;
 esac
+# Preserve historical pins unless the caller explicitly selects a new ABI-matched build.
+build=${QWEN38_BUILD:-$PWD/runs/$build}
 "$QWEN38_PYTHON" - "$out/parameters.json" "$layout" "$mode" "$budget" "$qsa" "$overlay" "$build" "$tokens" <<'PYMETA'
 import json,sys
 path,layout,mode,budget,qsa,overlay,build,tokens=sys.argv[1:]
 with open(path,"w") as f:json.dump(dict(layout=layout,mode=mode,state_gib=float(budget),qsa=qsa,overlay=overlay,build=build,total_sessions=40,trace_turns=2,mtp_tokens=1,token_capacity=int(tokens)),f,indent=2)
 PYMETA
-export QWEN38_BUILD=$PWD/runs/$build
+export QWEN38_BUILD=$build
 export QWEN38_OVERLAY=$PWD/runs/$overlay
 export QWEN38_WAIT_SECONDS=1800
 exec 9>/root/tp8.lock

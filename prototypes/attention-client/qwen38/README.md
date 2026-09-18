@@ -10,6 +10,32 @@ The chronological bring-up below reuses the owned LiveInfer Qwen4Exp root at
 checkpoint is the pinned shared-directory W8A8+BF16 snapshot documented in
 `../qwen-next/priority/model-readiness.md`. Published defaults remain untouched.
 
+## Current expert-server build default (September18)
+
+New builds enable four-row target INT8 ACTIVATE and compact routing metadata
+automatically. `--no-compact-maps` restores capacity-wide map initialization.
+The BF16 MTP
+branch is unchanged. `--no-batch-activate` retains the measured rowwise control;
+`abi.json.batch_activate` records which binary was built. Existing immutable
+build directories are not rewritten or magically upgraded.
+
+```bash
+# Use the configured Ascend Python environment, from the repository root.
+python prototypes/attention-client/qwen38/build.py runs/qwen38-server-default-20260918 --rows 1024
+bash prototypes/attention-client/qwen38/run_wire.sh 0,1,2,3,4
+```
+
+`run_wire.sh` and `run_model.sh` select that default closure unless
+`QWEN38_BUILD` explicitly supplies another one. This example is the E4/two-source
+capacity closure, with one source in the five-card wire check. Different
+E3/four/five-source topologies still require their matching build arguments.
+Historical topology campaign scripts pin their original binaries deliberately;
+an explicit `QWEN38_BUILD` now overrides that pin and is recorded in the case
+parameters. Rebuild/select a matching closure rather than relabeling old results.
+See [PREFILL-PROFILE.md](PREFILL-PROFILE.md) for the measured leaf gains and
+whole-model qualification boundary. This changes the separated expert prototype,
+not the published BetterScale Worker or package release.
+
 ## Initial execution/placement plan
 
 First one TP2 attention group plus four expert owners (six devices); later two

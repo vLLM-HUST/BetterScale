@@ -375,7 +375,8 @@ and these layer0 numbers are not an equal-work DFC comparison.
 
 ## Four-row ACTIVATE: reuse scales and batch UB work (September18)
 
-`build.py --batch-activate` opts the target INT8 server into `quant_batch.hpp`.
+`build.py` now enables the target INT8 `quant_batch.hpp` path by default
+(initially qualified with `--batch-activate`).
 This borrows upstream's row batching/scale reuse, **not** its whole mixed kernel
 or its per-region Cube/Vector pipeline. The group-count GEMM, command protocol,
 route-ready export, client retirement and BF16 MTP branch remain unchanged.
@@ -422,9 +423,9 @@ The improvement survives integration rather than merely moving work elsewhere.
 
 A2+E3 independent true-weight oracle gate then passed:25 calls/source, matched
 by every server, maximum sampled relativeL2 6.541e-6; eager/replay outputs exact.
-Full48-layer/MTP and SWE serving qualification remain outside this gate. Public
-Worker defaults and the default prototype build remain unchanged; pass
-`--batch-activate --route-ready` when selecting this measured candidate.
+Full48-layer/MTP and SWE serving qualification remain outside this gate. At this initial gate the public Worker and prototype defaults were unchanged.
+The subsequent default promotion below supersedes that prototype setting.
+`--route-ready` still selects the separately measured route-ready transport.
 
 Reproduce the leaf build using `device-service/build.sh`, with
 `SOURCE=<qwen38>/activate_probe.cpp`, `OBJECT_NAME=activate_probe`,
@@ -433,3 +434,65 @@ Reproduce the leaf build using `device-service/build.sh`, with
 card admission. The initial probe forgot the AIV kernel metadata section and
 failed binary loading (no timing evidence); `activate_probe.cpp` now includes it.
 All three admitted integration jobs exited0 and released their devices/leases.
+
+## Compact routing metadata and default integration (September18)
+
+The Qwen38 build now defaults both `batch_activate` and `compact_maps` to true.
+Use `--no-batch-activate` and/or `--no-compact-maps` for the independent controls.
+The launchers' default closure is `runs/qwen38-server-default-20260918`; old
+binary directories remain unchanged. `run_topology_case.sh` retains historical
+pins unless explicitly overridden by `QWEN38_BUILD`, recording the resolved
+build in case parameters. Published Worker/package defaults are not involved.
+
+The next measured bottleneck was unnecessary **capacity-wide** metadata work,
+not a missing faster GEMM. The inherited coordinator previously initialized and
+wrote every source's entire MAP twice: before FETCH, then after grouping. At
+1024-row capacity each MAP contains10248 int32 words; even inactive sources paid
+this cost. In a five-source closure the scalar initialization walks51240 words
+per pass regardless of how little decode work arrived.
+
+The Qwen38-only build transformation now:
+
+- publishes just the eight-word descriptor for FETCH;
+- after grouping, initializes `align8(8 + active_rows * TOPK)` words for active
+  sources and only8 for inactive sources;
+- initializes that live range with Vector Duplicate, joining V->S before scalar
+  route-index writes and the existing S->MTE3 payload publication;
+- leaves the unused capacity tail stale **deliberately**. Worker consumers skip
+  generation0 and read only `n*TOPK` entries, rounded to8 only for the final DMA.
+  The aligned live tail is initialized; no consumer may inspect the stale tail.
+
+Actual group counting, stable per-expert packing order, route indices, sources,
+generations, priorities and slot retirement are unchanged. This is not parallel
+routing construction or the incremental Cube/Vector pipeline. Base Next kernel
+source is unchanged; checked replacement anchors fail if its expected code drifts.
+
+Fresh same-host A1+E3 comparison, batch ACTIVATE in both arms, real layer0 routed
+weights and dummy shared GEMMs;10 alternating client-mode event samples per case:
+
+| Client tokens | Online leaf, old maps | Compact maps | Reduction |
+|---:|---:|---:|---:|
+|1|0.730 /0.735ms|0.229 /0.223ms|69–70%|
+|32|0.780 /0.777ms|0.281 /0.279ms|64%|
+|1024|3.245 /3.259ms|2.662 /2.668ms|18%|
+
+Pairs are priorities0/1. Control and candidate runs were sequential, not a
+cross-run randomized campaign. These are full leaf calls, **not whole-model
+serving throughput**. Coordinator post-fetch/pre-pack medians drop556–585us to
+395–416us; this interval still includes Accept/Group/preparation. Additional
+savings before FETCH are not represented by that one interval. Do not attribute
+the entire leaf difference to that sampled interval alone.
+
+`compact-maps-result.json` retains cases, online samples and phase summaries.
+A2+E3 stress then completed728 calls/source on every owner, including duplicate
+expert0 routes, empty owners, restored routes and rejection of stale route-ready
+flags. Max online-vs-serial relativeL2 is2.981e-6 (existing FP32 accumulation
+order), other client modes compare exactly. This gate tests reuse and protocol
+boundaries; it is not independent language-model quality validation.
+
+Finally, building with neither feature flag and launching with **no
+QWEN38_BUILD override** passed the A1+E4 independent real-weight oracle on the
+actual new default closure:25 calls/source, both ABI feature fields true,
+all-row eager/replay exact. The receipt and sampled oracle errors are retained
+as `compact-maps-result.json.final_default`. All admitted jobs exited0; devices
+and leases were released. Full-model MTP/SWE performance remains a separate gate.

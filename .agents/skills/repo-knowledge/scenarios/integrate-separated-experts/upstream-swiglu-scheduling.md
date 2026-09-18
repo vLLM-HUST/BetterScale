@@ -190,3 +190,16 @@ oracle also passed. See the **Four-row ACTIVATE** section in `PREFILL-PROFILE.md
 and its `batch-activate-*-result.json` receipts for conditions and boundaries.
 This does not yet implement opportunity2's incremental up/activate/down pipeline;
 keep that distinct from the now-measured batched ACTIVATE improvement.
+
+Default promotion and next bottleneck: new Qwen38 builds now enable batched
+ACTIVATE and compact maps. The latter removes capacity-wide coordinator map
+initialization/publication, especially wasteful for inactive sources and tiny
+decode waves. FETCH needs only an8-word frame; REPACK/SEND read only the active
+`n*TOPK` map. Unused map capacity may now be stale and must never be consumed.
+The frame/route generation and retirement ABI is unchanged. Checked codegen
+anchors constrain this to Qwen38; Next's base kernel stays unchanged.
+See **Compact routing metadata and default integration** in PREFILL-PROFILE:
+matched A1+E3 leaf gain~18% at1024tokens and~69–70% at1token; A2+E3 reuse/empty-
+owner/stale-flag gates pass. These gains do not implement the deferred C/V
+pipeline and do not establish whole-model serving gains. Both optimizations have
+`--no-*` build controls; historical binaries are not retroactively upgraded.
