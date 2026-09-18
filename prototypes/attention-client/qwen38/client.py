@@ -92,7 +92,14 @@ class Session:
         self.fused_collect = os.environ.get("QWEN38_FUSED_COLLECT") == "1"
         if self.fused_collect and not self.kernels.fused_client_collect:
             raise RuntimeError("Fused collect requires matching client binary exports")
-        pipelined = os.environ.get("QWEN38_PIPELINED_COLLECT") == "1"
+        # New ABI-marked builds use the qualified fixed-order pipeline within
+        # fused mode. Old closures remain runnable; =0 is the serial control.
+        pipeline_setting = os.environ.get("QWEN38_PIPELINED_COLLECT")
+        pipelined = pipeline_setting == "1" or (
+            pipeline_setting is None
+            and self.fused_collect
+            and self.kernels.pipelined_client_collect
+        )
         if pipelined and (
             not self.fused_collect or not self.kernels.pipelined_client_collect
         ):

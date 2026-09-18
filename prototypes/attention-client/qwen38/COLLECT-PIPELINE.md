@@ -1,9 +1,11 @@
 # Fixed-order pull/reduce pipeline
 
 `client_reduce_pipeline.cpp` changes the consumer, not the mailbox protocol.
-It is an alternative to `neural_collect_fused`, enabled by
-`QWEN38_FUSED_COLLECT=1 QWEN38_PIPELINED_COLLECT=1`. Default selection remains
-unchanged; explicit selection rejects older binaries without the new export.
+Within `QWEN38_FUSED_COLLECT=1`, ABI-marked new builds select the pipeline by
+DEFAULT. `QWEN38_PIPELINED_COLLECT=0` retains the serial fused control; explicit
+`=1` rejects older binaries without the new export. An unset pipeline option on
+an old binary preserves its serial fused path. This does not enable fused mode
+itself or the separate arrival-order online collector.
 New `build.py` closures include both kernels. To preserve an already qualified
 server exactly while rebuilding just the client:
 
@@ -75,3 +77,59 @@ above supplies old-serial versus new-pipeline equivalence; do not substitute one
 claim for the other. The capped trace takes9.168/9.062s/source in this run, but
 there is no matched whole-model control, so no serving-throughput gain is claimed.
 This is not an OpenCompass or uncapped full-trajectory quality qualification.
+
+## Default promotion and remaining seams
+
+New ABI-marked builds now choose the pipeline automatically inside fused mode;
+`QWEN38_PIPELINED_COLLECT=0` selects the serial control. Older closures without
+the export retain serial fused behavior when unset; explicitly requiring the
+pipeline on such a closure fails rather than silently pretending it is enabled.
+This routing change selects the kernel already qualified above; no additional
+hardware measurement or speedup is claimed for changing the default.
+
+Reanalysis of the SAME collector leaf's server receipts is retained in
+`collect-server-seams.json`. At1024 source tokens and broad random routing,
+owners process3392/3427/3421 routed rows. Their coordinator-observed intervals:
+
+| Interval | Range across three owners |
+|---|---:|
+| fetch |155–169us|
+| post-fetch / pre-pack gap |429–448us|
+| pack |221–242us|
+| up |487–553us|
+| activate |149–162us|
+| down |245–306us|
+| convert/export |403–470us|
+
+These intervals include command handoff and join. The retained ring mixes the
+serial/pipelined client arms; medians do not form an additive wall-time breakdown.
+Broad random routing activates many more experts than the previous fixed hot10
+fixture: larger GEMM intervals here are NOT evidence of a GEMM regression.
+
+Source-supported optimization leads, not measured recoverable time:
+
+1. `server_workers.hpp` SEND still calls `RowExpert`, `QuantRow::Dequant` and
+   `ToBf16` for each routed row. Dequant reloads H-wide channel scales per row,
+   plus the padded row scale; ToBf16 waits for MTE3 before the next row. Server
+   export can benefit from the same explicit buffer/event lifetime approach.
+   Unlike ACTIVATE's expert-contiguous iteration, SEND currently walks route
+   order through a forward map. Claiming expert scale reuse requires confronting
+   that layout: two adjacent routes need not use the same expert. Do not simply
+   reuse the previous scale without checking expert identity.
+2. The inherited `persistent_vector.cpp::Group`, transformed by Qwen38 build.py,
+   counts routes and builds row maps on one coordinator. Compact maps already
+   remove capacity-wide work; live-route scans and serial publication remain.
+   Post-fetch/pre-pack also includes admission/coordination. Parallelizing Group
+   needs an ownership design, not just moving it across a FETCH that reads its
+   descriptor buffer.
+3. The measured closure has `route_ready=true`; its worker compile-time branch
+   publishes a generation line after EVERY SEND row although this fixed-order
+   collector only reads all-owner DONE. These publications are unnecessary for
+   a fixed-order-only deployment. Standard `build.py` defaults route-ready OFF;
+   this is an avoidable cost of this diagnostic closure, not a universal default
+   bug. Removing flags from a closure also used by online collectors would break
+   its protocol. Measure a matching no-route-ready closure rather than silently
+   disabling publication behind a route-ready ABI.
+
+First priority is server export, not a new collective or a different reduction
+order. Copy/DMA gains and less server waiting remain distinct measurements.

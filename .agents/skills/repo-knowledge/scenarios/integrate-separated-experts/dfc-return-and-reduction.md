@@ -96,8 +96,17 @@ The two-slot fixed-order prototype is now in
 At1024rows, warm ready collect falls1.029->0.921ms and full real-layer leaf
 3.745->3.640ms;24 changed-input comparisons are exact. This is a modest measured
 consumer improvement, not evidence that the remaining server wait is removable.
-Explicit `QWEN38_PIPELINED_COLLECT=1` requires its ABI-marked binary; old binaries
-and defaults remain usable.
+New ABI-marked builds default to the pipeline inside fused mode; `=0` keeps
+the serial control. Explicit `QWEN38_PIPELINED_COLLECT=1` requires its ABI-marked
+binary; older binaries retain the serial path when unset.
 The same candidate also passes real48-layer+MTP A2TP1+E3 FULL continuation:
 12 eager/captured shadows each129/129exact, four capped two-turn SWE traces,
 and all roles exit0. This is a correctness gate, not a matched throughput gain.
+
+The sibling COLLECT-PIPELINE.md now records the remaining server seams and
+`collect-server-seams.json`: broad-hit1024rows has403–470us convert/export and
+429–448us post-fetch/pre-pack coordinator intervals. They are not pure kernel
+times. This diagnostic closure still publishes route-ready flags unused by
+fixed-order collect; standard builds default those flags off. Preserve the ABI
+when testing their removal, and do not confuse broad-hit GEMM time with the
+earlier hot10 fixture.

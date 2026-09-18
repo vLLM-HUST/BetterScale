@@ -1,0 +1,105 @@
+{
+  "scope": "Reanalysis of existing A1+E3 collector leaf, not a new hardware run. Coordinator intervals include handoff/join; control/candidate mixed in ring. Random broad experts, not previous hot10 fixture.",
+  "source_capsule": "qwen38-wire-20260918T114623Z",
+  "owners": {
+    "expert0": {
+      "routed_rows": 3392,
+      "intervals": {
+        "pack": {
+          "median_us": 242.3,
+          "samples": 26
+        },
+        "up": {
+          "median_us": 552.72,
+          "samples": 26
+        },
+        "activate": {
+          "median_us": 162.32,
+          "samples": 26
+        },
+        "down": {
+          "median_us": 306.08,
+          "samples": 26
+        },
+        "convert_export": {
+          "median_us": 469.59000000000003,
+          "samples": 26
+        },
+        "fetch": {
+          "median_us": 169.07999999999998,
+          "samples": 24
+        },
+        "post_fetch_pre_pack": {
+          "median_us": 447.98,
+          "samples": 26
+        }
+      }
+    },
+    "expert1": {
+      "routed_rows": 3427,
+      "intervals": {
+        "pack": {
+          "median_us": 221.47,
+          "samples": 26
+        },
+        "up": {
+          "median_us": 486.89,
+          "samples": 26
+        },
+        "activate": {
+          "median_us": 149.99,
+          "samples": 26
+        },
+        "down": {
+          "median_us": 244.51,
+          "samples": 26
+        },
+        "convert_export": {
+          "median_us": 403.28999999999996,
+          "samples": 26
+        },
+        "fetch": {
+          "median_us": 154.62,
+          "samples": 24
+        },
+        "post_fetch_pre_pack": {
+          "median_us": 428.68,
+          "samples": 26
+        }
+      }
+    },
+    "expert2": {
+      "routed_rows": 3421,
+      "intervals": {
+        "pack": {
+          "median_us": 221.35,
+          "samples": 26
+        },
+        "up": {
+          "median_us": 488.37,
+          "samples": 26
+        },
+        "activate": {
+          "median_us": 148.72000000000003,
+          "samples": 26
+        },
+        "down": {
+          "median_us": 246.97,
+          "samples": 26
+        },
+        "convert_export": {
+          "median_us": 403.98,
+          "samples": 26
+        },
+        "fetch": {
+          "median_us": 154.8,
+          "samples": 24
+        },
+        "post_fetch_pre_pack": {
+          "median_us": 428.63,
+          "samples": 26
+        }
+      }
+    }
+  }
+}
