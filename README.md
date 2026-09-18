@@ -38,6 +38,10 @@ include the historical C1/2048 regression as well as the C4/C8 gains.
 [Dual-bank SWE comparison](docs/evidence/qwen-dualbank.json) measures **+7.24% /
 +7.89%** output throughput at C4/C8 versus native, with the selected-trace limits
 and extra graph-memory cost retained.
+The [GDN fusion follow-up](docs/evidence/qwen-gdn-fusion.json) reaches78.527/108.429tok/s
+at C4/C8 (+4.63%/+3.82% versus the retained previous candidate); native controls
+were not rerun. It removes in-graph packing/norm/gating overhead, with unchanged
+state ownership and scheduling.
 
 ## End-to-end service evidence
 

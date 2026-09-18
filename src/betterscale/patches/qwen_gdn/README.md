@@ -199,3 +199,28 @@ shadow envelope:5,676 comparisons across22 steps/rank, all max_abs0; logged
 capture delta0.84GiB/rank with1GiB diagnostic KV. CPU77tests pass.
 See `docs/evidence/qwen-gdn-fusion.json` for bounded microbenchmarks and evidence;
 these isolated kernel savings are not a service-throughput claim.
+
+`gdn-fusion-swe1` (runtime d803579), two warmed same-pair candidate-only SWE
+cohorts on hw3 6/7, unchanged fixture/settings:
+
+| concurrency | previous candidate | fused candidate | increment |
+| --- | ---: | ---: | ---: |
+| 4 |75.049tok/s|78.527tok/s|+4.63%|
+| 8 |104.440tok/s|108.429tok/s|+3.82%|
+
+Against retained native70.021/96.774tok/s these are+12.15%/+12.04%; controls
+were **not rerun**, so this is not a fresh paired comparison. Mean TPOT improves
+45.00→42.93ms /57.95→55.48ms. All78calls/20,648 outputs per cohort obey the
+fixture budgets. Two service exits and admission are0; cards reclaimed.
+
+A separate six-step/rank capture, processed by TraceLoom c2a6920, recovers all
+six exact graph bodies (14,593 members/rank). Every replay replaces48ConcatD +
+96QK norm +48gating launches with48preprocessing launches. The1536-capacity mixed
+body has336 rather than480transposes. The retained and new profiles have the
+same observed partitions/capacities/bank sequence; rank0 GDN conv-to-out-projection
+spans sum2.89→1.45ms for decode1,3.66→2.01ms for decode2,68.34→63.38ms for mixed.
+These are diagnostic spans, not additive HTTP savings or proof of causality for
+other kernel changes. Step gaps remain about1.3–1.5ms: this optimization removes
+in-graph work, not another scheduling gap. Both native Perfetto exports preserve
+exact member and internal structure geometry. No new NPU run is needed to view
+or re-export them.

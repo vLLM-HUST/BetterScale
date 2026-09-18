@@ -224,8 +224,320 @@
     "oracle": "Pinned donor receives contiguous logical gate inputs, as required by its native caller."
   },
   "limitations": [
-    "Service performance and short-profile qualification are pending.",
     "No change to native model input publication, sampling, scheduler, D2H or recurrence arithmetic.",
     "No MTP/APC or model-quality qualification."
-  ]
+  ],
+  "runtime_source_commit": "d803579",
+  "swe": {
+    "scope": "Two same-pair candidate-only cohorts; retained controls, no fresh baseline.",
+    "fixture": {
+      "dataset": "nvidia/Open-SWE-Traces",
+      "revision": "fb0c0dccc7a5cce79b3f6de891848acdede36685",
+      "subset": "data/minisweagent/qwen38_27b",
+      "scanned": 15525,
+      "selection": {
+        "min_turns": 2,
+        "max_turns": 12,
+        "max_context": 8192,
+        "max_output_total": 8192
+      },
+      "transforms": {
+        "truncated": false,
+        "tool_arguments": "JSON strings parsed to mappings",
+        "history": "original recorded messages, not generated responses",
+        "output_budget": "Qwen-tokenized complete assistant serialization suffix (BPE at suffix boundary is independent)",
+        "tool_execution": false,
+        "tool_wait_seconds": 0,
+        "arrival_policy": "one initially ready call per session; next turn after previous completion"
+      },
+      "trajectories": [
+        "7aef38cd-40e8-4d73-bf84-5fb601845f9d",
+        "85d1d00c-dec6-426c-a7c8-d55e307316e8",
+        "41094c57-7aa3-4637-8e61-51148ed2ccf4",
+        "f716c9d4-0e7b-4e36-917f-2a044634d5ed",
+        "19d9e7fc-2c25-4710-a0d1-b3f6b2167a97",
+        "494f7e35-04ec-44fb-a3df-ab508b17b6ed",
+        "ef07f321-97f0-4923-9ac6-a25625ff08b9",
+        "a3969e81-77d8-4f2b-8a58-448704fa890a"
+      ]
+    },
+    "rounds": [
+      {
+        "repeat": 0,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 263.31499610608444,
+        "tokens_per_s": 78.41558705483423,
+        "mean_ttft_ms": 1176.2928726026216,
+        "p95_ttft_ms": 1730.1764781586826,
+        "mean_latency_s": 12.309517743149533,
+        "p95_latency_s": 25.513279672013596,
+        "mean_tpot_ms": 42.98972890419546,
+        "p95_tpot_ms": 53.25410330067781
+      },
+      {
+        "repeat": 0,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 190.59577874396928,
+        "tokens_per_s": 108.33398376433524,
+        "mean_ttft_ms": 1364.319973341667,
+        "p95_ttft_ms": 2216.8797708582133,
+        "mean_latency_s": 15.851913883091093,
+        "p95_latency_s": 33.73652480705641,
+        "mean_tpot_ms": 55.550411420167116,
+        "p95_tpot_ms": 69.96041893266961
+      },
+      {
+        "repeat": 1,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 262.5697403610684,
+        "tokens_per_s": 78.63815522537459,
+        "mean_ttft_ms": 1179.6328674297397,
+        "p95_ttft_ms": 1732.0929430425167,
+        "mean_latency_s": 12.272610964193845,
+        "p95_latency_s": 25.463179946877062,
+        "mean_tpot_ms": 42.872408931698935,
+        "p95_tpot_ms": 52.258020394783415
+      },
+      {
+        "repeat": 1,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 190.26124022295699,
+        "tokens_per_s": 108.524468650597,
+        "mean_ttft_ms": 1346.6803030295966,
+        "p95_ttft_ms": 2089.7653109859675,
+        "mean_latency_s": 15.826960401949831,
+        "p95_latency_s": 33.55835029296577,
+        "mean_tpot_ms": 55.41547616177038,
+        "p95_tpot_ms": 70.45576413154834
+      }
+    ],
+    "pooled": {
+      "candidate": {
+        "4": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 525.8847364671528,
+          "tokens_per_s": 78.52671343424583,
+          "mean_ttft_ms": 1177.9628700161807,
+          "p95_ttft_ms": 1732.0929430425167,
+          "mean_latency_s": 12.29106435367169,
+          "p95_latency_s": 25.513279672013596,
+          "mean_tpot_ms": 42.931068917947194,
+          "p95_tpot_ms": 53.18973733796682
+        },
+        "8": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 380.85701896692626,
+          "tokens_per_s": 108.42914254807565,
+          "mean_ttft_ms": 1355.5001381856318,
+          "p95_ttft_ms": 2157.8427262138575,
+          "mean_latency_s": 15.839437142520463,
+          "p95_latency_s": 33.73652480705641,
+          "mean_tpot_ms": 55.48294379096875,
+          "p95_tpot_ms": 70.45576413154834
+        }
+      }
+    },
+    "throughput_gain_percent": {},
+    "limits": "Eight selected <=8K trajectories, no APC/MTP, fixed output budgets, no tool latency. Two repeats per arm (ordering/arms in scope), not population or confidence evidence. No fresh baseline comparison is implied for candidate-only runs. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps.",
+    "capsule": "gdn-fusion-swe1",
+    "reference_scope": "Retained graph-scratch-swe1 candidate and dualbank-swe1 native; neither control rerun; selected original-history traces, no APC/MTP or accuracy claim.",
+    "retained_comparison": {
+      "4": {
+        "previous_candidate_tokens_per_s": 75.04854570131661,
+        "native_tokens_per_s": 70.021254523281,
+        "increment_percent": 4.634557139550544,
+        "vs_native_percent": 12.146967329951085
+      },
+      "8": {
+        "previous_candidate_tokens_per_s": 104.43989380607054,
+        "native_tokens_per_s": 96.77436328361955,
+        "increment_percent": 3.8196598987476404,
+        "vs_native_percent": 12.04325078357693
+      }
+    }
+  },
+  "profile": {
+    "analyzer": "c2a692014b4ad0b27adc77dd7200c17eda382af7",
+    "steps_per_rank": 6,
+    "exact_members_per_rank": 14593,
+    "partitions": [
+      [
+        1
+      ],
+      [
+        1
+      ],
+      [
+        1,
+        1472
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        1
+      ]
+    ],
+    "scope": "Separate diagnostic capture; same observed partitions/capacities/bank sequence as retained dualbank-swe1 profile. Prior graph-scratch candidate had no capture. Timestamp geometry is not causality; profile not HTTP timing.",
+    "rank0_selected": [
+      {
+        "arm": "previous",
+        "launch": "graph-launch-1",
+        "body_us": 33137.742,
+        "gdn_conv_to_outproj_us": 2892.256,
+        "kernels": {
+          "ConcatD": {
+            "count": 48,
+            "us": 796.7729999999999
+          },
+          "l2norm_fwd_kernel2": {
+            "count": 96,
+            "us": 173.92300000000003
+          },
+          "fused_gdn_gating_kernel": {
+            "count": 48,
+            "us": 623.256
+          }
+        }
+      },
+      {
+        "arm": "previous",
+        "launch": "graph-launch-2",
+        "body_us": 344384.641,
+        "gdn_conv_to_outproj_us": 68337.40800000001,
+        "kernels": {
+          "ConcatD": {
+            "count": 48,
+            "us": 903.378
+          },
+          "l2norm_fwd_kernel2": {
+            "count": 96,
+            "us": 1653.4940000000001
+          },
+          "fused_gdn_gating_kernel": {
+            "count": 48,
+            "us": 794.2139999999999
+          },
+          "Transpose": {
+            "count": 480,
+            "us": 10424.207999999986
+          }
+        }
+      },
+      {
+        "arm": "previous",
+        "launch": "graph-launch-4",
+        "body_us": 34541.69,
+        "gdn_conv_to_outproj_us": 3662.6720000000005,
+        "kernels": {
+          "ConcatD": {
+            "count": 48,
+            "us": 762.057
+          },
+          "l2norm_fwd_kernel2": {
+            "count": 96,
+            "us": 176.0240000000001
+          },
+          "fused_gdn_gating_kernel": {
+            "count": 48,
+            "us": 628.871
+          }
+        }
+      },
+      {
+        "arm": "fused",
+        "launch": "graph-launch-1",
+        "body_us": 31544.91,
+        "gdn_conv_to_outproj_us": 1453.4070000000004,
+        "kernels": {
+          "preprocess_kernel": {
+            "count": 48,
+            "us": 166.94300000000004
+          }
+        }
+      },
+      {
+        "arm": "fused",
+        "launch": "graph-launch-2",
+        "body_us": 337380.601,
+        "gdn_conv_to_outproj_us": 63376.88700000002,
+        "kernels": {
+          "preprocess_kernel": {
+            "count": 48,
+            "us": 1917.0380000000005
+          },
+          "Transpose": {
+            "count": 336,
+            "us": 7935.200999999999
+          }
+        }
+      },
+      {
+        "arm": "fused",
+        "launch": "graph-launch-4",
+        "body_us": 32838.996,
+        "gdn_conv_to_outproj_us": 2008.24,
+        "kernels": {
+          "preprocess_kernel": {
+            "count": 48,
+            "us": 178.32199999999995
+          }
+        }
+      }
+    ],
+    "verification": [
+      {
+        "timeline": "candidate-rank0.perfetto.json.gz",
+        "exact_members": 14593,
+        "structure_windows": 8494,
+        "all_member_and_structure_geometry_exact": true
+      },
+      {
+        "timeline": "candidate-rank1.perfetto.json.gz",
+        "exact_members": 14593,
+        "structure_windows": 8494,
+        "all_member_and_structure_geometry_exact": true
+      }
+    ]
+  },
+  "reclamation": {
+    "admission_exit_code": 0,
+    "server_exit_codes": [
+      0,
+      0
+    ],
+    "devices": [
+      6,
+      7
+    ],
+    "no_processes": true,
+    "final_hbm_MiB": [
+      3419,
+      3418
+    ]
+  }
 }

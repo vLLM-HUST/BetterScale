@@ -782,3 +782,20 @@ the evidence root; keep oracle input contracts explicit when extending fusion.
 `gdn-fusion-service1`: same26-graph TP2 full-model shadow envelope passes all5,676
 comparisons (22steps/rank); server/admission exit0. Diagnostic capture delta is
 0.84GiB/rank at1GiB KV. CPU77tests pass. See `docs/evidence/qwen-gdn-fusion.json`.
+
+`gdn-fusion-swe1`, runtime d803579: two warmed same-pair candidate-only SWE rounds,
+78calls/20,648 outputs each at C4/C8. Pooled78.527/108.429tok/s versus retained
+scratch candidate75.049/104.440: +4.63%/+3.82%. Retained native70.021/96.774 gives
++12.15%/+12.04%; neither control rerun. Mean TPOT42.93/55.48ms (old45.00/57.95).
+Services/admission exit0, cards6/7 reclaimed. Profile separate and only6steps/rank.
+Native export of copied raw PROF inputs plus TraceLoom c2a6920 recovers6exact
+bodies/14,593members per rank. Same dispatch sequence as dualbank-swe1:
+[1],[1],[1,1472],[1,1],[1,1],[1,1], capacities1/1/1536/2/2/2, banks1/0/1/0/1/0.
+Every replay contains48preprocess kernels and zero ConcatD/l2norm/gating kernels;
+mixed transposes480->336. Rank0 GDN conv-to-outproj sums (selected same-shape
+launches) decode1 2.89->1.45ms, decode2 3.66->2.01ms, mixed68.34->63.38ms.
+Model gaps remain~1.3-1.5ms; don't relabel in-graph work reduction as host-gap work.
+`gdn-fusion-swe1/traceloom` holds AugDBs, costs.py/costs.json, Perfetto and exact
+member/structure verification. Use MatMulV2 **or V3** for the out-projection
+boundary; mixed capacity1536 uses V3. Compact qualification and all HTTP metrics
+are in `docs/evidence/qwen-gdn-fusion.json`.
