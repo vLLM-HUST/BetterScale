@@ -60,6 +60,15 @@ for obj, key, bad in [(c, "speculative_config", S(method="mtp")),
     except ValueError: pass
     else: raise AssertionError(key)
     setattr(obj,key,old)
+c.cache_config.enable_prefix_caching=True
+c.cache_config.mamba_cache_mode="align"
+validate_config(c, mixed=True)
+c.cache_config.mamba_cache_mode="all"
+try:
+    validate_config(c, mixed=True)
+except ValueError: pass
+else: raise AssertionError("owned APC all is not qualified")
+c.cache_config.enable_prefix_caching=False
 c.speculative_config=S(method="mtp",num_speculative_tokens=2,enforce_eager=False)
 c.compilation_config.cudagraph_mode="FULL_AND_PIECEWISE"
 c.compilation_config.cudagraph_capture_sizes=[1,2,4,8,16,24]

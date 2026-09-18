@@ -11,7 +11,8 @@ is not a claim of arbitrary model or scheduling compatibility.
 - Qwen27 BF16, TP2/DP1/PP1, qk8/v24 local heads, K/V128, convolution width4.
   Eight seats, token budget2048, FULL capacities1/2/4/8 for decode and
   16/32/64/128/256/512/1024/1536/2048 for prefill/mixed.
-- No MTP, APC, cache transfer, LoRA or context parallelism. Uncaptured model
+- No MTP, cache transfer, LoRA or context parallelism. APC uses native `align`
+  mode; `all` mode is unsupported. Uncaptured model
   execution uses the same owned K-V operators, NEVER native V-K GDN fallback.
   To revert, restart with the original Worker and a fresh pool.
 - `TASK_QUEUE_ENABLE=0` is mandatory for the generated raw ACL launcher. This
@@ -53,9 +54,12 @@ fences and persistent state ownership are unchanged.
 All GDN groups publish one packed pinned slab per wave on a separate ingress
 stream. Uploaded events protect host-slab reuse; consumed events protect the
 old device reader before a bank is overwritten. Compute waits uploaded on device.
-CPU block-table column0 and CPU sequence/query lengths produce slots, cold flags,
+CPU block-table selection and CPU sequence/query lengths produce slots, cold flags,
 all dtype variants and chunk tables without per-field GPU copies or Sub/Gt ops.
-Only mamba_cache_mode=none is supported. Empty large-block triangular-solve tasks
+APC-off selects column0; APC `align` selects `max((seq_len-1)//block_size,0)`
+per request, matching the donor. Native preprocessing copies a cached/previous
+whole state into that destination before forward; shared snapshots are not
+modified in place. Empty large-block triangular-solve tasks
 skip the recurrence on device; the active arithmetic and donor merge stay intact.
 
 FIA uses the sibling `qwen_fia` wave-shared native planner and banked metadata
@@ -236,3 +240,21 @@ other kernel changes. Step gaps remain about1.3–1.5ms: this optimization remov
 in-graph work, not another scheduling gap. Both native Perfetto exports preserve
 exact member and internal structure geometry. No new NPU run is needed to view
 or re-export them.
+
+## Align-mode prefix caching qualification (September 18)
+
+`apc-align-service3` on hw3 TP2 cards6/7, BF16, no MTP, AIV, 1GiB KV:
+68 graph/NONE steps, 8,772 hidden/cache comparisons, maximum absolute error0.
+Three cold/reused pairs (1537/2051/3073 prompt tokens) reused1536/1536/3072
+tokens and produced identical greedy eight-token output. Eight concurrent
+branches sharing a cached prefix each reused1536 tokens and matched their
+independent cold output. Ten short/long prompt lengths plus C4/C8 service
+cohorts also passed. This is a bounded correctness witness, not bitwise
+equivalence for arbitrary batching, an accuracy result, or an APC speedup claim.
+
+The native state/page layout sets cache blocks to1536 tokens. A513-token prompt
+cannot witness reuse; `apc-align-service2` passed its state checks but was rejected
+for that incorrect probe expectation. Keep these receipts separate. Reproduce
+with the existing admitted elastic probe and `ELASTIC_APC=1 ELASTIC_SHADOW=1`;
+`apc_checks.py` owns the hit/branch checks. The production launcher now enables
+APC align; the original `qwen_worker.Worker` remains APC-off-qualified.

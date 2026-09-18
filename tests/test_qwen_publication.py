@@ -51,6 +51,24 @@ class Publication(unittest.TestCase):
         self.assertEqual(h["state"].tolist(), [[11, 0]] + [[-1, 0]] * 8)
         self.assertEqual(h["cu"].tolist(), [0] + [17] * 9)
         self.assertEqual(h[1216].tolist(), [[0, 0]] + [[8, 0]] * 8)
+        # align snapshots live at the last logical block, not column zero.
+        # Exact boundaries, crossing, a warm prefix and dummy zero length use
+        # the same clamped floor division as the donor's GPU gather.
+        frame.fill(
+            0,
+            NS(seq_lens_cpu=CPU([0, 512, 513, 1024, 1025])),
+            (1, 512, 1, 17, 1),
+            np.array(
+                [[10, 11, 12], [20, 21, 22], [30, 31, 32], [40, 41, 42], [50, 51, 52]]
+            ),
+            aligned_block_size=512,
+        )
+        self.assertEqual(h["slots"].tolist(), [10, 20, 31, 41, 52] + [-1] * 4)
+        self.assertEqual(
+            h["conv_initial"].tolist(), [False, False, True, True, True] + [False] * 4
+        )
+        self.assertEqual(h["conv_slots"][:, 0].tolist(), h["slots"].tolist())
+        self.assertEqual(h["state"][:, 0].tolist(), h["slots"].tolist())
 
     def test_dma_source_and_device_consumer_are_different_fences(self):
         log = []

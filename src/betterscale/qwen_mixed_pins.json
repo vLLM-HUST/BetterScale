@@ -40,6 +40,18 @@
     {
       "path": "vllm_ascend/device/device_op.py",
       "sha256": "a0288fca27ce4fb24d67cf5c2e677fcfc71f02b56c311a31a81a496e41be8435"
+    },
+    {
+      "path": "vllm/v1/worker/mamba_utils.py",
+      "sha256": "2fa35652f256ef28c5060db258aa10b541dd0cfa7da29043d4c210eb74f9364e"
+    },
+    {
+      "path": "vllm_ascend/patch/worker/patch_mamba_utils.py",
+      "sha256": "a8862c3509f698c05cdeba5aa408a28e506349eff97801b28161569b8e3c9778"
+    },
+    {
+      "path": "vllm_ascend/patch/platform/patch_mamba_config.py",
+      "sha256": "ee38c68c27357a7d18f7e368e03a352bb312f79c3576431a64f688ce953716ac"
     }
   ]
 }

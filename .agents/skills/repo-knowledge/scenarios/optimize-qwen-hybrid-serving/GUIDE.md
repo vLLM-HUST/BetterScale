@@ -1086,3 +1086,29 @@ match. All6bodies/rank pass304MatMul/16FIA/128interiorCOMM guards; TraceLoom fin
 before/after timelines are bundled in fia-wave-primed-profile1/
 qwen-fia-wave-before-after-traceloom.tar.gz. Packaged deployment now requires the
 qualified BETTERSCALE_FIA_LIBRARY and startup LD_PRELOAD; see qwen_fia/README.md.
+
+### APC align admission and SWE comparison reset (September18)
+
+Fletcher requires prefix caching ON for the final SWE study. `fia-swe-scaling1`
+was cancelled/reclaimed; its completed native C1/C2/C4/C8 receipts are APC-off
+references, not a paired result. New timings must enable APC on both arms,
+reset cache after warmup/before each concurrency cohort, and record actual
+`usage.prompt_tokens_details.cached_tokens`; never infer hits from a flag.
+
+MixedWorker now admits native `align` only (ordinary Worker remains APC-off).
+The previous CPU publication always took block-table column0. In align it must
+select `max((seq_len-1)//MambaSpec.block_size,0)` for each request, matching native
+`mamba_get_block_table_tensor`; the native Ascend preprocess stages whole-row
+copy metadata and `do_mamba_copy_block` runs before forward. Owned K-V recurrent
+state remains compatible with that opaque copy; convolution layout is unchanged.
+No MTP, speculative state selection, cache transfer or `all`-mode claim.
+
+Native Qwen27 TP2 block size is1536 (SSM/page alignment). `apc-align-service2`
+passed6192 graph/eager checks but failed an invalid513-token hit expectation.
+Do not rerun below-block hit fixtures. `apc-align-service3` passed8772 checks
+over68 rank-steps (max_abs0), actual1536/1536/3072 cached tokens for prompts
+1537/2051/3073, cold/warm greedy output equality, and8 concurrent shared-prefix
+branches matching independent cold output. Diagnostic1GiBKV onhw3 6/7, AIV,
+noMTP; resources reclaimed. Reproducer: `elastic_probe.py` with
+`ELASTIC_APC=1 ELASTIC_SHADOW=1`, uses colocated prototype `apc_checks.py`.
+These are bounded correctness witnesses, not APC throughput/accuracy claims.

@@ -60,7 +60,7 @@ class Frame:
         if self.has_upload and not self.uploaded.query():
             self.uploaded.synchronize()
 
-    def fill(self, key, m, lengths, slots):
+    def fill(self, key, m, lengths, slots, *, aligned_block_size=None):
         import numpy as np
 
         meta = self.metas[key]
@@ -70,17 +70,26 @@ class Frame:
             raise ValueError("GDN publication capacity exceeded")
         if m.seq_lens_cpu is None:
             raise ValueError("Owned publication requires non-speculative CPU lengths")
+        seq_lens = m.seq_lens_cpu[:n].numpy()
         h["cu"][0] = 0
         np.cumsum(lengths, out=h["cu"][1 : n + 1])
         h["cu"][n + 1 :] = sum(lengths)
         h["conv_cu"][:] = h["cu"]
         h["slots"][:] = -1
-        h["slots"][:n] = slots[:n, 0]
+        # Mirror native mamba_get_block_table_tensor's non-speculative align
+        # selection on CPU. The runner owns copying a cached/previous state into
+        # this destination before forward; never mutate the shared prefix slot.
+        columns = (
+            np.maximum((seq_lens - 1) // aligned_block_size, 0)
+            if aligned_block_size is not None
+            else np.zeros(n, dtype=np.int64)
+        )
+        h["slots"][:n] = slots[np.arange(n), columns]
         h["conv_slots"][:, 0] = h["slots"]
         h["conv_initial"][:] = False
         # Same seq_lens - query_lens formula as CommonAttentionMetadata,
         # including capture's synthetic lengths; never use GPU-derived copies.
-        h["conv_initial"][:n] = m.seq_lens_cpu[:n].numpy() > lengths
+        h["conv_initial"][:n] = seq_lens > lengths
         h["state"][:, 0] = h["slots"]
         h["state"][:, 1] = h["conv_initial"]
         for size in meta.indices:
@@ -186,9 +195,12 @@ def install():
             for aid, group in enumerate(attn_groups):
                 builder = group.get_metadata_builder(0)
                 if isinstance(builder, Builder):
-                    if builder.vllm_config.cache_config.mamba_cache_mode != "none":
+                    if builder.vllm_config.cache_config.mamba_cache_mode not in (
+                        "none",
+                        "align",
+                    ):
                         raise ValueError(
-                            "Owned publication requires mamba_cache_mode=none"
+                            "Owned publication requires mamba_cache_mode=none or align"
                         )
                     groups[gid, aid] = builder
         if not hasattr(self, "_owned_frames"):

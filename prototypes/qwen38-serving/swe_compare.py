@@ -80,7 +80,7 @@ try:
     for repeat, entries in plan:
         wave = root / f"round{repeat}"
         wave.mkdir(exist_ok=True)
-        for phase in ("c4", "c8", "profile"):
+        for phase in ("c1", "c2", "c4", "c8", "profile"):
             (wave / f"{phase}.go").unlink(missing_ok=True)
         wait_reclaimed(wave)
         children, logs = [], []
@@ -100,6 +100,11 @@ try:
                     MASTER_PORT=str(32282 + pair * 10),
                     HCCL_NPU_SOCKET_PORT_RANGE=("29800-29863", "29864-29927")[pair],
                 )
+                env["SWE_CONCURRENCIES"] = "1,2,4,8" if repeat == 0 else "8,4,2,1"
+                env["HCCL_OP_EXPANSION_MODE"] = "AIV"
+                env.pop("LD_PRELOAD", None)
+                if arm == "candidate":
+                    env["LD_PRELOAD"] = env["BETTERSCALE_FIA_LIBRARY"]
                 command = [
                     sys.executable,
                     str(root / "source/swe_service.py"),
@@ -118,12 +123,11 @@ try:
                         command, env=env, stdout=log, stderr=subprocess.STDOUT
                     )
                 )
-            for phase in (
-                ["c4", "c8", "profile"]
-                if repeat == 1 and profile_enabled
-                else ["c4", "c8"]
-            ):
-                deadline = time.monotonic() + 1800
+            phases = [f"c{n}" for n in ((1, 2, 4, 8) if repeat == 0 else (8, 4, 2, 1))]
+            if repeat == 1 and profile_enabled:
+                phases.append("profile")
+            for phase in phases:
+                deadline = time.monotonic() + 5400
                 while not all(
                     (wave / arm / f"{phase}.ready").exists() for _, arm in entries
                 ):
@@ -134,7 +138,7 @@ try:
                     time.sleep(1)
                 (wave / f"{phase}.go").touch()
             for child in children:
-                if child.wait(timeout=1800):
+                if child.wait(timeout=5400):
                     raise RuntimeError("paired service failed")
             for _, arm in entries:
                 result = json.loads((wave / arm / "receipt.json").read_text())

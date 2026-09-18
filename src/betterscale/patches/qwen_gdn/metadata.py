@@ -109,7 +109,17 @@ def install():
         publication = getattr(self, "_owned_publication", None)
         if publication is not None:
             frame, key, slots = publication
-            meta = frame.fill(key, m, lengths, slots)
+            meta = frame.fill(
+                key,
+                m,
+                lengths,
+                slots,
+                aligned_block_size=(
+                    self.kv_cache_spec.block_size
+                    if self.vllm_config.cache_config.mamba_cache_mode == "align"
+                    else None
+                ),
+            )
         else:
             cache = getattr(self, "_elastic_buffers", None)
             if cache is None:

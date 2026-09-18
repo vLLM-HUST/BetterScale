@@ -52,7 +52,12 @@ command = [
     str(1024**3),
     "--seed",
     "17",
-    "--no-enable-prefix-caching",
+    (
+        "--enable-prefix-caching"
+        if os.environ.get("ELASTIC_APC") == "1"
+        else "--no-enable-prefix-caching"
+    ),
+    "--enable-prompt-tokens-details",
     "--async-scheduling",
     "--shutdown-timeout",
     "60",
@@ -148,6 +153,13 @@ try:
             check_shadow()
             receipt["cohorts"].append(dict(concurrency=concurrency, rows=rows))
             path.write_text(json.dumps(receipt, indent=2))
+    if os.environ.get("ELASTIC_APC") == "1":
+        from apc_checks import run
+
+        assert (
+            os.environ.get("ELASTIC_SHADOW") == "1"
+        ), "APC qualification needs shadows"
+        run(url, prompt, prompts, arm, check_shadow, receipt, path)
     receipt["status"] = "PASS"
 except BaseException as exc:
     receipt.update(status="FAIL", error=f"{type(exc).__name__}: {exc}")

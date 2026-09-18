@@ -21,7 +21,7 @@ def metrics(cohorts):
         for r in rows
         if r["output_tokens"] > 1
     ]
-    return dict(
+    result = dict(
         requests=len(rows),
         output_tokens=sum(r["output_tokens"] for r in rows),
         elapsed_s=sum(c["elapsed_s"] for c in cohorts),
@@ -34,6 +34,15 @@ def metrics(cohorts):
         mean_tpot_ms=statistics.mean(tpot),
         p95_tpot_ms=percentile(tpot, 0.95),
     )
+    if all(r["usage"].get("prompt_tokens_details") is not None for r in rows):
+        cached = sum(r["usage"]["prompt_tokens_details"]["cached_tokens"] for r in rows)
+        prompt = sum(r["prompt_tokens"] for r in rows)
+        result.update(
+            prompt_tokens=prompt,
+            cached_prompt_tokens=cached,
+            cached_prompt_fraction=cached / prompt,
+        )
+    return result
 
 
 def main():
@@ -51,12 +60,20 @@ def main():
     }
     arms = sorted({r["arm"] for r in comparison["rounds"]})
     assert arms in (["candidate"], ["baseline", "candidate"])
-    cohorts = {arm: {c: [] for c in (4, 8)} for arm in arms}
+    first = json.loads((root / "round0" / arms[0] / "receipt.json").read_text())
+    apc = first.get("prefix_caching", False)
+    concurrencies = sorted(c["concurrency"] for c in first["rounds"])
+    assert concurrencies and len(concurrencies) == len(set(concurrencies))
+    cohorts = {arm: {c: [] for c in concurrencies} for arm in arms}
     rounds = []
     for repeat in range(2):
         for arm in cohorts:
             d = json.loads((root / f"round{repeat}" / arm / "receipt.json").read_text())
             assert d["status"] == "PASS"
+            assert d.get("prefix_caching", False) == apc
+            if apc:
+                assert d["cache_start"] == "empty before each cohort"
+            assert sorted(c["concurrency"] for c in d["rounds"]) == concurrencies
             for c in d["rounds"]:
                 assert len(c["requests"]) == len(expected)
                 assert {
@@ -79,6 +96,13 @@ def main():
     }
     output = dict(
         scope=comparison["scope"],
+        concurrencies=concurrencies,
+        prefix_caching=apc,
+        plan=(
+            json.loads((root / "plan.json").read_text())
+            if (root / "plan.json").exists()
+            else None
+        ),
         fixture=dict(
             dataset=trace["dataset"],
             revision=trace["revision"],
@@ -97,10 +121,10 @@ def main():
                 / pooled["baseline"][c]["tokens_per_s"]
                 - 1
             )
-            for c in (4, 8)
+            for c in concurrencies
             if "baseline" in pooled
         },
-        limits="Eight selected <=8K trajectories, no APC/MTP, fixed output budgets, no tool latency. Two repeats per arm (ordering/arms in scope), not population or confidence evidence. No fresh baseline comparison is implied for candidate-only runs. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps.",
+        limits="Eight selected <=8K trajectories, APC setting recorded separately, no MTP, fixed output budgets, no tool latency. Two repeats per arm (ordering/arms in scope), not population or confidence evidence. No fresh baseline comparison is implied for candidate-only runs. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps.",
     )
     (root / "summary.json").write_text(json.dumps(output, indent=2) + "\n")
     print(

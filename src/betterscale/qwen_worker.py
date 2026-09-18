@@ -31,7 +31,7 @@ def check_runtime(pins_name="qwen_pins.json"):
             raise RuntimeError(f"Unqualified Qwen donor source: {item['path']}")
 
 
-def validate_config(config):
+def validate_config(config, *, mixed=False):
     p, s, m = config.parallel_config, config.scheduler_config, config.model_config
     hf = getattr(m.hf_config, "text_config", m.hf_config)
     spec = config.speculative_config
@@ -73,7 +73,8 @@ def validate_config(config):
             for kind in ("image", "video")
         ),
         "native asynchronous scheduler": s.scheduler_cls is None and s.async_scheduling,
-        "APC off": not config.cache_config.enable_prefix_caching,
+        "APC off or owned GDN align cache": not config.cache_config.enable_prefix_caching
+        or (mixed and config.cache_config.mamba_cache_mode == "align"),
         "no speculation or native MTP2": spec is None
         or (
             getattr(spec, "method", None) == "mtp"
@@ -125,15 +126,16 @@ class MixedWorker(NPUWorker):
     def __init__(self, vllm_config, *args, **kwargs):
         check_runtime()
         check_runtime("qwen_mixed_pins.json")
-        validate_config(vllm_config)
+        validate_config(vllm_config, mixed=True)
         if (
             vllm_config.speculative_config is not None
             or vllm_config.lora_config is not None
             or vllm_config.kv_transfer_config is not None
-            or vllm_config.cache_config.mamba_cache_mode != "none"
+            or vllm_config.cache_config.mamba_cache_mode
+            != ("align" if vllm_config.cache_config.enable_prefix_caching else "none")
         ):
             raise ValueError(
-                "Owned GDN requires no MTP, LoRA, cache transfer or Mamba prefix cache"
+                "Owned GDN requires no MTP, LoRA or cache transfer; APC uses align mode"
             )
         hf = vllm_config.model_config.hf_text_config
         if tuple(

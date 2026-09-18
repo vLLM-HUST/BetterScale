@@ -17,7 +17,7 @@ exec "${PYTHON:-python}" -m vllm.entrypoints.cli.main serve "$QWEN_MODEL_PATH" \
   --worker-cls betterscale.qwen_worker.MixedWorker --dtype bfloat16 \
   --max-model-len 8192 --max-num-seqs 8 --max-num-batched-tokens 2048 \
   --kv-cache-memory-bytes 6442450944 --seed 17 \
-  --no-enable-prefix-caching --async-scheduling \
+  --enable-prefix-caching --mamba-cache-mode align --async-scheduling \
   --limit-mm-per-prompt '{"image":0,"video":0}' \
   --additional-config '{"enable_cpu_binding":false}' \
   --compilation-config '{"cudagraph_mode":"FULL","cudagraph_capture_sizes":[1,2,4,8,16,32,64,128,256,512,1024,1536,2048],"max_cudagraph_capture_size":2048}'

@@ -69,6 +69,7 @@ def main():
         for c in s["calls"]
     )
     url = f"http://127.0.0.1:{a.port}"
+    apc = os.environ.get("SWE_PREFIX_CACHING", "1") == "1"
     command = [
         sys.executable,
         "-m",
@@ -99,7 +100,8 @@ def main():
         str(6 * 1024**3),
         "--seed",
         "17",
-        "--no-enable-prefix-caching",
+        "--enable-prefix-caching" if apc else "--no-enable-prefix-caching",
+        "--enable-prompt-tokens-details",
         "--async-scheduling",
         "--shutdown-timeout",
         "60",
@@ -141,12 +143,23 @@ def main():
         command=command,
         rounds=[],
         devices=os.environ["ASCEND_RT_VISIBLE_DEVICES"],
-        scope="Closed-loop whole SWE sessions over HTTP. Original recorded history; fixed recorded response-token budgets; no tool execution, APC, MTP or accuracy claim. Dormant identical observation hooks in timed runs; profile separate.",
+        communication="native AIV enabled on both arms",
+        source_commit=os.environ.get("SWE_SOURCE_COMMIT", "unrecorded"),
+        prefix_caching=apc,
+        cache_start="empty before each cohort" if apc else "disabled",
+        scope="Closed-loop whole SWE sessions over HTTP. Original recorded history; fixed recorded response-token budgets; no tool execution, MTP or accuracy claim. APC configuration recorded separately. Dormant identical observation hooks in timed runs; profile separate.",
     )
     path = root / "receipt.json"
     path.write_text(json.dumps(receipt, indent=2))
     with (root / "server.log").open("w") as log:
-        server = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+        env = os.environ.copy()
+        if apc:
+            # Loopback-only dev endpoint is used outside timing to equalize
+            # initial cache state, never to alter the scheduler during replay.
+            env["VLLM_SERVER_DEV_MODE"] = "1"
+        server = subprocess.Popen(
+            command, env=env, stdout=log, stderr=subprocess.STDOUT
+        )
         try:
             deadline = time.monotonic() + 720
             while True:
@@ -166,9 +179,23 @@ def main():
                         sessions,
                     )
                 )
-            for concurrency in (4, 8):
+            for concurrency in map(int, os.environ["SWE_CONCURRENCIES"].split(",")):
+                if apc:
+                    req = urllib.request.Request(
+                        url + "/reset_prefix_cache", method="POST"
+                    )
+                    with urllib.request.urlopen(req, timeout=60) as response:
+                        assert response.status == 200
                 barrier(root, f"c{concurrency}")
-                receipt["rounds"].append(replay(url, sessions, concurrency))
+                cohort = replay(url, sessions, concurrency)
+                if apc:
+                    hits = [
+                        row["usage"]["prompt_tokens_details"]["cached_tokens"]
+                        for row in cohort["requests"]
+                    ]
+                    assert sum(hits) > 0, "APC enabled but no prefix tokens reused"
+                    cohort["cached_prompt_tokens"] = sum(hits)
+                receipt["rounds"].append(cohort)
                 path.write_text(json.dumps(receipt, indent=2))
             if a.profile:
                 barrier(root, "profile")
