@@ -956,3 +956,133 @@ No import-time process-wide mutation, communicator replacement, DSV4 change or
 native-Qwen Worker change. Shell syntax plus a fake-Python exec environment probe
 verify AIV overrides an inherited HOST value and preserves MixedWorker/TASK_QUEUE.
 This deployment choice does not convert microprobe results into service metrics.
+
+### AIV service timeline follow-up (September18;8b0aebb)
+
+`evidence-root/aiv-service-profile1`: actual Qwen MixedWorker on hw3 6/7 with
+AIV, eight-request16-output-token warmup, then the same staged SWE lead/join pair
+and only6profile steps/rank. No timed SWE cohorts/no fresh baseline. HTTP receipt,
+service and admission exit0; cards reclaimed. Current source snapshot8b0aebb.
+Native export + TraceLoomc2a6920 recover6exact bodies/rank. Dispatch matches retained
+gdn-fusion-swe1 [1],[1],[1,1472],[1,1],[1,1],[1,1], but bank phase is reversed and
+old profile followed complete timed cohorts rather than only the short warmup.
+All6 bodies have129 AIV allreduce kernel members, including mixed capacity1536;
+no external inner SDMA/notify members.304MatMul/16FIA/128interiorCOMM guards pass.
+
+Rank0 exact graph body ms, retained->AIV: steady decode1 31.545->30.340;
+decode2 step4 32.839->31.506,step5 32.796->31.440; mixed337.381->335.659.
+Small-message AR median19.66->7.72us (decode1),20.32->7.82us (decode2step4).
+All129 spans sum2.611->1.362ms /2.815->1.120ms. Per-AR boundary gaps remain
+~10.4/11.6us profiled; ordinary PG stream handoffs retained, and microprobe already
+establishes profiler inflation. Stable intergraph gaps remain~1.3-1.36ms.
+
+One mixed->decode gap is8.781/8.727ms (rank0/1) vs retained~1.5ms; rank0
+aclmdlRIExecuteAsync occupies7.162ms, begins1.608ms after prior graph end and ends
+8.770ms after it. This is a single transition outlier, not demonstrated steady
+cost or proof of host work; API can wait on runtime/device dependencies. Don't
+claim recovered latency without reproduction/control of warmup/profile effects.
+
+Remaining cost: decode1 MatMulV2 kernel sum21.874ms of30.340ms graph; mixed
+MatMulV3 sum137.397ms and AIV AR sum111.792ms of335.659ms. Large-message AR median
+872us barely improves from876us, so AIV small-message win is NOT a solution to
+mixed/prefill communication. Bandwidth limit vs algorithm/overlap remains unproven.
+`compare.py`, comparison-profile.json and traceloom/costs.py retain analyses;
+`qwen-aiv-before-after-traceloom.tar.gz` contains four readable rank timelines,
+comparison and caveats. No further runtime change or HTTP-throughput claim.
+
+### Qwen head256 wave-FIA boundary (September18)
+
+Paid capsules under evidence-root: fia256-boundary1 identifies the same admitted
+native function/2528-byte tiling/24-block non-FD launch at Q12/KV2/head256.
+fia256-plan1 passes20 decode cases through32K; fia256-mixed1 passes12 changing
+partitions/pages/two-bank cases at capacity1536. fia256-empty-kv1 passes4 explicit
+positive-query/zero-KV padding cases. All observed max_abs0. This does NOT qualify
+arbitrary model geometry, FD variants, sinks, SWA or other CANN versions.
+
+Critical donor metadata witness: a one-token real request padded to16 gives
+q endpoints[1,16], KV lengths[1,0]. The virtual request's positive query padding
+and zero KV length are legal. Older 30B wrapper's positive-KV guard rejects this;
+service1/2 fail in host admission, not numerical kernels. Permit nonnegative KV,
+retain the native planner and make the zero-KV row's block table zero. Never
+extend the real request to fill graph capacity.
+
+fia256-service3 prototype passes all5,676 hidden/cache checks (ten prompt lengths
+1..2051 and C4/C8). FIA FULL uses raw captured native numerical kernels;
+shadow NONE must explicitly bypass wave FIA so native eager is an independent
+oracle. Keep GDN's owned K-V layout on BOTH arms. One plan/wave publishes tiling,
+query/KV lengths and block rows; all16 FA layers reuse it, with per-invocation
+Torch graph-pool workspace, not bank-owned scratch. Host/device reuse fences
+remain mandatory. Do not retain ephemeral model Q/output as planning fixtures.
+
+Packaged lifecycle adds plan_replace: refresh a persistent frame from the last
+temporary plan without accumulating a tombstone on every service wave. CPU test
+covers1,000 refreshes, stable vector size and stale/invalid handle rejection.
+fia256-packaged2 passes the same5,676 checks, every max_abs0. Preserve the proven
+installation order: install owned GDN, initialize donor NPUWorker, then install
+wave FIA (as in the successful prototype). Moving FIA installation before donor
+Worker initialization in packaged1 produced a first-step hidden/state shadow
+failure; restoring ordering in packaged2 passed. The exact underlying init-side
+effect is not isolated; don't generalize this observation into an import theorem.
+
+fia-wave-profile2 is the packaged AIV service, eight-request16-token warmup then
+6profile steps/rank, no new baseline/throughput run. TraceLoomc2a6920 finds6exact
+bodies and16FIA kernels each. Per rank FIA host calls96->6 and task-update begin/
+end96->0; host FIA GetWorkspace+execute sum~8.55ms->1.31ms over6steps on rank0
+(nested tiling time not added). Steady intergraph gaps remain~1.3–1.5ms: removal
+of overlapped host work is not automatically an HTTP or device-gap gain.
+
+The prior7.162ms RIExecuteAsync outlier reappears as14.512ms on step4, NOT the
+first mixed->decode step3. Mixed transition gap~1.737ms; next decode gap15.821ms.
+Thus this is not a fixed7.16ms cost nor yet proved attention-update causality.
+LiveInference's ACLGraphBackend creates torch.npu.NPUGraph; graph_backend._replay
+calls state.graph.replay under its required pool stream. It does NOT eliminate
+aclmdlRIExecuteAsync. Its startup prime_unpublished_capture exercises exemplars
+synchronously under a restore point, which motivates checking first-use/bank
+history before claiming a replay optimization. Donor's extra FULL CPU synchronize
+exists specifically for the old task-update ordering; removing it requires the
+owned wave's device publication/consume fences and serial compute stream.
+
+`fia256-nosync2`: omit only the pinned wrapper's old task-update CPU stream
+barrier while owned FIA is active;5,676 comparisons pass, every max_abs0.
+`fia-wave-nosync-profile1`:6exact bodies/rank; task updates AND the6 old stream
+synchronizes disappear. Rank0 gaps1.248/1.364/1.353/1.272/1.260ms despite two
+8.3–8.6ms RIExecuteAsync calls: submitting earlier hides those calls under the
+previous graph rather than simply moving the CPU wait to the API critical path.
+
+The diagnostic replay observer records162 calls/rank over warmup/profile/rest
+of the same requests. EVERY >1ms call is ordinal0 for its graph object (12 each,
+~5.7–15.1ms); all131 after-profile calls/rank are <100us, median38.5/37.3us.
+Two profiled ordinal0 calls correspond to previously untouched1536/bank1 and
+2/bank1. This directly supports per-graph/bank first-use setup, rather than an
+intrinsic mixed->decode penalty or a recurring7.16ms cost. The exact internal
+CANN first-use work is not identified. `replay-calls-rank*.json` records it without
+in-call I/O or synchronization. This observer is NOT shipped.
+
+`fia256-primed1`: final owned protocol additionally primes each new capture during
+empty-request startup (explicit capture-bank gate);5,676 hidden/state checks again
+pass, every max_abs0. `fia-wave-primed-profile1` then qualifies the service:
+26distinct graph objects/rank receive ordinal0 before traffic, none cold in the
+6step window or131 later decodes. RIExecuteAsync CANN API max38.35/26.89us on
+rank0/1 (six calls each), versus retained7.162/7.268ms cold outlier. Python replay
+wrapper includes more work: profiled max93.8/72.5us; after-profile medians38.24/
+37.50us. Do not conflate Python wrapper with nested CANN API durations.
+
+Rank0 intergraph gaps1.228/1.364/1.361/1.263/1.273ms; mixed->decode no8.78ms hole.
+Rank1 gaps1.241–1.387ms. Body compute remains~30–31ms decode/~338ms mixed; first
+profiled rank1 body36.882ms is an entry outlier, not erased from evidence. No fresh
+native baseline or unprofiled HTTP throughput claim. Startup capture+prime reports
+35s/0.61GiB versus preceding no-prime28s/0.60GiB: cold work was moved, not deleted.
+Both final admissions exit0 and release6/7. CPU suite82pass; standalone native
+lifecycle PASS; wheel/sdist source inclusion and strict metadata checks pass.
+The final post-hardware change only rejects a changed native workspace size for
+an already-captured frame (CPU rejection test); it doesn't alter admitted plans.
+
+Raw launch loses the provider's short opType label: exact FIA kernel label/type
+is FusedInferAttentionScore_3b093497fc536d61a77a7a3293a524da_5000000000010200203.
+The old guard matching only FusedInferAttentionScore therefore rejects good
+traces. `compare_wave_bodies.py` accepts those two exact names, not a broad fuzzy
+match. All6bodies/rank pass304MatMul/16FIA/128interiorCOMM guards; TraceLoom finds
+129AIV kernels per full body. Comparison/observer/semantic receipts and the four
+before/after timelines are bundled in fia-wave-primed-profile1/
+qwen-fia-wave-before-after-traceloom.tar.gz. Packaged deployment now requires the
+qualified BETTERSCALE_FIA_LIBRARY and startup LD_PRELOAD; see qwen_fia/README.md.

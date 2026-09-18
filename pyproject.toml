@@ -18,6 +18,7 @@ dependencies = []
 where = ["src"]
 
 [tool.setuptools.package-data]
+"betterscale.patches.qwen_fia" = ["*.json", "*.cpp", "README.md"]
 betterscale = ["pins.json", "qwen_pins.json", "qwen_mixed_pins.json"]
 "*" = ["README.md"]
 "betterscale.patches.qwen_gdn" = ["*.json", "*.h", "*.cpp", "*.sh", "README.md"]

@@ -6,6 +6,8 @@ set -euo pipefail
 : "${BETTERSCALE_GDN_LIBRARY:?Set the qualified owned-init K-V library path}"
 : "${ASCEND_RT_VISIBLE_DEVICES:?Set the admitted TP2 device pair}"
 : "${VLLM_CACHE_ROOT:?Set a dedicated text-only compiler cache directory}"
+: "${BETTERSCALE_FIA_LIBRARY:?Set the qualified wave FIA planner path}"
+export LD_PRELOAD="$BETTERSCALE_FIA_LIBRARY${LD_PRELOAD:+:$LD_PRELOAD}"
 export TASK_QUEUE_ENABLE=0
 # Select device-side collectives before workers initialize HCCL or capture graphs.
 export HCCL_OP_EXPANSION_MODE=AIV

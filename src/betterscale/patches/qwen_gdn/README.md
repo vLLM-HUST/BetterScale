@@ -58,8 +58,9 @@ all dtype variants and chunk tables without per-field GPU copies or Sub/Gt ops.
 Only mamba_cache_mode=none is supported. Empty large-block triangular-solve tasks
 skip the recurrence on device; the active arithmetic and donor merge stay intact.
 
-The native FIA parameter-update path has separate resources per bank/capacity
-and is retained. Native model input publication, sampling, D2H, scheduling and
+FIA uses the sibling `qwen_fia` wave-shared native planner and banked metadata
+publication; per-layer native task updates are bypassed only inside this owned
+FULL path. See its README for the qualified native-library/preload boundary. Native model input publication, sampling, D2H, scheduling and
 KV retirement are unchanged. This is not a full N+2 executor or sampling capture.
 The raw-ACL TASK_QUEUE_ENABLE=0 restriction remains. Pinned H2D safety must not
 be weakened to only non_blocking=True without both reuse fences.
@@ -68,7 +69,8 @@ be weakened to only non_blocking=True without both reuse fences.
 
 After sourcing CANN and activating the pinned donor environment, expose this
 checkout's `src` on `PYTHONPATH`. Set `QWEN_MODEL_PATH`,
-`BETTERSCALE_GDN_LIBRARY`, `BETTERSCALE_GDN_HOST_LIBRARY`, `ASCEND_RT_VISIBLE_DEVICES` (an admitted pair), and a
+`BETTERSCALE_GDN_LIBRARY`, `BETTERSCALE_GDN_HOST_LIBRARY`,
+`BETTERSCALE_FIA_LIBRARY`, `ASCEND_RT_VISIBLE_DEVICES` (an admitted pair), and a
 dedicated `VLLM_CACHE_ROOT`, then invoke the colocated `serve.sh`. It binds only
 127.0.0.1:32181 by default (`SERVING_PORT` overrides the port), uses6GiB KV,
 and does not enable diagnostic RPCs or profile hooks. The launcher deliberately

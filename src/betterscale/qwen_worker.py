@@ -150,9 +150,12 @@ class MixedWorker(NPUWorker):
                 "Owned GDN requires qk8/v24 TP-local heads, K/V128, convolution width4"
             )
         from .patches.qwen_gdn import install as install_owned
+        from .patches.qwen_fia import install as install_fia
 
         install_owned()
         super().__init__(vllm_config, *args, **kwargs)
+        # Preserve the qualified bootstrap order: donor initialization, then FIA.
+        install_fia()
 
     def load_model(self, *args, **kwargs):
         result = super().load_model(*args, **kwargs)
