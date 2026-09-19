@@ -1,0 +1,45 @@
+{
+  "version": "0.5.0",
+  "package_source_commit": "96a996e",
+  "status": "PASS",
+  "platform": "Linux/aarch64 CANN9.0.1 Ascend910B2",
+  "native_libraries": 4,
+  "sdist_sha256": "ff01f6c95c3ab889f5c274231696a0c485f2c6ab16a06c4cd2d967ea18705583",
+  "delivery": "sdist with qualified prebuilt native payload; no operator compilation at install",
+  "cpu_tests": 92,
+  "service": {
+    "host": "hw3",
+    "devices": [
+      6,
+      7
+    ],
+    "capsule": "release-qwen0503",
+    "entry": "python -m betterscale serve-qwen",
+    "installed_package": true,
+    "prototype_worker": false,
+    "full_graphs": 26,
+    "prompt_tokens": [
+      2048,
+      2048
+    ],
+    "output_tokens": [
+      8,
+      8
+    ],
+    "identical_repeat_text": true,
+    "apc_enabled": true,
+    "cache_hit_counts_collected": false,
+    "server_exit": 0,
+    "admission_exit": 0,
+    "released": true
+  },
+  "limits": [
+    "startup and two short HTTP completions, not new performance or quality evidence",
+    "existing pinned donor runtime and weights required",
+    "DSV4 numerical/runtime code and HC-pre binary unchanged"
+  ],
+  "prior_harness_failures": [
+    "attempt1 used system Transformers instead of the qualified donor venv",
+    "attempt2 replaced CANN PYTHONPATH, omitting the acl module"
+  ]
+}

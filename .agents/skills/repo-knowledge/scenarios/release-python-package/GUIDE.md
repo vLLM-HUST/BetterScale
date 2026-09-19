@@ -200,3 +200,18 @@ The PyPI route remains sdist-only (prebuilt native payload, Python wrapper assem
 For x86 website CI, assemble the ARM wheel and explicitly cross-install with
 `pip install --target ... --platform linux_aarch64 --only-binary=:all:` to inspect
 Python/config metadata only. Never load ARM libraries or claim an NPU boot there.
+
+Installed-service harness lesson: a new `--system-site-packages` venv does not
+inherit the qualified donor venv's Transformers installation. Use the existing
+qualified Python with an isolated `pip --target` package directory, asserting the
+imported BetterScale path. After sourcing CANN, prepend package/donor paths to
+`PYTHONPATH`; do not replace it and drop the vendor `acl` binding. Preflight both
+Transformers5.14.1 and `find_spec("acl")` before admitting the NPU startup. The first
+two release harness attempts failed these environment boundaries before model
+qualification; they are not evidence of a kernel regression.
+
+`release-qwen0503` passes from the actual clean sdist target installation: public
+launcher/Worker,26FULL graphs, two2048-token inputs and8outputs each with equal
+repeat text; exit0 and both selected cards released. APC is enabled but this
+smoke did not request cache-hit counters. It is not new throughput/quality evidence.
+The shipped runtime source is96a996e; receipt `docs/evidence/release-0.5.0.json`.
