@@ -1,5 +1,7 @@
 # Optimize Qwen hybrid TP2 serving
 
+For production entry consolidation, read the [worker composition audit](worker-composition-audit.md): observed ownership/order traps and a proposed, not yet implemented, single-entry route.
+
 Enter here before profiling or extending FULL coverage for Qwen3.8-27B HTTP
 serving. This is not the DSV4 Worker or the ordinary Qwen3-30B-A3B owned reactor.
 
