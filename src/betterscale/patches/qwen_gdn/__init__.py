@@ -9,7 +9,11 @@ from pathlib import Path
 def check_library():
     if os.environ.get("TASK_QUEUE_ENABLE") != "0":
         raise ValueError("Owned GDN raw launch requires TASK_QUEUE_ENABLE=0")
-    path = Path(os.environ.get("BETTERSCALE_GDN_LIBRARY", ""))
+    path = Path(
+        os.environ.setdefault(
+            "BETTERSCALE_GDN_LIBRARY", str(Path(__file__).with_name("libbs_gdn.so"))
+        )
+    )
     contract = json.loads(Path(__file__).with_name("native.json").read_text())
     if (
         not path.is_file()
@@ -18,7 +22,12 @@ def check_library():
         raise ValueError(
             "BETTERSCALE_GDN_LIBRARY must name the qualified owned-init KV library"
         )
-    host = Path(os.environ.get("BETTERSCALE_GDN_HOST_LIBRARY", ""))
+    host = Path(
+        os.environ.setdefault(
+            "BETTERSCALE_GDN_HOST_LIBRARY",
+            str(Path(__file__).with_name("libbs_gdn_host.so")),
+        )
+    )
     if (
         not host.is_file()
         or hashlib.sha256(host.read_bytes()).hexdigest() != contract["host_sha256"]

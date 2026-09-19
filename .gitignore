@@ -15,3 +15,6 @@ __pycache__/
 
 # Local linked working trees are not submodules.
 /.worktrees/
+
+/src/betterscale/patches/qwen_gdn/*.so
+/src/betterscale/patches/qwen_fia/*.so

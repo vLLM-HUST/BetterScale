@@ -14,3 +14,6 @@ include setup.py
 recursive-include src/betterscale/patches/hc_workspace *.so *.patch *.txt
 
 recursive-include src/betterscale/patches/qwen_gdn *.h *.sh
+
+recursive-include src/betterscale/patches/qwen_gdn *.cpp *.so
+recursive-include src/betterscale/patches/qwen_fia *.cpp *.so

@@ -1,4 +1,4 @@
-"""The only native payload is a qualified Linux/aarch64 CANN host-tiling library."""
+"""Qualified Linux/aarch64 native payloads; installation never compiles operators."""
 
 import hashlib
 import json
@@ -10,18 +10,23 @@ from setuptools.command.sdist import sdist
 
 
 def check_native():
-    root = Path(__file__).parent / "src/betterscale/patches/hc_workspace"
-    library = root / "libcust_opmaster_rt2.0.so"
-    expected = json.loads((root / "native.json").read_text())[
-        "candidate_library_sha256"
-    ]
-    if (
-        not library.is_file()
-        or hashlib.sha256(library.read_bytes()).hexdigest() != expected
-    ):
-        raise RuntimeError(
-            "Missing/unqualified HC-pre binary; see patches/hc_workspace/README.md"
-        )
+    root = Path(__file__).parent / "src/betterscale/patches"
+    artifacts = (
+        ("hc_workspace", "libcust_opmaster_rt2.0.so", "candidate_library_sha256"),
+        ("qwen_gdn", "libbs_gdn.so", "sha256"),
+        ("qwen_gdn", "libbs_gdn_host.so", "host_sha256"),
+        ("qwen_fia", "libbs_fia.so", "sha256"),
+    )
+    for patch, filename, key in artifacts:
+        library = root / patch / filename
+        expected = json.loads((root / patch / "native.json").read_text())[key]
+        if (
+            not library.is_file()
+            or hashlib.sha256(library.read_bytes()).hexdigest() != expected
+        ):
+            raise RuntimeError(
+                f"Missing/unqualified {patch}/{filename}; see its patch README"
+            )
 
 
 class NativeBuild(build_py):

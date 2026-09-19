@@ -27,13 +27,20 @@ See [composition, lifecycle and migration](src/betterscale/models/README.md).
 Unsupported configurations fail before installation; missing qualified native
 libraries never cause a silent fallback to a different state layout.
 
-### Qwen hybrid TP2 (source-only)
+### Qwen hybrid TP2
 
 The no-MTP route owns a K-V GDN state pool and dynamic mixed FULL graphs keyed by
 token capacity plus alternating metadata bank, not request partitions. It uses
 wave-shared FIA planning and supports align-mode prefix caching. See the
 [service contract and launcher](src/betterscale/patches/qwen_gdn/README.md).
-This Qwen integration is **not in published PyPI 0.4.2**. Native MTP2 remains a
+Release 0.5.0 includes the qualified Qwen native libraries. After installation:
+
+```bash
+python -m pip install --no-deps vllm-betterscale==0.5.0
+python -m betterscale serve-qwen /models/Qwen3.8-27B --devices 0,1
+```
+
+Use the pinned Linux/aarch64 CANN 9.0.1 runtime; model weights remain separate. Native MTP2 remains a
 separate configuration with immutable convolution-weight packing; it does not
 activate owned GDN or mixed FULL.
 

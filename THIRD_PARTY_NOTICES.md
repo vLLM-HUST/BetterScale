@@ -37,3 +37,15 @@ original flash-linear-attention MIT attribution (license text in
 `licenses/FLA-MIT.txt`). The separately built AscendC H/O
 library retains its original per-file notices under
 `prototypes/qwen38-serving/ascendc_gdn`; it is not a system CANN replacement.
+
+Qwen native payloads in 0.5.0: `libbs_gdn.so` contains the adapted AscendC H/O
+kernels (source `4e21bb18063e92966a79218f507a93eb961e6f0a`, donated from
+vLLM-Ascend `9bf964cb4b87c8cd0d6852c41a55b3c29711fa95`) and pinned Catlass
+`41bf90da655bba3c66d0acd7e00abe33960ecfd6`. Tianjin University 2025–2026
+components retain BSD-3-Clause (see `licenses/GDN-BSD-3-Clause.txt`); Huawei
+Catlass components retain CANN Open Software License Agreement 2.0. The GDN
+host adapter and FIA planner sources are Apache-2.0. These artifacts are for
+Ascend processors only and dynamically depend on, but do not bundle, CANN and
+Torch/Torch-NPU runtime libraries. Per-file source notices remain available in
+the public repository's `prototypes/qwen38-serving/ascendc_gdn` tree and the
+pinned Catlass source. The package includes all applicable license texts.

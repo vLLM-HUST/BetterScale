@@ -33,8 +33,8 @@ command = [
     "-lc10",
     "-ltorch_npu",
     "-ldl",
-    f"-Wl,-rpath,{t / 'lib'}",
-    f"-Wl,-rpath,{n / 'lib'}",
+    "-Wl,-rpath,$ORIGIN/../../../torch/lib",
+    "-Wl,-rpath,$ORIGIN/../../../torch_npu/lib",
     "-o",
     str(a.output.resolve()),
 ]

@@ -4,7 +4,7 @@
 
 BetterScale is a modular execution-optimization package for **vLLM Ascend**.
 It adds supported FULL graph paths, ordered replay, and device-side progress and
-metadata preparation for DeepSeek V4 Flash. One native Worker entry composes the
+metadata preparation for DeepSeek V4 Flash and dynamic mixed FULL graphs for Qwen27. One native Worker entry composes the
 patches; it does not replace the serving engine or configure your environment.
 
 [Measured results and mechanisms](https://vllm-hust.sage.org.ai/betterscale.html)
@@ -14,15 +14,15 @@ patches; it does not replace the serving engine or configure your environment.
 Use your **existing, working Ascend serving environment**, with Python 3.12+:
 
 ```bash
-python -m pip install --no-deps vllm-betterscale==0.4.2
+python -m pip install --no-deps vllm-betterscale==0.5.0
 ```
 
 The package deliberately does not install or upgrade vLLM, vLLM-Ascend, torch-npu,
-the CANN runtime, model weights, or device kernels. Install those through your normal
+the CANN runtime, model weights, or the donor device operators. Install those through your normal
 Ascend deployment. The Linux/aarch64 package includes a qualified HC-pre host-tiling
 library for TP, selected privately without overwriting your donor installation.
 Native CANN-licensed components remain solely for Ascend processors. PyPI ships
-an sdist with that prebuilt library: pip builds the small Python wrapper locally,
+an sdist with that prebuilt library and the three qualified Qwen native libraries: pip builds the small Python wrapper locally,
 without compiling operators. Install on Linux/aarch64 in the qualified environment.
 
 This release is pinned to **vLLM 0.25.1**, **vLLM-Ascend 0.25.1rc1**, and
@@ -31,15 +31,47 @@ Ascend 910B2 cards connected with HCCS. Worker initialization verifies both vers
 and selected upstream source files; a different build may be rejected even if its
 version string matches. Do not disable those checks to force an unqualified runtime.
 
-## Start
+## Start Qwen3.8-27B · TP2
 
-Keep your native serving arguments and add:
+In the qualified Linux/aarch64 CANN 9.0.1 environment, choose two idle 910B2 cards
+and replace the local model path:
 
-```text
---worker-cls betterscale.worker.Worker
+```bash
+python -m betterscale serve-qwen /models/Qwen3.8-27B --devices 0,1 --port 8000
 ```
 
-This release supports two bounded, single-node configurations—not arbitrary models,
+No Git checkout, native compilation, library-path exports or second Worker are
+needed. The package supplies GDN H/O, its graph-pool host adapter and the FIA
+planner. The launcher sets the pre-startup preload, queue mode and AIV, then
+executes the existing `betterscale.worker.Worker` service. Explicit
+`BETTERSCALE_*_LIBRARY` overrides remain available but must match the packaged
+artifact identities. It never rewrites installed donor files.
+
+Configuration: BF16, TP2/DP1, no MTP, eight seats, 2048-token budget, 8192 context,
+6 GiB KV per rank, FULL capacities 1/2/4/8/16/32/64/128/256/512/1024/1536/2048,
+align-mode prefix caching, asynchronous scheduling, text-only input. Qwen pins
+include vLLM source752a3a50 and Ascend9bf964cb; the package validates selected
+source files as well as versions. Model weights and this pre-existing runtime
+are still prerequisites; `pip install` does not provision them.
+
+In another terminal:
+
+```bash
+curl --fail http://127.0.0.1:8000/health
+curl --fail http://127.0.0.1:8000/v1/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"qwen27","prompt":"Hello","max_tokens":32,"temperature":0}'
+```
+
+The loopback endpoint is intentional. `--cache-dir` selects a dedicated compiler
+cache (default `~/.cache/betterscale/qwen27`). The launcher does not reserve cards;
+use your host's admission protocol. Restart with a fresh native service/state pool
+to revert; never hot-unpatch GDN state. Historical Qwen measurements are retained
+as source-result evidence, not a fresh performance claim for this packaging change.
+
+## Start DSV4
+
+Choose one complete command below. These are two bounded, single-node DSV4 configurations—not arbitrary models,
 shapes or parallel layouts. The examples below use local model weights at
 `/models/DeepSeek-V4-Flash`; replace that path with your Ascend W8A8 checkpoint.
 CANN/HCCL and device visibility remain your existing environment's responsibility.
@@ -118,7 +150,7 @@ The distribution contains Python source and upstream compatibility pins, not mod
 weights, datasets, CANN or donor binaries. It adapts Apache-2.0 upstream execution
 paths; third-party notices and the license are included. Source is available in the package and the
 [public development repository](https://github.com/vLLM-HUST/BetterScale).
-## Physical KV sizing and context capacity
+## DSV4 physical KV sizing and context capacity
 
 Without `--kv-cache-memory-bytes`, BetterScale measures the resident target/draft
 program in a shared graph pool and budgets actual free memory minus model,
@@ -146,7 +178,7 @@ DP caches remain engine-local; use session affinity or the native
 `X-data-parallel-rank` routing header to return to the same engine.
 The 3GiB diagnostic preemption failure is not claimed fixed.
 
-## Prefix reuse qualification
+## DSV4 prefix reuse qualification
 
 TP8 and DP8 each pass cold32/32 and warm32/32 original retained retrieval
 questions; all warm requests hit and cold/warm token outputs match. DP also

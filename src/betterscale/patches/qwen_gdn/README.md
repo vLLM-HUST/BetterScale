@@ -179,6 +179,20 @@ be weakened to only non_blocking=True without both reuse fences.
 
 ## Deployment
 
+Release 0.5.0 packages all three qualified native libraries. In the pinned donor
+environment, no source checkout or manual library exports are needed:
+
+```bash
+python -m pip install --no-deps vllm-betterscale==0.5.0
+python -m betterscale serve-qwen /models/Qwen3.8-27B --devices 0,1 --port 8000
+```
+
+The Python launcher locates package resources and executes `serve.sh` in a fresh
+process so FIA preloading precedes CANN. The host adapter's library search is
+relative to its installed package, not an experimental workspace. Checks still
+reject mismatched libraries. The following manual route remains for source builds.
+
+
 After sourcing CANN and activating the pinned donor environment, expose this
 checkout's `src` on `PYTHONPATH`. Set `QWEN_MODEL_PATH`,
 `BETTERSCALE_GDN_LIBRARY`, `BETTERSCALE_GDN_HOST_LIBRARY`,
@@ -257,7 +271,7 @@ slightly worse (~31.8–32.1→32.5–33.0ms); prefill savings do not offset thi
 C1/2048. Keep this as an opt-in configuration, not a universal faster default.
 Two warmed samples establish bounded behavior, not statistical certainty.
 Compact receipts and all round metrics: `docs/evidence/qwen-mixed-full.json`
-in the repository. This source integration has not been published to PyPI.
+in the repository. This historical study predates PyPI delivery; release 0.5.0 packages the current route.
 
 
 ### Dual-bank SWE acceptance

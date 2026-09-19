@@ -174,3 +174,29 @@ match, PyPI simple index is visible, and a fresh pip install from the official
 index builds/installs successfully without operator compilation. All30 installed
 runtime/native files match the audited local sdist install; public Worker/pins
 import checks pass. Local receipt: runs/release-0.4.2/publication.json.
+
+## Qwen native delivery 0.5.0
+
+Four native libraries now belong in the fresh release staging tree: the unchanged
+HC-pre library, GDN H/O, the GDN graph-pool host adapter, and the FIA planner.
+`setup.py` checks each against the corresponding leaf `native.json`; no runtime
+operator compilation or download is allowed. Keep them out of Git. GDN/Catlass
+also needs its BSD-3-Clause/Tianjin University notice alongside existing CANN2.0
+terms; do not describe the entire native payload as Apache-only.
+
+The previously qualified GDN host adapter contained an absolute experiment RPATH.
+For distribution, relocate it to `$ORIGIN/../../../torch/lib` and
+`$ORIGIN/../../../torch_npu/lib`, update its identity, and qualify the installed
+artifact. Do not ship experiment-path lookup or silently accept an old digest.
+The other native libraries and numerical implementation remain unchanged.
+
+`python -m betterscale serve-qwen MODEL --devices 0,1` resolves installed resources,
+verifies all three Qwen digests before exec, then executes packaged `serve.sh` so
+FIA preloading precedes CANN initialization. It is a launcher, not another Worker.
+Direct Worker callers may override the paths but remain subject to exact artifact
+checks. Installation still assumes the pinned donor/CANN environment and weights.
+
+The PyPI route remains sdist-only (prebuilt native payload, Python wrapper assembly).
+For x86 website CI, assemble the ARM wheel and explicitly cross-install with
+`pip install --target ... --platform linux_aarch64 --only-binary=:all:` to inspect
+Python/config metadata only. Never load ARM libraries or claim an NPU boot there.

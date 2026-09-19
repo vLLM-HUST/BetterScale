@@ -10,7 +10,11 @@ from pathlib import Path
 def check_library():
     if os.environ.get("TASK_QUEUE_ENABLE") != "0":
         raise ValueError("Wave FIA requires TASK_QUEUE_ENABLE=0")
-    path = Path(os.environ.get("BETTERSCALE_FIA_LIBRARY", ""))
+    path = Path(
+        os.environ.setdefault(
+            "BETTERSCALE_FIA_LIBRARY", str(Path(__file__).with_name("libbs_fia.so"))
+        )
+    )
     contract = json.loads(Path(__file__).with_name("native.json").read_text())
     if (
         not path.is_file()
