@@ -1,5 +1,9 @@
 # One Worker, local behavior ownership
 
+阅读 Qwen 时，先看 [原生请求调用链与 GDN hook 对照](../patches/qwen_gdn/README.md)，
+再看 [原生 FULL FIA 更新协议与覆盖位置](../patches/qwen_fia/README.md)。
+本页只讲入口装配，不代替执行链说明。
+
 The public entry is `betterscale.worker.Worker`, directly derived from native
 `NPUWorker`. Importing it does not install patches. `models.select` uses native
 model/configuration fields and validates the entire admitted route before hook

@@ -1,9 +1,115 @@
-# Owned Qwen GDN service integration
+# 让 Qwen 的动态 mixed 请求走 FULL graph，而不是枚举请求组合
 
-Entry: `betterscale.worker.Worker`, selecting Qwen without MTP from native
-configuration. DSV4 and native MTP2 select separate patch compositions through
-the same entry. The hw3 TP2 service passes the bounded qualification below; this
-is not a claim of arbitrary model or scheduling compatibility.
+这里讲当前 **Qwen27 BF16、TP2、无 MTP** 路径。入口仍是
+`betterscale.worker.Worker`；原生配置选择这套覆盖。原生 scheduler、请求入退场、
+KV 页分配、sampling 与结果 D2H 都保留，不是另起一个执行器。
+
+## 原来一轮请求怎么走
+
+先以固定 donor 的 [NPUModelRunner](../../../../upstream/vllm-ascend/vllm_ascend/worker/model_runner_v1.py)
+为底图。下面省略无关分支，箭头表示调用关系，不表示所有 GPU 工作同步完成：
+
+```text
+原生 scheduler 给出本轮请求与 token 配额
+  → execute_model
+      → _prepare_inputs                         准备 token、位置、slot mapping 等
+      → _determine_batch_execution_and_padding  选执行模式、padding 和图描述符
+      → _build_attention_metadata               为各 attention group 构造 metadata
+      → _model_forward
+          → 原生模型 / ACLGraphWrapper           eager 执行或捕获、重放图
+          → 原生 FULL attention 参数更新路径     按图内任务更新本轮 attention 参数
+  → 原生 sample_tokens / 输出回收                不在本补丁捕获范围内
+```
+
+在当前非 ENPU donor 分支，`_model_forward` 的 Python 调用顺序是先 `run_model()`，
+后 `_update_full_graph_params_if_needed()`。图内事件和 update stream 协议协调
+设备实际执行；不能把它画成“所有 attention 参数先更新完，模型才提交”，也不能
+把 Python 返回顺序当成 GPU 完成顺序。FIA 部分见[对应调用边界](../qwen_fia/README.md)。
+
+模型内部又有一层原生调用链。本检查点是 48 层 GDN、16 层 full attention；
+[GDN 原生实现](../../../../upstream/vllm-ascend/vllm_ascend/ops/gdn.py)的外层负责：
+
+```text
+输入投影：QKV、gate 等
+  → GDN core（卷积、归一化 / gate、recurrent 或 chunk 计算、状态更新）
+  → gated norm
+  → 输出投影
+```
+
+原生 prefill 分支会按请求索引取出 recurrent state，转置成 chunk 算子的布局，
+执行后再转回并写回状态池；混合输入还会拆分 decode/prefill 部分并拼合结果。
+原生 builder 则提供这些分支需要的请求长度、状态索引和 chunk 信息。
+
+## 原来的限制在哪里
+
+请求数、各请求长度和 prefill/decode 组成都会变。若沿用需要 host 分支和临时
+状态整理的计算路径，仅增加几个 graph bucket，并不会自动得到能服务任意合法
+混合分区的图。枚举“几个 decode 加几个多长的 prefill”也会让图目录不断膨胀。
+
+我们的改变是：图按 **token 容量 × metadata bank** 捕获；请求分区与状态位置
+变成图读取的 metadata 内容。算子直接在持久 K-V 状态池上工作，不再为每波
+prefill gather 一份 recurrent state、转置后计算、再 scatter 回去。
+这不等于消除所有中间张量布局转换；`execution.py` 中 Q/K/W/U 的整理仍存在。
+
+## 我们 hook 在哪里，原生还负责什么
+
+安装入口在 [__init__.py](./__init__.py)，顺序是 metadata → execution → publication。
+[Qwen 装配](../../models/qwen.py)在原生 Worker 初始化前安装 GDN，初始化后安装 FIA，
+模型加载后整理不可变卷积权重。以下覆盖只对已通过准入的进程安装：
+
+| 原生接缝 | 我们接入的实现 | 保留的原生行为 |
+|---|---|---|
+| `AscendGDNAttentionMetadataBuilder.build` / `build_for_cudagraph_capture` | [metadata.py](./metadata.py)：按真实请求长度、状态槽位生成容量稳定的 metadata；声明本路径的 graph 支持 | scheduler 的请求与配额、缓存页管理；不是伪造所有模型都支持 FULL |
+| donor Qwen GDN 类的 `_forward_core` | [execution.py](./execution.py)：卷积 → 融合预处理 → owned recurrent 或 chunk H/O，统一 K-V 状态解释 | 外层输入投影、gated norm、输出投影；不是替换整个模型 |
+| `CudagraphDispatcher._create_padded_batch_descriptor` / `initialize_cudagraph_keys` | [publication.py](./publication.py)结合 [graphs.py](./graphs.py)：容量描述符加 bank 身份，并生成另一 bank 的 keys | 原生 dispatcher、原生 capture/replay 框架 |
+| `NPUModelRunner._determine_batch_execution_and_padding` | 选当前 bank，prefill 容量向上取整，再调用原生方法 | 原生执行模式和 padding 计算的其余部分 |
+| `NPUModelRunner._build_attention_metadata` | 给 GDN builder 当前 frame 与 CPU block table；原生 build 返回后统一发布 GDN slab | 原生 attention-group 遍历及普通 attention metadata 构造 |
+| `NPUModelRunner._warmup_and_capture` / `_dummy_run` | 标记捕获 bank / dummy 范围，退出时清除标记 | 原生 warmup、模型执行与图捕获主体 |
+| `NPUModelRunner._model_forward` | publication 拥有唯一覆盖入口；显式调用 FIA wave 回调，并圈定 GDN 图资源与 consumed fence | 原生模型 forward、原生输入、输出及后续 sampler |
+
+`execution.install()` 先导入 donor 自己的 Qwen patch，再覆盖 `_forward_core`，
+避免原生模块稍后导入时把我们的实现盖回去。这仍是进程级类方法覆盖，不是修改
+安装目录源码，也不是已经获得了支持任意模型混装的局部插件接口。
+
+## 一波 mixed 请求具体怎么经过这些接缝
+
+1. 原生 runner 准备当前请求；我们选择足够大的 token 容量和当前 bank。
+2. 在原生 metadata 构造调用外，publication 取得该 `(capacity, bank)` 的 frame。
+   GDN builder 填入 query 边界、状态槽位、cold/warm 标志和 chunk 索引。
+3. 所有 GDN group 的 metadata 合成一块 pinned slab，在 ingress stream 上 H2D；
+   compute stream 等上传事件。FIA 另有自己的 slab，复用 ingress stream，
+   每 wave 运行一次 native planner，并发布本轮 attention 参数。
+4. 在 `_model_forward` 内按 **FIA wave 准备 → 当前 bank 的 GDN 图资源 →
+   原生 forward → GDN consumed 标记 → FIA release** 的顺序运行。
+   命中图时重放图，图内 GDN/FIA 读取稳定地址上的新 metadata。
+5. 原生 sampler、输出对象和 D2H 继续收尾。我们不接管请求完成和 KV 页退休。
+
+图捕获之外也必须使用相同的 owned K-V GDN；不能因为这轮没命中图，就把已经
+写成 K-V 的状态交给原生 V-K 实现。APC align 的缓存页与状态复制仍由原生处理，
+我们用相同的 block-table 列选择规则找到本轮可写目标，不修改共享前缀快照。
+
+## 两个 bank 不是两份模型进度
+
+| 存储 | 谁写 / 谁读 | 重用条件 |
+|---|---|---|
+| GDN/FIA pinned metadata slab | host / ingress DMA | host 重写前确认该 slab 上次 uploaded 完成 |
+| GDN/FIA device metadata bank | ingress / graph | ingress 覆盖前等该 bank 的 consumed；compute 使用前等 uploaded |
+| bank 对应 graph 与图参数 | 原生 capture / 串行 replay | descriptor 区分 bank；图资源在 forward 范围内选择并恢复 |
+| GDN recurrent state、conv state、attention KV | 原生缓存管理 + 有序模型计算 | 一套请求状态池，按请求槽位更新；不复制成两个独立进度 |
+| 临时 H/V、workspace、输出中间量 | 算子 / 后续消费者 | 交给原生 graph pool 分配和复用，不为两 bank 常驻复制 scratch |
+| sampler 最终结果与 D2H | 原生 sampler / 原生输出回收 | 继续遵守 donor 原有输出所有权，不另造输出双槽 |
+
+所以这里的 overlap 能力来自明确的读写依赖，不是仅加 `non_blocking=True`。
+当前仍是串行 compute stream；不是全链路 N+2 scheduler，也没有捕获 sampling。
+
+## 准入、部署和证据
+
+统一入口后的[新验收记录](../../../../docs/evidence/worker-unification.json)：
+88 项 CPU 测试；hw3 TP2 的 68 个 rank-step、8,772 项 hidden/cache 对照全过，
+max_abs 为 0；冷/热 APC 和八路共享前缀通过。FULL/NONE 两侧都使用 owned K-V
+数值实现，不是对原生 V-K 路径的位级等价证明，也不是新吞吐成绩。
+
+下面保留具体容量、原生库构建与历史实验边界，不能混作同一轮测量。
 
 ## Contract
 
