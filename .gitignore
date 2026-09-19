@@ -12,3 +12,6 @@ __pycache__/
 *.egg-info/
 
 /src/betterscale/patches/hc_workspace/*.so
+
+# Local linked working trees are not submodules.
+/.worktrees/
