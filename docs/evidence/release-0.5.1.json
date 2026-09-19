@@ -1,0 +1,41 @@
+{
+  "version": "0.5.1",
+  "status": "PASS",
+  "native_libraries": 4,
+  "delivery": "sdist with unchanged qualified prebuilt native payload",
+  "cpu_tests": 101,
+  "service": {
+    "host": "hw3",
+    "devices": [
+      6,
+      7
+    ],
+    "capsule": "release-qwen051",
+    "entry": "python -m betterscale serve-qwen",
+    "installed_package": true,
+    "prototype_worker": false,
+    "prompt_tokens": [
+      32,
+      2048,
+      2048
+    ],
+    "output_tokens": [
+      8,
+      8,
+      8
+    ],
+    "identical_2048_repeat_text": true,
+    "apc_enabled": true,
+    "cache_hit_counts_collected": false,
+    "server_exit": 0,
+    "admission_exit": 0,
+    "released": true
+  },
+  "performance_evidence": "qwen-mc2.json",
+  "limits": [
+    "Installed-service startup and three completions, not new SWE throughput or quality evidence.",
+    "Small16/32/128 prefill forward time regresses4.31/4.20/2.04%; uniform prefill policy explicitly retained.",
+    "Pure decode device path preserved, measured change within0.3%.",
+    "DSV4 and native MTP runtime branches unchanged."
+  ]
+}

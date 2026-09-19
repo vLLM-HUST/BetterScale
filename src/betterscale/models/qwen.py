@@ -161,3 +161,8 @@ def model_loaded(worker):
 
         consumer = forward_core
     pack_conv_weights(worker.model_runner.model, consumer=consumer)
+
+    if worker.vllm_config.speculative_config is None:
+        from ..patches.qwen_mc2 import install
+
+        install(worker.model_runner.model)

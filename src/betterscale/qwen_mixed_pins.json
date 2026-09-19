@@ -52,6 +52,18 @@
     {
       "path": "vllm_ascend/patch/platform/patch_mamba_config.py",
       "sha256": "ee38c68c27357a7d18f7e368e03a352bb312f79c3576431a64f688ce953716ac"
+    },
+    {
+      "path": "vllm/model_executor/layers/linear.py",
+      "sha256": "1f1ac36402338d32643d4d707386852caba188c9fe04cd5fbc1d4a6b739f4507"
+    },
+    {
+      "path": "vllm_ascend/ops/linear.py",
+      "sha256": "3f14a92019a6612158ba41a26c358c8f164cbda66b743c518a5e4019694b5dc3"
+    },
+    {
+      "path": "vllm_ascend/distributed/parallel_state.py",
+      "sha256": "40199b8d1be13c6665a3a31c4b0b4cfbe1996d0e16a8a8da8d8a5aec6930f4be"
     }
   ]
 }

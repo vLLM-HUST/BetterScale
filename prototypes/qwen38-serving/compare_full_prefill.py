@@ -54,7 +54,9 @@ def inspect(
             )
             == matmul_count
         ), collections.Counter(r[2] for r in body)
-        assert sum(r[2] == "FusedInferAttentionScore" for r in body) == 16
+        # The owned raw wrapper can expose the compiled FIA suffix rather than
+        # the canonical op type. Both names still denote one FIA per FA layer.
+        assert sum(r[2].split("_", 1)[0] == "FusedInferAttentionScore" for r in body) == 16
         compute = [(r[0], r[1]) for r in body]
         comm = [(max(a, lo), min(b, hi)) for a, b in all_comm if a < hi and b > lo]
         assert len(comm) == 128, len(comm)

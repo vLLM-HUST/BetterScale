@@ -1145,3 +1145,106 @@ Service/admission exit0 and devices reclaimed.88 CPU tests pass.12 relocated
 function bodies match after explicit callback normalization;16 runtime/pin files
 are byte-identical to261bdb5. DSV4 and native MTP have CPU lifecycle/source evidence,
 not fresh hardware or throughput measurements. Do not promote these as new speedups.
+
+### Native-versus-final step curves (September19)
+
+Enter `docs/STEP-EVIDENCE.zh-CN.md` and `docs/evidence/qwen-step-matrix.json`
+before collecting another shape sweep. `runs/qwen38-tp2-serving/step-matrix1`
+completes hw3 6/7 ABBA with current unified Worker98f5071, same qualified kernels,
+no MTP, APC/AIV on,6GiBKV,8seats/2048budget/8192context. External preallocated
+device events are recorded outside capture, resolved only after HTTP drain;
+no profiler or per-step synchronize in the curves. Per startup: full shape
+warmup then two measured cohorts/shape. All22 actual step points have four
+cohorts/arm, both ranks agree, admission exits0 and selected cards are reclaimed.
+
+APC remains enabled but shape cohorts start cold and use first-token salt to
+prevent shared prefixes. This is not another SWE cache-hit distribution. A
+2048-token prompt is actually1536+512 under native align scheduling on BOTH
+arms; chart actual scheduled tokens and retain continuation-prefix length.
+Do not force a fictitious2048 step or turn two chunks into independent requests.
+Decode selects full B1/2/4/8 windows with initial context1024/4096 and actual
+CPU computed lengths in `[context+8,context+40)`. The initial context is not
+an assertion that all subsequent steps have the exact same KV length.
+
+Observed decode step-rate gain10.10–11.75%; cold128 prefill383.229→77.779ms,
+1024 prefill394.796→239.551ms; mixed4D+512435.703→232.568ms,4D+1536
+438.987→420.203ms. Padding capacity is part of cost:513/516actual tokens
+use1024,1537/1540use2048. Do not turn the best local gain into an E2E claim.
+B8/initial4K outside-forward interval median1.43154→1.35254ms: most of that
+point's~3.30ms period reduction is INSIDE the forward envelope, not a large
+inter-step idle disappearing. Forward event envelopes include host-update
+waits; outside-forward intervals include sampling/preparation, not just idle.
+
+First native/candidate six-step TraceLoom windows have identical dispatch lists,
+304MatMul/16FIA/128communication guards per complete body, both ranks. FIA
+host/workspace calls96→6, update begin/end64→0, graph executes4→6. These are
+fresh native-versus-final diagnostics, unlike APC-off earlier-candidate profiles.
+They are not an ablation assigning all gains to graph capture alone. Reproducers:
+`prototypes/qwen38-serving/step_{worker,probe,compare}.py`, `summarize_steps.py`,
+`profile_steps.py`, `plot_steps.py`; figure/complete event rows remain in capsule.
+
+### Prefill1024→1536 marginal-cost attribution (September19)
+
+Before blaming GDN serial depth or repeating a model profile, read
+`prototypes/qwen38-serving/PREFILL-DELTA.zh-CN.md` and
+`docs/evidence/qwen-prefill-delta.json`. Same hw3 6/7 candidate98f5071, original
+APC/AIV/noMTP configuration, four unprofiled cohorts per shape plus only six
+profile forwards.1536 remains the first chunk of2048; exact dispatch
+1024/1536/512/1536/512/1024, both ranks, all semantic guards pass. Admission0/reclaimed.
+
+Of~98.42ms added body time, MatMul adds~44.92ms, AIV AllReduce~36.86ms,
+GDN kernels~11.53ms, FIA~.65ms. Categories have no material overlap in this sample;
+GDN conv-to-outproj regional spans overlap those categories and must not be added.
+The64MLP gate/up GEMMs [N,5120]@[17408,5120]^T switch MatMulV2 at1024 toV3 at1536,
+42.045→69.680ms (1.657x); both ND/BF16/block24. This is a dispatch/efficiency
+hypothesis, not proof a particular tiling is faulty. Aggregate V2+V3 before
+comparing; a renamed work population makes V3-only delta falsely~86.9ms.
+AllReduce payload10→15MiB/time~1.495x supports a large-message investigation,
+not physical-link saturation or pure transfer-time attribution. No product change.
+
+###2026-09-19: separate gate/up efficiency from row-projection MC2
+
+The prefill1024→1536 ledger's largest GEMM is column-parallel gate/up, without
+an ensuing AllReduce. Row projections (localK3072/8704,out5120) are the MC2 target.
+See `prototypes/qwen38-serving/matmul-allreduce/README.md` before redoing the probes.
+Standalone gate/up splitting/concat and contiguous KxN packing lost; one-time NZ29
+weight packing passed numerical checks and saved~12% at1536 in a bounded microprobe.
+This is not a shipped optimization or model-level gain; matched model ABBA is pending.
+Native MC2 passed changed-input dual-bank capture after communicator bootstrap.
+However, the isolated in-place split controls fail deterministically on1536,K3072,
+bank0's second reuse—even with CPU oracle, phase fences, retained intermediates and
+raw same-stream HCCL. Do not publish fused-vs-split speedups using those failed runs.
+The single-device GEMM/in-place-consumer discriminator passes. Preserve this boundary
+rather than asserting the fault is PG events, GEMM tiling, or BF16 tolerance.
+
+Follow-up: Fletcher closed format tuning; real-model NZ hurts decode~1.7ms/step
+while saving only~4ms on1536prefill. Do not ship or keep exploring weight formats.
+Actual ND MatMulV3 tiling/PMU recovered with msprof op in `gate-up-tiling1`:
+1536 uses3x2L2 panels (512x8704,85MiB weights);1408/1792 use1x5 (~35MiB).
+Same128x256x64 Cube tile. A tiny launcher of installed native base code with only
+L2 metadata changed passes guards/changed-input two-bank tests and is~2–3.4%faster
+than stock for1536. See README's factorial panel results before making cache-only
+claims. Native tiling dump288bytes includes padding; C++struct280/TCube200.
+Two-projection graphs resolve the isolated benchmark's failing envelope: `11-paired`
+passes1152checks with separate bootstrapped PG/MC2 groups, then shows8–13%large-wave
+row-projection fusion savings. Single-call failure is retained, not explained away;
+pre-communication GEMM taps pass. The attempted Python threshold512 did NOT preserve
+decode: model1's Dynamo graph spans1–2048 and specialized MC2 into decode too,
+slowing decode~2.25ms. Cancelled after two completed rounds; devices reclaimed.
+Never infer routing from a traced Python shape branch. Model2 uses an opaque leaf
+and owned GDN `.decode` metadata, with all prefill/mixed fused (including small
+waves, per Fletcher), pure decode native. Short profiles must include decode and
+check actual kernel routing. Qualification pending; no product changes yet.
+
+
+Model2 finishes same-pair ABBA; `docs/evidence/qwen-mc2.json` retains round/rank
+means and semantic guards. Rank0 forward1024 saves3.93%,1536 saves4.66%; decode
+1/4/8 stays within0.3%.16/32/128prefill instead costs4.31/4.20/2.04% more: Fletcher
+chose all prefill/mixed without a token threshold, so keep this tradeoff visible.
+Both-rank TraceLoom profiles verify128 MC2 kernels per32/1024prefill and zero on
+four decode steps. Opaque-leaf CPU compilation test changes metadata at identical
+shape. Product leaf `qwen_mc2` is composed at model_loaded for owned Qwen only;
+existing Worker/MTP/DSV4 remain. Actual installed0.5.1 sdist smoke onhw3 6/7
+passes32/2048/2048 prompts and8outputs each, repeated2048text equal, exit0/reclaimed.
+No additional native library or scratch payload; native MC2 communicator bootstrapped
+once before capture. Future edits must protect the opaque compiler boundary.

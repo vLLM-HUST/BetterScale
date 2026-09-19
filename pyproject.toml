@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vllm-betterscale"
-version = "0.5.0"
+version = "0.5.1"
 description = "Modular graph and replay optimizations for vLLM Ascend"
 readme = "docs/PYPI.md"
 license = "Apache-2.0 AND MIT AND BSD-3-Clause AND LicenseRef-CANN-1.0 AND LicenseRef-CANN-2.0"

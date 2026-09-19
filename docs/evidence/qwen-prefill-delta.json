@@ -1,0 +1,392 @@
+{
+  "product_source_commit": "98f507167b5a4832481a2187e6dcb5b5e5afc85b",
+  "scope": "Same candidate process; two separately profiled bodies per length/rank. ABBA1024/1536 actual cold work;1536 is first chunk of2048. Categories are device interval unions, not FLOPs or guaranteed recoverable time; allreduce includes peer waits. GDN regional spans overlap operator categories and must not be added to them. No cross-rank clock alignment.",
+  "capsule": "runs/qwen38-tp2-serving/prefill-delta1",
+  "status": "PASS",
+  "rank_summaries": [
+    {
+      "rank": 0,
+      "body": {
+        "before_ms": 234.559817,
+        "after_ms": 332.981403,
+        "delta_ms": 98.42158599999999
+      },
+      "categories": {
+        "other_compute": {
+          "before_ms": 11.609615999999999,
+          "after_ms": 15.268600500000002,
+          "delta_ms": 3.6589845000000025
+        },
+        "gdn_kernels": {
+          "before_ms": 39.2766565,
+          "after_ms": 50.803124,
+          "delta_ms": 11.526467499999995
+        },
+        "fia": {
+          "before_ms": 1.5934615,
+          "after_ms": 2.2393255,
+          "delta_ms": 0.645864
+        },
+        "layout": {
+          "before_ms": 9.863345500000001,
+          "after_ms": 10.5334215,
+          "delta_ms": 0.6700759999999981
+        },
+        "allreduce": {
+          "before_ms": 74.473061,
+          "after_ms": 111.3281495,
+          "delta_ms": 36.855088499999994
+        },
+        "matmul": {
+          "before_ms": 93.5907165,
+          "after_ms": 138.50802,
+          "delta_ms": 44.91730349999999
+        }
+      },
+      "overlap": {
+        "before_ms": 1.4210854715202004e-14,
+        "after_ms": -2.842170943040401e-14,
+        "delta_ms": -4.263256414560601e-14
+      },
+      "uncovered": {
+        "before_ms": 4.152959999999993,
+        "after_ms": 4.300761999999992,
+        "delta_ms": 0.14780199999999866
+      },
+      "gdn_span": {
+        "before_ms": 48.921268999999995,
+        "after_ms": 61.016201499999994,
+        "delta_ms": 12.094932499999999
+      },
+      "operators": {
+        "MatMulV3": {
+          "before_ms": 50.911967000000004,
+          "after_ms": 137.788935,
+          "delta_ms": 86.876968
+        },
+        "hcom_allReduce_": {
+          "before_ms": 74.473061,
+          "after_ms": 111.3281495,
+          "delta_ms": 36.855088499999994
+        },
+        "recompute_w_u_fwd_kernel": {
+          "before_ms": 9.961307,
+          "after_ms": 13.427277499999999,
+          "delta_ms": 3.465970499999999
+        },
+        "bs_gdn_h": {
+          "before_ms": 5.385356,
+          "after_ms": 7.566459,
+          "delta_ms": 2.1811030000000002
+        },
+        "AddRmsNormBias": {
+          "before_ms": 5.7105084999999995,
+          "after_ms": 7.8276889999999995,
+          "delta_ms": 2.1171805
+        },
+        "merge_16x16_to_64x64_inverse_kernel": {
+          "before_ms": 7.3810975,
+          "after_ms": 9.2650645,
+          "delta_ms": 1.8839669999999993
+        },
+        "CausalConv1d": {
+          "before_ms": 3.830038,
+          "after_ms": 5.044592,
+          "delta_ms": 1.2145539999999997
+        },
+        "bs_gdn_o": {
+          "before_ms": 3.8207665,
+          "after_ms": 5.0034215,
+          "delta_ms": 1.182655
+        },
+        "SwiGlu": {
+          "before_ms": 2.5175530000000004,
+          "after_ms": 3.5567345,
+          "delta_ms": 1.0391814999999998
+        },
+        "_layer_norm_fwd_1pass_kernel_npu": {
+          "before_ms": 1.9065310000000002,
+          "after_ms": 2.5529905,
+          "delta_ms": 0.6464594999999997
+        },
+        "FusedInferAttentionScore_3b093497fc536d61a77a7a3293a524da": {
+          "before_ms": 1.5934615,
+          "after_ms": 2.2393255,
+          "delta_ms": 0.645864
+        },
+        "chunk_scaled_dot_kkt_fwd_kernel": {
+          "before_ms": 2.269874,
+          "after_ms": 2.766178,
+          "delta_ms": 0.49630399999999986
+        },
+        "Transpose": {
+          "before_ms": 7.679634,
+          "after_ms": 8.075059,
+          "delta_ms": 0.39542499999999947
+        },
+        "split_qkv_rmsnorm_mrope_kernel": {
+          "before_ms": 0.9596295,
+          "after_ms": 1.3059745,
+          "delta_ms": 0.346345
+        },
+        "preprocess_kernel": {
+          "before_ms": 1.6244945,
+          "after_ms": 1.9206375,
+          "delta_ms": 0.29614300000000005
+        },
+        "Slice": {
+          "before_ms": 1.36754,
+          "after_ms": 1.522704,
+          "delta_ms": 0.15516400000000008
+        },
+        "solve_tril_16x16_kernel": {
+          "before_ms": 2.88885,
+          "after_ms": 3.0302100000000003,
+          "delta_ms": 0.14136000000000015
+        },
+        "TensorMove": {
+          "before_ms": 0.8161715,
+          "after_ms": 0.9356585,
+          "delta_ms": 0.1194869999999999
+        },
+        "ScatterPaKvCache": {
+          "before_ms": 0.2880655,
+          "after_ms": 0.3322985,
+          "delta_ms": 0.04423300000000002
+        },
+        "Mul": {
+          "before_ms": 0.284227,
+          "after_ms": 0.327405,
+          "delta_ms": 0.043177999999999994
+        },
+        "Sigmoid": {
+          "before_ms": 0.21511400000000003,
+          "after_ms": 0.257305,
+          "delta_ms": 0.04219099999999998
+        },
+        "chunk_local_cumsum_scalar_kernel": {
+          "before_ms": 0.208342,
+          "after_ms": 0.2262935,
+          "delta_ms": 0.01795150000000001
+        },
+        "ZerosLike": {
+          "before_ms": 0.567898,
+          "after_ms": 0.581731,
+          "delta_ms": 0.013832999999999984
+        },
+        "GemmaRmsNorm": {
+          "before_ms": 0.034781,
+          "after_ms": 0.042860999999999996,
+          "delta_ms": 0.008079999999999997
+        },
+        "Add": {
+          "before_ms": 0.3404645,
+          "after_ms": 0.3449885,
+          "delta_ms": 0.0045239999999999725
+        },
+        "Index": {
+          "before_ms": 0.691375,
+          "after_ms": 0.6916135,
+          "delta_ms": 0.00023850000000003035
+        },
+        "MatMulV2": {
+          "before_ms": 42.6787495,
+          "after_ms": 0.719085,
+          "delta_ms": -41.9596645
+        }
+      }
+    },
+    {
+      "rank": 1,
+      "body": {
+        "before_ms": 234.5675465,
+        "after_ms": 332.99602300000004,
+        "delta_ms": 98.42847650000004
+      },
+      "categories": {
+        "other_compute": {
+          "before_ms": 11.514707,
+          "after_ms": 15.1849485,
+          "delta_ms": 3.6702415000000013
+        },
+        "gdn_kernels": {
+          "before_ms": 39.1536845,
+          "after_ms": 50.7645635,
+          "delta_ms": 11.610879000000004
+        },
+        "fia": {
+          "before_ms": 1.5914435,
+          "after_ms": 2.204255,
+          "delta_ms": 0.6128114999999998
+        },
+        "layout": {
+          "before_ms": 9.947906,
+          "after_ms": 10.589112499999999,
+          "delta_ms": 0.6412064999999991
+        },
+        "allreduce": {
+          "before_ms": 74.55527900000001,
+          "after_ms": 111.091624,
+          "delta_ms": 36.53634499999998
+        },
+        "matmul": {
+          "before_ms": 93.67916,
+          "after_ms": 138.761419,
+          "delta_ms": 45.08225899999999
+        }
+      },
+      "overlap": {
+        "before_ms": 0.0,
+        "after_ms": 0.0,
+        "delta_ms": 0.0
+      },
+      "uncovered": {
+        "before_ms": 4.125366499999984,
+        "after_ms": 4.400100500000008,
+        "delta_ms": 0.27473400000002357
+      },
+      "gdn_span": {
+        "before_ms": 48.876285499999994,
+        "after_ms": 61.03869300000001,
+        "delta_ms": 12.162407500000015
+      },
+      "operators": {
+        "MatMulV3": {
+          "before_ms": 50.9758975,
+          "after_ms": 138.04499349999998,
+          "delta_ms": 87.06909599999997
+        },
+        "hcom_allReduce_": {
+          "before_ms": 74.55527900000001,
+          "after_ms": 111.091624,
+          "delta_ms": 36.53634499999998
+        },
+        "recompute_w_u_fwd_kernel": {
+          "before_ms": 9.898529,
+          "after_ms": 13.379217,
+          "delta_ms": 3.4806880000000007
+        },
+        "AddRmsNormBias": {
+          "before_ms": 5.606427500000001,
+          "after_ms": 7.7282465,
+          "delta_ms": 2.1218189999999995
+        },
+        "bs_gdn_h": {
+          "before_ms": 5.559338,
+          "after_ms": 7.635683,
+          "delta_ms": 2.076345
+        },
+        "merge_16x16_to_64x64_inverse_kernel": {
+          "before_ms": 7.271129,
+          "after_ms": 9.279886999999999,
+          "delta_ms": 2.0087579999999985
+        },
+        "CausalConv1d": {
+          "before_ms": 3.765444,
+          "after_ms": 4.979359499999999,
+          "delta_ms": 1.2139154999999993
+        },
+        "SwiGlu": {
+          "before_ms": 2.4854380000000003,
+          "after_ms": 3.5324910000000003,
+          "delta_ms": 1.047053
+        },
+        "bs_gdn_o": {
+          "before_ms": 3.7109845,
+          "after_ms": 4.7431655,
+          "delta_ms": 1.032181
+        },
+        "_layer_norm_fwd_1pass_kernel_npu": {
+          "before_ms": 1.9067470000000002,
+          "after_ms": 2.524629,
+          "delta_ms": 0.6178819999999998
+        },
+        "FusedInferAttentionScore_3b093497fc536d61a77a7a3293a524da": {
+          "before_ms": 1.5914435,
+          "after_ms": 2.204255,
+          "delta_ms": 0.6128114999999998
+        },
+        "preprocess_kernel": {
+          "before_ms": 1.5289665000000001,
+          "after_ms": 2.0672819999999996,
+          "delta_ms": 0.5383154999999995
+        },
+        "chunk_scaled_dot_kkt_fwd_kernel": {
+          "before_ms": 2.322316,
+          "after_ms": 2.8042735,
+          "delta_ms": 0.48195750000000004
+        },
+        "Transpose": {
+          "before_ms": 7.693858499999999,
+          "after_ms": 8.0595745,
+          "delta_ms": 0.3657160000000008
+        },
+        "split_qkv_rmsnorm_mrope_kernel": {
+          "before_ms": 0.98308,
+          "after_ms": 1.3317185,
+          "delta_ms": 0.3486385000000001
+        },
+        "Slice": {
+          "before_ms": 1.3582305,
+          "after_ms": 1.512046,
+          "delta_ms": 0.1538155000000001
+        },
+        "solve_tril_16x16_kernel": {
+          "before_ms": 2.969827,
+          "after_ms": 3.1099319999999997,
+          "delta_ms": 0.1401049999999997
+        },
+        "TensorMove": {
+          "before_ms": 0.8958170000000001,
+          "after_ms": 1.0174919999999998,
+          "delta_ms": 0.12167499999999976
+        },
+        "ScatterPaKvCache": {
+          "before_ms": 0.3015555,
+          "after_ms": 0.346395,
+          "delta_ms": 0.04483950000000003
+        },
+        "Mul": {
+          "before_ms": 0.306805,
+          "after_ms": 0.3495165,
+          "delta_ms": 0.04271150000000001
+        },
+        "Sigmoid": {
+          "before_ms": 0.23758400000000002,
+          "after_ms": 0.2792065,
+          "delta_ms": 0.04162250000000001
+        },
+        "chunk_local_cumsum_scalar_kernel": {
+          "before_ms": 0.2204035,
+          "after_ms": 0.241135,
+          "delta_ms": 0.020731499999999986
+        },
+        "ZerosLike": {
+          "before_ms": 0.5332625,
+          "after_ms": 0.5467125,
+          "delta_ms": 0.013450000000000073
+        },
+        "GemmaRmsNorm": {
+          "before_ms": 0.0366905,
+          "after_ms": 0.0443405,
+          "delta_ms": 0.007649999999999997
+        },
+        "Index": {
+          "before_ms": 0.6919025000000001,
+          "after_ms": 0.695315,
+          "delta_ms": 0.0034124999999999295
+        },
+        "Add": {
+          "before_ms": 0.3319615,
+          "after_ms": 0.3310065,
+          "delta_ms": -0.0009550000000000392
+        },
+        "MatMulV2": {
+          "before_ms": 42.703262499999994,
+          "after_ms": 0.7164254999999999,
+          "delta_ms": -41.986836999999994
+        }
+      }
+    }
+  ]
+}

@@ -14,7 +14,7 @@ patches; it does not replace the serving engine or configure your environment.
 Use your **existing, working Ascend serving environment**, with Python 3.12+:
 
 ```bash
-python -m pip install --no-deps vllm-betterscale==0.5.0
+python -m pip install --no-deps vllm-betterscale==0.5.1
 ```
 
 The package deliberately does not install or upgrade vLLM, vLLM-Ascend, torch-npu,
@@ -194,3 +194,13 @@ On the qualified TP8 dummy FULL configuration, automatic KV budget increased by
 about 186 MiB/rank (1.21%) and READY reserved memory fell 360 MiB/rank, with the
 same 1 GiB safety reserve. These are capacity measurements, not new throughput
 or real-weight quality results. DP native tiling is unchanged.
+
+
+### Qwen row-projection fusion (0.5.1)
+
+Owned Qwen TP2 graphs use native MatmulAllReduce for every prefill/mixed capacity,
+including small prefills. Pure decode keeps the original local GEMM + TP AllReduce;
+MTP and DSV4 paths are unchanged. Weights remain BF16/ND. This is an opaque leaf
+hook at `RowParallelLinear`, selected from owned wave metadata during capture,
+not a new Worker or a replay-time host loop. Small prefill is not guaranteed faster:
+the fusion setup cost can exceed its communication savings at small token counts.

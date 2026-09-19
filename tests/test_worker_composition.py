@@ -48,13 +48,14 @@ class Composition(unittest.TestCase):
     def test_owned_selection_and_leaf_lifecycle(self):
         self.run_case(
             """
-from betterscale.patches import qwen_gdn, qwen_fia, qwen_layout
+from betterscale.patches import qwen_gdn, qwen_fia, qwen_layout, qwen_mc2
 from betterscale.patches.qwen_gdn.execution import forward_core
 with patch.object(qwen,'check_runtime',side_effect=lambda *a: calls.append('pins')), \
      patch.object(qwen_gdn,'check_library',side_effect=lambda: calls.append('gdn-check')), \
      patch.object(qwen_fia,'check_library',side_effect=lambda: calls.append('fia-check')), \
      patch.object(qwen_gdn,'install',side_effect=lambda: calls.append('gdn-install')), \
      patch.object(qwen_fia,'install',side_effect=lambda: calls.append('fia-install')), \
+     patch.object(qwen_mc2,'install',side_effect=lambda model: calls.append(('mc2',model))), \
      patch.object(qwen_layout,'pack_conv_weights',side_effect=lambda model,consumer: calls.append(('pack',model,consumer))):
     w=entry.Worker(c)
     assert w._init_device()=='device'
@@ -62,7 +63,7 @@ with patch.object(qwen,'check_runtime',side_effect=lambda *a: calls.append('pins
     assert w.load_model()=='loaded'
     assert w.compile_or_warm_up_model()=='warm'
 assert calls==['pins','pins','gdn-check','fia-check','gdn-install','native-init','fia-install',
- 'native-device','native-memory','native-load',('pack','model',forward_core),'native-warm'], calls
+ 'native-device','native-memory','native-load',('pack','model',forward_core),('mc2','model'),'native-warm'], calls
 assert 'betterscale.models.dsv4' not in sys.modules
 assert 'betterscale.patches.auto_kv' not in sys.modules
 c.cache_config.enable_prefix_caching=False; c.cache_config.mamba_cache_mode='none'
@@ -84,6 +85,7 @@ with patch.object(qwen,'check_runtime',side_effect=lambda: calls.append('pins'))
     w=entry.Worker(c); w.load_model()
 assert calls==['pins','native-init','native-load',('pack',None)], calls
 assert 'betterscale.patches.qwen_fia' not in sys.modules
+assert 'betterscale.patches.qwen_mc2' not in sys.modules
 """
         )
 
