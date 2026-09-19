@@ -1,0 +1,265 @@
+{
+  "scope": "Framework-allocator GDN scratch, hw3 cards6/7, TP2 noMTP/APC; diagnostic 1GiB KV.",
+  "core": {
+    "capsule": "graph-scratch-core2",
+    "cases": 12,
+    "passed": true
+  },
+  "service": {
+    "capsule": "graph-scratch-service1",
+    "passed": true,
+    "rank_steps": {
+      "0": 22,
+      "1": 22
+    },
+    "comparisons": 5676,
+    "max_abs": 0,
+    "single_lengths": [
+      1,
+      7,
+      17,
+      129,
+      512,
+      513,
+      1024,
+      1536,
+      2048,
+      2051
+    ],
+    "concurrencies": [
+      4,
+      8
+    ],
+    "server_exit_code": 0,
+    "admission_exit_code": 0
+  },
+  "capture": {
+    "graphs": 26,
+    "before_GiB_per_rank": 5.25,
+    "after_GiB_per_rank": 0.88,
+    "saved_GiB_per_rank": 4.37,
+    "metric": "Logged capture-stage device-memory delta, rounded to .01GiB; same1GiB diagnostic KV. Not descriptor-only memory."
+  },
+  "limitations": [
+    "No extra NPU profile captured for this allocator-only change.",
+    "No change to asynchronous metadata bank fences or native scheduler/sampling/D2H.",
+    "No concurrently replayed compute streams supported."
+  ],
+  "runtime_source_commit": "e5460c0",
+  "swe_capsule_source_matches_runtime": true,
+  "validation": {
+    "cpu_tests": 77,
+    "wheel_native_sources_present": true,
+    "raw_kernel_unchanged": true,
+    "host_sha256": "22353cf0479252c78073ae23d17f82e31fa707d584dd19bb05e1657303bbcaa2"
+  },
+  "swe": {
+    "scope": "Two same-pair candidate-only cohorts; retained controls, no fresh baseline.",
+    "fixture": {
+      "dataset": "nvidia/Open-SWE-Traces",
+      "revision": "fb0c0dccc7a5cce79b3f6de891848acdede36685",
+      "subset": "data/minisweagent/qwen38_27b",
+      "scanned": 15525,
+      "selection": {
+        "min_turns": 2,
+        "max_turns": 12,
+        "max_context": 8192,
+        "max_output_total": 8192
+      },
+      "transforms": {
+        "truncated": false,
+        "tool_arguments": "JSON strings parsed to mappings",
+        "history": "original recorded messages, not generated responses",
+        "output_budget": "Qwen-tokenized complete assistant serialization suffix (BPE at suffix boundary is independent)",
+        "tool_execution": false,
+        "tool_wait_seconds": 0,
+        "arrival_policy": "one initially ready call per session; next turn after previous completion"
+      },
+      "trajectories": [
+        "7aef38cd-40e8-4d73-bf84-5fb601845f9d",
+        "85d1d00c-dec6-426c-a7c8-d55e307316e8",
+        "41094c57-7aa3-4637-8e61-51148ed2ccf4",
+        "f716c9d4-0e7b-4e36-917f-2a044634d5ed",
+        "19d9e7fc-2c25-4710-a0d1-b3f6b2167a97",
+        "494f7e35-04ec-44fb-a3df-ab508b17b6ed",
+        "ef07f321-97f0-4923-9ac6-a25625ff08b9",
+        "a3969e81-77d8-4f2b-8a58-448704fa890a"
+      ]
+    },
+    "rounds": [
+      {
+        "repeat": 0,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 274.9378184878733,
+        "tokens_per_s": 75.1006177089847,
+        "mean_ttft_ms": 1191.187293573211,
+        "p95_ttft_ms": 1757.1985539980233,
+        "mean_latency_s": 12.851826084174741,
+        "p95_latency_s": 26.766458802856505,
+        "mean_tpot_ms": 45.10784795337499,
+        "p95_tpot_ms": 55.39396506627595
+      },
+      {
+        "repeat": 0,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 197.70100050698966,
+        "tokens_per_s": 104.4405437860695,
+        "mean_ttft_ms": 1360.403713823941,
+        "p95_ttft_ms": 2144.534716848284,
+        "mean_latency_s": 16.450823448401373,
+        "p95_latency_s": 35.02102258778177,
+        "mean_tpot_ms": 57.9577044387426,
+        "p95_tpot_ms": 72.57473413189945
+      },
+      {
+        "repeat": 1,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 275.31934657902457,
+        "tokens_per_s": 74.99654585324765,
+        "mean_ttft_ms": 1225.812260279408,
+        "p95_ttft_ms": 1837.406527949497,
+        "mean_latency_s": 12.868055569473654,
+        "p95_latency_s": 26.831934039015323,
+        "mean_tpot_ms": 44.888208267197086,
+        "p95_tpot_ms": 54.48753430569291
+      },
+      {
+        "repeat": 1,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 197.70346128498204,
+        "tokens_per_s": 104.43924383416177,
+        "mean_ttft_ms": 1362.0021922830254,
+        "p95_ttft_ms": 2146.0480061359704,
+        "mean_latency_s": 16.448548780601975,
+        "p95_latency_s": 35.004291804973036,
+        "mean_tpot_ms": 57.94356973249101,
+        "p95_tpot_ms": 72.54890950356949
+      }
+    ],
+    "pooled": {
+      "candidate": {
+        "4": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 550.2571650668979,
+          "tokens_per_s": 75.04854570131661,
+          "mean_ttft_ms": 1208.4997769263096,
+          "p95_ttft_ms": 1837.406527949497,
+          "mean_latency_s": 12.859940826824198,
+          "p95_latency_s": 26.831934039015323,
+          "mean_tpot_ms": 44.99802811028604,
+          "p95_tpot_ms": 55.39396506627595
+        },
+        "8": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 395.4044617919717,
+          "tokens_per_s": 104.43989380607054,
+          "mean_ttft_ms": 1361.202953053483,
+          "p95_ttft_ms": 2146.0480061359704,
+          "mean_latency_s": 16.449686114501674,
+          "p95_latency_s": 35.02102258778177,
+          "mean_tpot_ms": 57.950637085616805,
+          "p95_tpot_ms": 72.57473413189945
+        }
+      }
+    },
+    "throughput_gain_percent": {},
+    "limits": "Eight selected <=8K trajectories, no APC/MTP, fixed output budgets, no tool latency. Two repeats per arm (ordering/arms in scope), not population or confidence evidence. No fresh baseline comparison is implied for candidate-only runs. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps.",
+    "capsule": "hw3:graph-scratch-swe1",
+    "retained_control_capsule": "dualbank-swe1",
+    "retained_controls": {
+      "baseline": {
+        "4": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 589.7637835990172,
+          "tokens_per_s": 70.021254523281,
+          "mean_ttft_ms": 1388.6383431321847,
+          "p95_ttft_ms": 1924.914265051484,
+          "mean_latency_s": 13.787093877938624,
+          "p95_latency_s": 28.66103030880913,
+          "mean_tpot_ms": 48.01104439514573,
+          "p95_tpot_ms": 61.71547033191296
+        },
+        "8": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 426.7245848879684,
+          "tokens_per_s": 96.77436328361955,
+          "mean_ttft_ms": 1533.9337496880967,
+          "p95_ttft_ms": 2352.0653350278735,
+          "mean_latency_s": 17.793544679580148,
+          "p95_latency_s": 38.8035327559337,
+          "mean_tpot_ms": 63.04650989872469,
+          "p95_tpot_ms": 78.56342218678873
+        }
+      },
+      "candidate": {
+        "4": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 549.9398904759437,
+          "tokens_per_s": 75.09184315445914,
+          "mean_ttft_ms": 1205.324460064264,
+          "p95_ttft_ms": 1835.4055641684681,
+          "mean_latency_s": 12.85615803897739,
+          "p95_latency_s": 26.83647248405032,
+          "mean_tpot_ms": 44.9559322317974,
+          "p95_tpot_ms": 55.376548289197935
+        },
+        "8": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 395.5210240657907,
+          "tokens_per_s": 104.40911478104094,
+          "mean_ttft_ms": 1348.9628994153836,
+          "p95_ttft_ms": 2180.063610896468,
+          "mean_latency_s": 16.45584282910493,
+          "p95_latency_s": 35.07515758997761,
+          "mean_tpot_ms": 58.03339788472663,
+          "p95_tpot_ms": 74.42477668246937
+        }
+      }
+    },
+    "versus_previous_candidate_percent": {
+      "4": -0.0576593293275085,
+      "8": 0.029479251015729346
+    },
+    "versus_retained_native_percent": {
+      "4": 7.179664535093577,
+      "8": 7.92103431358715
+    },
+    "all_servers_exit_zero": true,
+    "admission_exit_zero_and_reclaimed": true
+  },
+  "traceloom": {
+    "commit": "c2a6920",
+    "recovery_commit": "e42dc84",
+    "upstream_base": "0d65fea",
+    "native_tests": 87,
+    "context_tests": 54,
+    "capture_scope": "Unchanged dualbank-swe1 six-step profiles; no new NPU profile",
+    "candidate_exact_replays_per_rank": 6,
+    "candidate_exact_members_per_rank": 16177,
+    "candidate_repeat_windows_per_rank": 9790,
+    "all_member_and_window_geometry_verified": true,
+    "archive": "qwen-dualbank-traceloom-continuous-timelines.tar.gz"
+  }
+}

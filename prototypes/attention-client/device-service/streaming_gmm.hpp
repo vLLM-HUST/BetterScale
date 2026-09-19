@@ -9,7 +9,8 @@ RunStreamingGmm(GM_ADDR config, GM_ADDR input, GM_ADDR output, int boundary,
                 __gm__ int32_t *progress, int generation,
                 __gm__ int64_t *timing, __gm__ int32_t *stop = nullptr,
                 int64_t pollLimit = 0, Persistent::PackGate *pack = nullptr,
-                __gm__ int32_t *downPrefix = nullptr) {
+                __gm__ int32_t *downPrefix = nullptr,
+                uint64_t weightAddress = 0) {
   auto cfg = (__gm__ int64_t *)config;
   const uint32_t k = cfg[0], n = cfg[1], groups = cfg[2];
   using Tile = ActualGmmTypes::Mmad;
@@ -71,8 +72,9 @@ RunStreamingGmm(GM_ADDR config, GM_ADDR input, GM_ADDR output, int boundary,
                                          uint32_t(ACTUAL_GMM_TILE_N)});
       const uint32_t tiles = schedule.GetCoreLoops();
       GlobalTensor<bfloat16_t> weight;
-      weight.SetGlobalBuffer((__gm__ bfloat16_t *)cfg[3] +
-                             uint64_t(expert) * k * n);
+      weight.SetGlobalBuffer(
+          (__gm__ bfloat16_t *)(weightAddress ? weightAddress : cfg[3]) +
+          uint64_t(expert) * k * n);
       if (rows <= ACTUAL_GMM_TILE_M)
         weight.SetL2CacheHint(CacheMode::CACHE_MODE_DISABLE);
       const layout::RowMajor lx{rows, k}, ly{rows, n};

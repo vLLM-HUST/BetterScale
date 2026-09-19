@@ -4,7 +4,18 @@
 #include "kernel_operator.h"
 namespace Persistent {
 using namespace AscendC;
-constexpr int LINE = 16, VW = 16, CW = 24, MAP = 264, CAPACITY = 512;
+constexpr int LINE = 16, VW = 16, CW = 24;
+#ifdef QWEN_NEXT
+constexpr int HIDDEN = 2048, INNER = 512, TOPK = 10, EXPERTS = 512;
+constexpr int LOCAL_EXPERTS = 128, LAYERS = 48, GROUPS = 128;
+constexpr bool SINGLE_LAYER = true;
+#else
+constexpr int HIDDEN = 2048, INNER = 768, TOPK = 8, EXPERTS = 128;
+constexpr int LOCAL_EXPERTS = 64, LAYERS = 2, GROUPS = 128;
+constexpr bool SINGLE_LAYER = false;
+#endif
+constexpr int TOKENS = 32, ROUTES = TOKENS * TOPK;
+constexpr int MAP = ROUTES + 8, CAPACITY = ROUTES * 2;
 constexpr int STOP = 0, VCMD = 1, CCMD = 2, VDONE = 3, CDONE = 19, STATUS = 43;
 constexpr int UP_PREFIX_DONE = 44, URGENT_CMD = 68, URGENT_DONE = 69;
 constexpr int ACT_TAIL_READY = 85; // two slot lines, coordinator-only writer
@@ -58,7 +69,7 @@ __aicore__ inline bool Joined(__gm__ int32_t *ctrl, int first, int cores,
 // Optional per-core work intervals. Each writer owns one entire64-byte line.
 __aicore__ inline void WorkTime(__gm__ int64_t *cfg, int engine, int generation,
                                 int core, uint64_t begin) {
-  if (!cfg[13])
+  if (!cfg[13] || generation > 512)
     return;
   auto row = (__gm__ int64_t *)cfg[13] +
              ((engine * 512 + generation - 1) * 24 + core) * 8;

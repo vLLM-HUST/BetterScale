@@ -1,0 +1,88 @@
+{
+  "status": "PASS",
+  "source_commit": "ebe3725a4d8230ebdc4d1e277c6ab69fe88dc5fd",
+  "entry": "betterscale.qwen_worker.Worker",
+  "capsule": "/workspace/strengthen-dsv4/runs/qwen38-tp2-serving/package2",
+  "scope": "non-speculative single-request FULL prefill; native mixed/decode; APC off; local source integration, not PyPI publication",
+  "c1_requests": 12,
+  "c1_prompt_lengths": [
+    512,
+    513,
+    1024,
+    1536,
+    2048,
+    2051
+  ],
+  "c1_text_matches_prototype": 12,
+  "mixed_concurrency": [
+    4,
+    8
+  ],
+  "cpu_tests": 70,
+  "prototype": "padded-full3",
+  "later_changes": "Additional donor pins and independent native MTP2+layout route; nonSpec metadata/dispatch/padding unchanged.",
+  "native_mtp_route": {
+    "capsule": "/workspace/strengthen-dsv4/runs/qwen38-tp2-serving/package-mtp2",
+    "source_commit": "e0f7f48558b66d0e106f2981339c394e85a290d7",
+    "status": "PASS",
+    "cohorts": 6,
+    "concurrency": [
+      1,
+      4,
+      8
+    ],
+    "c1_text_matches_prototype": true,
+    "compilation_cache_root": "/workspace/strengthen-dsv4/runs/qwen38-tp2-serving/package-mtp2/compiler-cache",
+    "known_limitation": "Shared native multimodal AOT artifacts can collide with text-only signatures; dedicated cache required",
+    "target_graph_evidence": {
+      "native-mtp2-profile2": {
+        "0": {
+          "target_graphs": 4,
+          "mean_body_us": 36252.61,
+          "weight_transpose_counts": [
+            48,
+            48,
+            48,
+            48
+          ],
+          "mean_weight_transpose_us": 847.6250000000001
+        },
+        "1": {
+          "target_graphs": 4,
+          "mean_body_us": 36268.1,
+          "weight_transpose_counts": [
+            48,
+            48,
+            48,
+            48
+          ],
+          "mean_weight_transpose_us": 879.47
+        }
+      },
+      "conv-mtp2-2": {
+        "0": {
+          "target_graphs": 4,
+          "mean_body_us": 35366.775,
+          "weight_transpose_counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "mean_weight_transpose_us": 0
+        },
+        "1": {
+          "target_graphs": 4,
+          "mean_body_us": 35445.225,
+          "weight_transpose_counts": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "mean_weight_transpose_us": 0
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,404 @@
+{
+  "date": "2026-09-17",
+  "runtime_source_commit": "7115858",
+  "entry": "betterscale.qwen_worker.MixedWorker",
+  "capsule": "hw3:dualbank-swe1",
+  "physical_devices": [
+    6,
+    7
+  ],
+  "configuration": {
+    "TP": 2,
+    "MTP": false,
+    "APC": false,
+    "max_num_seqs": 8,
+    "token_budget": 2048,
+    "max_model_len": 8192,
+    "kv_cache_bytes": 6442450944,
+    "graph_entries": 26,
+    "native_task_queue": 1,
+    "candidate_task_queue": 0
+  },
+  "correctness": {
+    "capsule": "dualbank-service2",
+    "whole_model_checks": 5676,
+    "max_abs": 0,
+    "both_banks_observed": true,
+    "all_gdn_fields_host_device_equal": true,
+    "core_capsule": "dualbank-core1",
+    "graph_memory_GiB_per_rank": 5.25
+  },
+  "swe": {
+    "scope": "Sequential same-pair ABBA; closed-loop whole-trajectory cohorts.",
+    "fixture": {
+      "dataset": "nvidia/Open-SWE-Traces",
+      "revision": "fb0c0dccc7a5cce79b3f6de891848acdede36685",
+      "subset": "data/minisweagent/qwen38_27b",
+      "scanned": 15525,
+      "selection": {
+        "min_turns": 2,
+        "max_turns": 12,
+        "max_context": 8192,
+        "max_output_total": 8192
+      },
+      "transforms": {
+        "truncated": false,
+        "tool_arguments": "JSON strings parsed to mappings",
+        "history": "original recorded messages, not generated responses",
+        "output_budget": "Qwen-tokenized complete assistant serialization suffix (BPE at suffix boundary is independent)",
+        "tool_execution": false,
+        "tool_wait_seconds": 0,
+        "arrival_policy": "one initially ready call per session; next turn after previous completion"
+      },
+      "trajectories": [
+        "7aef38cd-40e8-4d73-bf84-5fb601845f9d",
+        "85d1d00c-dec6-426c-a7c8-d55e307316e8",
+        "41094c57-7aa3-4637-8e61-51148ed2ccf4",
+        "f716c9d4-0e7b-4e36-917f-2a044634d5ed",
+        "19d9e7fc-2c25-4710-a0d1-b3f6b2167a97",
+        "494f7e35-04ec-44fb-a3df-ab508b17b6ed",
+        "ef07f321-97f0-4923-9ac6-a25625ff08b9",
+        "a3969e81-77d8-4f2b-8a58-448704fa890a"
+      ]
+    },
+    "rounds": [
+      {
+        "repeat": 0,
+        "arm": "baseline",
+        "devices": "6,7",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 294.86332840193063,
+        "tokens_per_s": 70.02566277707665,
+        "mean_ttft_ms": 1378.567076452339,
+        "p95_ttft_ms": 1927.8073341120034,
+        "mean_latency_s": 13.784843443743645,
+        "p95_latency_s": 28.66103030880913,
+        "mean_tpot_ms": 47.998423773148325,
+        "p95_tpot_ms": 61.22125586191843
+      },
+      {
+        "repeat": 0,
+        "arm": "baseline",
+        "devices": "6,7",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 213.51974026998505,
+        "tokens_per_s": 96.70300260712024,
+        "mean_ttft_ms": 1544.448088782911,
+        "p95_ttft_ms": 2390.3777450323105,
+        "mean_latency_s": 17.805667435410076,
+        "p95_latency_s": 38.8035327559337,
+        "mean_tpot_ms": 63.09971490989131,
+        "p95_tpot_ms": 79.26876179280353
+      },
+      {
+        "repeat": 0,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 275.5333125840407,
+        "tokens_per_s": 74.93830711922405,
+        "mean_ttft_ms": 1213.2534466934605,
+        "p95_ttft_ms": 1837.752657942474,
+        "mean_latency_s": 12.885148233122145,
+        "p95_latency_s": 26.83647248405032,
+        "mean_tpot_ms": 44.96723573227558,
+        "p95_tpot_ms": 54.553417399298276
+      },
+      {
+        "repeat": 0,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 198.0506057718303,
+        "tokens_per_s": 104.25618199718157,
+        "mean_ttft_ms": 1335.6901604312066,
+        "p95_ttft_ms": 2118.2742859236896,
+        "mean_latency_s": 16.480435928494,
+        "p95_latency_s": 35.07515758997761,
+        "mean_tpot_ms": 58.2342021166594,
+        "p95_tpot_ms": 74.42477668246937
+      },
+      {
+        "repeat": 1,
+        "arm": "baseline",
+        "devices": "6,7",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 294.90045519708656,
+        "tokens_per_s": 70.016846824467,
+        "mean_ttft_ms": 1398.70960981203,
+        "p95_ttft_ms": 1915.6546699814498,
+        "mean_latency_s": 13.789344312133602,
+        "p95_latency_s": 28.607384458882734,
+        "mean_tpot_ms": 48.02366501714314,
+        "p95_tpot_ms": 61.71547033191296
+      },
+      {
+        "repeat": 1,
+        "arm": "baseline",
+        "devices": "6,7",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 213.20484461798333,
+        "tokens_per_s": 96.84582935719271,
+        "mean_ttft_ms": 1523.4194105932822,
+        "p95_ttft_ms": 2261.741047957912,
+        "mean_latency_s": 17.781421923750223,
+        "p95_latency_s": 38.59708222304471,
+        "mean_tpot_ms": 62.99330488755807,
+        "p95_tpot_ms": 75.77413673667859
+      },
+      {
+        "repeat": 1,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 4,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 274.406577891903,
+        "tokens_per_s": 75.24600962056336,
+        "mean_ttft_ms": 1197.3954734350675,
+        "p95_ttft_ms": 1755.1510219927877,
+        "mean_latency_s": 12.827167844832635,
+        "p95_latency_s": 26.73152356618084,
+        "mean_tpot_ms": 44.94462873131922,
+        "p95_tpot_ms": 55.376548289197935
+      },
+      {
+        "repeat": 1,
+        "arm": "candidate",
+        "devices": "6,7",
+        "concurrency": 8,
+        "requests": 78,
+        "output_tokens": 20648,
+        "elapsed_s": 197.4704182939604,
+        "tokens_per_s": 104.56249689643523,
+        "mean_ttft_ms": 1362.2356383995607,
+        "p95_ttft_ms": 2213.9900650363415,
+        "mean_latency_s": 16.431249729715862,
+        "p95_latency_s": 35.02627342403866,
+        "mean_tpot_ms": 57.83259365279387,
+        "p95_tpot_ms": 73.60529475910982
+      }
+    ],
+    "pooled": {
+      "baseline": {
+        "4": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 589.7637835990172,
+          "tokens_per_s": 70.021254523281,
+          "mean_ttft_ms": 1388.6383431321847,
+          "p95_ttft_ms": 1924.914265051484,
+          "mean_latency_s": 13.787093877938624,
+          "p95_latency_s": 28.66103030880913,
+          "mean_tpot_ms": 48.01104439514573,
+          "p95_tpot_ms": 61.71547033191296
+        },
+        "8": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 426.7245848879684,
+          "tokens_per_s": 96.77436328361955,
+          "mean_ttft_ms": 1533.9337496880967,
+          "p95_ttft_ms": 2352.0653350278735,
+          "mean_latency_s": 17.793544679580148,
+          "p95_latency_s": 38.8035327559337,
+          "mean_tpot_ms": 63.04650989872469,
+          "p95_tpot_ms": 78.56342218678873
+        }
+      },
+      "candidate": {
+        "4": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 549.9398904759437,
+          "tokens_per_s": 75.09184315445914,
+          "mean_ttft_ms": 1205.324460064264,
+          "p95_ttft_ms": 1835.4055641684681,
+          "mean_latency_s": 12.85615803897739,
+          "p95_latency_s": 26.83647248405032,
+          "mean_tpot_ms": 44.9559322317974,
+          "p95_tpot_ms": 55.376548289197935
+        },
+        "8": {
+          "requests": 156,
+          "output_tokens": 41296,
+          "elapsed_s": 395.5210240657907,
+          "tokens_per_s": 104.40911478104094,
+          "mean_ttft_ms": 1348.9628994153836,
+          "p95_ttft_ms": 2180.063610896468,
+          "mean_latency_s": 16.45584282910493,
+          "p95_latency_s": 35.07515758997761,
+          "mean_tpot_ms": 58.03339788472663,
+          "p95_tpot_ms": 74.42477668246937
+        }
+      }
+    },
+    "throughput_gain_percent": {
+      "4": 7.2414992643301535,
+      "8": 7.889229376840223
+    },
+    "limits": "Eight selected <=8K trajectories, no APC/MTP, fixed output budgets, no tool latency. Two matched repeats (ordering in scope), not population or confidence evidence. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps."
+  },
+  "profile": {
+    "scope": "Six diagnostic steps/rank after warmup; not HTTP timing. All bodies pass 304 MatMul,16 FIA,128 communication guards. Operator/API sums are not exclusive critical-path time. Rank-local clocks; profile overhead can amplify host submission gaps. Exact graph reconstruction can omit unique/under-repeated shapes.",
+    "rank0": {
+      "baseline": {
+        "bodies_ms": [
+          34.224324,
+          34.211044,
+          491.842627,
+          35.603911,
+          35.633112,
+          35.474868
+        ],
+        "steady_gaps_ms": [
+          1.477709,
+          1.535471,
+          1.553711
+        ],
+        "schedule": [
+          [
+            1
+          ],
+          [
+            1
+          ],
+          [
+            1,
+            1472
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "async_copy_streams": {
+          "46": {
+            "count": 93,
+            "duration_us": 223.525
+          }
+        }
+      },
+      "candidate": {
+        "bodies_ms": [
+          33.0286,
+          32.993559,
+          343.201137,
+          34.389587,
+          34.394948,
+          34.412228
+        ],
+        "steady_gaps_ms": [
+          1.49553,
+          1.486549,
+          1.477749
+        ],
+        "schedule": [
+          [
+            1
+          ],
+          [
+            1
+          ],
+          [
+            1,
+            1472
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ],
+        "async_copy_streams": {
+          "40": {
+            "count": 6,
+            "duration_us": 14.96,
+            "copies": [
+              {
+                "duration_us": 2.34,
+                "overlapped_model_steps": []
+              },
+              {
+                "duration_us": 2.32,
+                "overlapped_model_steps": [
+                  0
+                ]
+              },
+              {
+                "duration_us": 2.76,
+                "overlapped_model_steps": [
+                  1
+                ]
+              },
+              {
+                "duration_us": 2.58,
+                "overlapped_model_steps": [
+                  2
+                ]
+              },
+              {
+                "duration_us": 2.48,
+                "overlapped_model_steps": [
+                  3
+                ]
+              },
+              {
+                "duration_us": 2.48,
+                "overlapped_model_steps": [
+                  4
+                ]
+              }
+            ]
+          },
+          "46": {
+            "count": 91,
+            "duration_us": 229.622
+          }
+        }
+      }
+    },
+    "historical_single_bank_candidate_rank0_steady_gaps_ms": [
+      4.955,
+      4.793,
+      4.742
+    ],
+    "historical_gap_source": "hw3-swe-elastic2",
+    "copy_stream_owner": "Inferred metadata ingress from source plus six-copy stream; provider does not identify Python buffers."
+  },
+  "release": {
+    "admission_exit": 0,
+    "cards_reclaimed": [
+      6,
+      7
+    ]
+  },
+  "publication": "source-only; no PyPI release"
+}

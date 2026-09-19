@@ -1,0 +1,495 @@
+{
+  "status": "PASS",
+  "date": "2026-09-17",
+  "entry": "betterscale.qwen_worker.MixedWorker",
+  "integration_source": "ddc8a3d",
+  "kernel_source": "4e21bb1",
+  "native": {
+    "sha256": "1c522f04a701d3423798b4b7f157737ef41956be25cf46842b6ba33c7ec41bea",
+    "source": "4e21bb18063e92966a79218f507a93eb961e6f0a",
+    "soc": "Ascend910B2",
+    "owned_init": true,
+    "state_layout": "KV",
+    "cold_fill_dma_fence": true
+  },
+  "host": "hw3",
+  "devices": [
+    6,
+    7
+  ],
+  "scope": "Source-only opt-in integration; no PyPI publication; existing Qwen and DSV4 Workers unchanged.",
+  "service_shadow": {
+    "capsule": "/workspace/strengthen-dsv4/runs/qwen38-tp2-serving/hw3-elastic-service9",
+    "kv_bytes": 1073741824,
+    "output_tokens": 32,
+    "c1_lengths": [
+      1,
+      7,
+      17,
+      129,
+      512,
+      513,
+      1024,
+      1536,
+      2048,
+      2051
+    ],
+    "concurrency": [
+      4,
+      8
+    ],
+    "rank_steps": 44,
+    "checks": 5676,
+    "max_abs": 0.0,
+    "partitions": [
+      [
+        {
+          "lengths": [
+            1
+          ],
+          "slots": [
+            2
+          ],
+          "capacity": 16,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            7
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 16,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            17
+          ],
+          "slots": [
+            2
+          ],
+          "capacity": 32,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            129
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 256,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            512
+          ],
+          "slots": [
+            2
+          ],
+          "capacity": 512,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            513
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 1024,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            1024
+          ],
+          "slots": [
+            2
+          ],
+          "capacity": 1024,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            1536
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 1536,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            2048
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 2048,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            2048
+          ],
+          "slots": [
+            3
+          ],
+          "capacity": 2048,
+          "decode": false,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            1
+          ],
+          "slots": [
+            2
+          ],
+          "capacity": 16,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            7
+          ],
+          "slots": [
+            2,
+            6
+          ],
+          "capacity": 16,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            17,
+            129
+          ],
+          "slots": [
+            2,
+            6,
+            10,
+            14
+          ],
+          "capacity": 256,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "slots": [
+            2,
+            6,
+            10,
+            14
+          ],
+          "capacity": 4,
+          "decode": true,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "slots": [
+            2,
+            6,
+            10,
+            14
+          ],
+          "capacity": 4,
+          "decode": true,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "slots": [
+            2,
+            6,
+            10,
+            14
+          ],
+          "capacity": 4,
+          "decode": true,
+          "mode": "FULL"
+        }
+      ],
+      [
+        {
+          "lengths": [
+            7
+          ],
+          "slots": [
+            15
+          ],
+          "capacity": 16,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1
+          ],
+          "slots": [
+            15
+          ],
+          "capacity": 1,
+          "decode": true,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            512,
+            513,
+            17
+          ],
+          "slots": [
+            15,
+            11,
+            7,
+            3,
+            18
+          ],
+          "capacity": 1536,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "slots": [
+            15,
+            11,
+            7,
+            3
+          ],
+          "capacity": 4,
+          "decode": true,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1,
+            18
+          ],
+          "slots": [
+            15,
+            11,
+            7,
+            3,
+            19
+          ],
+          "capacity": 32,
+          "decode": false,
+          "mode": "FULL"
+        },
+        {
+          "lengths": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "slots": [
+            15,
+            11,
+            7,
+            3
+          ],
+          "capacity": 4,
+          "decode": true,
+          "mode": "FULL"
+        }
+      ]
+    ]
+  },
+  "operator": {
+    "capsule": "hw3-elastic-core5",
+    "cases": 12,
+    "max_active_requests": 8,
+    "full_core_graph_none_exact": true,
+    "initial_H_warm_seed_or_cold_zero_exact": true
+  },
+  "cpu_tests": 73,
+  "archive_audit": "Fresh sdist-to-wheel build; headers, manifest, launcher and FLA license present; no prototype/run artifacts.",
+  "limits": [
+    "TP2/DP1/PP1, BF16, qualified Qwen27 geometry",
+    "No MTP/APC/LoRA/cache transfer/context parallelism",
+    "TASK_QUEUE_ENABLE=0; fresh K-V pool; separately supplied qualified library",
+    "Native FIA update retained; no sampling capture or metadata-overlap claim",
+    "Bounded correctness, not language quality or long-context equivalence"
+  ],
+  "http_comparison": {
+    "status": "PASS",
+    "capsule": "hw3-elastic-ab1",
+    "devices": [
+      6,
+      7
+    ],
+    "order": [
+      "baseline",
+      "candidate"
+    ],
+    "repeats_per_case": 2,
+    "kv_bytes": 6442450944,
+    "output_tokens": 64,
+    "scope": "Warmed unprofiled HTTP cohorts, no MTP/APC; native queue1 versus required owned queue0. Sequential AB, not ABBA or a confidence study. No universal non-regression claim.",
+    "metrics": {
+      "0-baseline": {
+        "(1, 512)": {
+          "tokens_per_s": 26.65461814553462,
+          "ttft_ms": 394.2620869493112,
+          "gap_ms": 31.84500371386844,
+          "round_tps": [
+            26.597220756807594,
+            26.71226379968429
+          ]
+        },
+        "(1, 1024)": {
+          "tokens_per_s": 26.59955289777651,
+          "ttft_ms": 396.31534251384437,
+          "gap_ms": 31.889669284860172,
+          "round_tps": [
+            26.615242039531473,
+            26.583882241981897
+          ]
+        },
+        "(1, 2048)": {
+          "tokens_per_s": 25.686351028927806,
+          "ttft_ms": 471.19130950886756,
+          "gap_ms": 32.054712801861264,
+          "round_tps": [
+            25.691442998576147,
+            25.681261077306793
+          ]
+        },
+        "(4, None)": {
+          "tokens_per_s": 64.51283499182063,
+          "ttft_ms": 1104.4065975002013,
+          "gap_ms": 44.60023227471134,
+          "round_tps": [
+            65.17515223152013,
+            63.86384341999768
+          ]
+        },
+        "(8, None)": {
+          "tokens_per_s": 96.14854092168096,
+          "ttft_ms": 1888.9108380390098,
+          "gap_ms": 53.192010033637324,
+          "round_tps": [
+            99.92458525706515,
+            92.64749030386288
+          ]
+        }
+      },
+      "1-candidate": {
+        "(1, 512)": {
+          "tokens_per_s": 28.782774296352223,
+          "ttft_ms": 172.55597235634923,
+          "gap_ms": 32.5480841769142,
+          "round_tps": [
+            28.77607850666019,
+            28.7894732028021
+          ]
+        },
+        "(1, 1024)": {
+          "tokens_per_s": 27.41069397310372,
+          "ttft_ms": 259.82756703160703,
+          "gap_ms": 32.927327222072535,
+          "round_tps": [
+            27.55528727689678,
+            27.26761022264182
+          ]
+        },
+        "(1, 2048)": {
+          "tokens_per_s": 25.179242459988707,
+          "ttft_ms": 459.7278799628839,
+          "gap_ms": 33.03514241373965,
+          "round_tps": [
+            25.12723026898393,
+            25.2314704232356
+          ]
+        },
+        "(4, None)": {
+          "tokens_per_s": 70.54566014407895,
+          "ttft_ms": 894.6183928637765,
+          "gap_ms": 42.65323162747784,
+          "round_tps": [
+            69.16081445241402,
+            71.987098094764
+          ]
+        },
+        "(8, None)": {
+          "tokens_per_s": 104.16722793824944,
+          "ttft_ms": 1590.1736071828054,
+          "gap_ms": 51.556112913189395,
+          "round_tps": [
+            105.47340216082407,
+            102.89300909810848
+          ]
+        }
+      }
+    }
+  }
+}

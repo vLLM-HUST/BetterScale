@@ -1,0 +1,85 @@
+{
+  "versions": {
+    "vllm": "0.25.1",
+    "vllm-ascend": "0.25.1rc1",
+    "torch-npu": "2.10.0.post2",
+    "torch": "2.10.0",
+    "transformers": "5.14.1"
+  },
+  "commits": {
+    "vllm": "752a3a504485790a2e8491cacbb35c137339ad34",
+    "vllm-ascend": "9bf964cb4b87c8cd0d6852c41a55b3c29711fa95"
+  },
+  "source_files": [
+    {
+      "distribution": "vllm",
+      "path": "vllm/config/compilation.py",
+      "sha256": "7eca27ee5ab9ae22fcc699e0d5b476b423fe0c379dfae0cbaa87ad7226889957"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/worker/worker_base.py",
+      "sha256": "7da44338c2645ebf03d23394e452b31a8e3da1011fd1b42fcfcccfe99551b3fe"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/worker/gpu_model_runner.py",
+      "sha256": "6c92ded8468f44d6df863a617ce588f132fa6df7031feecc0cc421702a41610e"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/worker/worker.py",
+      "sha256": "8a86068c0cbd24cbb9358c76017bf927783675b79dc1e2901f92bd67f3c7a92f"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/worker/model_runner_v1.py",
+      "sha256": "32955b3891fd237a56b41d6965a052c9182600346114a83816dfcc4ca4591040"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/compilation/acl_graph.py",
+      "sha256": "b13492d8f117f7c7bcf3721f849f273c7c3ea890ae4cd022640b8280af9538a2"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/cudagraph_dispatcher.py",
+      "sha256": "51f632753af729aeee6ce4a802d9d74b64f22eef02a524f36e2a24b07ef0cf63"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/model_executor/models/qwen3_5.py",
+      "sha256": "5f47ae4f4a08d0a78dd681d58b290f3298744c73a82f1349f3e2853469ef73e6"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/ops/gdn.py",
+      "sha256": "8c349f68d37bede53ebe4771ac0ffd4396896f11473627446ab71f782a01eb71"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/ops/gdn_attn_builder.py",
+      "sha256": "af181fdd860d221bf7d35512c26c265559e11f111ea97484a0bba68ae2fa6458"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/ops/triton/fla/chunk.py",
+      "sha256": "7326d2ef4df1240e8ac6852c4a0152470a1e4732433992c779e4ec475b1010b5"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/attention/attention_v1.py",
+      "sha256": "96d36dbd87fd422b8a4928b136b334209510cd321e0d7d2b2e5bdd7a3e259d9e"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/model_executor/layers/mamba/gdn/qwen_gdn_linear_attn.py",
+      "sha256": "97faa7eeb0c2a3ea0c51330a45c038d8c644c57da52946692168019585c6cee6"
+    },
+    {
+      "distribution": "vllm-ascend",
+      "path": "vllm_ascend/patch/worker/patch_qwen3_5.py",
+      "sha256": "97ff11df1d7db0930d5742cfc6020e5ec425064bd37ea5d17e5089712f5fcdae"
+    }
+  ]
+}

@@ -15,7 +15,7 @@ persistent_cube(GM_ADDR config, GM_ADDR unused, GM_ADDR unused2) {
   while (!Load(ctrl + STOP * LINE)) {
     int next = Load(ctrl + CCMD * LINE);
     if (next == seen) {
-      if (++idle >= cfg[9]) {
+      if (!cfg[24] && ++idle >= cfg[9]) {
         Store(ctrl + STOP * LINE, -11);
         break;
       }
@@ -46,6 +46,17 @@ persistent_cube(GM_ADDR config, GM_ADDR unused, GM_ADDR unused2) {
     }
     int configIndex = cfg[14] && !streaming ? (kind == 1 ? 11 : 13) + part
                                             : (kind == 1 ? 7 : 8);
+    uint64_t weightAddress = 0;
+    if (SINGLE_LAYER) {
+      auto desc = (__gm__ int32_t *)ptr[5];
+      Refresh(desc);
+      int source = desc[0] ? 0 : 1;
+      Refresh(desc + source * MAP);
+      int layer = desc[source * MAP + 2];
+      auto weights = (__gm__ int64_t *)cfg[25];
+      Refresh((__gm__ int32_t *)(weights + layer * 2));
+      weightAddress = weights[layer * 2 + (kind == 1 ? 0 : 1)];
+    }
     uint64_t begin = GetSystemCycle();
     if (streaming && kind == 1) {
       auto timing = cfg[13] ? (__gm__ int64_t *)cfg[13] +
@@ -61,7 +72,7 @@ persistent_cube(GM_ADDR config, GM_ADDR unused, GM_ADDR unused2) {
                             : nullptr};
       RunStreamingGmm((GM_ADDR)ptr[7], (GM_ADDR)ptr[1], (GM_ADDR)ptr[2],
                       firstRow, ctrl + (UP_PREFIX_DONE + GetBlockIdx()) * LINE,
-                      next, timing, nullptr, 0, &pack);
+                      next, timing, nullptr, 0, &pack, nullptr, weightAddress);
     } else if (streaming && kind == 2 && cfg[18]) {
       auto timing = cfg[13] ? (__gm__ int64_t *)cfg[13] +
                                   ((512 + next - 1) * 24 + GetBlockIdx()) * 8
@@ -70,16 +81,18 @@ persistent_cube(GM_ADDR config, GM_ADDR unused, GM_ADDR unused2) {
                       firstRow, ctrl + (ACT_TAIL_READY + slot) * LINE, next,
                       timing, ctrl + STOP * LINE, cfg[9], nullptr,
                       cfg[22] ? ctrl + (DOWN_PREFIX_DONE + GetBlockIdx()) * LINE
-                              : nullptr);
+                              : nullptr,
+                      weightAddress);
     } else {
       if (streaming)
         firstRow = 0;
       RunActualGmm(
           (GM_ADDR)ptr[configIndex],
           (GM_ADDR)(ptr[kind == 1 ? 1 : 3] +
-                    int64_t(firstRow) * (kind == 1 ? 2048 : 768) * 2),
+                    int64_t(firstRow) * (kind == 1 ? HIDDEN : INNER) * 2),
           (GM_ADDR)(ptr[kind == 1 ? 2 : 4] +
-                    int64_t(firstRow) * (kind == 1 ? 1536 : 2048) * 2));
+                    int64_t(firstRow) * (kind == 1 ? INNER * 2 : HIDDEN) * 2),
+          weightAddress);
     }
     PipeBarrier<PIPE_ALL>();
     WorkTime(cfg, 1, next, GetBlockIdx(), begin);

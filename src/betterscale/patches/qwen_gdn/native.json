@@ -1,0 +1,10 @@
+{
+  "sha256": "1c522f04a701d3423798b4b7f157737ef41956be25cf46842b6ba33c7ec41bea",
+  "source": "4e21bb18063e92966a79218f507a93eb961e6f0a",
+  "soc": "Ascend910B2",
+  "owned_init": true,
+  "state_layout": "KV",
+  "cold_fill_dma_fence": true,
+  "host_sha256": "22353cf0479252c78073ae23d17f82e31fa707d584dd19bb05e1657303bbcaa2",
+  "host_workspace": "framework-allocator-capture-pool"
+}

@@ -18,6 +18,31 @@ clear and a privately selected HC-pre host tiler on TP. It preserves the donor
 installation, the single target/draft graph pool and the 1 GiB safety reserve.
 See [memory-patch mechanics and native build](src/betterscale/patches/hc_workspace/README.md).
 
+## Qwen hybrid TP2 (source-only, separate entry)
+
+The current source adds `betterscale.qwen_worker.Worker` alongside DSV4:
+non-speculative FULL prefill, or native MTP2 with immutable convolution-weight
+packing. These are separate configurations, not combined FULL+MTP qualification.
+See [commands, measured scope and compiler-cache caveat](src/betterscale/patches/qwen_prefill/README.md)
+and [entry acceptance](docs/evidence/qwen-prefill.json). This addition is **not in
+published PyPI0.4.2** and does not change the existing DSV4 Worker behavior.
+
+The separate opt-in `betterscale.qwen_worker.MixedWorker` owns a K-V GDN state
+pool and dynamic mixed FULL graphs keyed by token capacity plus alternating
+metadata bank, not request partitions.
+It requires the qualified external AscendC library and a fresh service process;
+no MTP; align-mode prefix caching enabled. See [service contract and launcher](src/betterscale/patches/qwen_gdn/README.md).
+The existing Qwen and DSV4 entries are unchanged; this entry is also source-only.
+[Bounded service acceptance and performance](docs/evidence/qwen-mixed-full.json)
+include the historical C1/2048 regression as well as the C4/C8 gains.
+[Dual-bank SWE comparison](docs/evidence/qwen-dualbank.json) measures **+7.24% /
++7.89%** output throughput at C4/C8 versus native, with the selected-trace limits
+and extra graph-memory cost retained.
+The [GDN fusion follow-up](docs/evidence/qwen-gdn-fusion.json) reaches78.527/108.429tok/s
+at C4/C8 (+4.63%/+3.82% versus the retained previous candidate); native controls
+were not rerun. It removes in-graph packing/norm/gating overhead, with unchanged
+state ownership and scheduling.
+
 ## End-to-end service evidence
 
 [September14 HTTP acceptance](docs/E2E-20260914.zh-CN.md) compares retained

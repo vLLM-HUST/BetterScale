@@ -69,8 +69,14 @@ def child(rank, device, links, out, ready_queue, start_event):
             from profile_capture import start, stop
 
             profiler = start(f"attention{rank}")
+        output_tokens = int(os.environ.get("ATTENTION_JOINT_OUTPUT_TOKENS", "3"))
+        assert 1 <= output_tokens <= 4
+        if os.environ.get("ATTENTION_JOINT_SERVER_MODULE") == "device_joint":
+            assert (
+                int(os.environ.get("DEVICE_SERVICE_TASKS", "24")) == 8 * output_tokens
+            )
         params = SamplingParams(
-            temperature=0, max_tokens=3, ignore_eos=True, detokenize=False
+            temperature=0, max_tokens=output_tokens, ignore_eos=True, detokenize=False
         )
         for size in (16, 32):
             llm.generate([dict(prompt_token_ids=[17 + rank] * size)], params)
@@ -80,14 +86,30 @@ def child(rank, device, links, out, ready_queue, start_event):
         ready_queue.put(rank)
         if not start_event.wait(900):
             raise TimeoutError("joint episode startup gate")
+        generations = []
         for size in ((32, 16) if rank == 0 else (16, 32)):
+            begin = time.monotonic()
             results = llm.generate([dict(prompt_token_ids=[19 + rank] * size)], params)
-            assert len(results[0].outputs[0].token_ids) == 3
+            generations.append(
+                dict(
+                    input_tokens=size,
+                    token_ids=results[0].outputs[0].token_ids,
+                    wall_seconds=time.monotonic() - begin,
+                )
+            )
+            assert len(results[0].outputs[0].token_ids) == output_tokens
         llm.collective_rpc("detach")
         if profiler is not None:
             stop(profiler)
         Path(out, f"attention{rank}-complete.json").write_text(
-            json.dumps(dict(banks=banks, complete=True))
+            json.dumps(
+                dict(
+                    banks=banks,
+                    complete=True,
+                    generations=generations,
+                    shadow=os.environ.get("ATTENTION_JOINT_SHADOW", "1") == "1",
+                )
+            )
         )
     torch.npu.synchronize()
 

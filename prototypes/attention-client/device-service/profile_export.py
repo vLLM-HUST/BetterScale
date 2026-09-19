@@ -28,10 +28,13 @@ def run(command, log, timeout=300):
         )
 
 
-def main(root, dfc=False):
-    roles = ("dfc0", "dfc1") if dfc else ROLES
-    label = "dfc2" if dfc else "attention2-expert2"
-    normalized = "dfc2" if dfc else "four-device"
+def main(
+    root,
+    roles=ROLES,
+    label="attention2-expert2",
+    scope="two dummy layers, includes native oracle and startup; not throughput",
+):
+    assert len(set(roles)) == len(roles) and len(roles) >= 2
     output = root / "analysis"
     output.mkdir(exist_ok=True)
     manifest = []
@@ -78,7 +81,7 @@ def main(root, dfc=False):
             )
         )
         print(f"analyzed {role}", flush=True)
-    partial = output / f"{normalized}-normalized.partial.json.gz"
+    partial = output / f"{label}-normalized.partial.json.gz"
     command = [
         str(TOOL),
         "export-perfetto",
@@ -93,7 +96,7 @@ def main(root, dfc=False):
     run(command, output / "export.log", timeout=600)
     with gzip.open(partial, "rt") as stream:
         exported = json.load(stream)
-    partial.rename(output / f"{normalized}-normalized.json.gz")
+    partial.rename(output / f"{label}-normalized.json.gz")
     # Native exporter already constructs/labels the event hierarchy. Retain its
     # four distributed lanes, changing ONLY their display translation back to
     # provider timestamps; do not invent collective matches for point-to-point IPC.
@@ -108,7 +111,7 @@ def main(root, dfc=False):
             event["dur"] = (args["source_end_ns"] - args["source_start_ns"]) / 1000
             args["alignment"] = "provider_timestamps_no_additional_calibration"
         elif event.get("name") == "process_name":
-            event["args"]["name"] = f"{label} · provider clock"
+            event["args"]["name"] = "Device expert service · provider clock"
         elif event.get("name") == "thread_name":
             event["args"]["name"] = roles[event["tid"] - 1]
     receipt = dict(
@@ -116,11 +119,7 @@ def main(root, dfc=False):
         roles=manifest,
         time_origin_ns=origin,
         alignment="native provider timestamps; no independently fitted clock",
-        scope=(
-            "8 warm broad-hit32 DFC graph replays; not throughput"
-            if dfc
-            else "two dummy layers, includes native oracle and startup; not throughput"
-        ),
+        scope=scope,
         event_count=len(slices),
     )
     with gzip.open(
@@ -135,5 +134,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
     parser.add_argument("--dfc", action="store_true")
+    parser.add_argument("--roles", nargs="+", default=ROLES)
+    parser.add_argument("--label", default="attention2-expert2")
+    parser.add_argument(
+        "--scope",
+        default="two dummy layers, includes native oracle and startup; not throughput",
+    )
     args = parser.parse_args()
-    main(args.root.resolve(), dfc=args.dfc)
+    if args.dfc:
+        args.roles, args.label, args.scope = (
+            ("dfc0", "dfc1"),
+            "dfc2",
+            "warm DFC control; not throughput",
+        )
+    main(args.root.resolve(), tuple(args.roles), args.label, args.scope)

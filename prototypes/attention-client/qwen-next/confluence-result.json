@@ -1,0 +1,231 @@
+{
+  "status": "full48_candidate_pass",
+  "parents": [
+    "58f6c0c",
+    "70b8fc3"
+  ],
+  "build": "confluence-next-fixed-build",
+  "devices": [
+    0,
+    1,
+    2,
+    3,
+    6,
+    7
+  ],
+  "source_abi": {
+    "server_words": 27,
+    "client_words": 15,
+    "contract_version": 3
+  },
+  "candidate_flags": {
+    "internal_pipeline": true,
+    "fine_pack": true,
+    "early_down": true,
+    "early_return": true,
+    "route_pull": true,
+    "pull_poll_cycles": 250
+  },
+  "gates": {
+    "cpu_tests": 13,
+    "legacy_leaf": "confluence-legacy-leaf.json",
+    "next_leaf": "qwen-next-20260916T153236Z",
+    "dummy_full": "qwen-next-20260916T153317Z",
+    "wire_stress": "qwen-next-20260916T154246Z",
+    "real_full": "qwen-next-20260916T154330Z"
+  },
+  "stress_completed": [
+    290,
+    1058
+  ],
+  "stress_waves": [
+    1341,
+    1341,
+    1341,
+    1341
+  ],
+  "real_completed": [
+    290,
+    1058
+  ],
+  "real_max_relative_l2": 0.00015757398796267807,
+  "real_client_peak_bytes": [
+    6299432448,
+    6299432448
+  ],
+  "real_expert_weight_bytes": 38654705664,
+  "outputs": [
+    [
+      {
+        "tokens": [
+          20,
+          151645
+        ],
+        "text": "5",
+        "seconds": 0.7082969789626077
+      },
+      {
+        "tokens": [
+          59604,
+          151645
+        ],
+        "text": "Paris",
+        "seconds": 0.4995089459698647
+      }
+    ],
+    [
+      {
+        "tokens": [
+          20,
+          151645
+        ],
+        "text": "5",
+        "seconds": 0.6230136060621589
+      },
+      {
+        "tokens": [
+          59604,
+          151645
+        ],
+        "text": "Paris",
+        "seconds": 0.46721923898439854
+      },
+      {
+        "tokens": [
+          785,
+          8500,
+          25,
+          2303,
+          334,
+          17,
+          11,
+          220,
+          19,
+          11,
+          220,
+          21,
+          11,
+          220,
+          23,
+          11
+        ],
+        "text": "The sequence:  \n**2, 4, 6, 8,",
+        "seconds": 0.8379673139424995
+      }
+    ]
+  ],
+  "candidate_profile": {
+    "capsule": "qwen-next-20260916T154330Z",
+    "source": 1,
+    "model_id": 85,
+    "decode_steps": 17,
+    "layer_calls": 816,
+    "graph_median_ms": 18.91032,
+    "graph_spans_ms": [
+      20.45904,
+      19.1129,
+      19.01216,
+      18.9872,
+      18.874,
+      18.9807,
+      18.86074,
+      18.8058,
+      18.85668,
+      18.84668,
+      18.96726,
+      19.04588,
+      18.82998,
+      18.75974,
+      18.91032,
+      18.94142,
+      18.79122
+    ],
+    "remote_tasks": {
+      "neural_client": {
+        "count": 816,
+        "median_us": 3.22,
+        "sum_ms": 2.6810999999999985
+      },
+      "neural_collect_reduce": {
+        "count": 816,
+        "median_us": 184.54,
+        "sum_ms": 151.62662
+      },
+      "neural_retire": {
+        "count": 816,
+        "median_us": 1.9,
+        "sum_ms": 1.624539999999999
+      }
+    },
+    "scope": "Profiled native FULL decode only; not steady serving throughput or pure server GEMM"
+  },
+  "timeline": "runs/qwen-next-20260916T154330Z/analysis/attention1-full-decode.json.gz",
+  "limitations": [
+    "Short real request fixture and selected-layer MoE oracle, not full quality/full-state equivalence.",
+    "No cross-source batching observed in full48 candidate; wire stress does coalesce.",
+    "Profiled single-source FULL decode, not an end-to-end serving throughput or DFC parity claim.",
+    "Legacy numerical leaf preceded the completion-notification race fix; fixed shared scheduler subsequently passed Next stress/full48.",
+    "One same-host profiled A/B pair, same 17 replay steps and request output IDs; shared host noise remains possible."
+  ],
+  "control_profile": {
+    "capsule": "qwen-next-20260916T155142Z",
+    "source": 1,
+    "model_id": 85,
+    "decode_steps": 17,
+    "layer_calls": 816,
+    "graph_median_ms": 20.07124,
+    "graph_spans_ms": [
+      21.77336,
+      20.13152,
+      20.08266,
+      20.08406,
+      20.12044,
+      19.97586,
+      19.9905,
+      20.06114,
+      20.0247,
+      20.18384,
+      20.07258,
+      19.96582,
+      20.07124,
+      20.0632,
+      20.04614,
+      20.0734,
+      19.96558
+    ],
+    "remote_tasks": {
+      "neural_client": {
+        "count": 816,
+        "median_us": 3.26,
+        "sum_ms": 2.7356799999999946
+      },
+      "neural_collect": {
+        "count": 816,
+        "median_us": 202.08999999999997,
+        "sum_ms": 165.9841599999998
+      },
+      "neural_retire": {
+        "count": 816,
+        "median_us": 1.9,
+        "sum_ms": 1.6247799999999992
+      },
+      "MoeTokenUnpermute": {
+        "count": 816,
+        "median_us": 3.76,
+        "sum_ms": 3.172139999999982
+      }
+    },
+    "scope": "Profiled native FULL decode only; not steady serving throughput or pure server GEMM"
+  },
+  "graph_median_reduction_pct": 5.783997401256724,
+  "concurrency": {
+    "independent_clients": "qwen-next-20260916T155704Z",
+    "ready_at_admission": "qwen-next-20260916T160001Z",
+    "independent_measured_paired_waves": 0,
+    "ready_at_admission_medians_us": {
+      "same": 797.67,
+      "different": 1112.53
+    },
+    "details": "CONCURRENCY.md"
+  }
+}

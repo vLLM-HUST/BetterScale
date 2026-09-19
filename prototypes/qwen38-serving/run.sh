@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+: "${CAPSULE:?fresh absolute capsule}" "${ARM:?sync/async/mtp1/mtp2/mtp3/fixed-full}"
+source_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+repo=$(git -C "$source_dir" rev-parse --show-toplevel)
+runtime=/workspace/my-ascend-workspace/runs/rp-legacy/20260903T155041Z-layout/rp-upstream-0.25.1/.venv
+mkdir -p "$(dirname "$CAPSULE")"
+mkdir "$CAPSULE" "$CAPSULE/source"
+cp "$source_dir/"*.py "$CAPSULE/source/"
+if [[ $ARM == package || $ARM == compare-no-mtp || ${CONCURRENCY_PROFILE:-0} == 1 || ${PACKAGED_QWEN:-0} == 1 ]]; then cp -a "$repo/src/betterscale" "$CAPSULE/source/betterscale"; fi
+cp /root/my-ascend-workspace/runs/qwen38-27b-tp2-baseline/20260916-donor0251-v5/prompt.json "$CAPSULE/prompt.json"
+git -C "$repo" rev-parse HEAD > "$CAPSULE/source-commit.txt"
+cp /models/vllm-ascend-models/Qwen3.8-27B/config.json "$CAPSULE/model-config.json"
+unset PYTHONPATH LD_PRELOAD TRACELOOM_CONTEXT_DIR
+set +u; source /usr/local/Ascend/ascend-toolkit/set_env.sh; set -u
+export ASCEND_RT_VISIBLE_DEVICES=${PROBE_DEVICES:-0,1} OMP_NUM_THREADS=4 TASK_QUEUE_ENABLE=1
+export VLLM_ENABLE_V1_MULTIPROCESSING=1 VLLM_WORKER_MULTIPROC_METHOD=spawn
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+export VLLM_PLUGINS=ascend,ascend_model,ascend_model_loader,ascend_kv_connector
+export PYTHONPATH="$CAPSULE/source${PYTHONPATH:+:$PYTHONPATH}" PYTHONDONTWRITEBYTECODE=1
+export SERVING_PROFILE="$CAPSULE/profiles"
+export HCCL_CONNECT_TIMEOUT=120 HCCL_EXEC_TIMEOUT=120 HCCL_BUFFSIZE=256
+export VLLM_HOST_IP=127.0.0.1 MASTER_ADDR=127.0.0.1 MASTER_PORT=32182
+export HCCL_NPU_SOCKET_PORT_RANGE=29664-29727
+unset ASCEND_CUSTOM_OPP_PATH
+profile=()
+if [[ ${PROFILE:-0} == 1 ]]; then profile=(--profile); fi
+command=("$runtime/bin/python" "$CAPSULE/source/service_probe.py" --capsule "$CAPSULE" --arm "$ARM" "${profile[@]}")
+if [[ $ARM == fixed-full || $ARM == bucket-full || $ARM == shadow || $ARM == spec-shadow || $ARM == spec-policy || $ARM == logical-state ]]; then
+  export CAPSULE VLLM_SERVER_DEV_MODE=1 FIXED_PREFILL_TOKENS=${FIXED_PREFILL_TOKENS:-512}
+  probe=fixed_full_probe.py
+  if [[ $ARM == bucket-full || $ARM == shadow || $ARM == spec-shadow || $ARM == spec-policy || $ARM == logical-state ]]; then probe=bucket_full_probe.py; fi
+  if [[ $ARM == shadow || $ARM == spec-shadow || $ARM == spec-policy || $ARM == logical-state ]]; then probe=shadow_probe.py; fi
+  if [[ $ARM == spec-shadow || $ARM == spec-policy || $ARM == logical-state ]]; then probe=spec_shadow_probe.py; fi
+  if [[ $ARM == spec-policy || $ARM == logical-state ]]; then probe=spec_policy_probe.py; fi
+  if [[ $ARM == logical-state ]]; then probe=logical_state_probe.py; fi
+  command=("$runtime/bin/python" "$CAPSULE/source/$probe")
+fi
+if [[ $ARM == package ]]; then
+  export CAPSULE
+  command=("$runtime/bin/python" "$CAPSULE/source/package_probe.py")
+fi
+if [[ $ARM == compare-no-mtp ]]; then
+  export CAPSULE
+  command=("$runtime/bin/python" "$CAPSULE/source/compare_no_mtp.py")
+fi
+if [[ $ARM == padding-kernel ]]; then
+  export CAPSULE
+  command=("$runtime/bin/python" "$CAPSULE/source/padding_kernel_probe.py")
+fi
+if [[ $ARM == mixed-full ]]; then
+  export CAPSULE VLLM_SERVER_DEV_MODE=1
+  command=("$runtime/bin/python" "$CAPSULE/source/mixed_full_probe.py")
+fi
+if [[ $ARM == partition-full ]]; then
+  export CAPSULE VLLM_SERVER_DEV_MODE=1 MIXED_COEXIST=1
+  command=("$runtime/bin/python" "$CAPSULE/source/partition_probe.py")
+fi
+exec "$runtime/bin/python" /workspace/strengthen-dsv4/prototypes/attention-client/device-service/admit_subset.py \
+ --devices "$ASCEND_RT_VISIBLE_DEVICES" --wait-seconds 1800 --output "$CAPSULE/admission" -- \
+ "${command[@]}"

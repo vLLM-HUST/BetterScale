@@ -1,0 +1,146 @@
+"""One-shot graph/NONE state shadow; synchronization here is diagnostic only."""
+
+import json
+import os
+from pathlib import Path
+import torch
+from bucket_full_worker import Worker as BaseWorker
+
+
+def install_shadow():
+    from vllm.forward_context import get_forward_context
+    from vllm.config import CUDAGraphMode
+    from vllm_ascend.worker.model_runner_v1 import NPUModelRunner
+
+    original = NPUModelRunner._model_forward
+
+    def forward(self, *args, **kwargs):
+        if not getattr(self, "_shadow_remaining", 0):
+            return original(self, *args, **kwargs)
+        self._shadow_remaining -= 1
+        ctx = get_forward_context()
+        assert ctx.cudagraph_runtime_mode == CUDAGraphMode.FULL
+        tensors = []
+
+        def walk(x, name):
+            if isinstance(x, torch.Tensor):
+                tensors.append((name, x))
+            elif isinstance(x, dict):
+                for k, v in x.items():
+                    walk(v, name + "." + str(k))
+            elif isinstance(x, (list, tuple)):
+                for i, v in enumerate(x):
+                    walk(v, name + "." + str(i))
+
+        walk(self.kv_caches, "cache")
+        meta = []
+        seen = set()
+        for name, m in ctx.attn_metadata.items():
+            if type(m).__name__ in seen:
+                continue
+            seen.add(type(m).__name__)
+            fields = {}
+            for k, v in vars(m).items():
+                if isinstance(v, torch.Tensor) and v.numel() <= 16:
+                    fields[k] = v.cpu().tolist()
+                elif isinstance(v, (int, str, bool, float)) or v is None:
+                    fields[k] = v
+            meta.append(dict(layer=name, type=type(m).__name__, fields=fields))
+        torch.npu.synchronize()
+        before = [t.clone() for _, t in tensors]
+        input_values = {
+            **{f"arg{i}": v for i, v in enumerate(args) if isinstance(v, torch.Tensor)},
+            **{k: v for k, v in kwargs.items() if isinstance(v, torch.Tensor)},
+        }
+        input_before = {k: v.clone() for k, v in input_values.items()}
+        graph = original(self, *args, **kwargs).clone()
+        torch.npu.synchronize()
+        input_unchanged = {
+            k: bool(torch.equal(v, input_values[k])) for k, v in input_before.items()
+        }
+        after = [t.clone() for _, t in tensors]
+        for (_, t), b in zip(tensors, before):
+            t.copy_(b)
+        mode = ctx.cudagraph_runtime_mode
+        checks = []
+        try:
+            ctx.cudagraph_runtime_mode = CUDAGraphMode.NONE
+            eager = original(self, *args, **kwargs)
+            torch.npu.synchronize()
+            actual = next(
+                m.num_actual_tokens
+                for m in ctx.attn_metadata.values()
+                if type(m).__name__ == "AscendMetadata"
+            )
+            pairs = [("valid_hidden", graph[:actual], eager[:actual])]
+            pairs += [(name, a, t) for a, (name, t) in zip(after, tensors)]
+            for name, a, b in pairs:
+                delta = (a.float() - b.float()).abs()
+                checks.append(
+                    dict(
+                        name=name,
+                        shape=list(a.shape),
+                        close=bool(
+                            torch.allclose(a, b, atol=0.01, rtol=0.01, equal_nan=True)
+                        ),
+                        max_abs=float(delta.nan_to_num().max().item()),
+                    )
+                )
+            if os.environ.get("ELASTIC_DEBUG") == "1":
+                for record, (_, a, b) in zip(checks, pairs):
+                    if not record["close"] and a.ndim >= 2 and a.shape[0] <= 256:
+                        record["row_max_abs"] = (
+                            (a.float() - b.float())
+                            .abs()
+                            .nan_to_num()
+                            .flatten(1)
+                            .amax(1)
+                            .cpu()
+                            .tolist()
+                        )
+            result = dict(
+                input_unchanged=input_unchanged,
+                rank=self._shadow_rank,
+                actual_tokens=actual,
+                metadata=meta,
+                checks=checks,
+                passed=all(x["close"] for x in checks),
+            )
+            step = len(self._shadow_results)
+            path = (
+                Path(os.environ["CAPSULE"])
+                / f"shadow-{getattr(self, '_shadow_label', '')}rank{self._shadow_rank}-step{step}.json"
+            )
+            path.write_text(json.dumps(result, indent=2))
+            self._shadow_results.append(
+                dict(
+                    rank=self._shadow_rank, passed=result["passed"], artifact=str(path)
+                )
+            )
+        finally:
+            ctx.cudagraph_runtime_mode = mode
+            for (_, t), a in zip(tensors, after):
+                t.copy_(a)
+            torch.npu.synchronize()
+        return graph
+
+    NPUModelRunner._model_forward = forward
+
+
+class Worker(BaseWorker):
+    def __init__(self, *args, **kwargs):
+        install_shadow()
+        super().__init__(*args, **kwargs)
+
+    def arm_shadow(self, actual_tokens, steps=1):
+        self.model_runner._shadow_rank = self.rank
+        self.model_runner._shadow_remaining = steps
+        self.model_runner._shadow_results = []
+        self.model_runner._shadow_actual_tokens = actual_tokens
+        return dict(rank=self.rank, armed=True)
+
+    def shadow_result(self):
+        results = self.model_runner._shadow_results
+        return dict(
+            rank=self.rank, passed=all(x["passed"] for x in results), steps=results
+        )

@@ -1,0 +1,5 @@
+{
+  "sha256": "728cebd2a0bed4d8f1682a7284f0b1606a7d6a79b2704babcd1126f57362af59",
+  "platform": "CANN 9.0.1 / Ascend910B / aarch64",
+  "scope": "Qwen27 BF16 TP2 head256 causal TND paged128; non-FD 24 blocks"
+}

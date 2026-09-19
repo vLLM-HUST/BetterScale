@@ -1,0 +1,161 @@
+{
+  "scope": "two-layer dummy, native eager model with captured remote MoE; not production performance",
+  "generation": {
+    "capsule": "runs/independent-roles-20260916T080309Z",
+    "clients": [
+      {
+        "requests": 7,
+        "output_tokens": 21,
+        "drain": [
+          {
+            "parameter_bytes": 1321227264,
+            "npu_peak_bytes": 1663289856,
+            "completed": 44,
+            "local_routed_expert_parameters": 0,
+            "native_model_forward": true,
+            "shadow": false
+          }
+        ],
+        "audit": []
+      },
+      {
+        "requests": 8,
+        "output_tokens": 32,
+        "drain": [
+          {
+            "parameter_bytes": 1321227264,
+            "npu_peak_bytes": 1663289856,
+            "completed": 66,
+            "local_routed_expert_parameters": 0,
+            "native_model_forward": true,
+            "shadow": false
+          }
+        ],
+        "audit": []
+      }
+    ],
+    "servers": [
+      {
+        "status": "pass",
+        "completed": [
+          44,
+          66
+        ],
+        "waves": 110,
+        "rolling_trace": true,
+        "role_weight_bytes": 1207959552,
+        "loaded_without_client": true,
+        "device_eof": true
+      },
+      {
+        "status": "pass",
+        "completed": [
+          44,
+          66
+        ],
+        "waves": 110,
+        "rolling_trace": true,
+        "role_weight_bytes": 1207959552,
+        "loaded_without_client": true,
+        "device_eof": true
+      }
+    ]
+  },
+  "numerical_audit": {
+    "capsule": "runs/independent-roles-20260916T080615Z",
+    "clients": [
+      {
+        "requests": 7,
+        "output_tokens": 21,
+        "drain": [
+          {
+            "parameter_bytes": 1321227264,
+            "npu_peak_bytes": 2794409472,
+            "completed": 46,
+            "local_routed_expert_parameters": 0,
+            "native_model_forward": true,
+            "shadow": false
+          }
+        ],
+        "audit": [
+          [
+            {
+              "layer": 0,
+              "rows": 3,
+              "relative_l2": 3.0404829885810614e-05
+            },
+            {
+              "layer": 1,
+              "rows": 5,
+              "relative_l2": 0.00018072662351187319
+            }
+          ]
+        ]
+      },
+      {
+        "requests": 8,
+        "output_tokens": 32,
+        "drain": [
+          {
+            "parameter_bytes": 1321227264,
+            "npu_peak_bytes": 2794409472,
+            "completed": 68,
+            "local_routed_expert_parameters": 0,
+            "native_model_forward": true,
+            "shadow": false
+          }
+        ],
+        "audit": [
+          [
+            {
+              "layer": 0,
+              "rows": 3,
+              "relative_l2": 3.0404829885810614e-05
+            },
+            {
+              "layer": 1,
+              "rows": 5,
+              "relative_l2": 0.00018072662351187319
+            }
+          ]
+        ]
+      }
+    ],
+    "servers": [
+      {
+        "status": "pass",
+        "completed": [
+          46,
+          68
+        ],
+        "waves": 114,
+        "rolling_trace": true,
+        "role_weight_bytes": 1207959552,
+        "loaded_without_client": true,
+        "device_eof": true
+      },
+      {
+        "status": "pass",
+        "completed": [
+          46,
+          68
+        ],
+        "waves": 114,
+        "rolling_trace": true,
+        "role_weight_bytes": 1207959552,
+        "loaded_without_client": true,
+        "device_eof": true
+      }
+    ]
+  },
+  "eof": [
+    {
+      "invalid_eof": false,
+      "passed": true
+    },
+    {
+      "invalid_eof": true,
+      "passed": true
+    }
+  ]
+}

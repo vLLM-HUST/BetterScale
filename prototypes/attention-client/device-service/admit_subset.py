@@ -20,6 +20,7 @@ p = argparse.ArgumentParser()
 p.add_argument("--devices", default="0")
 p.add_argument("--output", type=Path, required=True)
 p.add_argument("--wait-seconds", type=float, default=1800)
+p.add_argument("--runtime-seconds", type=float, default=1500)
 p.add_argument("command", nargs=argparse.REMAINDER)
 a = p.parse_args()
 devices = {int(x) for x in a.devices.split(",")}
@@ -75,8 +76,12 @@ def inspect(owned=None):
             and re.fullmatch(r"\d+\s+\d+", cells[0])
             and int(cells[0].split()[0]) in devices
         ):
-            assert len(cells) >= 5 and cells[4].isdigit()
-            host_pid, local_pid = int(cells[1]), int(cells[4])
+            assert len(cells) >= 5 and cells[1].isdigit(), cells
+            host_pid = int(cells[1])
+            # Container PID can disappear before the driver removes its row.
+            # Only the existing host-PID/start-time lease can recognize it;
+            # an unknown host PID remains foreign, never implicitly idle.
+            local_pid = int(cells[4]) if cells[4].isdigit() else 0
             start = process_start(
                 local_pid or known_host_owners.get(host_pid, (0, None, 0))[0]
             )
@@ -123,10 +128,10 @@ child = subprocess.Popen(
     command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True, cwd=a.output
 )
 try:
-    deadline = time.monotonic() + 1500
+    deadline = time.monotonic() + a.runtime_seconds
     while child.poll() is None:
         if time.monotonic() > deadline:
-            raise TimeoutError("bounded probe exceeded 1500s")
+            raise TimeoutError(f"bounded probe exceeded {a.runtime_seconds}s")
         text, _, owners = inspect(descendants(child.pid) | group_members(child.pid))
         (a.output / "latest.txt").write_text(text)
         foreign = owners - (descendants(child.pid) | group_members(child.pid))
