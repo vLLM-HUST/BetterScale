@@ -130,9 +130,12 @@ class DMAWorker(NPUWorker):
         (root / f"manifest-rank{rank}.json").write_text(json.dumps(manifest, indent=2))
         log = (root / f"records-rank{rank}.jsonl").open("w", buffering=1)
         try:
-            sustained = os.environ.get("DMA_SUSTAINED") == "1"
+            host_sustained = os.environ.get("DMA_SUSTAINED") == "host"
+            sustained = host_sustained or os.environ.get("DMA_SUSTAINED") == "1"
             directions = (
-                [("d2d_local", 3)]
+                [("h2d", 1), ("d2h", 2)]
+                if host_sustained
+                else [("d2d_local", 3)]
                 if sustained
                 else [("h2d", 1), ("d2h", 2), ("d2d_local", 3)]
             )
@@ -142,7 +145,8 @@ class DMAWorker(NPUWorker):
                     2: (hp.value, source.data_ptr()),
                     3: (destination.data_ptr(), source.data_ptr()),
                 }[kind]
-                for amount in ((16, 64) if sustained else (256, 1024, 4096)):
+                amounts = (4, 8) if host_sustained else (16, 64) if sustained else (256, 1024, 4096)
+                for amount in amounts:
                     repeat_copies = amount if sustained else 1
                     mib = 4096 if sustained else amount
                     size = mib * 1024**2
@@ -269,7 +273,9 @@ class DMAWorker(NPUWorker):
             barrier()
             profiler.start()
             profile_directions = (
-                [("compute", 0), ("d2d_sustained", 3)]
+                [("compute", 0), ("h2d_sustained", 1), ("d2h_sustained", 2)]
+                if host_sustained
+                else [("compute", 0), ("d2d_sustained", 3)]
                 if sustained
                 else [("compute", 0), ("h2d", 1), ("d2h", 2), ("d2d_local", 3)]
             )
@@ -287,7 +293,7 @@ class DMAWorker(NPUWorker):
                         with torch.npu.stream(dma):
                             dma.wait_event(begin)
                             copy_size = maxbytes if sustained else 1024**3
-                            for _ in range(64 if sustained else 1):
+                            for _ in range(8 if host_sustained else 64 if sustained else 1):
                                 call(
                                     "aclrtMemcpyAsync",
                                     dst,

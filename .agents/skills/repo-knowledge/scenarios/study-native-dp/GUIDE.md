@@ -140,3 +140,15 @@ original A2 vendor, unchanged API/schema/kernel files, rebuilt complete-A2 host
 tilings only. Do not use a selected-op vendor or build ALL (duplicate indexer
 symbols); use the pinned build_aclnn.sh A2 operator set. Keep the shared runtime
 untouched. The V4 Python module's decoder class still has its legacy V2 name.
+
+## Same EP pool with one P rank and one D rank
+
+Read `prototypes/shared-ep-pd/README.md` before re-running this feasibility test.
+Local Qwen30BA3B DP2TP1EP2 trial2 completes real rank0 decode + rank1 prefill
+(256/1024/4096), both FULL, identical rank0 output IDs to control. FULL DP padding
+also makes the1-query D rank execute the P rank's large bucket/projections;
+4096 injection raises its forward~12.6→298.8ms. This is shared synchronous EP,
+not isolated P/D latency or a KV connector. The fixture must disable native async
+scheduling when imposing per-client-step barriers: default in-flight queuing
+conflicted with that harness in trial1. Native dummy work retains stale observer
+request metadata; use client completion receipts, not those IDs, to count live work.

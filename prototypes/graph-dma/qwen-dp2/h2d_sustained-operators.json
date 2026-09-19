@@ -1,0 +1,1016 @@
+{
+  "protocol": "One separate profile pair per rank; see the source run for transfer size. Matched op, shape, dtype, stream, task type and count. Operator times are task duration sums, not exclusive critical-path attribution.",
+  "phase": "h2d_sustained",
+  "ranks": [
+    {
+      "source": "runs/qwen-dma-local-20260915/host-sustained/measurements/analysis/rank0.db",
+      "coverage": [
+        {
+          "phase": "dma_probe::compute",
+          "host_scope_ms": 292.1104,
+          "model_task_envelope_ms": 291.06012,
+          "model_task_union_ms": 285.98246,
+          "uncovered_inside_envelope_ms": 5.07765999999998,
+          "largest_gaps": [
+            {
+              "duration_ms": 0.27182,
+              "start_from_scope_ms": 1.527315,
+              "end_from_scope_ms": 1.799135,
+              "left_op": "ScatterPaKvCache",
+              "right_op": "FusedInferAttentionScore"
+            },
+            {
+              "duration_ms": 0.07274,
+              "start_from_scope_ms": 233.911815,
+              "end_from_scope_ms": 233.984555,
+              "left_op": "hcom_allGather_",
+              "right_op": "hcom_allGather_"
+            },
+            {
+              "duration_ms": 0.04158,
+              "start_from_scope_ms": 239.775575,
+              "end_from_scope_ms": 239.817155,
+              "left_op": "hcom_allGather_",
+              "right_op": "hcom_allGather_"
+            }
+          ]
+        },
+        {
+          "phase": "dma_probe::h2d_sustained",
+          "host_scope_ms": 1359.54343,
+          "model_task_envelope_ms": 316.40874,
+          "model_task_union_ms": 286.01234,
+          "uncovered_inside_envelope_ms": 30.39640000000003,
+          "largest_gaps": [
+            {
+              "duration_ms": 25.66432,
+              "start_from_scope_ms": 2.378725,
+              "end_from_scope_ms": 28.043045,
+              "left_op": "ScatterPaKvCache",
+              "right_op": "FusedInferAttentionScore"
+            },
+            {
+              "duration_ms": 0.04232,
+              "start_from_scope_ms": 206.542945,
+              "end_from_scope_ms": 206.585265,
+              "left_op": "hcom_allGather_",
+              "right_op": "hcom_allGather_"
+            },
+            {
+              "duration_ms": 0.04186,
+              "start_from_scope_ms": 146.934785,
+              "end_from_scope_ms": 146.976645,
+              "left_op": "hcom_allGather_",
+              "right_op": "hcom_allGather_"
+            }
+          ]
+        }
+      ],
+      "operators": [
+        {
+          "op": "SwiGlu",
+          "count": 48,
+          "baseline_ms": 13.06402,
+          "dma_ms": 13.24574,
+          "delta_ms": 0.18172000000000033,
+          "ratio": 1.0139099603338024
+        },
+        {
+          "op": "GroupedMatmul",
+          "count": 96,
+          "baseline_ms": 46.03852,
+          "dma_ms": 46.169,
+          "delta_ms": 0.1304799999999986,
+          "ratio": 1.002834148447865
+        },
+        {
+          "op": "MatMulV3",
+          "count": 96,
+          "baseline_ms": 25.78528,
+          "dma_ms": 25.86978,
+          "delta_ms": 0.08449999999999847,
+          "ratio": 1.0032770635028978
+        },
+        {
+          "op": "hcom_reduceScatter_",
+          "count": 48,
+          "baseline_ms": 53.09354,
+          "dma_ms": 53.14,
+          "delta_ms": 0.046460000000003276,
+          "ratio": 1.0008750593763385
+        },
+        {
+          "op": "MoeTokenUnpermute",
+          "count": 48,
+          "baseline_ms": 5.47464,
+          "dma_ms": 5.51772,
+          "delta_ms": 0.043079999999999785,
+          "ratio": 1.0078690105650783
+        },
+        {
+          "op": "FusedInferAttentionScore",
+          "count": 48,
+          "baseline_ms": 51.74218,
+          "dma_ms": 51.76746,
+          "delta_ms": 0.02528000000000219,
+          "ratio": 1.0004885762447582
+        },
+        {
+          "op": "AddRmsNormBias",
+          "count": 96,
+          "baseline_ms": 8.87168,
+          "dma_ms": 8.88968,
+          "delta_ms": 0.018000000000000682,
+          "ratio": 1.002028928004617
+        },
+        {
+          "op": "NotEqual",
+          "count": 48,
+          "baseline_ms": 0.50676,
+          "dma_ms": 0.5107,
+          "delta_ms": 0.003940000000000055,
+          "ratio": 1.0077748835740785
+        },
+        {
+          "op": "split_qkv_rmsnorm_rope_kernel_0",
+          "count": 48,
+          "baseline_ms": 6.11008,
+          "dma_ms": 6.1125,
+          "delta_ms": 0.0024199999999998667,
+          "ratio": 1.0003960668272756
+        },
+        {
+          "op": "Cast",
+          "count": 49,
+          "baseline_ms": 0.41994000000000004,
+          "dma_ms": 0.4214,
+          "delta_ms": 0.0014599999999999613,
+          "ratio": 1.0034766871457825
+        },
+        {
+          "op": "Abs",
+          "count": 48,
+          "baseline_ms": 0.42216,
+          "dma_ms": 0.42336,
+          "delta_ms": 0.0012000000000000344,
+          "ratio": 1.0028425241614554
+        },
+        {
+          "op": "Mul",
+          "count": 48,
+          "baseline_ms": 0.55638,
+          "dma_ms": 0.55742,
+          "delta_ms": 0.001040000000000041,
+          "ratio": 1.0018692260685145
+        },
+        {
+          "op": "GatherV2",
+          "count": 1,
+          "baseline_ms": 0.1847,
+          "dma_ms": 0.18514,
+          "delta_ms": 0.00043999999999999595,
+          "ratio": 1.0023822414726584
+        },
+        {
+          "op": "ScatterPaKvCache",
+          "count": 48,
+          "baseline_ms": 1.69112,
+          "dma_ms": 1.69156,
+          "delta_ms": 0.00043999999999999595,
+          "ratio": 1.00026018260088
+        },
+        {
+          "op": "RmsNorm",
+          "count": 1,
+          "baseline_ms": 0.06148,
+          "dma_ms": 0.06168,
+          "delta_ms": 0.0001999999999999988,
+          "ratio": 1.003253090435914
+        },
+        {
+          "op": "MatMulV2",
+          "count": 48,
+          "baseline_ms": 0.87938,
+          "dma_ms": 0.87836,
+          "delta_ms": -0.0010200000000000209,
+          "ratio": 0.9988400918829174
+        },
+        {
+          "op": "MoeGatingTopK",
+          "count": 48,
+          "baseline_ms": 7.89698,
+          "dma_ms": 7.89566,
+          "delta_ms": -0.0013199999999997658,
+          "ratio": 0.9998328474935988
+        },
+        {
+          "op": "Index",
+          "count": 48,
+          "baseline_ms": 3.00826,
+          "dma_ms": 3.00584,
+          "delta_ms": -0.0024199999999998667,
+          "ratio": 0.9991955482571321
+        },
+        {
+          "op": "MoeInitRoutingV3",
+          "count": 48,
+          "baseline_ms": 13.83448,
+          "dma_ms": 13.7837,
+          "delta_ms": -0.0507799999999996,
+          "ratio": 0.9963294608832425
+        },
+        {
+          "op": "hcom_allGather_",
+          "count": 96,
+          "baseline_ms": 46.34088,
+          "dma_ms": 45.88564,
+          "delta_ms": -0.4552399999999963,
+          "ratio": 0.9901762763244893
+        }
+      ],
+      "shapes": [
+        {
+          "op": "SwiGlu",
+          "shape": "\"65536,1536\"",
+          "dtype": "DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 13.06402,
+          "dma_ms": 13.24574,
+          "delta_ms": 0.18172000000000033,
+          "ratio": 1.0139099603338024
+        },
+        {
+          "op": "GroupedMatmul",
+          "shape": "\"65536,2048;64,2048,1536;;;;;;64\"",
+          "dtype": "DT_BF16;DT_BF16;FLOAT;UINT64;FLOAT;FLOAT16;FLOAT16;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 30.4493,
+          "dma_ms": 30.54344,
+          "delta_ms": 0.09413999999999945,
+          "ratio": 1.0030916966892507
+        },
+        {
+          "op": "hcom_reduceScatter_",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 11,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 53.09354,
+          "dma_ms": 53.14,
+          "delta_ms": 0.046460000000003276,
+          "ratio": 1.0008750593763385
+        },
+        {
+          "op": "MatMulV3",
+          "shape": "\"4096,2048;5120,2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 13.94952,
+          "dma_ms": 13.99378,
+          "delta_ms": 0.04425999999999952,
+          "ratio": 1.003172869030619
+        },
+        {
+          "op": "MoeTokenUnpermute",
+          "shape": "\"65536,2048;65536;8192,8\"",
+          "dtype": "DT_BF16;INT32;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 5.47464,
+          "dma_ms": 5.51772,
+          "delta_ms": 0.043079999999999785,
+          "ratio": 1.0078690105650783
+        },
+        {
+          "op": "MatMulV3",
+          "shape": "\"4096,4096;2048,4096\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 11.83576,
+          "dma_ms": 11.876,
+          "delta_ms": 0.04023999999999894,
+          "ratio": 1.00339986616829
+        },
+        {
+          "op": "GroupedMatmul",
+          "shape": "\"65536,768;64,768,2048;;;;;;64\"",
+          "dtype": "DT_BF16;DT_BF16;FLOAT;UINT64;FLOAT;FLOAT16;FLOAT16;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 15.58922,
+          "dma_ms": 15.62556,
+          "delta_ms": 0.03634000000000093,
+          "ratio": 1.0023310980279962
+        },
+        {
+          "op": "FusedInferAttentionScore",
+          "shape": "\"4096,32,128;170,128,512;170,128,512;;2048,2048;1;1;;;;;;;;1,64;;;;;;;;;;;;;;;;\"",
+          "dtype": "DT_BF16;DT_BF16;DT_BF16;DT_UNDEFINED;INT8;INT64;INT64;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;INT32;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 51.74218,
+          "dma_ms": 51.76746,
+          "delta_ms": 0.02528000000000219,
+          "ratio": 1.0004885762447582
+        },
+        {
+          "op": "AddRmsNormBias",
+          "shape": "\"4096,2048;4096,2048;2048;\"",
+          "dtype": "DT_BF16;DT_BF16;DT_BF16;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 96,
+          "baseline_ms": 8.87168,
+          "dma_ms": 8.88968,
+          "delta_ms": 0.018000000000000682,
+          "ratio": 1.002028928004617
+        },
+        {
+          "op": "NotEqual",
+          "shape": "\"8192,8;\"",
+          "dtype": "INT32;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.50676,
+          "dma_ms": 0.5107,
+          "delta_ms": 0.003940000000000055,
+          "ratio": 1.0077748835740785
+        },
+        {
+          "op": "split_qkv_rmsnorm_rope_kernel_0",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 6.11008,
+          "dma_ms": 6.1125,
+          "delta_ms": 0.0024199999999998667,
+          "ratio": 1.0003960668272756
+        },
+        {
+          "op": "Cast",
+          "shape": "\"8192,8\"",
+          "dtype": "BOOL",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.41698,
+          "dma_ms": 0.4184,
+          "delta_ms": 0.0014199999999999768,
+          "ratio": 1.0034054391097893
+        },
+        {
+          "op": "Abs",
+          "shape": "\"65536\"",
+          "dtype": "INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.42216,
+          "dma_ms": 0.42336,
+          "delta_ms": 0.0012000000000000344,
+          "ratio": 1.0028425241614554
+        },
+        {
+          "op": "Mul",
+          "shape": "\"8192,8;8192,8\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.55638,
+          "dma_ms": 0.55742,
+          "delta_ms": 0.001040000000000041,
+          "ratio": 1.0018692260685145
+        },
+        {
+          "op": "GatherV2",
+          "shape": "\"151936,2048;4096;1\"",
+          "dtype": "DT_BF16;INT64;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.1847,
+          "dma_ms": 0.18514,
+          "delta_ms": 0.00043999999999999595,
+          "ratio": 1.0023822414726584
+        },
+        {
+          "op": "ScatterPaKvCache",
+          "shape": "\"4096,4,128;170,128,4,128;4096;4096,4,128;170,128,4,128;;;\"",
+          "dtype": "DT_BF16;DT_BF16;INT32;DT_BF16;DT_BF16;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 1.69112,
+          "dma_ms": 1.69156,
+          "delta_ms": 0.00043999999999999595,
+          "ratio": 1.00026018260088
+        },
+        {
+          "op": "RmsNorm",
+          "shape": "\"4096,2048;2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.06148,
+          "dma_ms": 0.06168,
+          "delta_ms": 0.0001999999999999988,
+          "ratio": 1.003253090435914
+        },
+        {
+          "op": "Cast",
+          "shape": "\"4096\"",
+          "dtype": "INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.00296,
+          "dma_ms": 0.003,
+          "delta_ms": 4.0000000000000105e-05,
+          "ratio": 1.0135135135135136
+        },
+        {
+          "op": "MatMulV2",
+          "shape": "\"4096,2048;128,2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 0.87938,
+          "dma_ms": 0.87836,
+          "delta_ms": -0.0010200000000000209,
+          "ratio": 0.9988400918829174
+        },
+        {
+          "op": "MoeGatingTopK",
+          "shape": "\"8192,128;\"",
+          "dtype": "DT_BF16;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 7.89698,
+          "dma_ms": 7.89566,
+          "delta_ms": -0.0013199999999997658,
+          "ratio": 0.9998328474935988
+        },
+        {
+          "op": "Index",
+          "shape": "\"128;1;2;8192,8\"",
+          "dtype": "INT32;INT64;INT64;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 3.00826,
+          "dma_ms": 3.00584,
+          "delta_ms": -0.0024199999999998667,
+          "ratio": 0.9991955482571321
+        },
+        {
+          "op": "MoeInitRoutingV3",
+          "shape": "\"8192,2048;8192,8\"",
+          "dtype": "DT_BF16;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIV",
+          "count": 48,
+          "baseline_ms": 13.83448,
+          "dma_ms": 13.7837,
+          "delta_ms": -0.0507799999999996,
+          "ratio": 0.9963294608832425
+        },
+        {
+          "op": "hcom_allGather_",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 11,
+          "task_type": "KERNEL_AIVEC",
+          "count": 96,
+          "baseline_ms": 46.34088,
+          "dma_ms": 45.88564,
+          "delta_ms": -0.4552399999999963,
+          "ratio": 0.9901762763244893
+        }
+      ]
+    },
+    {
+      "source": "runs/qwen-dma-local-20260915/host-sustained/measurements/analysis/rank1.db",
+      "coverage": [
+        {
+          "phase": "dma_probe::compute",
+          "host_scope_ms": 292.16233,
+          "model_task_envelope_ms": 291.0369,
+          "model_task_union_ms": 285.99432,
+          "uncovered_inside_envelope_ms": 5.042579999999987,
+          "largest_gaps": [
+            {
+              "duration_ms": 0.24208,
+              "start_from_scope_ms": 1.550525,
+              "end_from_scope_ms": 1.792605,
+              "left_op": "ScatterPaKvCache",
+              "right_op": "FusedInferAttentionScore"
+            },
+            {
+              "duration_ms": 0.04088,
+              "start_from_scope_ms": 183.052065,
+              "end_from_scope_ms": 183.092945,
+              "left_op": "hcom_reduceScatter_",
+              "right_op": "AddRmsNormBias"
+            },
+            {
+              "duration_ms": 0.04032,
+              "start_from_scope_ms": 173.816965,
+              "end_from_scope_ms": 173.857285,
+              "left_op": "hcom_allGather_",
+              "right_op": "hcom_allGather_"
+            }
+          ]
+        },
+        {
+          "phase": "dma_probe::h2d_sustained",
+          "host_scope_ms": 1590.92833,
+          "model_task_envelope_ms": 316.35394,
+          "model_task_union_ms": 290.89182,
+          "uncovered_inside_envelope_ms": 25.462120000000027,
+          "largest_gaps": [
+            {
+              "duration_ms": 20.8345,
+              "start_from_scope_ms": 2.427785,
+              "end_from_scope_ms": 23.262285,
+              "left_op": "ScatterPaKvCache",
+              "right_op": "FusedInferAttentionScore"
+            },
+            {
+              "duration_ms": 0.04406,
+              "start_from_scope_ms": 30.357125,
+              "end_from_scope_ms": 30.401185,
+              "left_op": "hcom_allGather_",
+              "right_op": "hcom_allGather_"
+            },
+            {
+              "duration_ms": 0.0428,
+              "start_from_scope_ms": 265.975505,
+              "end_from_scope_ms": 266.018305,
+              "left_op": "hcom_allGather_",
+              "right_op": "hcom_allGather_"
+            }
+          ]
+        }
+      ],
+      "operators": [
+        {
+          "op": "hcom_allGather_",
+          "count": 96,
+          "baseline_ms": 46.0283,
+          "dma_ms": 50.47808,
+          "delta_ms": 4.449779999999997,
+          "ratio": 1.0966748717636758
+        },
+        {
+          "op": "SwiGlu",
+          "count": 48,
+          "baseline_ms": 12.98642,
+          "dma_ms": 13.1414,
+          "delta_ms": 0.15498000000000012,
+          "ratio": 1.011934004906664
+        },
+        {
+          "op": "GroupedMatmul",
+          "count": 96,
+          "baseline_ms": 48.35686,
+          "dma_ms": 48.49162,
+          "delta_ms": 0.13476,
+          "ratio": 1.002786781441144
+        },
+        {
+          "op": "hcom_reduceScatter_",
+          "count": 48,
+          "baseline_ms": 50.35668,
+          "dma_ms": 50.48206,
+          "delta_ms": 0.12537999999999982,
+          "ratio": 1.0024898384881609
+        },
+        {
+          "op": "MatMulV3",
+          "count": 96,
+          "baseline_ms": 25.742359999999998,
+          "dma_ms": 25.768900000000002,
+          "delta_ms": 0.026540000000004227,
+          "ratio": 1.0010309855040487
+        },
+        {
+          "op": "AddRmsNormBias",
+          "count": 96,
+          "baseline_ms": 8.84452,
+          "dma_ms": 8.86664,
+          "delta_ms": 0.022120000000001028,
+          "ratio": 1.0025009836599388
+        },
+        {
+          "op": "MoeTokenUnpermute",
+          "count": 48,
+          "baseline_ms": 5.79114,
+          "dma_ms": 5.8114,
+          "delta_ms": 0.0202599999999995,
+          "ratio": 1.0034984476286188
+        },
+        {
+          "op": "split_qkv_rmsnorm_rope_kernel_0",
+          "count": 48,
+          "baseline_ms": 6.14252,
+          "dma_ms": 6.15442,
+          "delta_ms": 0.0118999999999998,
+          "ratio": 1.001937315629416
+        },
+        {
+          "op": "ScatterPaKvCache",
+          "count": 48,
+          "baseline_ms": 1.64658,
+          "dma_ms": 1.65244,
+          "delta_ms": 0.005859999999999976,
+          "ratio": 1.003558891763534
+        },
+        {
+          "op": "Index",
+          "count": 48,
+          "baseline_ms": 3.01338,
+          "dma_ms": 3.01488,
+          "delta_ms": 0.0014999999999996128,
+          "ratio": 1.0004977799016386
+        },
+        {
+          "op": "Abs",
+          "count": 48,
+          "baseline_ms": 0.4315,
+          "dma_ms": 0.43274,
+          "delta_ms": 0.0012400000000000189,
+          "ratio": 1.0028736964078795
+        },
+        {
+          "op": "NotEqual",
+          "count": 48,
+          "baseline_ms": 0.50104,
+          "dma_ms": 0.5019,
+          "delta_ms": 0.0008599999999999719,
+          "ratio": 1.001716429825962
+        },
+        {
+          "op": "Mul",
+          "count": 48,
+          "baseline_ms": 0.57126,
+          "dma_ms": 0.57096,
+          "delta_ms": -0.00029999999999996696,
+          "ratio": 0.9994748450792984
+        },
+        {
+          "op": "RmsNorm",
+          "count": 1,
+          "baseline_ms": 0.0572,
+          "dma_ms": 0.05622,
+          "delta_ms": -0.0009800000000000017,
+          "ratio": 0.9828671328671328
+        },
+        {
+          "op": "GatherV2",
+          "count": 1,
+          "baseline_ms": 0.1961,
+          "dma_ms": 0.19502,
+          "delta_ms": -0.0010799999999999976,
+          "ratio": 0.9944926058133605
+        },
+        {
+          "op": "MatMulV2",
+          "count": 48,
+          "baseline_ms": 0.88168,
+          "dma_ms": 0.87974,
+          "delta_ms": -0.0019400000000000528,
+          "ratio": 0.997799655203702
+        },
+        {
+          "op": "Cast",
+          "count": 49,
+          "baseline_ms": 0.40831999999999996,
+          "dma_ms": 0.40592,
+          "delta_ms": -0.0023999999999999577,
+          "ratio": 0.9941222570532916
+        },
+        {
+          "op": "MoeGatingTopK",
+          "count": 48,
+          "baseline_ms": 7.77978,
+          "dma_ms": 7.77008,
+          "delta_ms": -0.009699999999999598,
+          "ratio": 0.9987531781104351
+        },
+        {
+          "op": "MoeInitRoutingV3",
+          "count": 48,
+          "baseline_ms": 14.1359,
+          "dma_ms": 14.12514,
+          "delta_ms": -0.010759999999999437,
+          "ratio": 0.9992388174789013
+        },
+        {
+          "op": "FusedInferAttentionScore",
+          "count": 48,
+          "baseline_ms": 52.12278,
+          "dma_ms": 52.09226,
+          "delta_ms": -0.03051999999999566,
+          "ratio": 0.9994144594743413
+        }
+      ],
+      "shapes": [
+        {
+          "op": "hcom_allGather_",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 11,
+          "task_type": "KERNEL_AIVEC",
+          "count": 96,
+          "baseline_ms": 46.0283,
+          "dma_ms": 50.47808,
+          "delta_ms": 4.449779999999997,
+          "ratio": 1.0966748717636758
+        },
+        {
+          "op": "SwiGlu",
+          "shape": "\"65536,1536\"",
+          "dtype": "DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 12.98642,
+          "dma_ms": 13.1414,
+          "delta_ms": 0.15498000000000012,
+          "ratio": 1.011934004906664
+        },
+        {
+          "op": "hcom_reduceScatter_",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 11,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 50.35668,
+          "dma_ms": 50.48206,
+          "delta_ms": 0.12537999999999982,
+          "ratio": 1.0024898384881609
+        },
+        {
+          "op": "GroupedMatmul",
+          "shape": "\"65536,2048;64,2048,1536;;;;;;64\"",
+          "dtype": "DT_BF16;DT_BF16;FLOAT;UINT64;FLOAT;FLOAT16;FLOAT16;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 32.05282,
+          "dma_ms": 32.14408,
+          "delta_ms": 0.09126000000000545,
+          "ratio": 1.0028471753811368
+        },
+        {
+          "op": "GroupedMatmul",
+          "shape": "\"65536,768;64,768,2048;;;;;;64\"",
+          "dtype": "DT_BF16;DT_BF16;FLOAT;UINT64;FLOAT;FLOAT16;FLOAT16;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 16.30404,
+          "dma_ms": 16.34754,
+          "delta_ms": 0.043499999999998096,
+          "ratio": 1.002668050372791
+        },
+        {
+          "op": "MatMulV3",
+          "shape": "\"4096,2048;5120,2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 13.93334,
+          "dma_ms": 13.95726,
+          "delta_ms": 0.023920000000000385,
+          "ratio": 1.001716745590074
+        },
+        {
+          "op": "AddRmsNormBias",
+          "shape": "\"4096,2048;4096,2048;2048;\"",
+          "dtype": "DT_BF16;DT_BF16;DT_BF16;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 96,
+          "baseline_ms": 8.84452,
+          "dma_ms": 8.86664,
+          "delta_ms": 0.022120000000001028,
+          "ratio": 1.0025009836599388
+        },
+        {
+          "op": "MoeTokenUnpermute",
+          "shape": "\"65536,2048;65536;8192,8\"",
+          "dtype": "DT_BF16;INT32;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 5.79114,
+          "dma_ms": 5.8114,
+          "delta_ms": 0.0202599999999995,
+          "ratio": 1.0034984476286188
+        },
+        {
+          "op": "split_qkv_rmsnorm_rope_kernel_0",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 6.14252,
+          "dma_ms": 6.15442,
+          "delta_ms": 0.0118999999999998,
+          "ratio": 1.001937315629416
+        },
+        {
+          "op": "ScatterPaKvCache",
+          "shape": "\"4096,4,128;170,128,4,128;4096;4096,4,128;170,128,4,128;;;\"",
+          "dtype": "DT_BF16;DT_BF16;INT32;DT_BF16;DT_BF16;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 1.64658,
+          "dma_ms": 1.65244,
+          "delta_ms": 0.005859999999999976,
+          "ratio": 1.003558891763534
+        },
+        {
+          "op": "MatMulV3",
+          "shape": "\"4096,4096;2048,4096\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 11.80902,
+          "dma_ms": 11.81164,
+          "delta_ms": 0.0026200000000002888,
+          "ratio": 1.0002218643037273
+        },
+        {
+          "op": "Index",
+          "shape": "\"128;1;2;8192,8\"",
+          "dtype": "INT32;INT64;INT64;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 3.01338,
+          "dma_ms": 3.01488,
+          "delta_ms": 0.0014999999999996128,
+          "ratio": 1.0004977799016386
+        },
+        {
+          "op": "Abs",
+          "shape": "\"65536\"",
+          "dtype": "INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.4315,
+          "dma_ms": 0.43274,
+          "delta_ms": 0.0012400000000000189,
+          "ratio": 1.0028736964078795
+        },
+        {
+          "op": "NotEqual",
+          "shape": "\"8192,8;\"",
+          "dtype": "INT32;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.50104,
+          "dma_ms": 0.5019,
+          "delta_ms": 0.0008599999999999719,
+          "ratio": 1.001716429825962
+        },
+        {
+          "op": "Cast",
+          "shape": "\"4096\"",
+          "dtype": "INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.00276,
+          "dma_ms": 0.00304,
+          "delta_ms": 0.0002800000000000003,
+          "ratio": 1.1014492753623188
+        },
+        {
+          "op": "Mul",
+          "shape": "\"8192,8;8192,8\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.57126,
+          "dma_ms": 0.57096,
+          "delta_ms": -0.00029999999999996696,
+          "ratio": 0.9994748450792984
+        },
+        {
+          "op": "RmsNorm",
+          "shape": "\"4096,2048;2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.0572,
+          "dma_ms": 0.05622,
+          "delta_ms": -0.0009800000000000017,
+          "ratio": 0.9828671328671328
+        },
+        {
+          "op": "GatherV2",
+          "shape": "\"151936,2048;4096;1\"",
+          "dtype": "DT_BF16;INT64;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.1961,
+          "dma_ms": 0.19502,
+          "delta_ms": -0.0010799999999999976,
+          "ratio": 0.9944926058133605
+        },
+        {
+          "op": "MatMulV2",
+          "shape": "\"4096,2048;128,2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 0.88168,
+          "dma_ms": 0.87974,
+          "delta_ms": -0.0019400000000000528,
+          "ratio": 0.997799655203702
+        },
+        {
+          "op": "Cast",
+          "shape": "\"8192,8\"",
+          "dtype": "BOOL",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.40556,
+          "dma_ms": 0.40288,
+          "delta_ms": -0.00267999999999996,
+          "ratio": 0.9933918532399646
+        },
+        {
+          "op": "MoeGatingTopK",
+          "shape": "\"8192,128;\"",
+          "dtype": "DT_BF16;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 7.77978,
+          "dma_ms": 7.77008,
+          "delta_ms": -0.009699999999999598,
+          "ratio": 0.9987531781104351
+        },
+        {
+          "op": "MoeInitRoutingV3",
+          "shape": "\"8192,2048;8192,8\"",
+          "dtype": "DT_BF16;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIV",
+          "count": 48,
+          "baseline_ms": 14.1359,
+          "dma_ms": 14.12514,
+          "delta_ms": -0.010759999999999437,
+          "ratio": 0.9992388174789013
+        },
+        {
+          "op": "FusedInferAttentionScore",
+          "shape": "\"4096,32,128;170,128,512;170,128,512;;2048,2048;1;1;;;;;;;;1,64;;;;;;;;;;;;;;;;\"",
+          "dtype": "DT_BF16;DT_BF16;DT_BF16;DT_UNDEFINED;INT8;INT64;INT64;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;INT32;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 52.12278,
+          "dma_ms": 52.09226,
+          "delta_ms": -0.03051999999999566,
+          "ratio": 0.9994144594743413
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+[
+  {
+    "label": "decode-control",
+    "decode_same_as_control": true,
+    "decode_forward_ms": 12.900620460510254,
+    "prefill_peer_forward_ms": 12.627099990844727,
+    "decode_descriptor": "BatchDescriptor(num_tokens=1, num_reqs=1, uniform=False, has_lora=False, num_active_loras=0)",
+    "peer_scheduled": {
+      "decode-control-seed-a7d13bdb": 1
+    },
+    "steady_decode_median_ms": 12.619669914245605,
+    "finished_counts": [
+      1,
+      1
+    ]
+  },
+  {
+    "label": "p256",
+    "decode_same_as_control": true,
+    "decode_forward_ms": 42.955101013183594,
+    "prefill_peer_forward_ms": 43.78300094604492,
+    "decode_descriptor": "BatchDescriptor(num_tokens=256, num_reqs=1, uniform=False, has_lora=False, num_active_loras=0)",
+    "peer_scheduled": {
+      "p256-prefill-a9374e5f": 256
+    },
+    "steady_decode_median_ms": 12.50846004486084,
+    "finished_counts": [
+      1,
+      2
+    ]
+  },
+  {
+    "label": "p1024",
+    "decode_same_as_control": true,
+    "decode_forward_ms": 90.67601776123047,
+    "prefill_peer_forward_ms": 91.33673858642578,
+    "decode_descriptor": "BatchDescriptor(num_tokens=1024, num_reqs=1, uniform=False, has_lora=False, num_active_loras=0)",
+    "peer_scheduled": {
+      "p1024-prefill-b292d6ef": 1024
+    },
+    "steady_decode_median_ms": 12.461259841918945,
+    "finished_counts": [
+      1,
+      2
+    ]
+  },
+  {
+    "label": "p4096",
+    "decode_same_as_control": true,
+    "decode_forward_ms": 298.7707214355469,
+    "prefill_peer_forward_ms": 299.4869689941406,
+    "decode_descriptor": "BatchDescriptor(num_tokens=4096, num_reqs=1, uniform=False, has_lora=False, num_active_loras=0)",
+    "peer_scheduled": {
+      "p4096-prefill-a1ec24ac": 4096
+    },
+    "steady_decode_median_ms": 12.440550327301025,
+    "finished_counts": [
+      1,
+      2
+    ]
+  },
+  {
+    "label": "p4096-profile",
+    "decode_same_as_control": true,
+    "decode_forward_ms": 300.6331787109375,
+    "prefill_peer_forward_ms": 301.2898864746094,
+    "decode_descriptor": "BatchDescriptor(num_tokens=4096, num_reqs=1, uniform=False, has_lora=False, num_active_loras=0)",
+    "peer_scheduled": {
+      "p4096-profile-prefill-9b75bbc1": 4096
+    },
+    "steady_decode_median_ms": 17.426339149475098,
+    "finished_counts": [
+      1,
+      2
+    ]
+  }
+]

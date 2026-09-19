@@ -1,5 +1,20 @@
 # Extend DSV4 prefill/mixed FULL graph
 
+For joint **execute_model + sample_tokens** capture, enter the
+[source-level gap audit](joint-execute-sample.md) before treating existing runner
+method boundaries or optional CPU sampling branches as fundamental limitations.
+Then use the [qualified LiveInference seam comparison](liveinfer-joint-wave-comparison.md)
+for the actual `4e3323ef` root, cursor convention, transport and local acceptance
+receipts; it is not a claim about current LiveInference or a fresh hardware run.
+For the implemented native-body transplant and its fresh bounded NPU gates, read
+[joint-wave prototype evidence](joint-wave-prototype.md); distinguish numerical
+capture, continuation and resource authorization from production serving adoption.
+For **runner-independent model donation** using the actual LiveInference runtime,
+read [owned-wave takeover evidence](owned-wave-takeover.md): real 48-layer Qwen
+TP2 × DP2 / EP4 passes, with the PA host-length seam explicitly retained.
+The same note now records FULL prefill plus the three-stream, all-rank-quorum
+N+2 gate, including old-generation drain and odd-parity prefill bank reuse.
+
 For the newer bounded **DP8 device preparation/metadata continuation**, enter
 [the fresh evidence and ownership boundary](liveinfer-continuation.md#fresh-bounded-dp8-continuation-september13)
 and `src/betterscale/patches/async_decode/README.md`. Do not confuse it with

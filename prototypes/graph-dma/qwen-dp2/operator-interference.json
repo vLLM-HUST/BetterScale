@@ -1,0 +1,923 @@
+{
+  "protocol": "One separate profile pair per rank: both ranks 64 x 4 GiB local D2D. Matched op, shape, dtype, stream, task type and count. Operator times are task duration sums, not exclusive critical-path attribution.",
+  "ranks": [
+    {
+      "source": "runs/qwen-dma-local-20260914/sustained/measurements/analysis/rank0.db",
+      "coverage": [
+        {
+          "phase": "dma_probe::compute",
+          "host_scope_ms": 291.97463,
+          "model_task_envelope_ms": 290.99144,
+          "model_task_union_ms": 286.11804,
+          "uncovered_inside_envelope_ms": 4.873400000000004
+        },
+        {
+          "phase": "dma_probe::d2d_sustained",
+          "host_scope_ms": 514.13511,
+          "model_task_envelope_ms": 512.24924,
+          "model_task_union_ms": 504.9624,
+          "uncovered_inside_envelope_ms": 7.286839999999984
+        }
+      ],
+      "operators": [
+        {
+          "op": "FusedInferAttentionScore",
+          "count": 48,
+          "baseline_ms": 51.72362,
+          "dma_ms": 125.5365,
+          "delta_ms": 73.81288,
+          "ratio": 2.4270633029938744
+        },
+        {
+          "op": "GroupedMatmul",
+          "count": 96,
+          "baseline_ms": 46.07036,
+          "dma_ms": 113.96308,
+          "delta_ms": 67.89272,
+          "ratio": 2.47367461422051
+        },
+        {
+          "op": "MatMulV3",
+          "count": 96,
+          "baseline_ms": 25.74796,
+          "dma_ms": 51.51414,
+          "delta_ms": 25.76618,
+          "ratio": 2.0007076288762295
+        },
+        {
+          "op": "hcom_reduceScatter_",
+          "count": 48,
+          "baseline_ms": 53.13252,
+          "dma_ms": 74.42594,
+          "delta_ms": 21.293419999999998,
+          "ratio": 1.4007605888070056
+        },
+        {
+          "op": "SwiGlu",
+          "count": 48,
+          "baseline_ms": 13.13072,
+          "dma_ms": 23.73496,
+          "delta_ms": 10.60424,
+          "ratio": 1.8075901397638516
+        },
+        {
+          "op": "MoeInitRoutingV3",
+          "count": 48,
+          "baseline_ms": 13.62684,
+          "dma_ms": 21.98628,
+          "delta_ms": 8.359440000000001,
+          "ratio": 1.6134540362989513
+        },
+        {
+          "op": "AddRmsNormBias",
+          "count": 96,
+          "baseline_ms": 8.75042,
+          "dma_ms": 13.99558,
+          "delta_ms": 5.24516,
+          "ratio": 1.5994180850747737
+        },
+        {
+          "op": "MoeTokenUnpermute",
+          "count": 48,
+          "baseline_ms": 5.56234,
+          "dma_ms": 9.59188,
+          "delta_ms": 4.02954,
+          "ratio": 1.724432523002909
+        },
+        {
+          "op": "MatMulV2",
+          "count": 48,
+          "baseline_ms": 0.9052,
+          "dma_ms": 1.43232,
+          "delta_ms": 0.52712,
+          "ratio": 1.5823243482103402
+        },
+        {
+          "op": "hcom_allGather_",
+          "count": 96,
+          "baseline_ms": 46.69684,
+          "dma_ms": 47.16542,
+          "delta_ms": 0.4685799999999958,
+          "ratio": 1.0100345119712597
+        },
+        {
+          "op": "ScatterPaKvCache",
+          "count": 48,
+          "baseline_ms": 1.65336,
+          "dma_ms": 2.10958,
+          "delta_ms": 0.45621999999999985,
+          "ratio": 1.2759350655634585
+        },
+        {
+          "op": "split_qkv_rmsnorm_rope_kernel_0",
+          "count": 48,
+          "baseline_ms": 6.0871,
+          "dma_ms": 6.1796,
+          "delta_ms": 0.09249999999999936,
+          "ratio": 1.015196070378341
+        },
+        {
+          "op": "Index",
+          "count": 48,
+          "baseline_ms": 2.98268,
+          "dma_ms": 3.05268,
+          "delta_ms": 0.06999999999999984,
+          "ratio": 1.023468826692773
+        },
+        {
+          "op": "Abs",
+          "count": 48,
+          "baseline_ms": 0.48094,
+          "dma_ms": 0.54594,
+          "delta_ms": 0.065,
+          "ratio": 1.135151994011727
+        },
+        {
+          "op": "MoeGatingTopK",
+          "count": 48,
+          "baseline_ms": 7.78982,
+          "dma_ms": 7.84084,
+          "delta_ms": 0.05102000000000029,
+          "ratio": 1.0065495736743597
+        },
+        {
+          "op": "NotEqual",
+          "count": 48,
+          "baseline_ms": 0.45618,
+          "dma_ms": 0.50502,
+          "delta_ms": 0.04884000000000005,
+          "ratio": 1.1070630014467975
+        },
+        {
+          "op": "Cast",
+          "count": 49,
+          "baseline_ms": 0.44064,
+          "dma_ms": 0.48344000000000004,
+          "delta_ms": 0.04280000000000006,
+          "ratio": 1.097131445170661
+        },
+        {
+          "op": "Mul",
+          "count": 48,
+          "baseline_ms": 0.65458,
+          "dma_ms": 0.66458,
+          "delta_ms": 0.009999999999999898,
+          "ratio": 1.015276971493171
+        },
+        {
+          "op": "RmsNorm",
+          "count": 1,
+          "baseline_ms": 0.05846,
+          "dma_ms": 0.06498,
+          "delta_ms": 0.006519999999999998,
+          "ratio": 1.1115292507697572
+        },
+        {
+          "op": "GatherV2",
+          "count": 1,
+          "baseline_ms": 0.16746,
+          "dma_ms": 0.16964,
+          "delta_ms": 0.0021800000000000153,
+          "ratio": 1.0130180341574109
+        }
+      ],
+      "shapes": [
+        {
+          "op": "FusedInferAttentionScore",
+          "shape": "\"4096,32,128;170,128,512;170,128,512;;2048,2048;1;1;;;;;;;;1,64;;;;;;;;;;;;;;;;\"",
+          "dtype": "DT_BF16;DT_BF16;DT_BF16;DT_UNDEFINED;INT8;INT64;INT64;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;INT32;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 51.72362,
+          "dma_ms": 125.5365,
+          "delta_ms": 73.81288,
+          "ratio": 2.4270633029938744
+        },
+        {
+          "op": "GroupedMatmul",
+          "shape": "\"65536,2048;64,2048,1536;;;;;;64\"",
+          "dtype": "DT_BF16;DT_BF16;FLOAT;UINT64;FLOAT;FLOAT16;FLOAT16;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 30.47246,
+          "dma_ms": 72.95036,
+          "delta_ms": 42.477900000000005,
+          "ratio": 2.3939767252135207
+        },
+        {
+          "op": "GroupedMatmul",
+          "shape": "\"65536,768;64,768,2048;;;;;;64\"",
+          "dtype": "DT_BF16;DT_BF16;FLOAT;UINT64;FLOAT;FLOAT16;FLOAT16;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 15.5979,
+          "dma_ms": 41.01272,
+          "delta_ms": 25.414820000000002,
+          "ratio": 2.629374467075696
+        },
+        {
+          "op": "hcom_reduceScatter_",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 11,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 53.13252,
+          "dma_ms": 74.42594,
+          "delta_ms": 21.293419999999998,
+          "ratio": 1.4007605888070056
+        },
+        {
+          "op": "MatMulV3",
+          "shape": "\"4096,2048;5120,2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 13.94808,
+          "dma_ms": 28.528,
+          "delta_ms": 14.57992,
+          "ratio": 2.0452994247236895
+        },
+        {
+          "op": "MatMulV3",
+          "shape": "\"4096,4096;2048,4096\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 11.79988,
+          "dma_ms": 22.98614,
+          "delta_ms": 11.186259999999999,
+          "ratio": 1.9479977762485718
+        },
+        {
+          "op": "SwiGlu",
+          "shape": "\"65536,1536\"",
+          "dtype": "DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 13.13072,
+          "dma_ms": 23.73496,
+          "delta_ms": 10.60424,
+          "ratio": 1.8075901397638516
+        },
+        {
+          "op": "MoeInitRoutingV3",
+          "shape": "\"8192,2048;8192,8\"",
+          "dtype": "DT_BF16;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIV",
+          "count": 48,
+          "baseline_ms": 13.62684,
+          "dma_ms": 21.98628,
+          "delta_ms": 8.359440000000001,
+          "ratio": 1.6134540362989513
+        },
+        {
+          "op": "AddRmsNormBias",
+          "shape": "\"4096,2048;4096,2048;2048;\"",
+          "dtype": "DT_BF16;DT_BF16;DT_BF16;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 96,
+          "baseline_ms": 8.75042,
+          "dma_ms": 13.99558,
+          "delta_ms": 5.24516,
+          "ratio": 1.5994180850747737
+        },
+        {
+          "op": "MoeTokenUnpermute",
+          "shape": "\"65536,2048;65536;8192,8\"",
+          "dtype": "DT_BF16;INT32;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 5.56234,
+          "dma_ms": 9.59188,
+          "delta_ms": 4.02954,
+          "ratio": 1.724432523002909
+        },
+        {
+          "op": "MatMulV2",
+          "shape": "\"4096,2048;128,2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 0.9052,
+          "dma_ms": 1.43232,
+          "delta_ms": 0.52712,
+          "ratio": 1.5823243482103402
+        },
+        {
+          "op": "hcom_allGather_",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 11,
+          "task_type": "KERNEL_AIVEC",
+          "count": 96,
+          "baseline_ms": 46.69684,
+          "dma_ms": 47.16542,
+          "delta_ms": 0.4685799999999958,
+          "ratio": 1.0100345119712597
+        },
+        {
+          "op": "ScatterPaKvCache",
+          "shape": "\"4096,4,128;170,128,4,128;4096;4096,4,128;170,128,4,128;;;\"",
+          "dtype": "DT_BF16;DT_BF16;INT32;DT_BF16;DT_BF16;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 1.65336,
+          "dma_ms": 2.10958,
+          "delta_ms": 0.45621999999999985,
+          "ratio": 1.2759350655634585
+        },
+        {
+          "op": "split_qkv_rmsnorm_rope_kernel_0",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 6.0871,
+          "dma_ms": 6.1796,
+          "delta_ms": 0.09249999999999936,
+          "ratio": 1.015196070378341
+        },
+        {
+          "op": "Index",
+          "shape": "\"128;1;2;8192,8\"",
+          "dtype": "INT32;INT64;INT64;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 2.98268,
+          "dma_ms": 3.05268,
+          "delta_ms": 0.06999999999999984,
+          "ratio": 1.023468826692773
+        },
+        {
+          "op": "Abs",
+          "shape": "\"65536\"",
+          "dtype": "INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.48094,
+          "dma_ms": 0.54594,
+          "delta_ms": 0.065,
+          "ratio": 1.135151994011727
+        },
+        {
+          "op": "MoeGatingTopK",
+          "shape": "\"8192,128;\"",
+          "dtype": "DT_BF16;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 7.78982,
+          "dma_ms": 7.84084,
+          "delta_ms": 0.05102000000000029,
+          "ratio": 1.0065495736743597
+        },
+        {
+          "op": "NotEqual",
+          "shape": "\"8192,8;\"",
+          "dtype": "INT32;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.45618,
+          "dma_ms": 0.50502,
+          "delta_ms": 0.04884000000000005,
+          "ratio": 1.1070630014467975
+        },
+        {
+          "op": "Cast",
+          "shape": "\"8192,8\"",
+          "dtype": "BOOL",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.43776,
+          "dma_ms": 0.47892,
+          "delta_ms": 0.04116000000000003,
+          "ratio": 1.0940241228070176
+        },
+        {
+          "op": "Mul",
+          "shape": "\"8192,8;8192,8\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.65458,
+          "dma_ms": 0.66458,
+          "delta_ms": 0.009999999999999898,
+          "ratio": 1.015276971493171
+        },
+        {
+          "op": "RmsNorm",
+          "shape": "\"4096,2048;2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.05846,
+          "dma_ms": 0.06498,
+          "delta_ms": 0.006519999999999998,
+          "ratio": 1.1115292507697572
+        },
+        {
+          "op": "GatherV2",
+          "shape": "\"151936,2048;4096;1\"",
+          "dtype": "DT_BF16;INT64;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.16746,
+          "dma_ms": 0.16964,
+          "delta_ms": 0.0021800000000000153,
+          "ratio": 1.0130180341574109
+        },
+        {
+          "op": "Cast",
+          "shape": "\"4096\"",
+          "dtype": "INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.00288,
+          "dma_ms": 0.00452,
+          "delta_ms": 0.0016399999999999995,
+          "ratio": 1.5694444444444442
+        }
+      ]
+    },
+    {
+      "source": "runs/qwen-dma-local-20260914/sustained/measurements/analysis/rank1.db",
+      "coverage": [
+        {
+          "phase": "dma_probe::compute",
+          "host_scope_ms": 291.9159,
+          "model_task_envelope_ms": 290.98792,
+          "model_task_union_ms": 286.09368,
+          "uncovered_inside_envelope_ms": 4.894239999999968
+        },
+        {
+          "phase": "dma_probe::d2d_sustained",
+          "host_scope_ms": 514.06014,
+          "model_task_envelope_ms": 512.40318,
+          "model_task_union_ms": 505.01682,
+          "uncovered_inside_envelope_ms": 7.386360000000025
+        }
+      ],
+      "operators": [
+        {
+          "op": "FusedInferAttentionScore",
+          "count": 48,
+          "baseline_ms": 52.29298,
+          "dma_ms": 125.94048,
+          "delta_ms": 73.6475,
+          "ratio": 2.4083630345794025
+        },
+        {
+          "op": "GroupedMatmul",
+          "count": 96,
+          "baseline_ms": 48.2738,
+          "dma_ms": 116.90436,
+          "delta_ms": 68.63056,
+          "ratio": 2.4216937552046867
+        },
+        {
+          "op": "MatMulV3",
+          "count": 96,
+          "baseline_ms": 25.677259999999997,
+          "dma_ms": 51.73578,
+          "delta_ms": 26.05852,
+          "ratio": 2.0148481574747463
+        },
+        {
+          "op": "hcom_reduceScatter_",
+          "count": 48,
+          "baseline_ms": 50.32964,
+          "dma_ms": 70.45122,
+          "delta_ms": 20.12158000000001,
+          "ratio": 1.3997958260778343
+        },
+        {
+          "op": "SwiGlu",
+          "count": 48,
+          "baseline_ms": 12.98236,
+          "dma_ms": 23.67164,
+          "delta_ms": 10.68928,
+          "ratio": 1.8233695568448265
+        },
+        {
+          "op": "MoeInitRoutingV3",
+          "count": 48,
+          "baseline_ms": 14.16448,
+          "dma_ms": 22.70026,
+          "delta_ms": 8.53578,
+          "ratio": 1.6026186630218688
+        },
+        {
+          "op": "AddRmsNormBias",
+          "count": 96,
+          "baseline_ms": 8.81376,
+          "dma_ms": 13.98832,
+          "delta_ms": 5.17456,
+          "ratio": 1.5871001706422685
+        },
+        {
+          "op": "MoeTokenUnpermute",
+          "count": 48,
+          "baseline_ms": 5.84352,
+          "dma_ms": 9.81056,
+          "delta_ms": 3.967040000000001,
+          "ratio": 1.6788784842013036
+        },
+        {
+          "op": "hcom_allGather_",
+          "count": 96,
+          "baseline_ms": 46.13826,
+          "dma_ms": 46.75618,
+          "delta_ms": 0.617919999999998,
+          "ratio": 1.013392789411651
+        },
+        {
+          "op": "MatMulV2",
+          "count": 48,
+          "baseline_ms": 0.89622,
+          "dma_ms": 1.41272,
+          "delta_ms": 0.5165,
+          "ratio": 1.576309388319832
+        },
+        {
+          "op": "ScatterPaKvCache",
+          "count": 48,
+          "baseline_ms": 1.6638,
+          "dma_ms": 2.10948,
+          "delta_ms": 0.4456800000000001,
+          "ratio": 1.2678687342228634
+        },
+        {
+          "op": "MoeGatingTopK",
+          "count": 48,
+          "baseline_ms": 7.77262,
+          "dma_ms": 7.90486,
+          "delta_ms": 0.13224000000000036,
+          "ratio": 1.0170135681404726
+        },
+        {
+          "op": "split_qkv_rmsnorm_rope_kernel_0",
+          "count": 48,
+          "baseline_ms": 6.04188,
+          "dma_ms": 6.15026,
+          "delta_ms": 0.10838000000000036,
+          "ratio": 1.0179381252193027
+        },
+        {
+          "op": "Index",
+          "count": 48,
+          "baseline_ms": 2.97214,
+          "dma_ms": 3.05572,
+          "delta_ms": 0.08357999999999999,
+          "ratio": 1.028121151762703
+        },
+        {
+          "op": "NotEqual",
+          "count": 48,
+          "baseline_ms": 0.43678,
+          "dma_ms": 0.49844,
+          "delta_ms": 0.06165999999999999,
+          "ratio": 1.141169467466459
+        },
+        {
+          "op": "Abs",
+          "count": 48,
+          "baseline_ms": 0.45798,
+          "dma_ms": 0.51948,
+          "delta_ms": 0.061500000000000055,
+          "ratio": 1.1342853399711779
+        },
+        {
+          "op": "Cast",
+          "count": 49,
+          "baseline_ms": 0.47312,
+          "dma_ms": 0.51962,
+          "delta_ms": 0.046499999999999986,
+          "ratio": 1.0982837335136963
+        },
+        {
+          "op": "Mul",
+          "count": 48,
+          "baseline_ms": 0.61412,
+          "dma_ms": 0.63078,
+          "delta_ms": 0.016660000000000008,
+          "ratio": 1.0271282485507718
+        },
+        {
+          "op": "RmsNorm",
+          "count": 1,
+          "baseline_ms": 0.05654,
+          "dma_ms": 0.06126,
+          "delta_ms": 0.004720000000000002,
+          "ratio": 1.0834807216130173
+        },
+        {
+          "op": "GatherV2",
+          "count": 1,
+          "baseline_ms": 0.19242,
+          "dma_ms": 0.1954,
+          "delta_ms": 0.0029799999999999827,
+          "ratio": 1.0154869556179191
+        }
+      ],
+      "shapes": [
+        {
+          "op": "FusedInferAttentionScore",
+          "shape": "\"4096,32,128;170,128,512;170,128,512;;2048,2048;1;1;;;;;;;;1,64;;;;;;;;;;;;;;;;\"",
+          "dtype": "DT_BF16;DT_BF16;DT_BF16;DT_UNDEFINED;INT8;INT64;INT64;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;INT32;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 52.29298,
+          "dma_ms": 125.94048,
+          "delta_ms": 73.6475,
+          "ratio": 2.4083630345794025
+        },
+        {
+          "op": "GroupedMatmul",
+          "shape": "\"65536,2048;64,2048,1536;;;;;;64\"",
+          "dtype": "DT_BF16;DT_BF16;FLOAT;UINT64;FLOAT;FLOAT16;FLOAT16;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 31.9979,
+          "dma_ms": 75.17948,
+          "delta_ms": 43.18158,
+          "ratio": 2.3495129367864767
+        },
+        {
+          "op": "GroupedMatmul",
+          "shape": "\"65536,768;64,768,2048;;;;;;64\"",
+          "dtype": "DT_BF16;DT_BF16;FLOAT;UINT64;FLOAT;FLOAT16;FLOAT16;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIC",
+          "count": 48,
+          "baseline_ms": 16.2759,
+          "dma_ms": 41.72488,
+          "delta_ms": 25.44898,
+          "ratio": 2.5635989407651802
+        },
+        {
+          "op": "hcom_reduceScatter_",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 11,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 50.32964,
+          "dma_ms": 70.45122,
+          "delta_ms": 20.12158000000001,
+          "ratio": 1.3997958260778343
+        },
+        {
+          "op": "MatMulV3",
+          "shape": "\"4096,2048;5120,2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 13.8951,
+          "dma_ms": 28.64162,
+          "delta_ms": 14.74652,
+          "ratio": 2.0612748378924945
+        },
+        {
+          "op": "MatMulV3",
+          "shape": "\"4096,4096;2048,4096\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 11.78216,
+          "dma_ms": 23.09416,
+          "delta_ms": 11.312,
+          "ratio": 1.9600956021646285
+        },
+        {
+          "op": "SwiGlu",
+          "shape": "\"65536,1536\"",
+          "dtype": "DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 12.98236,
+          "dma_ms": 23.67164,
+          "delta_ms": 10.68928,
+          "ratio": 1.8233695568448265
+        },
+        {
+          "op": "MoeInitRoutingV3",
+          "shape": "\"8192,2048;8192,8\"",
+          "dtype": "DT_BF16;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_MIX_AIV",
+          "count": 48,
+          "baseline_ms": 14.16448,
+          "dma_ms": 22.70026,
+          "delta_ms": 8.53578,
+          "ratio": 1.6026186630218688
+        },
+        {
+          "op": "AddRmsNormBias",
+          "shape": "\"4096,2048;4096,2048;2048;\"",
+          "dtype": "DT_BF16;DT_BF16;DT_BF16;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 96,
+          "baseline_ms": 8.81376,
+          "dma_ms": 13.98832,
+          "delta_ms": 5.17456,
+          "ratio": 1.5871001706422685
+        },
+        {
+          "op": "MoeTokenUnpermute",
+          "shape": "\"65536,2048;65536;8192,8\"",
+          "dtype": "DT_BF16;INT32;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 5.84352,
+          "dma_ms": 9.81056,
+          "delta_ms": 3.967040000000001,
+          "ratio": 1.6788784842013036
+        },
+        {
+          "op": "hcom_allGather_",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 11,
+          "task_type": "KERNEL_AIVEC",
+          "count": 96,
+          "baseline_ms": 46.13826,
+          "dma_ms": 46.75618,
+          "delta_ms": 0.617919999999998,
+          "ratio": 1.013392789411651
+        },
+        {
+          "op": "MatMulV2",
+          "shape": "\"4096,2048;128,2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AICORE",
+          "count": 48,
+          "baseline_ms": 0.89622,
+          "dma_ms": 1.41272,
+          "delta_ms": 0.5165,
+          "ratio": 1.576309388319832
+        },
+        {
+          "op": "ScatterPaKvCache",
+          "shape": "\"4096,4,128;170,128,4,128;4096;4096,4,128;170,128,4,128;;;\"",
+          "dtype": "DT_BF16;DT_BF16;INT32;DT_BF16;DT_BF16;DT_UNDEFINED;DT_UNDEFINED;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 1.6638,
+          "dma_ms": 2.10948,
+          "delta_ms": 0.4456800000000001,
+          "ratio": 1.2678687342228634
+        },
+        {
+          "op": "MoeGatingTopK",
+          "shape": "\"8192,128;\"",
+          "dtype": "DT_BF16;DT_UNDEFINED",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 7.77262,
+          "dma_ms": 7.90486,
+          "delta_ms": 0.13224000000000036,
+          "ratio": 1.0170135681404726
+        },
+        {
+          "op": "split_qkv_rmsnorm_rope_kernel_0",
+          "shape": "N/A",
+          "dtype": "N/A",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 6.04188,
+          "dma_ms": 6.15026,
+          "delta_ms": 0.10838000000000036,
+          "ratio": 1.0179381252193027
+        },
+        {
+          "op": "Index",
+          "shape": "\"128;1;2;8192,8\"",
+          "dtype": "INT32;INT64;INT64;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 2.97214,
+          "dma_ms": 3.05572,
+          "delta_ms": 0.08357999999999999,
+          "ratio": 1.028121151762703
+        },
+        {
+          "op": "NotEqual",
+          "shape": "\"8192,8;\"",
+          "dtype": "INT32;INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.43678,
+          "dma_ms": 0.49844,
+          "delta_ms": 0.06165999999999999,
+          "ratio": 1.141169467466459
+        },
+        {
+          "op": "Abs",
+          "shape": "\"65536\"",
+          "dtype": "INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.45798,
+          "dma_ms": 0.51948,
+          "delta_ms": 0.061500000000000055,
+          "ratio": 1.1342853399711779
+        },
+        {
+          "op": "Cast",
+          "shape": "\"8192,8\"",
+          "dtype": "BOOL",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.47018,
+          "dma_ms": 0.51496,
+          "delta_ms": 0.044779999999999986,
+          "ratio": 1.0952401208047982
+        },
+        {
+          "op": "Mul",
+          "shape": "\"8192,8;8192,8\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 48,
+          "baseline_ms": 0.61412,
+          "dma_ms": 0.63078,
+          "delta_ms": 0.016660000000000008,
+          "ratio": 1.0271282485507718
+        },
+        {
+          "op": "RmsNorm",
+          "shape": "\"4096,2048;2048\"",
+          "dtype": "DT_BF16;DT_BF16",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.05654,
+          "dma_ms": 0.06126,
+          "delta_ms": 0.004720000000000002,
+          "ratio": 1.0834807216130173
+        },
+        {
+          "op": "GatherV2",
+          "shape": "\"151936,2048;4096;1\"",
+          "dtype": "DT_BF16;INT64;INT64",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.19242,
+          "dma_ms": 0.1954,
+          "delta_ms": 0.0029799999999999827,
+          "ratio": 1.0154869556179191
+        },
+        {
+          "op": "Cast",
+          "shape": "\"4096\"",
+          "dtype": "INT32",
+          "stream": 12,
+          "task_type": "KERNEL_AIVEC",
+          "count": 1,
+          "baseline_ms": 0.00294,
+          "dma_ms": 0.00466,
+          "delta_ms": 0.0017200000000000002,
+          "ratio": 1.5850340136054422
+        }
+      ]
+    }
+  ]
+}

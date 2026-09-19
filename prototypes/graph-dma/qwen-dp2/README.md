@@ -147,3 +147,22 @@ compressed file (~601KiB):
 It shows compute-only then64×4GiB local-copy overlap, not the unprofiled timing
 matrix. Both completed capsules have released their selected-device leases and
 owned processes. Other tasks on other devices were not modified.
+
+## Sustained-DMA operator attribution
+
+[Matched native operator analysis](OPERATOR-INTERFERENCE.zh-CN.md) separates the
+profile pair from unprofiled timing medians. `operator_interference.py` verifies
+matching shapes/dtypes/task types/counts and reports task union coverage. The
+largest increases are attention and expert GEMM (~2.4x), then projections (~2x);
+AllGather is nearly unchanged. Model-task gaps rise only ~2.4ms, not ~221ms.
+This supports device-task interference, not a new large host submission bubble;
+physical bandwidth-resource attribution still requires counters.
+
+## Sustained host DMA (September 15)
+
+[H2D/D2H operator attribution](HOST-DMA-INTERFERENCE.zh-CN.md) uses the same
+real-model fixture on local physical6/7. `DMA_SUSTAINED=host` selects16/32GiB
+per rank and separate32GiB profiles. Compute slows~9%, but attention/GEMM task
+durations barely change; most added time is a first-attention metadata-readiness
+gap, not stretched compute kernels. Keep the exact cause unproven. Neither the
+full transfer volume nor its joint completion time is hidden by the prefill.
