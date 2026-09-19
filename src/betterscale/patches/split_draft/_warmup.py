@@ -12,7 +12,7 @@ from vllm_ascend.attention.attention_v1 import AscendAttentionState
 
 
 @torch.inference_mode()
-def prepare(worker):
+def prepare(worker, *, snapshot):
     r = worker.model_runner
     d = r.drafter
     assert r.input_batch.num_reqs == 0
@@ -81,7 +81,7 @@ def prepare(worker):
             hidden = torch.zeros(
                 (nt, d.hidden_size * 3), device=d.device, dtype=d.dtype
             )
-            worker.snapshot("draft_prepare_before", requests=n, context_width=width)
+            snapshot(worker, "draft_prepare_before", requests=n, context_width=width)
             result = d._propose(
                 target_token_ids=torch.full(
                     (nt,), 17, device=d.device, dtype=torch.int64
@@ -100,7 +100,8 @@ def prepare(worker):
             assert result.shape == (n, 5), result.shape
             manager = worker._exact_draft_graph
             observations.append(
-                worker.snapshot(
+                snapshot(
+                    worker,
                     "draft_prepare_after",
                     requests=n,
                     context_width=width,

@@ -1,0 +1,142 @@
+{
+  "scope": "Single public Worker and explicit Qwen wave composition; no new throughput claim",
+  "previous_source": "261bdb5",
+  "entry": "betterscale.worker.Worker",
+  "cpu_tests": {
+    "passed": 88
+  },
+  "qwen_hardware": {
+    "host": "hw3",
+    "devices": [
+      6,
+      7
+    ],
+    "model": "Qwen3.8-27B",
+    "tp": 2,
+    "mtp": false,
+    "prefix_caching": "align",
+    "kv_bytes_per_rank": 1073741824,
+    "status": "PASS",
+    "rank_steps": 68,
+    "hidden_and_cache_checks": 8772,
+    "max_abs": 0.0,
+    "prompt_lengths": 10,
+    "concurrency_cohorts": [
+      4,
+      8
+    ],
+    "apc_warm_hits": {
+      "1537": 1536,
+      "2051": 1536,
+      "3073": 3072
+    },
+    "shared_prefix_branches": 8,
+    "branch_hits": [
+      1536,
+      1536,
+      1536,
+      1536,
+      1536,
+      1536,
+      1536,
+      1536
+    ],
+    "server_exit": 0,
+    "admission_exit": 0,
+    "selected_devices_reclaimed": true,
+    "capsule": "runs/worker-unification/qwen-owned",
+    "remote_capsule": "/workspace/my-ascend-workspace/runs/qwen27-partition-serving/worker-unification-qwen1",
+    "final_source_ast_matches_capsule": true
+  },
+  "relocation": {
+    "base": "261bdb5",
+    "normalized_functions": [
+      {
+        "old": "patches/auto_kv/__init__.py:_init_device",
+        "new": "patches/auto_kv/__init__.py:init_device",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/auto_kv/__init__.py:snapshot",
+        "new": "patches/auto_kv/__init__.py:snapshot",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/auto_kv/__init__.py:determine_available_memory",
+        "new": "patches/auto_kv/__init__.py:determine_available_memory",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/auto_kv/_draft.py:prepare",
+        "new": "models/dsv4_draft.py:prepare",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/auto_kv/_draft.py:capture_trial",
+        "new": "models/dsv4_draft.py:capture_trial",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/auto_kv/_draft.py:retire_trial",
+        "new": "models/dsv4_draft.py:retire_trial",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/auto_kv/_draft.py:prepare_final",
+        "new": "models/dsv4_draft.py:prepare_final",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/auto_kv/_communication.py:prepare",
+        "new": "patches/auto_kv/_communication.py:prepare",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/split_draft/_warmup.py:prepare",
+        "new": "patches/split_draft/_warmup.py:prepare",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/qwen_fia/wave.py:forward",
+        "new": "patches/qwen_fia/wave.py:forward",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/qwen_fia/wave.py:fia",
+        "new": "patches/qwen_fia/wave.py:fia",
+        "equal_after_explicit_callback_normalization": true
+      },
+      {
+        "old": "patches/qwen_fia/wave.py:update",
+        "new": "patches/qwen_fia/wave.py:update",
+        "equal_after_explicit_callback_normalization": true
+      }
+    ],
+    "byte_identical_runtime_files": [
+      "patches/qwen_gdn/execution.py",
+      "patches/qwen_gdn/metadata.py",
+      "patches/qwen_gdn/preprocess.py",
+      "patches/qwen_gdn/decode_kv.py",
+      "patches/qwen_gdn/chunk_wy.py",
+      "patches/qwen_gdn/solve_tril.py",
+      "patches/qwen_gdn/runtime.py",
+      "patches/qwen_gdn/host.cpp",
+      "patches/qwen_gdn/native.json",
+      "patches/qwen_fia/native.json",
+      "patches/qwen_fia/static_plan.cpp",
+      "patches/qwen_fia/host_metadata.cpp",
+      "patches/qwen_layout.py",
+      "pins.json",
+      "qwen_pins.json",
+      "qwen_mixed_pins.json"
+    ],
+    "scope": "Structural relocation check, not hardware correctness or throughput"
+  },
+  "limits": [
+    "DSV4 TP/DP lifecycle CPU tests and explicit callback-normalized source equivalence; no fresh eight-card run.",
+    "Native Qwen MTP2 selection/lifecycle CPU test; numerical weight packing unchanged, no fresh MTP hardware run.",
+    "Qwen FULL/NONE oracle uses the same owned K-V numerical implementation on both arms, not a native V-K equivalence claim.",
+    "Legacy qwen_worker names alias the unified Worker; no-MTP native-layout single-prefill entry is intentionally retired.",
+    "Published PyPI 0.4.2 is unchanged."
+  ]
+}

@@ -11,8 +11,10 @@
 更不够：TP 的 draft 还有独立输入元数据和有限的图目录，但应当与 target
 共享同一个 graph 内存池，而不是额外留一整份激活 arena。
 
-`Worker` 将 `PhysicalMemoryMixin` 放在原生 `NPUWorker` 前面，拦截
-`_init_device` 和 `determine_available_memory`。用户仍使用原生
+统一 `Worker` 仅在 DSV4 路径把 `_init_device` 和
+`determine_available_memory` 委托给本补丁；Qwen 保留原生显存管理。
+DSV4 的 draft 试捕获与回收由 `models/dsv4_draft.py` 组合并作为回调传入，
+本补丁不再通过 Worker 方法反向调用 draft。用户仍使用原生
 `vllm serve ... --worker-cls betterscale.worker.Worker`，不需要另一个启动器。
 
 ## 启动顺序

@@ -1,6 +1,6 @@
 # Optimize Qwen hybrid TP2 serving
 
-For production entry consolidation, read the [worker composition audit](worker-composition-audit.md): observed ownership/order traps and a proposed, not yet implemented, single-entry route.
+For production entry consolidation, read the [worker composition audit](worker-composition-audit.md): observed ownership/order traps, implementation and bounded verification of the single-entry route.
 
 Enter here before profiling or extending FULL coverage for Qwen3.8-27B HTTP
 serving. This is not the DSV4 Worker or the ordinary Qwen3-30B-A3B owned reactor.
@@ -1129,3 +1129,19 @@ exit0 and cards6/7 are idle/reclaimed. APC-off `fia-swe-scaling1` remains an
 abandoned non-paired reference, never mix its native result into these gains.
 Website draft uses separate Qwen evidence/methods and waits for exact public-copy
 approval; no new PyPI availability or official leaderboard claim.
+
+
+### Unified public Worker (September19)
+
+`betterscale.worker.Worker` now admits model-local compositions; old Qwen Worker
+names are aliases, not subclasses. No-MTP Qwen selects owned K-V even with APC off;
+old native-layout single-prefill selection is retired. Native MTP2 remains native.
+See `src/betterscale/models/README.md` and `docs/evidence/worker-unification.json`.
+Publication owns the shared Qwen runner hooks; capacity policy is a helper and FIA
+is an explicit wave callback. GDN state, kernels and library manifests are unchanged.
+Fresh hw3 6/7 `runs/worker-unification/qwen-owned` passes68 rank-steps/8772
+hidden/cache checks, max_abs0; cold/warm APC and8 shared-prefix branches pass.
+Service/admission exit0 and devices reclaimed.88 CPU tests pass.12 relocated
+function bodies match after explicit callback normalization;16 runtime/pin files
+are byte-identical to261bdb5. DSV4 and native MTP have CPU lifecycle/source evidence,
+not fresh hardware or throughput measurements. Do not promote these as new speedups.

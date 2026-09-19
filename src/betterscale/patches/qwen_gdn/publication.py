@@ -9,6 +9,7 @@ from dataclasses import dataclass, replace
 from math import prod
 
 from .metadata import Metadata, chunk_rows
+from . import graphs
 
 
 class Frame:
@@ -155,7 +156,7 @@ def install():
     original_descriptor = Dispatcher._create_padded_batch_descriptor
 
     def descriptor(self, *a, **kw):
-        desc = original_descriptor(self, *a, **kw)
+        desc = graphs.descriptor(original_descriptor(self, *a, **kw))
         return BankDescriptor(**vars(desc), bank=getattr(self, "_owned_bank", 0))
 
     original_initialize = Dispatcher.initialize_cudagraph_keys
@@ -177,13 +178,29 @@ def install():
 
     original_determine = Runner._determine_batch_execution_and_padding
 
-    def determine(self, *a, **kw):
+    def determine(
+        self,
+        num_tokens,
+        num_reqs,
+        num_scheduled_tokens_np,
+        max_num_scheduled_tokens,
+        use_cascade_attn,
+        **kw,
+    ):
         bank = getattr(self, "_owned_capture_bank", None)
         if bank is None:
             bank = getattr(self, "_owned_next_bank", 0)
         self._owned_bank = bank
         self.cudagraph_dispatcher._owned_bank = bank
-        return original_determine(self, *a, **kw)
+        return original_determine(
+            self,
+            graphs.capacity(self, num_tokens, num_reqs, num_scheduled_tokens_np),
+            num_reqs,
+            num_scheduled_tokens_np,
+            max_num_scheduled_tokens,
+            use_cascade_attn,
+            **kw,
+        )
 
     original_attention = Runner._build_attention_metadata
 
@@ -221,6 +238,7 @@ def install():
                 self.input_batch.block_table[key[0]].get_cpu_tensor().numpy(),
             )
         try:
+            graphs.attention(self, kw.get("num_tokens_padded", 0))
             result = original_attention(self, num_tokens, num_reqs, max_query_len, **kw)
         finally:
             for builder in groups.values():
@@ -232,7 +250,7 @@ def install():
 
     original_forward = Runner._model_forward
 
-    def forward(self, *a, **kw):
+    def run_forward(self, *a, **kw):
         ctx = get_forward_context()
         if ctx.attn_metadata is None:
             return original_forward(self, *a, **kw)
@@ -244,6 +262,24 @@ def install():
         frame.release()
         return result
 
+    def forward(self, *a, **kw):
+        # FIA surrounds publication's graph-resource scope, exactly as before,
+        # but only this module replaces the native runner forward method.
+        fia = getattr(self, "_betterscale_fia_forward", None)
+        if fia is None:
+            return run_forward(self, *a, **kw)
+        return fia(run_forward, *a, **kw)
+
+    original_dummy = Runner._dummy_run
+
+    def dummy(self, *a, **kw):
+        self._elastic_dummy = True
+        try:
+            return original_dummy(self, *a, **kw)
+        finally:
+            self._elastic_dummy = False
+
+    Runner._dummy_run = dummy
     Dispatcher._create_padded_batch_descriptor = descriptor
     Dispatcher.initialize_cudagraph_keys = initialize
     Runner._warmup_and_capture = warmup

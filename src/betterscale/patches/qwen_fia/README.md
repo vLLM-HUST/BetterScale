@@ -1,9 +1,8 @@
 # Wave-shared FIA for Qwen27 mixed FULL
 
 This is the head256 adaptation of `prototypes/owned-wave/fia-plan`, enabled only
-by `betterscale.qwen_worker.MixedWorker`. No attention arithmetic is replaced.
-Native NONE/eager attention remains the numerical oracle. DSV4 and the separate
-native-Qwen Worker do not install this patch.
+by the owned Qwen route of `betterscale.worker.Worker`. No attention arithmetic is replaced.
+Native NONE/eager attention remains the numerical oracle. DSV4 and native Qwen MTP2 compositions do not install this patch.
 
 ## Pinned boundary
 

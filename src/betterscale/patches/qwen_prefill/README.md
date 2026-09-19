@@ -1,5 +1,10 @@
 # Qwen hybrid FULL prefill (independent opt-in)
 
+Historical native-layout single-prefill implementation. The unified public Worker
+no longer selects this route; no-MTP Qwen uses owned GDN, while native MTP2 uses
+weight packing only. Commands and measurements below describe the old entry,
+not current deployment instructions. See `../../models/README.md`.
+
 Entry: `betterscale.qwen_worker.Worker`, not the DSV4 Worker. This bounded path
 keeps native scheduling, model, sampling, decode graphs, and mixed-batch fallback.
 It does not claim to replace the runner with the separate LiveInference reactor.

@@ -1,7 +1,8 @@
 # Owned Qwen GDN service integration
 
-Opt-in entry: `betterscale.qwen_worker.MixedWorker`. This is independent of the
-DSV4 Worker and the existing `betterscale.qwen_worker.Worker`. The hw3 TP2 service passes the bounded whole-model qualification below; this
+Entry: `betterscale.worker.Worker`, selecting Qwen without MTP from native
+configuration. DSV4 and native MTP2 select separate patch compositions through
+the same entry. The hw3 TP2 service passes the bounded qualification below; this
 is not a claim of arbitrary model or scheduling compatibility.
 
 ## Contract
@@ -14,7 +15,8 @@ is not a claim of arbitrary model or scheduling compatibility.
 - No MTP, cache transfer, LoRA or context parallelism. APC uses native `align`
   mode; `all` mode is unsupported. Uncaptured model
   execution uses the same owned K-V operators, NEVER native V-K GDN fallback.
-  To revert, restart with the original Worker and a fresh pool.
+  To revert, restart with the native vLLM-Ascend Worker (without BetterScale)
+  and a fresh pool. The old Qwen import aliases are not a native fallback.
 - `TASK_QUEUE_ENABLE=0` is mandatory for the generated raw ACL launcher. This
   is distinct from vLLM's asynchronous request scheduler, which stays enabled.
 - `BETTERSCALE_GDN_LIBRARY` must name the qualified Ascend910B2 library identified
@@ -86,8 +88,9 @@ native device-side HCCL collectives for this Qwen mixed configuration. Direct
 changing it after communicator creation or graph capture is not supported here.
 The DSV4 and native-Qwen launch paths are unchanged. TP2 BF16 10/20KiB isolated
 graph tests show substantially lower allreduce latency, including alternating
-banks and rank-skew correctness checks; this switch has not yet received a new
-whole-model service performance qualification. It does not install a custom
+banks and rank-skew correctness checks. The subsequent matched APC-on SWE
+study uses AIV on both native and candidate; it does not isolate AIV's
+whole-model performance contribution. It does not install a custom
 communicator or change the existing PG stream protocol.
 
 ### Native host adapter build
@@ -256,5 +259,6 @@ The native state/page layout sets cache blocks to1536 tokens. A513-token prompt
 cannot witness reuse; `apc-align-service2` passed its state checks but was rejected
 for that incorrect probe expectation. Keep these receipts separate. Reproduce
 with the existing admitted elastic probe and `ELASTIC_APC=1 ELASTIC_SHADOW=1`;
-`apc_checks.py` owns the hit/branch checks. The production launcher now enables
-APC align; the original `qwen_worker.Worker` remains APC-off-qualified.
+The capsule's `elastic_probe.py` owns the hit/branch checks. The production launcher now enables
+APC align. These are the pre-consolidation measurements; the unified no-MTP
+entry selects the same owned state protocol for both APC align and APC off.

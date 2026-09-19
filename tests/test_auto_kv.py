@@ -1,32 +1,13 @@
 """The native fractional gate is bypassed only inside automatic initialization."""
 
-import ast
-from pathlib import Path
 from types import SimpleNamespace as NS
 import unittest
 
 
 class InitialAdmission(unittest.TestCase):
     def worker(self, manual=False, fail=False):
-        path = (
-            Path(__file__).resolve().parents[1]
-            / "src/betterscale/patches/auto_kv/__init__.py"
-        )
-        cls = next(
-            n for n in ast.parse(path.read_text()).body if isinstance(n, ast.ClassDef)
-        )
-        method = next(
-            n
-            for n in cls.body
-            if isinstance(n, ast.FunctionDef) and n.name == "_init_device"
-        )
-        node = ast.ClassDef(
-            name="PreflightWorker",
-            bases=[ast.Name(id="MemoryWorker", ctx=ast.Load())],
-            keywords=[],
-            body=[method],
-            decorator_list=[],
-        )
+        from betterscale.patches.auto_kv import init_device
+
         seen = []
 
         class Native:
@@ -37,16 +18,11 @@ class InitialAdmission(unittest.TestCase):
                 self.init_snapshot = NS(free_memory=1234)
                 return "device"
 
-        ns = {"MemoryWorker": Native}
-        exec(
-            compile(
-                ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])),
-                str(path),
-                "exec",
-            ),
-            ns,
-        )
-        obj = ns["PreflightWorker"]()
+        class Memory(Native):
+            def _init_device(self):
+                return init_device(self, super()._init_device)
+
+        obj = Memory()
         obj.cache_config = NS(
             kv_cache_memory_bytes=512 if manual else None, gpu_memory_utilization=0.9
         )
@@ -74,9 +50,9 @@ class InitialAdmission(unittest.TestCase):
 class CapacityLogging(unittest.TestCase):
     def test_budget_and_ready_use_native_logger_namespace(self):
         from unittest.mock import patch
-        from betterscale.patches.auto_kv import PhysicalMemoryMixin
+        from betterscale.patches.auto_kv import snapshot
 
-        worker = PhysicalMemoryMixin()
+        worker = NS()
         worker.rank = 2
         worker.model_config = NS(max_model_len=524288)
         worker.vllm_config = NS(scheduler_config=NS(max_num_seqs=4))
@@ -88,13 +64,14 @@ class CapacityLogging(unittest.TestCase):
         )
         with patch.dict("sys.modules", {"torch": NS(npu=npu)}):
             with self.assertLogs("vllm", level="INFO") as captured:
-                worker.snapshot(
+                snapshot(
+                    worker,
                     "physical_budget_after_trial_release",
                     kv_budget=15 << 30,
                     measured_target_graph=1 << 30,
                     safety=1 << 30,
                 )
-                worker.snapshot("ready_after_capture")
+                snapshot(worker, "ready_after_capture")
         self.assertIn("budget=15.000 GiB", captured.output[0])
         self.assertIn("safety=1.000 GiB", captured.output[0])
         self.assertIn(

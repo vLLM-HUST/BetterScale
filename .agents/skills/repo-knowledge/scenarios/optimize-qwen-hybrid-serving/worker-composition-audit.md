@@ -4,7 +4,9 @@ Read before consolidating production Worker entries. Source inspected at
 `e0e061f`; read-only runtime investigation, no new hardware qualification.
 Fletcher wants one public Worker with locally owned overrides selected from
 native configuration, not another Worker subclass per optimization combination.
-The following design direction is proposed, not implemented or qualified.
+The initial audit below is retained as rationale. The route was subsequently
+implemented: see `src/betterscale/models/README.md` and
+`docs/evidence/worker-unification.json` for the exact fresh verification boundary.
 
 ## Observed migration traps
 

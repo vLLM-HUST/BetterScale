@@ -143,21 +143,30 @@ class GraphBanks(unittest.TestCase):
                     2: {self._create_padded_batch_descriptor(n) for n in (1, 8, 1536)}
                 }
 
+        calls = []
+        context = NS(attn_metadata={})
+
         class Runner:
             def __init__(self):
                 self.cudagraph_dispatcher = Dispatcher()
 
             def _warmup_and_capture(self, desc):
-                return self._determine_batch_execution_and_padding()
+                return self._determine_batch_execution_and_padding(
+                    1536, 1, np.array([1536]), 1536, False
+                )
 
-            def _determine_batch_execution_and_padding(self):
+            def _determine_batch_execution_and_padding(self, *a, **kw):
                 return self.cudagraph_dispatcher._create_padded_batch_descriptor(1536)
 
             def _build_attention_metadata(self):
                 pass
 
-            def _model_forward(self):
+            def _dummy_run(self):
                 pass
+
+            def _model_forward(self):
+                calls.append("native")
+                return "output"
 
         acl = types.ModuleType("vllm_ascend.compilation.acl_graph")
         acl.GraphParams = NS
@@ -169,7 +178,7 @@ class GraphBanks(unittest.TestCase):
         modules = {
             "vllm.config": NS(CUDAGraphMode=NS(FULL=2)),
             "vllm.forward_context": NS(
-                BatchDescriptor=Descriptor, get_forward_context=lambda: None
+                BatchDescriptor=Descriptor, get_forward_context=lambda: context
             ),
             "vllm.v1.cudagraph_dispatcher": NS(CudagraphDispatcher=Dispatcher),
             "vllm_ascend": ascend,
@@ -191,7 +200,12 @@ class GraphBanks(unittest.TestCase):
                 self.assertEqual(result.bank, desc.bank)
                 self.assertIsNone(runner._owned_capture_bank)
             runner._owned_next_bank = 1
-            self.assertEqual(runner._determine_batch_execution_and_padding().bank, 1)
+            self.assertEqual(
+                runner._determine_batch_execution_and_padding(
+                    1536, 1, np.array([1536]), 1536, False
+                ).bank,
+                1,
+            )
             with graph_resources(runner, 0, 1536):
                 first = acl._graph_params
                 first.handles[1536].append("bank0")
@@ -203,3 +217,21 @@ class GraphBanks(unittest.TestCase):
             self.assertIs(acl._graph_params, original)
             with graph_resources(runner, 0, 1536):
                 self.assertIs(acl._graph_params, first)
+
+            # Explicit callback composition preserves FIA outside GDN resources.
+            runner._owned_frame = NS(
+                metas={0: NS(tokens=1536)}, release=lambda: calls.append("consumed")
+            )
+            runner._owned_bank = 0
+
+            def fia(self, body):
+                calls.append("fia-enter")
+                try:
+                    return body(self)
+                finally:
+                    calls.append("fia-exit")
+
+            Runner._betterscale_fia_forward = fia
+            self.assertEqual(runner._model_forward(), "output")
+            self.assertEqual(calls, ["fia-enter", "native", "consumed", "fia-exit"])
+            self.assertIs(acl._graph_params, original)

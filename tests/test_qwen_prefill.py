@@ -33,7 +33,9 @@ sys.modules[native.__name__] = native
 from betterscale.qwen_worker import Worker, validate_config
 from betterscale.patches.qwen_prefill import PREFILLS
 assert Worker.__bases__ == (Native,)
-assert "betterscale.worker" not in sys.modules
+assert "betterscale.models.dsv4" not in sys.modules
+from betterscale.qwen_worker import MixedWorker
+assert Worker is MixedWorker
 assert "betterscale.patches.qwen_prefill.padding" not in sys.modules
 hf = S(model_type="qwen3_5_text", num_hidden_layers=64, hidden_size=5120,
        head_dim=256, num_attention_heads=24, num_key_value_heads=4)

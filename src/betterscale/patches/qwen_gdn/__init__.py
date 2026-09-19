@@ -39,10 +39,9 @@ def install():
     if getattr(Builder, "_betterscale_qwen_prefill", False):
         raise RuntimeError("Cannot mix native V-K and owned K-V Workers in one process")
     check_library()
-    from . import metadata, execution, graphs, publication
+    from . import metadata, execution, publication
 
     metadata.install()
     execution.install()
-    graphs.install()
     publication.install()
     Builder._betterscale_elastic = True

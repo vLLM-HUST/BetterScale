@@ -6,6 +6,8 @@ small and maximum admitted row counts outside graph pools. Memory profiling
 must run afterwards so persistent transport residency is included in KV sizing.
 """
 
+from . import snapshot
+
 
 def prepare(worker):
     import torch
@@ -44,4 +46,4 @@ def prepare(worker):
                 f"HCCL_PRECAPTURE_PRIMED rank={worker.rank} group={pg.group_name} size={size} rows={rows}",
                 flush=True,
             )
-    worker.snapshot("communication_buffers_prepared", groups=len(groups))
+    snapshot(worker, "communication_buffers_prepared", groups=len(groups))

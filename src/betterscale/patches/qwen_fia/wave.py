@@ -156,12 +156,11 @@ def install(library):
 
     if getattr(Runner, "_betterscale_wave_fia", False):
         return
-    original_forward = Runner._model_forward
     original_fia = Impl.forward_fused_infer_attention
     original_update = Runner._update_full_graph_params_if_needed
     active = {}
 
-    def forward(self, *a, **kw):
+    def forward(self, original_forward, *a, **kw):
         ctx = get_forward_context()
         if ctx.attn_metadata is None or (
             ctx.cudagraph_runtime_mode != CUDAGraphMode.FULL
@@ -286,7 +285,7 @@ def install(library):
             return
         return original_update(self, *a, **kw)
 
-    Runner._model_forward = forward
+    Runner._betterscale_fia_forward = forward
     Impl.forward_fused_infer_attention = fia
     Runner._update_full_graph_params_if_needed = update
 

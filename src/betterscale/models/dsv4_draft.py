@@ -2,11 +2,15 @@
 
 import torch
 
+from ..patches.auto_kv import snapshot
+
 
 def prepare(self):
+    from ..patches.split_draft._warmup import prepare as prepare_draft
+
     self._preparing_draft_graphs = True
     try:
-        self.prepare_draft_program()
+        prepare_draft(self, snapshot=snapshot)
     finally:
         self._preparing_draft_graphs = False
 
@@ -28,13 +32,16 @@ def capture_trial(self):
             hasattr(d, name),
             dict(value) if isinstance(value, dict) else value,
         )
-    self.install_draft_program()
+    from ..patches.split_draft import install
+
+    install(self)
     torch.npu.synchronize()
     before = torch.npu.mem_get_info()[0]
     prepare(self)
     torch.npu.synchronize()
     extra = max(0, before - torch.npu.mem_get_info()[0])
-    self.snapshot(
+    snapshot(
+        self,
         "trial_complete_program",
         target_graph_bytes=target_bytes,
         draft_extra_bytes=extra,
@@ -68,11 +75,11 @@ def prepare_final(self):
     assert self.model_runner.input_batch.num_reqs == 0
     # Preparation writes scratch KV before admission. Retire those contents,
     # not their addresses; graph banks keep binding the same final State.
-    from ._state import zero_kv_backings
+    from ..patches.auto_kv._state import zero_kv_backings
 
     # The admitted native allocator owns these entire backing allocations.
     # Typed/page-strided aliases share them; clear each backing once, including
     # padding, without materializing a dense copy of every logical view.
     count = zero_kv_backings(self.compilation_config.static_forward_context)
     torch.npu.synchronize()
-    self.snapshot("complete_program_before_admission", state_backings_cleared=count)
+    snapshot(self, "complete_program_before_admission", state_backings_cleared=count)

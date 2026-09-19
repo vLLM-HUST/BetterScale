@@ -18,30 +18,37 @@ clear and a privately selected HC-pre host tiler on TP. It preserves the donor
 installation, the single target/draft graph pool and the 1 GiB safety reserve.
 See [memory-patch mechanics and native build](src/betterscale/patches/hc_workspace/README.md).
 
-## Qwen hybrid TP2 (source-only, separate entry)
+## One Worker, model-local overrides
 
-The current source adds `betterscale.qwen_worker.Worker` alongside DSV4:
-non-speculative FULL prefill, or native MTP2 with immutable convolution-weight
-packing. These are separate configurations, not combined FULL+MTP qualification.
-See [commands, measured scope and compiler-cache caveat](src/betterscale/patches/qwen_prefill/README.md)
-and [entry acceptance](docs/evidence/qwen-prefill.json). This addition is **not in
-published PyPI0.4.2** and does not change the existing DSV4 Worker behavior.
+All current source deployments select `betterscale.worker.Worker`. Native model
+and serving configuration choose DSV4 TP/DP, Qwen owned mixed FULL (no MTP), or
+Qwen native MTP2. No patch-specific Worker class or private profile is required.
+See [composition, lifecycle and migration](src/betterscale/models/README.md).
+Unsupported configurations fail before installation; missing qualified native
+libraries never cause a silent fallback to a different state layout.
 
-The separate opt-in `betterscale.qwen_worker.MixedWorker` owns a K-V GDN state
-pool and dynamic mixed FULL graphs keyed by token capacity plus alternating
-metadata bank, not request partitions.
-It requires the qualified external AscendC library and a fresh service process;
-no MTP; align-mode prefix caching enabled. See [service contract and launcher](src/betterscale/patches/qwen_gdn/README.md).
-The existing Qwen and DSV4 entries are unchanged; this entry is also source-only.
-[Bounded service acceptance and performance](docs/evidence/qwen-mixed-full.json)
-include the historical C1/2048 regression as well as the C4/C8 gains.
-[Dual-bank SWE comparison](docs/evidence/qwen-dualbank.json) measures **+7.24% /
-+7.89%** output throughput at C4/C8 versus native, with the selected-trace limits
-and extra graph-memory cost retained.
-The [GDN fusion follow-up](docs/evidence/qwen-gdn-fusion.json) reaches78.527/108.429tok/s
-at C4/C8 (+4.63%/+3.82% versus the retained previous candidate); native controls
-were not rerun. It removes in-graph packing/norm/gating overhead, with unchanged
-state ownership and scheduling.
+### Qwen hybrid TP2 (source-only)
+
+The no-MTP route owns a K-V GDN state pool and dynamic mixed FULL graphs keyed by
+token capacity plus alternating metadata bank, not request partitions. It uses
+wave-shared FIA planning and supports align-mode prefix caching. See the
+[service contract and launcher](src/betterscale/patches/qwen_gdn/README.md).
+This Qwen integration is **not in published PyPI 0.4.2**. Native MTP2 remains a
+separate configuration with immutable convolution-weight packing; it does not
+activate owned GDN or mixed FULL.
+
+The legacy `betterscale.qwen_worker.Worker` and `MixedWorker` imports now alias
+the same public Worker. In particular, no-MTP `qwen_worker.Worker` no longer
+selects the older native-layout single-request prefill implementation. It needs
+the owned route's native libraries and startup environment, even with APC off.
+Use a fresh process; never reuse a live state pool across implementations.
+
+[Latest matched APC-on SWE service study](https://vllm-hust.sage.org.ai/betterscale.html#qwen-swe)
+reports the pre-refactor qualified implementation; entry consolidation is not a
+new performance measurement. Historical [mixed acceptance](docs/evidence/qwen-mixed-full.json),
+[dual-bank comparison](docs/evidence/qwen-dualbank.json), and
+[GDN fusion follow-up](docs/evidence/qwen-gdn-fusion.json) retain their original
+configurations and comparator boundaries.
 
 ## End-to-end service evidence
 
