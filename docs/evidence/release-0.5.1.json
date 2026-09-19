@@ -37,5 +37,9 @@
     "Small16/32/128 prefill forward time regresses4.31/4.20/2.04%; uniform prefill policy explicitly retained.",
     "Pure decode device path preserved, measured change within0.3%.",
     "DSV4 and native MTP runtime branches unchanged."
-  ]
+  ],
+  "package_source_commit": "76709db",
+  "sdist_sha256": "57b4f2f02ad71e85b2c0709e589f5b0292b08f59ce9b85c92a1bc4f3b9748e4c",
+  "official_artifact_equals_build": true,
+  "pypi_simple_index_visible": true
 }

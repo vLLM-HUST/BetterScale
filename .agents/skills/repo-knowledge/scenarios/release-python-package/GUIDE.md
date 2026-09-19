@@ -215,3 +215,23 @@ launcher/Worker,26FULL graphs, two2048-token inputs and8outputs each with equal
 repeat text; exit0 and both selected cards released. APC is enabled but this
 smoke did not request cache-hit counters. It is not new throughput/quality evidence.
 The shipped runtime source is96a996e; receipt `docs/evidence/release-0.5.0.json`.
+
+
+## Owned prefill MC2:0.5.1
+
+Published0.5.1 sdist from76709db; tagv0.5.1, official artifact compared directly
+with the audited local build and visible on the PyPI simple index. All four native
+libraries remain byte-identical to0.5.0; only Python leaf/composition/pins change.
+`docs/evidence/release-0.5.1.json` owns101 CPU tests and installed public-launcher
+smoke onhw3 6/7:32/2048/2048 prompts,8outputs each, equal2048 repeats, exit0/reclaimed.
+The final rebuild changes only root/package documentation from the installed smoke;
+all shipped behavior-bearing package files were directly compared and identical.
+
+Qwen's opaque MC2 leaf selects all owned prefill/mixed from wave metadata, never a
+traced token threshold. Decode/MTP/DSV4 stay on their original device paths. The
+same-pair candidate ABBA and small-prefill regression are separately retained in
+`docs/evidence/qwen-mc2.json`; this is not new SWE throughput evidence. Reuse the
+0.5.0 sdist's qualified native payload when building, rather than rebuilding or
+copying the absolute-RPATH experiment host adapter. Local packaging tools were
+`runs/release-0.4.0/tools`; CPU test runtime was
+`/root/my-ascend-workspace/runs/vllm-liveinference-mod/env/bin/python`.
