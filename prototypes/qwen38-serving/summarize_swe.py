@@ -62,6 +62,7 @@ def main():
     assert arms in (["candidate"], ["baseline", "candidate"])
     first = json.loads((root / "round0" / arms[0] / "receipt.json").read_text())
     apc = first.get("prefix_caching", False)
+    mtp_tokens = first.get("mtp_tokens", 0)
     concurrencies = sorted(c["concurrency"] for c in first["rounds"])
     assert concurrencies and len(concurrencies) == len(set(concurrencies))
     cohorts = {arm: {c: [] for c in concurrencies} for arm in arms}
@@ -71,6 +72,8 @@ def main():
             d = json.loads((root / f"round{repeat}" / arm / "receipt.json").read_text())
             assert d["status"] == "PASS"
             assert d.get("prefix_caching", False) == apc
+            assert d.get("mtp_tokens", 0) == mtp_tokens
+            assert d.get("server_exit_code", 0) == 0
             if apc:
                 assert d["cache_start"] == "empty before each cohort"
             assert sorted(c["concurrency"] for c in d["rounds"]) == concurrencies
@@ -98,6 +101,7 @@ def main():
         scope=comparison["scope"],
         concurrencies=concurrencies,
         prefix_caching=apc,
+        mtp_tokens=mtp_tokens,
         plan=(
             json.loads((root / "plan.json").read_text())
             if (root / "plan.json").exists()
@@ -124,7 +128,7 @@ def main():
             for c in concurrencies
             if "baseline" in pooled
         },
-        limits="Eight selected <=8K trajectories, APC setting recorded separately, no MTP, fixed output budgets, no tool latency. Two repeats per arm (ordering/arms in scope), not population or confidence evidence. No fresh baseline comparison is implied for candidate-only runs. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps.",
+        limits=f"Eight selected <=8K trajectories, APC setting recorded separately, MTP tokens={mtp_tokens}, fixed output budgets, no tool latency. Two repeats per arm (ordering/arms in scope), not population or confidence evidence. No fresh baseline comparison is implied for candidate-only runs. Profile excluded. TPOT is HTTP completion-minus-first-content per remaining output token, not SSE event gaps.",
     )
     (root / "summary.json").write_text(json.dumps(output, indent=2) + "\n")
     print(

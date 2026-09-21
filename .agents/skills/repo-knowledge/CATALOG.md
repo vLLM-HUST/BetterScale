@@ -29,3 +29,8 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 - **Optimize Qwen hybrid TP2 HTTP serving and interpret FULL prefill:** read
   [optimize-qwen-hybrid-serving](scenarios/optimize-qwen-hybrid-serving/GUIDE.md)
   before repeating Qwen27 profiles or generalizing its fixed-shape graph prototype.
+
+- **Qualify Qwen MTP candidate states, compare draft counts or read target/draft
+  timelines:** read [qualify-qwen-mtp](scenarios/qualify-qwen-mtp/GUIDE.md).
+  Use this direct entry for speculative work; the long hybrid-serving history
+  remains the entry for changing the underlying non-speculative runtime.

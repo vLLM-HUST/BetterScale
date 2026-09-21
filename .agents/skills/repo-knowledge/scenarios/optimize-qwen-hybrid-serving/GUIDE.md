@@ -106,6 +106,9 @@ composition and general mixed/full/prefix-cache coverage require their own evide
 
 ## MTP composition: distinguish padding from capture and prompt sensitivity
 
+For the current direct-pool candidate-state implementation, first read
+[the LiveInference protocol transfer and bounded operator evidence](../qualify-qwen-mtp/GUIDE.md).
+
 Native async/MTP2 service frontiers use64outputs,C1/C4/C8,two cohorts each,APCoff,
 6GiBKV on the same local TP2 host (separate runs, not interleaved causal A/B).
 Native sync22.03/59.67/91.53tok/s; async26.53/68.24/101.88; MTP2
