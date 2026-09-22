@@ -37,6 +37,7 @@ def validate_config(config, *, mixed=False):
     mode = str(config.compilation_config.cudagraph_mode)
     sizes = set(config.compilation_config.cudagraph_capture_sizes)
     native_mtp = spec is not None
+    context_limit = 8192 if native_mtp else 32768
     checks = {
         "Qwen hybrid 27B BF16 text-only": (
             hf.model_type == "qwen3_5_text"
@@ -61,10 +62,10 @@ def validate_config(config, *, mixed=False):
             p.prefill_context_parallel_size,
         )
         == (2, 1, 1, False, 1, 1),
-        "8 seats /2048-token budget /context<=8192": (
+        f"8 seats /2048-token budget /context<={context_limit}": (
             s.max_num_seqs == 8
             and s.max_num_batched_tokens == 2048
-            and m.max_model_len <= 8192
+            and 0 < m.max_model_len <= context_limit
         ),
         "text-only input": m.multimodal_config is None
         or all(

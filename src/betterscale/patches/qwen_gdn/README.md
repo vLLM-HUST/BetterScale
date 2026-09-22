@@ -116,7 +116,8 @@ max_abs 为 0；冷/热 APC 和八路共享前缀通过。FULL/NONE 两侧都使
 - Fresh process and newly allocated state pools; no reinterpretation of a live
   native V-K pool. Both chunk/mixed and one-token decode read/write K-V FP32.
 - Qwen27 BF16, TP2/DP1/PP1, qk8/v24 local heads, K/V128, convolution width4.
-  Eight seats, token budget2048, FULL capacities1/2/4/8 for decode and
+  Context up to32768 input+output tokens, eight seats, token budget2048,
+  FULL capacities1/2/4/8 for decode and
   16/32/64/128/256/512/1024/1536/2048 for prefill/mixed.
 - No MTP, cache transfer, LoRA or context parallelism. APC uses native `align`
   mode; `all` mode is unsupported. Uncaptured model
@@ -382,3 +383,18 @@ with the existing admitted elastic probe and `ELASTIC_APC=1 ELASTIC_SHADOW=1`;
 The capsule's `elastic_probe.py` owns the hit/branch checks. The production launcher now enables
 APC align. These are the pre-consolidation measurements; the unified no-MTP
 entry selects the same owned state protocol for both APC align and APC off.
+
+## 32K context admission
+
+The no-MTP route now admits32768 input+output tokens; native MTP retains its
+separate8192 admission. The launcher defaults to32768 and accepts
+`QWEN_MAX_MODEL_LEN` for a smaller limit. Graph token capacity remains2048: long
+prompts use native chunked prefill, not32768-token graph captures.
+
+[Capacity smoke](../../../../docs/evidence/qwen-context32k.json) covers
+8193/16385/32704-token prompts with32 outputs, equal cold/warm greedy text and
+positive warm APC hits, plus eight concurrent16385-token prompts. This uses the
+existing qualified native libraries,6GiB KV per rank and fresh state pools. It
+is not a throughput benchmark, exhaustive state-equivalence proof, or a promise
+that eight full32K histories fit simultaneously. Physical KV admission still
+depends on the selected memory budget.
