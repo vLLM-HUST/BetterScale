@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-22",
+  "base_commit": "c685a2bb70f627dbd4a9528569af33ece9cbe65e",
+  "change": "No-MTP admission max context32768; native MTP context admission unchanged8192",
+  "hardware": "2 x Ascend910B2, one node",
+  "dtype": "BF16",
+  "model": "Qwen3.8-27B",
+  "graph": "FULL",
+  "seats": 8,
+  "scheduled_token_budget": 2048,
+  "kv_bytes_per_rank": 6442450944,
+  "apc": "align",
+  "requests": 14,
+  "output_tokens_per_request": 32,
+  "single_prompt_lengths": [
+    8193,
+    16385,
+    32704
+  ],
+  "cold_warm_text_equal": true,
+  "warm_cached_tokens": [
+    7680,
+    15360,
+    32256
+  ],
+  "concurrent_prompts": 8,
+  "concurrent_prompt_tokens": 16385,
+  "server_exit_code": 0,
+  "release": "selected devices idle during30-second observation",
+  "scope": "HTTP capacity/APC smoke; not full numerical equivalence, throughput or model-quality qualification"
+}

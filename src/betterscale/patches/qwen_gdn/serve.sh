@@ -15,7 +15,7 @@ exec "${PYTHON:-python}" -m vllm.entrypoints.cli.main serve "$QWEN_MODEL_PATH" \
   --host 127.0.0.1 --port "${SERVING_PORT:-32181}" --served-model-name qwen27 \
   --tensor-parallel-size 2 --distributed-executor-backend mp \
   --worker-cls betterscale.worker.Worker --dtype bfloat16 \
-  --max-model-len 8192 --max-num-seqs 8 --max-num-batched-tokens 2048 \
+  --max-model-len "${QWEN_MAX_MODEL_LEN:-32768}" --max-num-seqs 8 --max-num-batched-tokens 2048 \
   --kv-cache-memory-bytes 6442450944 --seed 17 \
   --enable-prefix-caching --mamba-cache-mode align --async-scheduling \
   --limit-mm-per-prompt '{"image":0,"video":0}' \

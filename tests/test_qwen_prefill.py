@@ -50,6 +50,15 @@ c = S(parallel_config=S(tensor_parallel_size=2, data_parallel_size=1,
       cache_config=S(enable_prefix_caching=False),
       compilation_config=S(cudagraph_mode="FULL", cudagraph_capture_sizes=[1,2,4,8,*PREFILLS]))
 validate_config(c)
+for length in (8192, 8193, 16384, 32768):
+    c.model_config.max_model_len=length
+    validate_config(c)
+for length in (0, 32769):
+    c.model_config.max_model_len=length
+    try: validate_config(c)
+    except ValueError: pass
+    else: raise AssertionError("context admission")
+c.model_config.max_model_len=8192
 for obj, key, bad in [(c, "speculative_config", S(method="mtp")),
                      (c.cache_config, "enable_prefix_caching", True),
                      (c.parallel_config, "tensor_parallel_size", 4),
@@ -75,6 +84,10 @@ c.speculative_config=S(method="mtp",num_speculative_tokens=2,enforce_eager=False
 c.compilation_config.cudagraph_mode="FULL_AND_PIECEWISE"
 c.compilation_config.cudagraph_capture_sizes=[1,2,4,8,16,24]
 validate_config(c)
+c.model_config.max_model_len=8193
+try: validate_config(c)
+except ValueError: pass
+else: raise AssertionError("native MTP context must retain its separate bound")
 assert "betterscale.patches.qwen_layout" not in sys.modules
 """
         subprocess.run([sys.executable, "-c", code], check=True)
