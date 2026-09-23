@@ -419,3 +419,12 @@ executor logged unexpected worker exit then all workers exited gracefully;
 there was no serving-time error/OOM. No new benchmark point, formal window or
 PyPI release follows from this functional fix. Existing Frontier smoke points
 still describe their original unmodified capsule and KV budgets.
+
+For the subsequent question of **capacity beyond native**, enter
+[full-graph-capacity.md](full-graph-capacity.md). It maps LiveInference's qualified
+non-KV closure/calibration and shared-pool lessons to the remaining Qwen eager
+head/sampling/APC boundaries, distinguishes startup peaks from steady residency,
+and retains the completed matched memory diagnostic plus reusable capture/pool
+profiling helpers. FULL lowers some transient demand but has not beaten native
+in whole-serving footprint; the remaining128MiB graph-external FIA planner
+allocation is a concrete next investigation, not an already-qualified saving.
