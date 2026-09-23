@@ -17,6 +17,11 @@ assert not a.output.exists()
 shutil.copytree(a.seed, a.output, ignore=shutil.ignore_patterns(
     '__pycache__', 'runtime-source', '*.log', 'receipt.json'))
 changes = {
+    'draft_banks.py': [
+        ('    Proposer._propose = wrap(Proposer._propose)',
+         '    Proposer._propose = wrap(Proposer._propose)\n'
+         '    from draft_output import install as install_live_draft_rows\n'
+         '    install_live_draft_rows()')],
     'package/betterscale/models/__init__.py': [
         ('hf.model_type == "qwen3_5_text"', 'hf.model_type == "qwen3_5_moe_text"')],
     'service_adapter.py': [
@@ -60,6 +65,7 @@ for name, replacements in changes.items():
     diff.extend(difflib.unified_diff(old.splitlines(True), new.splitlines(True),
                                    fromfile='gdn-pilot/'+name, tofile='moe-full/'+name))
 (a.output/'service-geometry.diff').write_text(''.join(diff))
+shutil.copyfile(Path(__file__).with_name('draft_output.py'), a.output/'draft_output.py')
 (a.output/'service-contract.json').write_text(json.dumps({
     'status':'UNQUALIFIED', 'model':'Qwen3.5-35B-A3B', 'dtype':'BF16',
     'mtp':2, 'max_context':262144, 'target_graph':'FULL prefill/mixed/decode',

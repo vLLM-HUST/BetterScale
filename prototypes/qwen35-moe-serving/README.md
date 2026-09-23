@@ -53,3 +53,9 @@ its native cold/warm equality can fail at low-margin branches or after EOS.
 Keep those failures distinct from normal chat correctness, and retain both.
 These targeted checks and dummy graph evidence do not qualify benchmark points
 or make the experimental capsule a released wheel.
+
+`draft_output.py` keeps graph padding out of live request history. Penalty-enabled
+calibration exposed this path after greedy functional checks had passed.
+`synthetic_*_worker.py` are separate, benchmark-only entries; standard functional
+probes must keep real acceptance. The sampler adapter has CPU/NPU/TP fixture
+coverage, not yet HTTP qualification. It is not part of the released Worker.
