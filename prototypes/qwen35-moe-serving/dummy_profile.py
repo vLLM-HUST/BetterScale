@@ -25,14 +25,6 @@ def main():
     command=server_command(args)+['--load-format','dummy']
     if args.candidate_full:
         assert args.worker == 'candidate_worker.Worker'
-        # APC block2048 needs room alongside live verification rows. At a2048
-        # budget, residual prefill capacity can round to zero in a mixed wave.
-        command[command.index('--max-num-batched-tokens')+1]='4096'
-        command[command.index('--compilation-config')+1]=json.dumps({
-            'cudagraph_mode':'FULL',
-            'cudagraph_capture_sizes':[3,6,12,16,24,32,64,128,256,512,1024,1536,2048,4096],
-            'max_cudagraph_capture_size':4096})
-        command+=['--scheduler-cls','apc_boundary.BoundaryScheduler']
     receipt={'status':'STARTED','command':command,'weights':'dummy',
              'scope':'execution/graph/communication structure; NOT model quality or real-workload throughput',
              'phases':[]}

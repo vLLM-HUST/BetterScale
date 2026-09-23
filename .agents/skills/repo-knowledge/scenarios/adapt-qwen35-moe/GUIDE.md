@@ -119,3 +119,27 @@ FIA: Q8/KV1/head256,4K/256K verification,4096-token prefill/mixed and a smaller
 mixed case. `hw3-fia-draft1` passed72 additional waves for compacted draft
 padding capacities24/2048/4096. Both observed max output error0. These are
 operator-envelope gates, not proof of whole-model FULL or real-weight quality.
+
+## Whole-model dummy FULL coverage
+
+`hw3-full-dummy2` with `moe-full4` completed28 startup graphs, three request
+phases and shutdown (exit0). Both ranks agree on all18 recorded dispatches:
+decode24FULL; prefill8193 split4096/4096/1FULL; mixed contains2060FULL
+(four3-token verification rows plus2048 prefill), followed by13FULL
+(four3-token verification rows plus the remaining1 prefill). No NONE fallback.
+
+Native msprof plus TraceLoom bf6fb491 exact launch/body membership confirms,
+for every phase/rank, six target launches with40 MoE top-k and80 grouped
+matmuls, and six draft launches with2 top-k and4 grouped matmuls. This is
+physical MoE-in-FULL evidence, not just configuration/dispatch strings.
+See `native-graph/analysis/graph-inventory.json` in that capsule. Replay cost
+units are not scheduler steps (their grouping differs across these windows);
+use exact launch/member/db/device identity, not cost-unit count or whole-DB
+operator counts. Native baseline used8192 query budget; this candidate4096,
+on different hosts: none of these dummy profiles is a throughput comparison.
+
+Real model objects subsequently passed the fixed ModelScope Git/LFS manifest
+(28 files,71,927,086,369 bytes) and complete SSH rsync to hw3 task `model/`;
+`model-verification.json` / `hw3-model-transfer.json` bind that boundary.
+Actual model quality, changing routing correctness, candidate256K and calibrated
+AgentX remain separate gates; do not publish dummy-derived Frontier points.

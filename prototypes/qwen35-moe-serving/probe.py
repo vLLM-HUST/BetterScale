@@ -24,6 +24,14 @@ def server_command(args):
         json.dumps({'cudagraph_mode': 'FULL_AND_PIECEWISE', 'cudagraph_capture_sizes': [3,6,12,24],
                     'max_cudagraph_capture_size': 24}),
         '--speculative-config', json.dumps({'method': 'mtp', 'num_speculative_tokens': 2})]
+    if getattr(args, 'candidate_full', False):
+        # Leave space for a2048-token APC block alongside live MTP rows.
+        command[command.index('--max-num-batched-tokens')+1] = '4096'
+        command[command.index('--compilation-config')+1] = json.dumps({
+            'cudagraph_mode': 'FULL',
+            'cudagraph_capture_sizes': [3,6,12,16,24,32,64,128,256,512,1024,1536,2048,4096],
+            'max_cudagraph_capture_size': 4096})
+        command += ['--scheduler-cls', 'apc_boundary.BoundaryScheduler']
     return command
 
 
@@ -33,6 +41,7 @@ def main():
     parser.add_argument('--model', required=True)
     parser.add_argument('--worker', default='native_worker.Worker')
     parser.add_argument('--port', type=int, default=32281)
+    parser.add_argument('--candidate-full', action='store_true')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     output = args.output

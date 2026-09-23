@@ -15,12 +15,14 @@ Artifact root: `/workspace/my-ascend-workspace/runs/qwen35-moe-mtp-256k`.
 Server launches require selected-card leases, fresh admission and foreign-owner
 supervision. Model downloads and CPU preparation do not reserve accelerator cards.
 
-First establish native startup, actual speculation counters, short coherent
+Before qualifying support, establish native startup, actual speculation counters, short coherent
 continuations, cold/warm prefix behavior, and real near262144 context requests.
-A configured maximum alone is not a long-context acceptance receipt. Then adapt
+A configured maximum alone is not a long-context acceptance receipt. Adapt
 BetterScale's qualified frozen MTP implementation (September22 candidate archive),
 not only the older0.5.1 published route. Preserve independent numerical/state
 oracles before accepting new GDN/FIA geometry or MoE FULL graph coverage.
+Fletcher selected dummy profiles first; exploratory adaptation may precede
+real-weight checks, but it cannot substitute for those acceptance gates.
 
 FULL prefill and FULL mixed are explicit acceptance requirements, not optional
 follow-up optimization. Stage GDN geometry with `stage_mixed.py`, then the
