@@ -265,3 +265,33 @@ decode-per-user p50 79.887tokens/s. Its TTFT p95 was slightly worse
 repeatability estimate, tuned frontier or isolated kernel speedup: closed-loop
 replay reached different request mixes. `agentx-native-full-smoke-comparison.json`
 under the artifact root binds both reports. No formal run completed.
+
+## Capacity expansion, not just client concurrency
+
+Fletcher requested full practical capacity and C16 curves. `moe-full5` admits
+only8 live requests: changing client concurrency to16 alone measures additional
+queueing, not a sixteen-row serving implementation. `stage_capacity.py` stages
+an isolated `moe-capacity16-1` with16 live rows, row16 empty sentinel,17-row
+GDN/FIA slabs,18 offsets,48-token MTP2 verification and rebuilt host admission.
+It preserves Q/K8 and V16 head geometry, nine-pointer FIA ABI and byte alignment.
+Do not globally replace8/9/10. `check_capacity.py` checks CPU publication,
+shrinking reuse, sentinel chunks and draft-padding compaction through16 rows;
+staging intentionally removes the stale host binary until rebuilt and re-pinned.
+
+Local selected-device gates passed: `local-capacity-gdn1` exercised four
+sixteen-row FULL prefill/mixed cases, up to4096 query tokens, in two publication
+banks against independent CPU output/state/history (max output7.63e-6,
+state8.96e-5, exact conv history). `local-capacity-verify1` passed two sixteen-row
+pure MTP2 verification cases at48 tokens. `local-capacity-fia1/target` passed120
+native-parity waves, including sixteen256K contexts; `/draft` passed72 at
+48/2048/4096 padded capacities. These are operator gates, **not yet C16 serving
+or throughput qualification**. Capsules and receipts remain under the same
+artifact root. Functional server checks now accept explicit request/memory/query
+limits; compare both arms at matched capacity, and do not merge old8/.90 points
+into a16/.95 curve without labeling that configuration boundary.
+
+When moving the pinned hw3 source to a local runtime, append the CANN-provided
+PYTHONPATH after task source paths. Overwriting it hid `acl` and stopped
+`local-capacity-native1` before worker initialization; it was not an OOM or
+capacity failure. Preserve that receipt. `local-capacity-native2` and `full2`
+are the corrected real-weight qualification attempts at max-seqs16/utilization.95.
