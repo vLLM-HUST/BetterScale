@@ -347,3 +347,13 @@ CPU summary excludes invalid coverage points; the lane may continue after that
 specific validity-only failure, but request/runtime failures stop the campaign.
 No formal window is authorized. Local source/runtime copies and per-lane caches
 must retain CANN's PYTHONPATH; native includes baseline-source for pin checks.
+
+The sweep completed all ten runs with clean server/client cleanup and selected-pair idle release
+windows. Nine exports were valid; FULL C1 had no request/OSL errors but~.899 metric-duration
+coverage, so it is diagnostic only. Native C1 was valid on the new local capacity configuration;
+do not substitute the earlier invalid hw3 observation. `capacity-sweep1/summary.json` and the
+website's `docs/FRONTIER-QWEN35-CONCURRENCY.md` retain all accepted identities and the invalid case.
+C4 native/FULL outputperchip30.488/43.838, decodeP90 90.748/113.125; C16 output43.635/56.280,
+decodeP90 51.452/59.833, TTFTP95 28.646/13.608s. C8 reached only35/42 measured requests versus
+C4's94/130: its nonmonotonic throughput is not an isolated capacity or kernel conclusion. All
+windows remained900s smoke; no formal run or new PyPI release was performed.
