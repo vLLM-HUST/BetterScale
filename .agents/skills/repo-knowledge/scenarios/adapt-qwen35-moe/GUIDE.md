@@ -318,3 +318,32 @@ TTFT/TPOT duration coverage was~.867 versus the required.95. Do not put its
 20.981 outputtokens/s/chip on Frontier as an accepted point. Sparse low-C traces
 can fail coverage without a serving error. Preserve diagnostics; do not lengthen
 to a forbidden formal window or change the seed/workload to manufacture validity.
+
+C16 follow-through: `local-capacity-full3` passed all24 real retrievals (eight
+cold/warm lengths through262080 plus16 concurrent),32 captured FULL graphs and
+clean exit. Automatic.90 allocated20.33GiB KV/chip. FULL graph memory was3.37GiB,
+versus native0.48GiB. The worker's post-warmup "fully utilize" suggestion does
+**not** protect graph-capture allocator peaks: `full4` with explicit21.5GiB still
+OOMed on648MiB, with56.90GiB allocated/59.92GiB reserved/128.91MiB free. Retain
+both failed budgets; do not blindly trust that suggestion. The sweep chooses
+explicit20.25GiB, below the20.33GiB passed envelope, rather than repeating a
+costly narrow search for a fractional-GiB gain. Native explicit24.25GiB passed
+33-request HTTP/memory diagnostic and clean exit (`local-native-kvmax1`).
+
+Native semantics remain a limitation, not an accepted quality result. Fresh
+MTP2 C16 cold/warm diagnostic had4/16 cold retrieval errors,0/16 warm; a no-MTP
+control had1/16 wrong in both phases. `kvmax1` serial4097 retrieval was correct,
+then4/16 cold and0/16 warm were wrong. This excludes prior long-cache history
+and MTP as sole explanations, but does not establish the cause (including
+batch numerics versus state correctness). Do not call it proven harmless noise.
+Candidate's24/24 pass is bounded evidence, not broad model-quality certification.
+
+`capacity-sweep1/` prepares/owns ten official900s points across local TP2 pairs
+1/3 (C1,C2),4/5 (C4,C8),6/7 (C16), sequential native/FULL within each pair.
+Fresh selected-card leases/guards remain mandatory. Budgets are individually
+capacity-tuned: native24.25/FULL20.25GiB, fixed16requests/query4096/MTP2/BF16/256K.
+This is deployment-frontier comparison, **not equal-KV or isolated MOD speedup**.
+CPU summary excludes invalid coverage points; the lane may continue after that
+specific validity-only failure, but request/runtime failures stop the campaign.
+No formal window is authorized. Local source/runtime copies and per-lane caches
+must retain CANN's PYTHONPATH; native includes baseline-source for pin checks.

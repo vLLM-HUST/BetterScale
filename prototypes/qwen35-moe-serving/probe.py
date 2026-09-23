@@ -41,6 +41,8 @@ def server_command(args):
         command[index] = json.dumps(config)
     if getattr(args, 'max_num_batched_tokens', None) is not None:
         command[command.index('--max-num-batched-tokens')+1] = str(args.max_num_batched_tokens)
+    if getattr(args, 'kv_cache_memory_bytes', None) is not None:
+        command += ['--kv-cache-memory-bytes', str(args.kv_cache_memory_bytes)]
     return command
 
 
@@ -54,6 +56,7 @@ def main():
     parser.add_argument('--max-num-seqs', type=int, choices=(8,16), default=8)
     parser.add_argument('--max-num-batched-tokens', type=int)
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.90)
+    parser.add_argument('--kv-cache-memory-bytes', type=int)
     parser.add_argument('--concurrency', type=int, choices=(4,16), default=4)
     parser.add_argument('--raw-stress', action='store_true',
                         help='Retain raw, forced-length stress and strict equality; not normal chat quality')
