@@ -29,3 +29,7 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 - **Optimize Qwen hybrid TP2 HTTP serving and interpret FULL prefill:** read
   [optimize-qwen-hybrid-serving](scenarios/optimize-qwen-hybrid-serving/GUIDE.md)
   before repeating Qwen27 profiles or generalizing its fixed-shape graph prototype.
+
+- **Adapt Qwen3.5-35B-A3B BF16/MTP/native256K:** read
+  [adapt-qwen35-moe](scenarios/adapt-qwen35-moe/GUIDE.md) for the experimental
+  versus released source boundary, changed geometry and current qualification.

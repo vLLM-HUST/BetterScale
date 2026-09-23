@@ -1,5 +1,21 @@
 # Optimize Qwen hybrid TP2 serving
 
+## Before transferring this route to Qwen3.5-35B-A3B / AgentX
+
+2026-09-23 source audit at BetterScale `c685a2b`: CPU-only `models.select`
+with the official Qwen3.5-35B-A3B text config rejects
+`Unsupported BetterScale model: qwen3_5_moe_text`. This is not just a name gate:
+TP2 GDN value heads become16 instead of24 (`qwen_gdn/preprocess.py` and
+`host.cpp` have fixed24 layouts), FIA Q/KV heads become8/1 instead of12/2,
+and `qwen_mc2.install` expects128 dense27B row projections. Do not remove
+admission guards to claim MoE support. The official config declares262144
+context, but our current Qwen admission permits only8192. AgentX bench's pinned
+256k corpus cannot be shortened or filtered to fit; its900s smoke changes
+measurement duration only. Native donor has the MoE model registration, which
+is not an NPU serving qualification. No35B weights were loaded or timed in this
+audit. First establish native BF16/no-speculation long-context serving, then
+qualify changed GDN/FIA geometry and MoE graph coverage before publishing points.
+
 For production entry consolidation, read the [worker composition audit](worker-composition-audit.md): observed ownership/order traps, implementation and bounded verification of the single-entry route.
 
 Enter here before profiling or extending FULL coverage for Qwen3.8-27B HTTP
