@@ -307,8 +307,8 @@ and top5 logprobs remain retained. A cold/warm C16-only diagnostic separates
 fresh-batch behavior from earlier long-prefix cache history.
 
 FULL attempt2 at.95 failed while capturing its first4096-token graph:648MiB
-allocation with511MiB free. Operator gates had passed; this is a real graph-pool
-memory boundary, not a16-row oracle failure. Attempt3 uses.90 to measure actual
+allocation with511MiB free. Operator gates had passed; this is a real capture-path
+memory failure, not a16-row oracle failure (see the padding audit below). Attempt3 uses.90 to measure actual
 FULL memory before choosing the largest practical KV budget. Equal utilization
 settings do not imply equal post-graph memory or KV capacity; record both.
 
@@ -348,6 +348,36 @@ specific validity-only failure, but request/runtime failures stop the campaign.
 No formal window is authorized. Local source/runtime copies and per-lane caches
 must retain CANN's PYTHONPATH; native includes baseline-source for pin checks.
 
+
+### C16 KV gap: draft padding audit (2026-09-23)
+
+Read-only `capacity-memory-audit1/FINDINGS.md` under the artifact root above
+identifies avoidable draft sampling inflation in the frozen candidate's
+`vllm_ascend/spec_decode/llm_base_proposer.py:668`: dummy batch size is
+`max(num_tokens // (num_speculative_tokens + 1), 1)`, capped to max requests
+only during profile. CPU execution of those original AST statements confirms
+48-token capture ->16 rows;4096-token profile ->16;4096-token capture/warmup
+->1365, despite a16-request serving envelope. With vocabulary248320/BF16,
+one full logits tensor is646.51MiB rather than7.58MiB. This matches the648MiB
+allocation failure in `local-capacity-full4/server.log`: draft LM-head TP
+all-gather reshape/copy during eager warmup after a preceding graph capture,
+not a MoE grouped-GEMM allocation. It is source-policy plus matching-stack
+evidence, not a runtime shape-hook measurement or a measured savings claim.
+
+The current final-token `draft_output.live_rows` slice and FIA metadata
+compaction do not shrink those logits. Separate token capacity from draft
+request/sampling capacity in an isolated future capsule; preserve live indices,
+stable replay shapes and subsequent-step/bank ordering. Do not patch a live
+sweep capsule. The later draft step also retains the4096-token input envelope.
+Validate real C16/long-context continuation and memory peaks before raising KV.
+
+Both arms load33.69GiB weights; ACL wrappers share a global graph pool, so
+32 descriptors/two metadata banks do not imply32/two whole scratch pools.
+Reported3.37/0.48GiB graph memory is a free-device-memory delta across capture,
+not a pool inventory. Selected20.25/24.25GiB KV budgets are conservative working
+points, not proven maxima or an unavoidable4GiB penalty. Exact recovery needs
+patched NPU A/B; this audit launched no NPU work and changed no runtime.
+
 The sweep completed all ten runs with clean server/client cleanup and selected-pair idle release
 windows. Nine exports were valid; FULL C1 had no request/OSL errors but~.899 metric-duration
 coverage, so it is diagnostic only. Native C1 was valid on the new local capacity configuration;
@@ -357,3 +387,35 @@ C4 native/FULL outputperchip30.488/43.838, decodeP90 90.748/113.125; C16 output4
 decodeP90 51.452/59.833, TTFTP95 28.646/13.608s. C8 reached only35/42 measured requests versus
 C4's94/130: its nonmonotonic throughput is not an isolated capacity or kernel conclusion. All
 windows remained900s smoke; no formal run or new PyPI release was performed.
+
+
+### Request-bounded draft sampling fix (2026-09-23)
+
+`prototypes/qwen35-moe-serving/draft_sampling.py` wraps the merged callable
+before ACL runnable creation, bounding empty-startup/profile/warmup sampling to
+`min(num_input_tokens, runner.max_num_reqs)`. Do not divide by MTP width for
+nonuniform FULL keys: a small token wave can contain one token per request.
+Live eager sampling indices are unchanged; overflow is rejected, not truncated.
+First/second model token envelopes and FIA/bank metadata remain unchanged.
+`stage_draft_sampling.py SEED NEW_OUTPUT` clones a completed capsule and wires
+this at the existing draft-bank installation boundary. New `stage_capacity.py`
+outputs also include it. Retain final live-output slicing for history publication.
+
+`moe-request-sampling1` differs from frozen `moe-capacity16-1` only in the new
+module and its draft-bank installation hook; donor sources/native binaries are
+unchanged. `request-sampling-full1` on local1/3 passed all24 exact retrievals:
+8K/32K/128K/262080 cold/warm plus C16, BF16/TP2/MTP2/4096 query/262144 context,
+real drafted98/accepted98. All32 FULL bank/shape graphs captured with explicit
+**24.25GiB KV/chip**, matching the native operating budget rather than the old
+FULL20.25GiB. Both ranks' actual logits observations are3/6/12/16 rows, never
+1365. Capture free-memory delta fell from3.37 to0.84GiB. Peak allocated/reserved
+were62709160960/63321407488 bytes per rank. This is not a maximum-capacity claim
+or a graph-pool inventory; later-step model padding remains an optimization gap.
+
+`request-sampling-controller1/validation.json` binds shapes, memory and source
+delta. Server exit0 and a30-second release window returned selected cards to
+IDLE. Retain the shutdown caveat: after all HTTP checks and requested SIGINT,
+executor logged unexpected worker exit then all workers exited gracefully;
+there was no serving-time error/OOM. No new benchmark point, formal window or
+PyPI release follows from this functional fix. Existing Frontier smoke points
+still describe their original unmodified capsule and KV budgets.

@@ -59,3 +59,15 @@ calibration exposed this path after greedy functional checks had passed.
 `synthetic_*_worker.py` are separate, benchmark-only entries; standard functional
 probes must keep real acceptance. The sampler adapter has CPU/NPU/TP fixture
 coverage, not yet HTTP qualification. It is not part of the released Worker.
+
+
+For the C16 FULL capsule, use `stage_draft_sampling.py SEED NEW_OUTPUT` to add
+request-bounded merged-MTP sampling without changing a frozen or running seed.
+`stage_capacity.py` includes this fix for newly staged C16 capsules. Startup
+sampling reserves `min(token_capacity, max_requests)` rows, including nonuniform
+small waves; live eager indices stay unchanged. The wrapper is installed before
+ACL runnable creation, so warmup and captured logits share the same bound.
+Final-token output slicing remains necessary for request-history publication.
+The first and later draft model token envelopes are deliberately unchanged:
+this fixes oversized logits, not all potential padding work. Keep real C16 and
+near-256K qualification separate from CPU shape checks and benchmark results.

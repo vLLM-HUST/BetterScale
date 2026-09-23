@@ -50,6 +50,8 @@ def stage(seed, output):
         path.write_text(new)
         diff.extend(difflib.unified_diff(old.splitlines(True), new.splitlines(True),
                                         fromfile='capacity8/'+name, tofile='capacity16/'+name))
+    from stage_draft_sampling import install_in_capsule
+    install_in_capsule(output)
     # A stale host binary must never accidentally execute against enlarged PODs.
     (output/'native/libbs_gdn_host.so').unlink()
     (output/'capacity.diff').write_text(''.join(diff))
