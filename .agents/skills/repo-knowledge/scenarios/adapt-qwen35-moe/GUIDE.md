@@ -105,3 +105,17 @@ native and candidate source-pin manifests differ there. The task-owned
 `candidate-runtime1` copies the admitted runtime and replaces only that runner
 from the immutable September22 capsule. Never substitute the native runner or
 relax its pin to bypass this distinction; never edit shared donor sources.
+
+The first full-model candidate stopped before readiness on the C++ host
+adapter's retained2048 capacity guard, not a MoE numerical failure. Extend
+both Python preprocessing and C++ allocation admission when expanding the
+query envelope; rebuild the host adapter and bind its new digest. With that
+change, `moe-full4` / `hw3-gdn-large1` passed pure4096-prefill and mixed
+[3,2049,2044] in two FULL banks against independent CPU state/output/history
+(max output7.63e-6, max state5.54e-5, exact convolution history).
+
+`hw3-fia-moe1` passed120 dual-bank/device-feedback waves versus native eager
+FIA: Q8/KV1/head256,4K/256K verification,4096-token prefill/mixed and a smaller
+mixed case. `hw3-fia-draft1` passed72 additional waves for compacted draft
+padding capacities24/2048/4096. Both observed max output error0. These are
+operator-envelope gates, not proof of whole-model FULL or real-weight quality.
