@@ -295,3 +295,26 @@ PYTHONPATH after task source paths. Overwriting it hid `acl` and stopped
 `local-capacity-native1` before worker initialization; it was not an OOM or
 capacity failure. Preserve that receipt. `local-capacity-native2` and `full2`
 are the corrected real-weight qualification attempts at max-seqs16/utilization.95.
+
+Further capacity observations (not accepted tuning): local native source also
+needs the frozen `baseline-source/betterscale` solely for pin checks; omission
+stopped attempt2 before model initialization. Corrected native attempt3 loaded
+C16/.95, passed all eight cold/warm retrievals through262080, then failed strict
+concurrent retrieval:5/16 outputs inserted an extra `7` in the access code.
+`concurrent-0` chose7 over4 by about1.0 logit, not a near tie; do not dismiss this
+as proven rounding noise or blame the MOD (this is native). The exact responses
+and top5 logprobs remain retained. A cold/warm C16-only diagnostic separates
+fresh-batch behavior from earlier long-prefix cache history.
+
+FULL attempt2 at.95 failed while capturing its first4096-token graph:648MiB
+allocation with511MiB free. Operator gates had passed; this is a real graph-pool
+memory boundary, not a16-row oracle failure. Attempt3 uses.90 to measure actual
+FULL memory before choosing the largest practical KV budget. Equal utilization
+settings do not imply equal post-graph memory or KV capacity; record both.
+
+The retained old-capacity native C1 smoke `20260923T124437Z-smoke-c1-7346b848`
+finished62 requests with no request/OSL errors but **was invalid**: official
+TTFT/TPOT duration coverage was~.867 versus the required.95. Do not put its
+20.981 outputtokens/s/chip on Frontier as an accepted point. Sparse low-C traces
+can fail coverage without a serving error. Preserve diagnostics; do not lengthen
+to a forbidden formal window or change the seed/workload to manufacture validity.
