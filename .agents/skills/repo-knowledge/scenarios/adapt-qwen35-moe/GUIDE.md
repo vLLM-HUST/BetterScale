@@ -255,3 +255,13 @@ formal one-hour windows until tuning is accepted**. The next comparison is nativ
 versus FULL at matched TP2/MTP2/AL2.63, server max-seqs8/query-budget4096 and
 client four session trees, smoke only. Earlier native functional probes used8192
 query budget; do not confuse them with this matched performance configuration.
+
+Matched native smoke `20260923T111149Z-smoke-c4-6aba3e3e` passed89 requests,
+zero errors/OSL mismatches,58.594 outputtokens/s, TTFT p50 1384.3ms and
+decode-per-user p50 67.670tokens/s. Observed synthetic AL2.62839; client/server
+clean exit. FULL above was84.624tokens/s (1.444x aggregate), TTFT p50 806.4ms,
+decode-per-user p50 79.887tokens/s. Its TTFT p95 was slightly worse
+(4189.5 vs4022.7ms). This is one sequential shared-host smoke pair, not a
+repeatability estimate, tuned frontier or isolated kernel speedup: closed-loop
+replay reached different request mixes. `agentx-native-full-smoke-comparison.json`
+under the artifact root binds both reports. No formal run completed.
