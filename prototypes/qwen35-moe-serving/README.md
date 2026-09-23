@@ -44,3 +44,12 @@ no filtering or shortening. Synthetic content requires official matched
 SPEED-Bench acceptance calibration and forced-acceptance settings for comparable
 speculative performance; true MTP functional validation must not use forced
 acceptance. Do not label uncalibrated traffic a compliant Frontier point.
+
+Current functional gate: use `probe.py` with the model-native nonthinking chat
+template and EOS respected. It retrieves a unique code from mid-context at
+8K/32K/128K/near256K, cold/warm and four concurrent prompts, and requires real
+MTP counters. `--raw-stress` retains the earlier64-token forced continuation;
+its native cold/warm equality can fail at low-margin branches or after EOS.
+Keep those failures distinct from normal chat correctness, and retain both.
+These targeted checks and dummy graph evidence do not qualify benchmark points
+or make the experimental capsule a released wheel.

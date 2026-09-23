@@ -29,7 +29,7 @@ cores, MTP padded token capacity and unrelated ABI fields.
 
 Pinned `patch_mamba_config.py` derives attention block size from SSM bytes
 and single-K page bytes. New TP2 FP32 SSM16*128*128*4 / (1*256*2) =2048,
-versus old1536. This is source-derived, pending runtime observation. A scheduler
+versus old1536. Startup confirmed this source-derived value. A scheduler
 budget below2048 is invalid with APC align; old graph budget2048 may still fit.
 The262144 context contract is not a262144 query wave: chunked prefill remains.
 
@@ -141,5 +141,55 @@ on different hosts: none of these dummy profiles is a throughput comparison.
 Real model objects subsequently passed the fixed ModelScope Git/LFS manifest
 (28 files,71,927,086,369 bytes) and complete SSH rsync to hw3 task `model/`;
 `model-verification.json` / `hw3-model-transfer.json` bind that boundary.
-Actual model quality, changing routing correctness, candidate256K and calibrated
-AgentX remain separate gates; do not publish dummy-derived Frontier points.
+`hw3-full-long1` then completed cold/warm262016+128 requests (cached0/260096),
+exit0. Cold profile captured actual prefill at computed241664 through260096,
+including four4096, one2048 and one1920-token FULL waves; warm captured FULL
+3-token decode. Both ranks' exact body inventories again show six40-layer
+MoE target launches and six2-layer draft launches. This closes dummy256K
+execution and physical long-prefill graph coverage, not model correctness.
+
+Real native `hw3-real-native1` completed all eight cold/warm requests through
+262080+64, and observed actual MTP acceptance. Its strict equality gate failed
+only at256K: first differing output token index16. Crucially both outputs first
+emitted `<|endoftext|>` at index8; this raw-completion stress probe forced
+`ignore_eos=True`. Preserve the failure and full token logprobs. `hw3-real-eos-native1` changed only EOS handling/logprob depth and allowed
+stop-length output, keeping equality strict. It failed earlier at8193: common
+prefix `5.\n\n<think>`, then cold selected double-newline with top-two margin
+0.125 logit, while warm had single/double newline exactly tied. This is an
+observed low-margin native branch change, not evidence establishing an APC
+state bug. Proper chat-template retrieval (`real-chat-controller1`) places a
+unique code at mid-context and checks its exact output at8K/32K/128K/256K,
+cold/warm and four concurrent requests; this remains a functional check, not
+an independent numerical oracle or workload quality score. Do not mistake
+post-EOS forced continuation for normal chat quality, or dismiss any pre-EOS
+cache divergence as numerical noise without investigation.
+
+Actual model quality, changing routing correctness and calibrated AgentX remain
+separate gates; do not publish dummy-derived Frontier points.
+
+## Real-weight functional acceptance (2026-09-23)
+
+`hw3-real-chat-native1` and `hw3-real-chat-full1` both PASS/exit0, with selected
+cards reclaimed. Twelve exact chat-template retrievals each (four lengths,
+cold/warm, plus four concurrent4097..4190 prompts) returned the mid-context
+code correctly. All matched output token sequences agree across native and
+FULL; largest selected-token logprob delta0.003682. Native drafted60/accepted55,
+FULL50/50. These short functional counters are not SPEED-Bench calibration.
+Longest real chat request is262080 input+7 output; the earlier native forced
+stress and candidate dummy exercise the exact262144 total boundary. Do not
+rewrite seven-token chat completion as64 or claim broad numerical equivalence.
+
+Use the native chat template with `enable_thinking=False` and honor EOS for
+semantic checks (`probe.py` default). `--raw-stress` retains the original exact
+64-token forced continuation, its strict equality and its known native failure.
+Candidate child environment must set `CAPSULE` to the output directory: APC
+boundary logging consumes it even when profiling is disabled. The first real
+candidate (`hw3-real-eos-full1`) failed on missing CAPSULE before any response,
+not on a kernel or model numerical assertion; corrected full-chat run passed.
+
+Formal AgentX MTP evidence is still unavailable. The pinned Ascend V1 rejection
+sampler accepts `synthetic_mode` / `synthetic_conditional_rates` parameters but
+never uses them; its initializer also omits passing speculative configuration
+to the core sampler. Core configuration alone therefore does not establish
+forced-acceptance support. Audit the executed route before any calibrated run;
+never label silent real acceptance on synthetic content a compliant point.

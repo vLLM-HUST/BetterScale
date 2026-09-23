@@ -42,12 +42,15 @@ def main():
     parser.add_argument('--worker', default='native_worker.Worker')
     parser.add_argument('--port', type=int, default=32281)
     parser.add_argument('--candidate-full', action='store_true')
+    parser.add_argument('--raw-stress', action='store_true',
+                        help='Retain raw, forced-length stress and strict equality; not normal chat quality')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
     output = args.output
     url = f'http://127.0.0.1:{args.port}'
     receipt = {'status': 'STARTED', 'requests': [], 'scope': 'functional, not benchmark',
-               'speculation': 'real acceptance, never forced', 'context_tokens': 262144}
+               'speculation': 'real acceptance, never forced', 'context_tokens': 262144,
+               'completion_policy': 'raw forced-length' if args.raw_stress else 'chat retrieval with EOS'}
     def save():
         (output / 'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n')
     def cancel(signum, frame):
@@ -68,27 +71,54 @@ def main():
     save()
     from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(args.model, local_files_only=True)
-    # Exact lengths use model-tokenizer text tokens, not random vocabulary IDs.
-    filler = tokenizer.encode(' The archive contains ordinary historical records.', add_special_tokens=False)
-    prefix = tokenizer.encode('Read the archive and answer the question at its end.\n', add_special_tokens=False)
-    suffix = tokenizer.encode('\nQuestion: What is two plus three? Answer briefly: ', add_special_tokens=False)
-    def prompt(length):
-        n = length-len(prefix)-len(suffix)
-        return prefix + (filler*((n+len(filler)-1)//len(filler)))[:n] + suffix
+    if args.raw_stress:
+        # Exact lengths use model-tokenizer text tokens, not random vocabulary IDs.
+        filler = tokenizer.encode(' The archive contains ordinary historical records.', add_special_tokens=False)
+        prefix = tokenizer.encode('Read the archive and answer the question at its end.\n', add_special_tokens=False)
+        suffix = tokenizer.encode('\nQuestion: What is two plus three? Answer briefly: ', add_special_tokens=False)
+        def prompt(length):
+            n = length-len(prefix)-len(suffix)
+            return prefix + (filler*((n+len(filler)-1)//len(filler)))[:n] + suffix
+    else:
+        # A model-native chat prompt, unlike the retained raw-completion stress case.
+        # Place a unique record in the middle, not in the final question.
+        marker = 'cobalt-seven-42'
+        rendered = tokenizer.apply_chat_template([{'role':'user', 'content':
+            'Read these records. Find the access code.\nBEGIN_RECORDS\n<FILLER>\nEND_RECORDS\n'
+            'Reply with only the access code, without explanation.'}],
+            tokenize=False, add_generation_prompt=True, enable_thinking=False)
+        before, after = rendered.split('<FILLER>')
+        prefix = tokenizer.encode(before, add_special_tokens=False)
+        suffix = tokenizer.encode(after, add_special_tokens=False)
+        filler = tokenizer.encode(' The archive contains ordinary historical records.', add_special_tokens=False)
+        key = tokenizer.encode('\nThe access code is '+marker+'.\n', add_special_tokens=False)
+        def prompt(length):
+            n = length-len(prefix)-len(suffix)-len(key)
+            left = n//2
+            pad = (filler*((n+len(filler)-1)//len(filler)))[:n]
+            return prefix + pad[:left] + key + pad[left:] + suffix
     def completion(tokens, name):
         started = time.monotonic()
         result = post('/v1/completions', {'model':'qwen35-moe', 'prompt':tokens,
-            'max_tokens':64, 'temperature':0, 'ignore_eos':True, 'logprobs':1})
+            'max_tokens':64, 'temperature':0, 'ignore_eos':args.raw_stress, 'logprobs':5})
         (output / (name+'.json')).write_text(json.dumps(result, ensure_ascii=False)+'\n')
         assert result['usage']['prompt_tokens'] == len(tokens), result['usage']
-        assert result['usage']['completion_tokens'] == 64, result['usage']
-        assert result['choices'][0]['finish_reason'] == 'length'
+        if args.raw_stress:
+            assert result['usage']['completion_tokens'] == 64, result['usage']
+            assert result['choices'][0]['finish_reason'] == 'length'
+        else:
+            assert 0 < result['usage']['completion_tokens'] <= 64, result['usage']
+            assert result['choices'][0]['finish_reason'] == 'stop'
+            assert result['choices'][0]['text'].strip() == marker, (
+                'incorrect retrieval', name, result['choices'][0]['text'])
         return {'name':name, 'usage':result['usage'], 'seconds':time.monotonic()-started,
                 'text':result['choices'][0]['text']}
     server = None
     try:
         with (output / 'server.log').open('w') as log:
-            server = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+            server = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT,
+                                      env=dict(os.environ, CAPSULE=str(output.resolve())),
+                                      start_new_session=True)
         deadline = time.monotonic()+1800
         while time.monotonic() < deadline:
             if server.poll() is not None:
