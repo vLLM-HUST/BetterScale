@@ -16,8 +16,9 @@ def server_command(args):
         '--host', '127.0.0.1', '--port', str(args.port), '--served-model-name', 'qwen35-moe',
         '--tensor-parallel-size', '2', '--distributed-executor-backend', 'mp',
         '--worker-cls', args.worker, '--dtype', 'bfloat16', '--kv-cache-dtype', 'auto',
-        '--max-model-len', '262144', '--max-num-seqs', '8', '--max-num-batched-tokens', '8192',
-        '--gpu-memory-utilization', '0.90', '--seed', '17', '--enable-prefix-caching',
+        '--max-model-len', '262144', '--max-num-seqs', str(getattr(args, 'max_num_seqs', 8)),
+        '--max-num-batched-tokens', '8192',
+        '--gpu-memory-utilization', str(getattr(args, 'gpu_memory_utilization', 0.90)), '--seed', '17', '--enable-prefix-caching',
         '--mamba-cache-mode', 'align', '--enable-prompt-tokens-details', '--async-scheduling',
         '--shutdown-timeout', '60', '--additional-config', '{"enable_cpu_binding":false}',
         '--limit-mm-per-prompt', '{"image":0,"video":0}', '--compilation-config',
@@ -32,6 +33,14 @@ def server_command(args):
             'cudagraph_capture_sizes': [3,6,12,16,24,32,64,128,256,512,1024,1536,2048,4096],
             'max_cudagraph_capture_size': 4096})
         command += ['--scheduler-cls', 'apc_boundary.BoundaryScheduler']
+    if getattr(args, 'max_num_seqs', 8) == 16:
+        index = command.index('--compilation-config')+1
+        config = json.loads(command[index])
+        config['cudagraph_capture_sizes'] = sorted(set(config['cudagraph_capture_sizes']+([40,48] if getattr(args, 'candidate_full', False) else [48])))
+        config['max_cudagraph_capture_size'] = max(config['cudagraph_capture_sizes'])
+        command[index] = json.dumps(config)
+    if getattr(args, 'max_num_batched_tokens', None) is not None:
+        command[command.index('--max-num-batched-tokens')+1] = str(args.max_num_batched_tokens)
     return command
 
 
@@ -42,6 +51,10 @@ def main():
     parser.add_argument('--worker', default='native_worker.Worker')
     parser.add_argument('--port', type=int, default=32281)
     parser.add_argument('--candidate-full', action='store_true')
+    parser.add_argument('--max-num-seqs', type=int, choices=(8,16), default=8)
+    parser.add_argument('--max-num-batched-tokens', type=int)
+    parser.add_argument('--gpu-memory-utilization', type=float, default=0.90)
+    parser.add_argument('--concurrency', type=int, choices=(4,16), default=4)
     parser.add_argument('--raw-stress', action='store_true',
                         help='Retain raw, forced-length stress and strict equality; not normal chat quality')
     args = parser.parse_args()
@@ -150,8 +163,8 @@ def main():
             warm['same_text_as_cold'] = cold['text'] == warm['text']
             save()
             assert warm['same_text_as_cold'], ('cold/warm continuation differs', length)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as pool:
-            rows = list(pool.map(lambda i:completion(prompt(4097+i*31),f'concurrent-{i}'),range(4)))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as pool:
+            rows = list(pool.map(lambda i:completion(prompt(4097+i*31),f'concurrent-{i}'),range(args.concurrency)))
         receipt['requests'].extend(rows)
         metrics = get('/metrics'); (output/'metrics-after.txt').write_text(metrics)
         import re
