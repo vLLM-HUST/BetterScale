@@ -39,9 +39,15 @@ changes = {
         ('1024, 1536, 2048)', '1024, 1536, 2048, 4096)')],
     'package/betterscale/patches/qwen_gdn/preprocess.py': [
         ('0 < t <= 2048', '0 < t <= 4096')],
+    'package/betterscale/patches/qwen_gdn/host.cpp': [
+        ('tokens <= 2048', 'tokens <= 4096')],
     'mixed_state_probe.py': [
         ('import torch_npu\n', 'import torch_npu\ntorch.npu.set_device(0)\n'),
-        ('    torch.npu.set_device(0)\n', '')],
+        ('    torch.npu.set_device(0)\n', ''),
+        ('capacity = 24 if pure else 64',
+         "large = os.environ.get('LARGE_MIXED') == '1'\n    capacity = 4096 if large else (24 if pure else 64)"),
+        ('    if pure:\n        cases =',
+         "    if large:\n        cases = [([4096], [False], [1]),\n                 ([3,2049,2044], [True,False,False], [2,1,1])]\n    if pure:\n        cases =")],
 }
 diff = []
 for name, replacements in changes.items():
