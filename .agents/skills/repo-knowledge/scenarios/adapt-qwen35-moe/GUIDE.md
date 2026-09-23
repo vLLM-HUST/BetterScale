@@ -2,7 +2,7 @@
 
 Use for this MoE port; do not reread the1250-line dense27B history as if it were
 current MoE support. Read `prototypes/qwen35-moe-serving/README.md` and current
-probe sources. This is active unqualified work, not a released capability.
+probe sources. This is qualified experimental work within the gates below, not a released capability.
 
 ## Evidence and source boundary
 
@@ -187,7 +187,7 @@ boundary logging consumes it even when profiling is disabled. The first real
 candidate (`hw3-real-eos-full1`) failed on missing CAPSULE before any response,
 not on a kernel or model numerical assertion; corrected full-chat run passed.
 
-Formal AgentX MTP evidence is still unavailable. The pinned Ascend V1 rejection
+The original pinned Ascend V1 rejection
 sampler accepts `synthetic_mode` / `synthetic_conditional_rates` parameters but
 never uses them; its initializer also omits passing speculative configuration
 to the core sampler. Core configuration alone therefore does not establish
@@ -235,3 +235,17 @@ observed2.174603 (1110 accepted/945 draft steps); server exit0. This validates
 the HTTP wiring of the pinned adapter, not model quality or long-replay stability.
 AgentX uses the separately calibrated2.63 reference and explicit greedy generation
 defaults plus nonthinking chat-template defaults; do not inherit model temperature1.
+
+## Calibrated AgentX smoke
+
+`agentx-bench/artifacts/20260923T103407Z-smoke-c4-90c340f1` passed the frozen
+900-second sending window plus official drain, four concurrent session trees,
+full393-session/68266-request corpus pool, native262144 without filtering.
+Completed111 requests, zero request errors or output-length mismatches;
+upstream `submission_valid=true`. Output84.624tokens/s, TTFT p50 806.4ms;
+these are this smoke point, not formal-duration or native speedup evidence.
+Server all-phase observed AL2.6278 matches forced2.63. `hw3-agentx-smoke1`
+retains its launch/metrics/clean exit; release evidence confirms ownership ended.
+Client used the existing local CPU environment and a task-owned loopback SSH
+forward to hw3; server retained the remote sole lease and selected-card guard.
+The artifact-root `agentx-serving1/target.json` binds the settings/calibration.
