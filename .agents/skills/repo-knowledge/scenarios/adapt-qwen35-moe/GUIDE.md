@@ -205,7 +205,12 @@ Do not enlarge the host request capacity to match graph padding. `draft_output`
 trims the returned tensor view to host-known live requests outside the graph,
 after banked propose; it preserves capture output when there are no live rows.
 A CPU regression covers85->1/8 and invalid shapes. `moe-full5` is only this
-change relative to full4; its penalty-enabled real calibration is pending.
+change relative to full4. Its penalty-enabled real calibration subsequently passed
+all80 coding prompts (`hw3-calibration-full2`), with44,587 accepted draft tokens
+over27,396 draft steps: AL2.627500365, rounded reference2.63. Settings were
+nonthinking, MTP2, temperature0.7/top-p0.8/top-k20/presence penalty1.5,
+max output4096 and concurrency1. This is real acceptance calibration, not
+AgentX throughput or a synthetic-output quality claim.
 Later Triton errors in the failed run were SIGINT during owned shutdown, not
 evidence of a second independent compiler bug.
 
@@ -223,3 +228,10 @@ standard `set_current_vllm_config(VllmConfig())` test context; retain that error
 verification. They use FP32 uniform draws broadcast from TP rank0, so both
 comparison arms must include the same adapter/collective overhead. Never use
 synthetic output as a quality oracle. HTTP integration is a separate gate.
+
+`hw3-synthetic-serving1` then passed16 HTTP completion requests, four concurrent,
+257/2049/4097/8193 input tokens and128 forced output tokens each. AL2.2 target
+observed2.174603 (1110 accepted/945 draft steps); server exit0. This validates
+the HTTP wiring of the pinned adapter, not model quality or long-replay stability.
+AgentX uses the separately calibrated2.63 reference and explicit greedy generation
+defaults plus nonthinking chat-template defaults; do not inherit model temperature1.
