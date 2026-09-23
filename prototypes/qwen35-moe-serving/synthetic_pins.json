@@ -1,0 +1,5 @@
+{
+  "vllm/v1/sample/rejection_sampler.py": "01a18632df265c694387ff2ef0028efe02d1f1b8e7d330309ec56c9e24605d39",
+  "vllm/v1/spec_decode/utils.py": "edbd1a85a9c372ac3b565453bbe6e37e8b49810b76976f4994dab8970b904af3",
+  "vllm_ascend/sample/rejection_sampler.py": "565bdd5402a566baaf124f59083ebd23430aeeabfccaaee850e11f8dc425b973"
+}

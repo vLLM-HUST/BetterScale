@@ -193,3 +193,33 @@ never uses them; its initializer also omits passing speculative configuration
 to the core sampler. Core configuration alone therefore does not establish
 forced-acceptance support. Audit the executed route before any calibrated run;
 never label silent real acceptance on synthetic content a compliant point.
+
+## Penalty history and synthetic-benchmark boundaries
+
+The first80-prompt SPEED-Bench coding calibration (`hw3-calibration-full1`)
+failed before any successful measured request: presence penalty requires host
+output history, activating `_copy_draft_token_ids_to_cpu`. A captured draft
+returned85 padded rows, which cannot fit the8-request host buffer. Greedy/no-
+penalty checks bypassed that publication and therefore did not expose this.
+Do not enlarge the host request capacity to match graph padding. `draft_output`
+trims the returned tensor view to host-known live requests outside the graph,
+after banked propose; it preserves capture output when there are no live rows.
+A CPU regression covers85->1/8 and invalid shapes. `moe-full5` is only this
+change relative to full4; its penalty-enabled real calibration is pending.
+Later Triton errors in the failed run were SIGINT during owned shutdown, not
+evidence of a second independent compiler bug.
+
+A benchmark-only adapter reuses the pinned core synthetic greedy Triton kernel
+instead of implementing a different acceptance algorithm. `hw3-synthetic-leaf1`
+passed eight512-row exact CPU-oracle cases. `hw3-synthetic-tp2` passed twelve
+4096-row cases/rank with real HCCL, native global/distributed argmax, independent
+CPU parity and identical TP outputs despite intentionally different rank RNG
+states. AL2.2 fixture observed2.206543. These are sampler fixtures, NOT HTTP
+integration or calibration. Initial TP fixture1 failed solely for missing the
+standard `set_current_vllm_config(VllmConfig())` test context; retain that error.
+
+`synthetic_acceptance.py` plus explicit synthetic native/full Workers are
+**benchmark only**, greedy MTP2/TP2, pinned sampler sources, no block/entropy
+verification. They use FP32 uniform draws broadcast from TP rank0, so both
+comparison arms must include the same adapter/collective overhead. Never use
+synthetic output as a quality oracle. HTTP integration is a separate gate.
