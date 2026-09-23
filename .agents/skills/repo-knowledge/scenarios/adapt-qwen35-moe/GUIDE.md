@@ -249,3 +249,9 @@ retains its launch/metrics/clean exit; release evidence confirms ownership ended
 Client used the existing local CPU environment and a task-owned loopback SSH
 forward to hw3; server retained the remote sole lease and selected-card guard.
 The artifact-root `agentx-serving1/target.json` binds the settings/calibration.
+
+Fletcher stopped the first formal attempt before completion: **do not run
+formal one-hour windows until tuning is accepted**. The next comparison is native
+versus FULL at matched TP2/MTP2/AL2.63, server max-seqs8/query-budget4096 and
+client four session trees, smoke only. Earlier native functional probes used8192
+query budget; do not confuse them with this matched performance configuration.
