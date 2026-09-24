@@ -113,3 +113,12 @@ unpatched native TP2 control reproduced the semantic failure and the repaired
 control also passed. This is not yet a multi-attention-rank or high-concurrency
 performance qualification. Details and retained failed controls live in the
 `adapt-qwen35-moe` repo-knowledge scenario.
+
+
+Installed-source acceptance now includes repaired real-MTP2 A4E4 and A6E2 with
+C64 SWE exact-token continuation for900 measured seconds, query4096, max-seqs32,
+32GiB KV/chip and native FULL decode. Both complete without protocol failures,
+with verified prefix hits, direct resident owners, exact generation drains and
+clean eight-role exits. This qualifies the bounded execution/lifecycle envelope,
+not arbitrary model quality, full256K request coverage or peak throughput. See the
+repo-knowledge adaptation scenario for artifact identities and native EP controls.

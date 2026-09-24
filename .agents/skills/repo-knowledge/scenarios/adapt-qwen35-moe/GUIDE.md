@@ -582,3 +582,32 @@ cache salts and no warmup. Relay affinity follows that salt. Do not resume the
 old queued AgentX matrix, reinterpret its cancellation as kernel failure, or
 relabel its output as SWE Prefix Reuse. Keep the new workload's prepared identity,
 actual coverage/occupancy and native prefix-cache counters with each comparison.
+
+The repaired installed MOD (sourceaac0b7a, immutable development installation5)
+completed SWE Prefix Reuse C64/900s onhw0 with both A6E2 and A4E4. All roles exit0,
+all owner/source generations agree, two direct resident launches per expert/no
+server graphs, no host-forward calls, and164bytes routed metadata per attention
+rank. Client exact output-ID/echo/usage checks pass; server prefix hits are positive.
+At32GiB KV/chip/query4096/FULL decode, output tokens/s/chip were A6E2=132.3857,
+A4E4=143.1861 (use retained full precision in the report), DP8EP8=93.3371 and
+TP8EP8=65.0574. These are single fixed-shape real-MTP observations, not quality or
+peak estimates; A4 has more throughput but worse TTFTP95 than A6. Lifetime AL is
+about2.87–2.89. All four use the same feedback correction. Observed prompt maxima
+are30K–51K, not the configured256K limit. `swe-comparison.json` and per-point
+client/server artifacts live under this fork's20260924-serving root.
+
+Native EP attempt1 exposed a fixture omission: with compiler mode0, the donor's
+`_use_aclgraph()` returns false, so FULL capture saw absent FIA graph parameters.
+The native fixture now sets `use_aclgraph=True` after load exactly as the already
+qualified separated client/old native graph fixture (source4f83d91). Successful
+native gates verify32 local experts and disjoint union256 on every physical layer.
+Do not turn this startup failure into an inference-speed observation.
+
+TP8's32-live-slot engine queues part of C64; the additional64-slot follow-up was
+cancelled at Fletcher's stop instruction **before worker launch**, with no result.
+A4 had already completed when he said no further A4 work. Do not resume either
+experiment or the cancelled AgentX matrix while publishing. The public SWE cohort
+uses another prepared file hash, but direct comparison found every session/input-ID
+segment/output budget identical; only tokenizer path/version metadata differs,
+with identical tokenizer fingerprint. Preserve exact per-run hashes and the explicit
+equivalence instead of falsifying file identity or creating an unnecessary new board.
