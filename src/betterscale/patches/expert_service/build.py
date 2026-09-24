@@ -11,19 +11,31 @@ import shutil
 import subprocess
 
 
-def emit(output: Path, *, draft_layers: int = 0, placement='layer', owners=2, sources_per_wave=1):
+def emit(output: Path, *, draft_layers: int = 0, placement='layer', owners=2, sources_per_wave=1, route_plan_min_rows=0):
     if type(draft_layers) is not int or draft_layers not in (0, 1):
         raise ValueError('Qwen35 supports exactly zero or one physical MTP layer')
     if placement not in ('layer','expert') or owners not in (2,4):
         raise ValueError('Build requires layer/expert placement and E2/E4')
     if type(sources_per_wave) is not int or not 1 <= sources_per_wave <= 7:
         raise ValueError('sources_per_wave must be an integer in [1, 7]')
+    if type(route_plan_min_rows) is not int or not 0 <= route_plan_min_rows <= 4096:
+        raise ValueError('route_plan_min_rows must be an integer in [0, 4096]')
+    if route_plan_min_rows and (placement != 'layer' or sources_per_wave != 1):
+        raise ValueError('Native route plans currently require layer placement and cap1')
     root = Path(__file__).parent
     abi = json.loads((root / 'abi-template.json').read_text())
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     source = output / 'source'
     shutil.copytree(root / 'native', source)
+    if route_plan_min_rows:
+        plan_header = source / 'route_plan.hpp'
+        plan_header.write_text(plan_header.read_text().replace(
+            'constexpr int MIN_ROWS = 0;', f'constexpr int MIN_ROWS = {route_plan_min_rows};'))
+        abi.update(client_route_plan='native-v2-cap1', client_route_plan_min_rows=route_plan_min_rows)
+        source_bytes = ((abi['payload_words']*4 + abi['rows']*2048*2 + (2<<20)-1)//(2<<20))*(2<<20)
+        if (50176 + 4096*2048//2 + 4096*8 + 512)*4 > source_bytes:
+            raise ValueError('Native route plan does not fit the exported source window')
     header = source / 'persistent_protocol.hpp'
     text = header.read_text()
     old = 'constexpr int SOURCES_PER_WAVE = 1;'
@@ -53,8 +65,8 @@ def emit(output: Path, *, draft_layers: int = 0, placement='layer', owners=2, so
     return output
 
 
-def build(output: Path, *, draft_layers=0, emit_only=False, placement='layer', owners=2, sources_per_wave=1):
-    output = emit(output, draft_layers=draft_layers, placement=placement, owners=owners, sources_per_wave=sources_per_wave)
+def build(output: Path, *, draft_layers=0, emit_only=False, placement='layer', owners=2, sources_per_wave=1, route_plan_min_rows=0):
+    output = emit(output, draft_layers=draft_layers, placement=placement, owners=owners, sources_per_wave=sources_per_wave, route_plan_min_rows=route_plan_min_rows)
     if not emit_only:
         root = Path(__file__).parent
         for unit, name, script in (
@@ -79,9 +91,11 @@ def main():
     p.add_argument('--owners', type=int, choices=(2,4), default=2)
     p.add_argument('--sources-per-wave', type=int, choices=range(1, 8), default=1,
                    help='Opportunistic compatible-source cap; 1 preserves the qualified control')
+    p.add_argument('--route-plan-min-rows', type=int, default=0,
+                   help='Experimental native client routing threshold; 0 disables, layer/cap1 only')
     p.add_argument('--emit-only', action='store_true')
     args = p.parse_args()
-    print(build(args.output, draft_layers=args.draft_layers, emit_only=args.emit_only, placement=args.placement, owners=args.owners, sources_per_wave=args.sources_per_wave))
+    print(build(args.output, draft_layers=args.draft_layers, emit_only=args.emit_only, placement=args.placement, owners=args.owners, sources_per_wave=args.sources_per_wave, route_plan_min_rows=args.route_plan_min_rows))
 
 
 if __name__ == '__main__':

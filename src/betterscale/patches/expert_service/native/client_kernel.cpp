@@ -1,5 +1,6 @@
 // IO ordering reused from the validated 3532418 client/server prototype.
 #include "kernel_operator.h"
+#include "route_plan.hpp"
 using namespace AscendC;
 constexpr int H = 2048, TOPK = 8, ROUTES = 32768;
 // Descriptor at source+8: [generation, layer, rows, class (0=D/1=P), 0...].
@@ -77,6 +78,15 @@ neural_pack(GM_ADDR cfgaddr, GM_ADDR hidden, GM_ADDR topk) {
     int count=probabilityWords-off<TILE?probabilityWords-off:TILE;
     io.Read((__gm__ int32_t*)cfg[11]+off,count);
     io.Write(src+33792+off,count);
+  }
+  // Native source-to-destination route map and int64 expert counts.
+  if(ExpertRoutePlan::MIN_ROWS && n>=ExpertRoutePlan::MIN_ROWS) {
+  for(int off=block*TILE;off<n*TOPK;off+=blocks*TILE) {
+    int count=n*TOPK-off<TILE?n*TOPK-off:TILE;
+    io.Read((__gm__ int32_t*)cfg[16]+off,count);
+    io.Write(src+ExpertRoutePlan::OFFSET_WORDS+off,count);
+  }
+  if(block==0) {io.Read((__gm__ int32_t*)cfg[17],512);io.Write(src+ExpertRoutePlan::OFFSET_WORDS+ROUTES,512);}
   }
   if (quantized) {
     // Eight compact FP32 scales become eight cache-line-padded wire entries.

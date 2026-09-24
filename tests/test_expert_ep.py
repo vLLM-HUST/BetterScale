@@ -43,7 +43,7 @@ for n in (2,4):
         fake=S(empty_like=torch.empty_like,empty=cpu(torch.empty),zeros=cpu(torch.zeros),tensor=cpu(torch.tensor),bfloat16=torch.bfloat16,int32=torch.int32,int64=torch.int64)
         scope=dict(torch=fake,H=4,K=2);exec(compile(ast.Module(body=[bank],type_ignores=[]),str(path),'exec'),scope)
         peers={i:dict(local=100+i,output=200+i,counter=torch.zeros(8,dtype=torch.int32)) for i in range(4)}
-        b=scope['Bank'](S(peers=peers,placement=S(mode='expert',owners=4)),0,3)
+        b=scope['Bank'](S(peers=peers,placement=S(mode='expert',owners=4),route_plan_min_rows=0),0,3)
         self.assertEqual(b.config[1:7].tolist(),[200,201,202,203,0,3])
         self.assertEqual(b.config[7].item(),peers[0]['counter'].data_ptr())
 
@@ -58,7 +58,7 @@ for n in (2,4):
             trace=[];banks={}
             for owner in range(count):banks[owner]=S(config=torch.zeros(16,dtype=torch.int64),x=torch.empty(3,4),id_storage=torch.empty(6,dtype=torch.int64),probs=torch.empty(6),output=torch.zeros(3,4))
             def launch(fn,config,*args):trace.append((fn,next(o for o,b in banks.items() if b.config is config)))
-            obj=S(placement=S(targets=lambda _:tuple(range(count))),rows=3,python_submissions=0,
+            obj=S(placement=S(targets=lambda _:tuple(range(count))),rows=3,python_submissions=0,route_plan_min_rows=0,
                   bank=lambda owner,n:banks[owner],kernels=S(call=launch),pack='pack',publish='publish',collect='collect',retire='retire',promote='promote',shared_callback=lambda *args:trace.append(('shared',None)))
             scope['__call__'](obj,40,torch.ones(5,4),torch.zeros(5,2,dtype=torch.int64),torch.ones(5,2))
             expected=[]

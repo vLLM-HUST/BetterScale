@@ -155,3 +155,36 @@ and class incompatibility, claimed/stale/EOF generations and invalid metadata.
 They establish admission logic only, not device visibility or GEMM correctness.
 Cap>1 and expert placement require fresh multi-source changing-input, graph,
 empty-owner/skew and exact-build shadow gates before performance/default promotion.
+
+## Native client route preparation (opt-in, layer/cap1 only)
+
+The source-owned build can enable a native routing plan above an explicit frame
+size threshold; default0 keeps the existing wire and execution path:
+
+```bash
+python -m betterscale.patches.expert_service.build /absolute/new-build \
+  --draft-layers 1 --route-plan-min-rows 1024
+```
+
+This experimental mode currently rejects expert-sharded placement and cap>1.
+All registered attention ranks may still submit independently; cap1 limits one
+admitted source per server wave, not deployment source count.
+
+The client invokes `npu_moe_init_routing_v2` on a32-wide dummy hidden input and
+its actual int32 route IDs. The resulting inverse route map and256 int64 counts
+are packed into existing aligned IPC padding, after the maximum hidden payload.
+Actual hidden is still sent only once. READY follows all metadata/payload writes.
+The server validates original IDs/count totals, preserves the full expert catalog
+and segmented boundary, and DMA-copies the prepared map rather than constructing
+it route by route. Small frames retain the old path. Frame sizes, planner choice
+and binary threshold are bound by the shared ABI, not environment heuristics.
+
+Plan tensors remain alive through native enqueue; the original source-window,
+DONE, retirement and drain ownership remain in force. No per-frame host RPC or
+server-side host operator launch is introduced. Runtime source needs no prototype
+module. Receipts include the selected threshold and bank memory including dummy
+plan inputs. This is not communication/compute overlap or a public release.
+
+The package-owned implementation passes the real-weight two-layer leaf and
+141 CPU contracts; whole-model qualification is still pending. Track fresh acceptance in the
+repo-knowledge expert-transport scenario before recommending the option.

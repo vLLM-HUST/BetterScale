@@ -1,6 +1,7 @@
 #include "bf16_activate.hpp"
 #include "persistent_protocol.hpp"
 #include "priority_policy.hpp"
+#include "route_plan.hpp"
 using namespace AscendC;
 using namespace Persistent;
 
@@ -17,10 +18,10 @@ struct Transfer {
     pipe.InitBuffer(buf, 196608);
     words = buf.Get<int32_t>();
   }
-  __aicore__ inline void Read(__gm__ int32_t *p, int n) {
+  __aicore__ inline void Read(__gm__ int32_t *p, int n, int offset = 0) {
     GlobalTensor<int32_t> g;
     g.SetGlobalBuffer(p);
-    DataCopy(words, g, n);
+    DataCopy(words[offset], g, n);
     SetFlag<HardEvent::MTE2_S>(EVENT_ID0);
     WaitFlag<HardEvent::MTE2_S>(EVENT_ID0);
   }
@@ -359,17 +360,33 @@ __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
   return mask;
 }
 __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
-                             int owner, int mode, int tailExperts) {
+                             int owner, int mode, int tailExperts, __gm__ int64_t *cfg) {
   bool segmented = mode != 0;
   int count[GROUPS], cursor[GROUPS];
   for (int g = 0; g < GROUPS; ++g)
     count[g] = 0;
-  for (int c = 0; c < SOURCES; ++c)
-    if (s.gen[c])
-      for (int i = 0; i < s.rows[c] * TOPK; ++i)
-        if (s.ids[c][i] / LOCAL_EXPERTS == owner)
-          ++count[(SINGLE_LAYER ? 0 : s.layer[c] * LOCAL_EXPERTS) +
-                  s.ids[c][i] % LOCAL_EXPERTS];
+  if(ExpertRoutePlan::MIN_ROWS && SumSources(s.rows)>=ExpertRoutePlan::MIN_ROWS) {
+    static_assert(!ExpertRoutePlan::MIN_ROWS || (SOURCES_PER_WAVE == 1 && LOCAL_EXPERTS == 256 && SINGLE_LAYER),
+                  "native route plans require cap1 whole-layer placement");
+    for (int c = 0; c < SOURCES; ++c) if (s.gen[c]) {
+      io.Read((__gm__ int32_t*)SourcePointer(cfg,c) + ExpertRoutePlan::OFFSET_WORDS + ROUTES, GROUPS*2);
+      int total=0;
+      for(int g=0;g<GROUPS;++g) {
+        count[g]=io.words.GetValue(g*2);total+=count[g];
+        if(count[g]<0 || count[g]>s.rows[c]*TOPK || io.words.GetValue(g*2+1)!=0) {
+          Store((__gm__ int32_t*)cfg[0]+STOP*LINE,-61);return;
+        }
+      }
+      if(total!=s.rows[c]*TOPK) {Store((__gm__ int32_t*)cfg[0]+STOP*LINE,-62);return;}
+  }
+  } else {
+    for (int c = 0; c < SOURCES; ++c)
+      if (s.gen[c])
+        for (int i = 0; i < s.rows[c] * TOPK; ++i)
+          if (s.ids[c][i] / LOCAL_EXPERTS == owner)
+            ++count[(SINGLE_LAYER ? 0 : s.layer[c] * LOCAL_EXPERTS) +
+                    s.ids[c][i] % LOCAL_EXPERTS];
+  }
   s.live = 0;
   for (int g = 0; g < GROUPS; ++g) {
     cursor[g] = s.live;
@@ -421,12 +438,17 @@ __aicore__ inline void Group(Transfer &io, __gm__ int64_t *ptr, Slot &s,
     io.words.SetValue(0, s.gen[c]);
     io.words.SetValue(1, s.rows[c]);
     io.words.SetValue(2, s.layer[c]);
-    if (s.gen[c])
-      for (int i = 0; i < s.rows[c] * TOPK; ++i)
-        if (s.ids[c][i] / LOCAL_EXPERTS == owner)
-          io.words.SetValue(
-              8 + i, cursor[(SINGLE_LAYER ? 0 : s.layer[c] * LOCAL_EXPERTS) +
-                            s.ids[c][i] % LOCAL_EXPERTS]++);
+    if(ExpertRoutePlan::MIN_ROWS && s.rows[c]>=ExpertRoutePlan::MIN_ROWS) {
+      if (s.gen[c]) io.Read((__gm__ int32_t*)SourcePointer(cfg,c)+ExpertRoutePlan::OFFSET_WORDS,
+                               (s.rows[c]*TOPK+7)/8*8,8);
+    } else {
+      if (s.gen[c])
+        for (int i = 0; i < s.rows[c] * TOPK; ++i)
+          if (s.ids[c][i] / LOCAL_EXPERTS == owner)
+            io.words.SetValue(
+                8 + i, cursor[(SINGLE_LAYER ? 0 : s.layer[c] * LOCAL_EXPERTS) +
+                              s.ids[c][i] % LOCAL_EXPERTS]++);
+    }
     io.Write((__gm__ int32_t *)ptr[5] + c * MAP, mapWords);
   }
 }
@@ -549,7 +571,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
               Descriptor(io, ptr, slot);
               StartFetch(slot, added);
             } else {
-              Group(io, ptr, slot, cfg[7], cfg[14], cfg[15]);
+              Group(io, ptr, slot, cfg[7], cfg[14], cfg[15], cfg);
               slot.stage = PACK;
               slot.moveCursor = 0;
               slot.moveEnd = (SumSources(slot.rows)) * TOPK;
@@ -575,7 +597,7 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           if (cs >= 0)
             ++pullsDuringCube;
         } else {
-          Group(io, ptr, slot, cfg[7], cfg[14], cfg[15]);
+          Group(io, ptr, slot, cfg[7], cfg[14], cfg[15], cfg);
           slot.stage = PACK;
           vkind = REPACK;
           vbegin = GetSystemCycle();

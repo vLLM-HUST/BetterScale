@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import sys
+from .route_plan import threshold as route_plan_threshold
 
 
 @dataclass(frozen=True)
@@ -47,6 +48,7 @@ class ServiceConfig:
 
     def check_build(self):
         abi = json.loads((Path(self.build) / 'abi.json').read_text())
+        route_plan_threshold(abi)
         cap = abi.get('sources_per_wave')
         if type(cap) is not int or not 1 <= cap <= 7:
             raise ValueError('Invalid expert sources_per_wave ABI')

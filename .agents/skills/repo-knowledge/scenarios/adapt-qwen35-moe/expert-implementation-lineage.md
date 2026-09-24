@@ -163,3 +163,6 @@ before admission; copy the supervisor dependency closure. The first SWE name
 made AF_UNIX control paths too long; it failed before attention startup. Use
 short IDs (`a4e4-c1-swe2`, etc.), check encoded socket-path length before load,
 and retain those failures rather than attributing them to kernel numerics.
+
+For the subsequent communication/serial-routing investigation and native client
+plan's prototype versus MOD acceptance boundary, read [expert-transport.md](expert-transport.md).
