@@ -122,3 +122,36 @@ with verified prefix hits, direct resident owners, exact generation drains and
 clean eight-role exits. This qualifies the bounded execution/lifecycle envelope,
 not arbitrary model quality, full256K request coverage or peak throughput. See the
 repo-knowledge adaptation scenario for artifact identities and native EP controls.
+
+
+## Restored opportunistic batching (experimental)
+
+The MOD now owns the legacy ready-source coalescing option for both `layer`
+and `expert` placement; it no longer needs the prototype builder. For example:
+
+```bash
+python -m betterscale.patches.expert_service.build /absolute/new-build \
+  --draft-layers 1 --placement layer --sources-per-wave 7
+# Use --placement expert --owners 2 (or 4) for expert-sharded builds.
+```
+
+The cap is an integer1..7 bound into the source, binary ABI and server receipt.
+Default1 retains the previously qualified control, not a universal scheduling
+recommendation. At admission and after useful FETCH, the owner takes already-ready
+same-layer/same-class sources up to the cap. It never waits to fill a batch;
+Group freezes membership before expert computation. Generation, claimed-source,
+priority/fairness and per-source lifetime rules remain unchanged. Seven is the
+compiled source capacity, not a requirement for seven live attention ranks.
+
+The compute engine, token fanout, DMA pipeline and batched activation are shared
+across placements. Whole-layer return combines on the owner; EP preserves
+route-valued return and client fixed-order reduction. Neither currently uses
+early return; receipts read the actual configuration rather than inferring it
+from return format. This does not restore the separate experimental online-return
+or W8A8 route-stream paths.
+
+CPU tests execute the actual Accept body with ready/late/absent sources, layer
+and class incompatibility, claimed/stale/EOF generations and invalid metadata.
+They establish admission logic only, not device visibility or GEMM correctness.
+Cap>1 and expert placement require fresh multi-source changing-input, graph,
+empty-owner/skew and exact-build shadow gates before performance/default promotion.

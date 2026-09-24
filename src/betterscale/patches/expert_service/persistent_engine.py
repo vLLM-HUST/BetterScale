@@ -12,7 +12,8 @@ def geometry():
     root=Path(os.environ['BETTERSCALE_EXPERT_PERSISTENT_BUILD']);abi=json.loads((root/'abi.json').read_text())
     assert (abi['version'],abi['hidden'],abi['inner'],abi['topk'],abi['experts'],abi['sources'])==(1,H,M,K,E,7)
     assert abi['layer_count']==G.total_layers and abi['model']==f'{G.name}-bf16-persistent'
-    assert abi['rows'] in (1024,4096) and (abi['rows']==1024 or abi.get('combined_return'))
+    assert abi['rows'] in (1024,4096)
+    assert abi.get('placement') in ('layer','expert')
     assert type(abi['persistent_launch_timeout_us']) is int
     lifetime=abi.get('service_lifetime_seconds',abi['persistent_launch_timeout_us']//1000000)
     assert 1200 <= lifetime <= 14400
@@ -50,7 +51,7 @@ class Kernels:
         for binary in self.binaries:assert self.lib.unload_server(binary)==0
 
 class Engine:
-    def __init__(self,sources,outputs,weights):
+    def __init__(self,sources,outputs,weights,owner=0):
         self.kernels=Kernels();a=self.kernels.abi
         s,rows=a['sources'],a['rows'];capacity=s*rows*K
         assert len(sources)==len(outputs)==s
@@ -58,8 +59,10 @@ class Engine:
         self.fine_pack=os.environ.get('BETTERSCALE_EXPERT_FINE_PACK','1')=='1'
         assert not a.get('pipelined_copy') or not self.fine_pack,'pipelined movement requires full-PACK completion, not per-row readiness'
         self.combined_return=a.get('combined_return',False)
+        local=a.get('local_experts',E)
+        assert 0 <= owner < E//local
         for up,down in weights.values():
-            assert up.shape==(E,H,2*M) and down.shape==(E,M,H)
+            assert up.shape==(local,H,2*M) and down.shape==(local,M,H)
             assert int(torch_npu.get_npu_format(up))==int(torch_npu.get_npu_format(down))==29
         self.weight_table=torch.tensor([[weights[l][0].data_ptr(),weights[l][1].data_ptr()] if l in weights else [0,0] for l in range(G.total_layers)],dtype=torch.int64,device='npu')
         self.control=torch.zeros(128,16,dtype=torch.int32,device='npu')
@@ -74,9 +77,9 @@ class Engine:
                   torch.empty(capacity,M,dtype=torch.bfloat16,device='npu'),
                   torch.empty(capacity,H,dtype=torch.bfloat16,device='npu'),
                   torch.zeros(s,rows*K+8,dtype=torch.int32,device='npu'),
-                  torch.zeros(E,dtype=torch.int64,device='npu')]
+                  torch.zeros(local,dtype=torch.int64,device='npu')]
             for k,n in [(H,2*M),(M,H)]:
-                slot.append(torch.tensor([k,n,E,0,slot[6].data_ptr(),capacity],dtype=torch.int64,device='npu'))
+                slot.append(torch.tensor([k,n,local,0,slot[6].data_ptr(),capacity],dtype=torch.int64,device='npu'))
             slot.append(torch.zeros(128,dtype=torch.int64,device='npu')) # donor prefix boundary at [127]
             ids=torch.empty(s,rows*K,dtype=torch.int32,device='npu');slot.append(ids)
             table.append([x.data_ptr() for x in slot[:10]]+[0]*5+[ids.data_ptr()]);self.slots.append(slot)
@@ -84,9 +87,9 @@ class Engine:
         self.source_pointers=torch.tensor(sources,dtype=torch.int64,device='npu')
         self.output_pointers=torch.tensor(outputs,dtype=torch.int64,device='npu')
         # Existing cfg: whole-layer ownership has all64 local experts (owner=0).
-        values=[self.control.data_ptr(),self.table.data_ptr(),0,0,0,0,32,0,
+        values=[self.control.data_ptr(),self.table.data_ptr(),0,0,0,0,32,owner,
                 self.trace.data_ptr(),20000000,0,self.events.data_ptr(),0,0,
-                2,0,0,0,1,0,self.pack_ready.data_ptr() if self.fine_pack else 0,0,0 if self.combined_return else 1,0,1,
+                2,0,0,0,1,0,self.pack_ready.data_ptr() if self.fine_pack else 0,0,0,0,1,
                 self.weight_table.data_ptr(),G.total_layers,self.source_pointers.data_ptr(),self.output_pointers.data_ptr()]
         assert len(values)==29
         self.config=torch.tensor(values,dtype=torch.int64,device='npu')
@@ -108,6 +111,7 @@ class Engine:
                     admitted_promotions=c[43][11],events=self.events.cpu().tolist(),
                     trace=self.trace.cpu().tolist(),host_forward_requests=0,persistent_graph_launches=0,
                     persistent_kernel_launches=2,server_launch_mode='direct',
-                    internal_pipeline=True,fine_pack=self.fine_pack,early_down=True,early_return=not self.combined_return,combined_return=self.combined_return)
+                    sources_per_wave=self.kernels.abi['sources_per_wave'],
+                    internal_pipeline=True,fine_pack=self.fine_pack,early_down=True,early_return=bool(self.config[22].item()),combined_return=self.combined_return)
     def close(self):
         self.kernels.close()

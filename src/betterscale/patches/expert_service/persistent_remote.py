@@ -21,10 +21,12 @@ class Bank:
         self.output=torch.empty_like(self.x)
         self.config=torch.tensor([peer['local'],peer['output'],0,0,0,0,rows,
             peer['counter'].data_ptr(),1,20000000,0,self.probs.data_ptr(),self.output.data_ptr(),0,250,0],dtype=torch.int64,device='npu')
+        if remote.placement.mode=='expert' and owner==0:
+            for other in range(remote.placement.owners):self.config[1+other]=remote.peers[other]['output']
 
 class PersistentRemote:
     def __init__(self,directory,placement,source):
-        assert placement.mode=='layer'
+        assert placement.mode in ('layer','expert')
         self.root,self.abi=geometry();self.rows=self.abi['rows'];self.source=source
         self.placement=placement;self.api=PrefixCopyACL(LIB);self.peers={};self.banks={}
         self.calls=[];self.phase='persistent';self.python_submissions=0;self.shared_callback=None
@@ -77,7 +79,7 @@ class PersistentRemote:
 
     def __call__(self,layer,x,ids,probs):
         assert x.ndim==2 and x.shape[1]==H and ids.shape==probs.shape==(x.shape[0],K)
-        owner,=self.placement.targets(layer);results=[];priority=0
+        owners=self.placement.targets(layer);results=[];priority=0
         try:
             from vllm.forward_context import get_forward_context,is_forward_context_available
             if is_forward_context_available():
@@ -86,17 +88,21 @@ class PersistentRemote:
         except ImportError:pass
         for offset in range(0,x.shape[0],self.rows):
             n=min(self.rows,x.shape[0]-offset)
-            b=self.bank(owner,n);self.python_submissions+=1
-            b.config[5]=layer;b.config[15]=priority
-            b.x[:n].copy_(x[offset:offset+n]);b.id_storage[:n*K].copy_(ids[offset:offset+n].flatten())
-            b.probs[:n*K].copy_(probs[offset:offset+n].flatten())
-            self.kernels.call(self.pack,b.config,b.x,b.id_storage,16)
-            self.kernels.call(self.publish,b.config,b.x,b.id_storage)
+            banks=[self.bank(owner,n) for owner in owners]
+            for b in banks:
+                self.python_submissions+=1
+                b.config[5]=layer;b.config[15]=priority
+                b.x[:n].copy_(x[offset:offset+n]);b.id_storage[:n*K].copy_(ids[offset:offset+n].flatten())
+                b.probs[:n*K].copy_(probs[offset:offset+n].flatten())
+                self.kernels.call(self.pack,b.config,b.x,b.id_storage,16)
+                self.kernels.call(self.publish,b.config,b.x,b.id_storage)
             if offset==0 and self.shared_callback is not None:self.shared_callback(layer,x)
-            if priority:self.kernels.call(self.promote,b.config,b.x,b.id_storage)
-            self.kernels.call(self.collect,b.config,b.x,b.id_storage,16)
-            self.kernels.call(self.retire,b.config,b.x,b.id_storage)
-            results.append(b.output[:n].clone()) # residual consumers outlive bank reuse
+            for b in banks:
+                if priority:self.kernels.call(self.promote,b.config,b.x,b.id_storage)
+            first=banks[0]
+            self.kernels.call(self.collect,first.config,first.x,first.id_storage,16)
+            for b in banks:self.kernels.call(self.retire,b.config,b.x,b.id_storage)
+            results.append(first.output[:n].clone()) # consumers outlive bank reuse
         return results[0] if len(results)==1 else torch.cat(results)
 
     def receipt(self):
@@ -105,7 +111,7 @@ class PersistentRemote:
         assert all(n>=0 for n in counts.values()),counts
         bank_bytes=sum(t.numel()*t.element_size() for b in self.banks.values()
                        for t in (b.x,b.id_storage,b.probs,b.output,b.config))
-        return dict(peer_generations=counts,device_generations=counts,python_submissions=self.python_submissions,
+        return dict(placement=self.placement.mode,owners=self.placement.owners,peer_generations=counts,device_generations=counts,python_submissions=self.python_submissions,
                     bank_count=len(self.banks),bank_tensor_bytes=bank_bytes,
                     peak_allocated_bytes=torch.npu.max_memory_allocated(),
                     transport='persistent BF16 AIV/AIC; parallel pack; '+('server fixed-order combine; copy collect' if self.abi.get('combined_return') else 'pipelined fixed-order collect'),

@@ -11,15 +11,26 @@ import shutil
 import subprocess
 
 
-def emit(output: Path, *, draft_layers: int = 0):
+def emit(output: Path, *, draft_layers: int = 0, placement='layer', owners=2, sources_per_wave=1):
     if type(draft_layers) is not int or draft_layers not in (0, 1):
         raise ValueError('Qwen35 supports exactly zero or one physical MTP layer')
+    if placement not in ('layer','expert') or owners not in (2,4):
+        raise ValueError('Build requires layer/expert placement and E2/E4')
+    if type(sources_per_wave) is not int or not 1 <= sources_per_wave <= 7:
+        raise ValueError('sources_per_wave must be an integer in [1, 7]')
     root = Path(__file__).parent
     abi = json.loads((root / 'abi-template.json').read_text())
     output = output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     source = output / 'source'
     shutil.copytree(root / 'native', source)
+    header = source / 'persistent_protocol.hpp'
+    text = header.read_text()
+    old = 'constexpr int SOURCES_PER_WAVE = 1;'
+    if text.count(old) != 1:
+        raise RuntimeError('packaged admission geometry changed unexpectedly')
+    header.write_text(text.replace(old, f'constexpr int SOURCES_PER_WAVE = {sources_per_wave};'))
+    abi['sources_per_wave'] = sources_per_wave
     if draft_layers:
         header = source / 'persistent_protocol.hpp'
         text = header.read_text()
@@ -28,12 +39,22 @@ def emit(output: Path, *, draft_layers: int = 0):
             raise RuntimeError('packaged layer geometry changed unexpectedly')
         header.write_text(text.replace(old, old.replace('LAYERS = 40', 'LAYERS = 41')))
         abi['layer_count'] = 41
+    if placement == 'expert':
+        local=256//owners
+        header=source/'persistent_protocol.hpp'
+        text=header.read_text().replace('LOCAL_EXPERTS = 256',f'LOCAL_EXPERTS = {local}').replace('GROUPS = 256',f'GROUPS = {local}')
+        header.write_text(text)
+        client=source/'client_kernel.cpp'
+        client.write_text(client.read_text().replace('COLLECT_OWNERS=1,COLLECT_EXPERTS=256',f'COLLECT_OWNERS={owners},COLLECT_EXPERTS={local}'))
+        abi.update(placement=placement,expert_owners=owners,local_experts=local,combined_return=False,pipelined_client_collect=True)
+    # Both return modes join the complete DOWN/SEND chain in this closure.
+    abi['early_return'] = False
     (output / 'abi.json').write_text(json.dumps(abi, indent=2) + '\n')
     return output
 
 
-def build(output: Path, *, draft_layers=0, emit_only=False):
-    output = emit(output, draft_layers=draft_layers)
+def build(output: Path, *, draft_layers=0, emit_only=False, placement='layer', owners=2, sources_per_wave=1):
+    output = emit(output, draft_layers=draft_layers, placement=placement, owners=owners, sources_per_wave=sources_per_wave)
     if not emit_only:
         root = Path(__file__).parent
         for unit, name, script in (
@@ -54,9 +75,13 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('output', type=Path)
     p.add_argument('--draft-layers', type=int, choices=(0, 1), default=0)
+    p.add_argument('--placement', choices=('layer','expert'), default='layer')
+    p.add_argument('--owners', type=int, choices=(2,4), default=2)
+    p.add_argument('--sources-per-wave', type=int, choices=range(1, 8), default=1,
+                   help='Opportunistic compatible-source cap; 1 preserves the qualified control')
     p.add_argument('--emit-only', action='store_true')
     args = p.parse_args()
-    print(build(args.output, draft_layers=args.draft_layers, emit_only=args.emit_only))
+    print(build(args.output, draft_layers=args.draft_layers, emit_only=args.emit_only, placement=args.placement, owners=args.owners, sources_per_wave=args.sources_per_wave))
 
 
 if __name__ == '__main__':

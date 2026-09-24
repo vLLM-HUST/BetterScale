@@ -16,6 +16,8 @@ constexpr int LOCAL_EXPERTS = 64, LAYERS = 2, GROUPS = 128;
 constexpr bool SINGLE_LAYER = false;
 #endif
 constexpr int SOURCES = 7;
+constexpr int SOURCES_PER_WAVE = 1; // build-bound; compatible ready sources only
+static_assert(SOURCES_PER_WAVE >= 1 && SOURCES_PER_WAVE <= SOURCES);
 constexpr int TOKENS = 4096, ROUTES = TOKENS * TOPK;
 constexpr int MAP = ROUTES + 8, CAPACITY = ROUTES * SOURCES;
 constexpr int STOP = 0, VCMD = 1, CCMD = 2, VDONE = 3, CDONE = 19, STATUS = 43;

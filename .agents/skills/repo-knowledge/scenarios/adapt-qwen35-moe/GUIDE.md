@@ -611,3 +611,10 @@ uses another prepared file hash, but direct comparison found every session/input
 segment/output budget identical; only tokenizer path/version metadata differs,
 with identical tokenizer fingerprint. Preserve exact per-run hashes and the explicit
 equivalence instead of falsifying file identity or creating an unnecessary new board.
+
+
+For A4/A6 dynamic-profile cost evidence, local AugDB/Perfetto recovery and the
+paused unqualified EP candidate, read [expert-profile-handoff.md](expert-profile-handoff.md).
+
+For the exact legacy-cap7 versus MOD-cap1 migration seam and existing DFC/EP
+work, read [expert-implementation-lineage.md](expert-implementation-lineage.md).

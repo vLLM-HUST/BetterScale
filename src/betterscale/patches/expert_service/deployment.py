@@ -50,13 +50,14 @@ class Deployment:
         if self.synthetic_length is not None and (args.mtp_tokens!=2 or not 1 <= self.synthetic_length <= 3):
             raise ValueError('benchmark acceptance length requires MTP2 and AL in [1,3]')
         self.service = ServiceConfig(str(self.output/'control'), str(Path(args.build).resolve()),
-            args.owners, args.sources, 0, int(bool(args.mtp_tokens)), args.qualification)
+            args.owners, args.sources, 0, int(bool(args.mtp_tokens)), args.qualification,
+            getattr(args, 'placement', 'layer'))
         self.service.validate(); self.service.check_build()
         self.ports = list(range(args.port_base,args.port_base+args.sources))
         self.children = []; self.ready = False; self.closed = False; self.stopping = False
         self.deadline = time.monotonic()+args.lifetime
         self.receipt = dict(status='STARTED', commands=[], model=str(args.model),
-            sources=args.sources, owners=args.owners, mtp_tokens=args.mtp_tokens,
+            sources=args.sources, owners=args.owners, mtp_tokens=args.mtp_tokens, placement=self.service.placement,
             sampling_policy='real' if self.synthetic_length is None else 'benchmark-only synthetic',
             synthetic_acceptance_length=self.synthetic_length,
             package_root=str(Path(__file__).parents[2]), devices=self.devices)
@@ -104,14 +105,14 @@ class Deployment:
             for owner in range(a.owners):
                 self.launch(f'expert{owner}',[sys.executable,'-m','betterscale.patches.expert_service.server',
                     '--model',str(a.model),'--control',str(control),'--build',self.service.build,
-                    '--owners',str(a.owners),'--sources',str(a.sources),'--owner',str(owner),
+                    '--placement',self.service.placement,'--owners',str(a.owners),'--sources',str(a.sources),'--owner',str(owner),
                     '--draft-layers',str(int(bool(a.mtp_tokens))),'--receipt',str(self.output/f'expert{owner}.json')],
                     self.devices[a.sources+owner])
             self.wait(lambda:all((control/f'e{i}.sock').exists() for i in range(a.owners)))
             sizes = capture_sizes(a.max_seqs,a.mtp_tokens)
             for source,port in enumerate(self.ports):
                 expert = dict(experimental=True,control=str(control),build=self.service.build,
-                              owners=a.owners,sources=a.sources,source=source)
+                              owners=a.owners,sources=a.sources,source=source,placement=self.service.placement)
                 if a.qualification:expert['qualification']=a.qualification
                 command=[sys.executable,'-m','vllm.entrypoints.cli.main','serve',str(a.model),
                     '--host','127.0.0.1','--port',str(port),'--served-model-name','qwen35',
@@ -196,6 +197,7 @@ def add_arguments(parser):
     parser.add_argument('--output',type=Path,required=True,help='new task-private output/control directory')
     parser.add_argument('--build',required=True)
     parser.add_argument('--devices',required=True)
+    parser.add_argument('--placement', choices=('layer','expert'), default='layer')
     parser.add_argument('--sources',type=int,required=True)
     parser.add_argument('--owners',type=int,required=True)
     parser.add_argument('--port-base',type=int,default=32510)

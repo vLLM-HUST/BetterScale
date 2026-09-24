@@ -191,9 +191,9 @@ __aicore__ inline void Worker(__gm__ int64_t *cfg, Transfer &io) {
     uint64_t begin = GetSystemCycle();
     if (kind == FETCH || kind == REPACK) {
       V2LiteMove(cfg,io,kind,slot,worker,extra);
-    } else if (kind == SEND) {
+    } else if (kind == SEND && LOCAL_EXPERTS == EXPERTS) {
       V2LiteCombine(cfg,io,slot,worker);
-    } else if (kind == SEND && cfg[22]) {
+    } else if (kind == SEND && cfg[22] && LOCAL_EXPERTS == EXPERTS) {
       ReturnStreaming(cfg, io, slot, worker, next);
     } else if (kind == ACTIVATE) {
       V2LiteActivateRange(io.words,(__gm__ bfloat16_t*)ptr[2],(__gm__ bfloat16_t*)ptr[3],ctrl[VCMD*LINE+4],extra,worker,VW);
@@ -294,7 +294,7 @@ __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
   int priorities[SOURCES] = {0, 0}, urgency[SOURCES] = {0, 0};
   int admitted=0;
   for(int c=0;c<SOURCES;++c) admitted+=s.gen[c]!=0;
-  if(admitted>=1)return 0;
+  if(admitted>=SOURCES_PER_WAVE)return 0;
   bool occupied = admitted != 0;
   for (int c = 0; c < SOURCES; ++c) {
     if (claimed[c] || closed[c] || (!cfg[24] && finished[c] >= cfg[6]))
@@ -337,7 +337,7 @@ __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
     s.serviceRank = policy.Grant(first, s.priority) ? -1 : urgency[first];
     s.ticket = policy.nextTicket++;
   }
-  for (int j = 0; j < SOURCES && admitted<1; ++j) {
+  for (int j = 0; j < SOURCES && admitted<SOURCES_PER_WAVE; ++j) {
     int c = (first + j) % SOURCES;
     if (!pending[c] || priorities[c] != s.priority ||
         (SINGLE_LAYER && layers[c] != layers[first]))

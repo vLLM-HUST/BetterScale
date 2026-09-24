@@ -30,6 +30,7 @@ struct V2LiteMovePipeline {
     DataCopy(local,in,HIDDEN/2);
     SetFlag<HardEvent::MTE2_MTE3>(event);WaitFlag<HardEvent::MTE2_MTE3>(event);
     for(int k=0;k<TOPK;++k) {
+      if(map[k]<0)continue; // EP: unowned routes have no local destination.
       out.SetGlobalBuffer(dst+map[k]*HIDDEN/2);
       DataCopy(out,local,HIDDEN/2);
     }
