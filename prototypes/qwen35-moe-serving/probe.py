@@ -14,7 +14,9 @@ import urllib.request
 def server_command(args):
     command = [sys.executable, '-m', 'vllm.entrypoints.cli.main', 'serve', args.model,
         '--host', '127.0.0.1', '--port', str(args.port), '--served-model-name', 'qwen35-moe',
-        '--tensor-parallel-size', '2', '--distributed-executor-backend', 'mp',
+        '--tensor-parallel-size', str(getattr(args, 'tensor_parallel_size', 2)),
+        '--data-parallel-size', str(getattr(args, 'data_parallel_size', 1)),
+        '--distributed-executor-backend', 'mp',
         '--worker-cls', args.worker, '--dtype', 'bfloat16', '--kv-cache-dtype', 'auto',
         '--max-model-len', '262144', '--max-num-seqs', str(getattr(args, 'max_num_seqs', 8)),
         '--max-num-batched-tokens', '8192',
@@ -25,6 +27,8 @@ def server_command(args):
         json.dumps({'cudagraph_mode': 'FULL_AND_PIECEWISE', 'cudagraph_capture_sizes': [3,6,12,24],
                     'max_cudagraph_capture_size': 24}),
         '--speculative-config', json.dumps({'method': 'mtp', 'num_speculative_tokens': 2})]
+    if getattr(args, 'enable_expert_parallel', False):
+        command += ['--enable-expert-parallel']
     if getattr(args, 'candidate_full', False):
         # Leave space for a2048-token APC block alongside live MTP rows.
         command[command.index('--max-num-batched-tokens')+1] = '4096'
@@ -52,6 +56,9 @@ def main():
     parser.add_argument('--model', required=True)
     parser.add_argument('--worker', default='native_worker.Worker')
     parser.add_argument('--port', type=int, default=32281)
+    parser.add_argument('--tensor-parallel-size', type=int, choices=(1,2), default=2)
+    parser.add_argument('--data-parallel-size', type=int, choices=(1,2), default=1)
+    parser.add_argument('--enable-expert-parallel', action='store_true')
     parser.add_argument('--candidate-full', action='store_true')
     parser.add_argument('--max-num-seqs', type=int, choices=(8,16), default=8)
     parser.add_argument('--max-num-batched-tokens', type=int)
@@ -61,6 +68,8 @@ def main():
     parser.add_argument('--raw-stress', action='store_true',
                         help='Retain raw, forced-length stress and strict equality; not normal chat quality')
     args = parser.parse_args()
+    if args.tensor_parallel_size * args.data_parallel_size != 2:
+        parser.error('This qualification matrix uses exactly two chips')
     args.output.mkdir(parents=True, exist_ok=False)
     output = args.output
     url = f'http://127.0.0.1:{args.port}'
@@ -76,9 +85,14 @@ def main():
     def get(path):
         with urllib.request.urlopen(url+path, timeout=5) as response:
             return response.read().decode()
-    def post(path, payload):
+    def post(path, payload, dp_rank=0):
+        headers = {'Content-Type': 'application/json'}
+        if args.data_parallel_size > 1 and path.startswith('/v1/'):
+            # Prefix state belongs to an engine. Native internal load balancing
+            # does not promise session affinity from X-Correlation-ID alone.
+            headers['X-data-parallel-rank'] = str(dp_rank)
         req = urllib.request.Request(url+path, data=json.dumps(payload).encode(),
-                                     headers={'Content-Type': 'application/json'})
+                                     headers=headers)
         with urllib.request.urlopen(req, timeout=3600) as response:
             data = response.read()
             return json.loads(data) if data else None
@@ -113,10 +127,10 @@ def main():
             left = n//2
             pad = (filler*((n+len(filler)-1)//len(filler)))[:n]
             return prefix + pad[:left] + key + pad[left:] + suffix
-    def completion(tokens, name):
+    def completion(tokens, name, dp_rank=0):
         started = time.monotonic()
         result = post('/v1/completions', {'model':'qwen35-moe', 'prompt':tokens,
-            'max_tokens':64, 'temperature':0, 'ignore_eos':args.raw_stress, 'logprobs':5})
+            'max_tokens':64, 'temperature':0, 'ignore_eos':args.raw_stress, 'logprobs':5}, dp_rank)
         (output / (name+'.json')).write_text(json.dumps(result, ensure_ascii=False)+'\n')
         assert result['usage']['prompt_tokens'] == len(tokens), result['usage']
         if args.raw_stress:
@@ -167,7 +181,8 @@ def main():
             save()
             assert warm['same_text_as_cold'], ('cold/warm continuation differs', length)
         with concurrent.futures.ThreadPoolExecutor(max_workers=args.concurrency) as pool:
-            rows = list(pool.map(lambda i:completion(prompt(4097+i*31),f'concurrent-{i}'),range(args.concurrency)))
+            rows = list(pool.map(lambda i:completion(prompt(4097+i*31),f'concurrent-{i}',
+                                i % args.data_parallel_size),range(args.concurrency)))
         receipt['requests'].extend(rows)
         metrics = get('/metrics'); (output/'metrics-after.txt').write_text(metrics)
         import re

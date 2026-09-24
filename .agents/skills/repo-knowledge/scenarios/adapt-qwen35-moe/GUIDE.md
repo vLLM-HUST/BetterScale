@@ -428,3 +428,35 @@ and retains the completed matched memory diagnostic plus reusable capture/pool
 profiling helpers. FULL lowers some transient demand but has not beaten native
 in whole-serving footprint; the remaining128MiB graph-external FIA planner
 allocation is a concrete next investigation, not an already-qualified saving.
+
+## Co-located two-chip TP/DP × expert TP/EP matrix (2026-09-24)
+
+Do not infer replicated experts from `TP1 DP2 --enable-expert-parallel=false`.
+The pinned core `FusedMoEParallelConfig.make` flattens expert TP across DP.
+Real loaded native receipts under workspace
+`runs/qwen35-parallel-matrix-20260924/native-attention-dp2-expert-{tp2,ep2}/`
+validated all40 target plus1 draft MoE layers with
+`prototypes/qwen35-moe-serving/check_parallel.py`:
+
+- DP2/expertTP2:256 experts/rank, intermediate256 (full512), expert TP ranks0/1;
+  Ascend loaded w13 `[256,2048,512]`, w2 `[256,256,2048]`.
+- DP2/EP2:128 experts/rank, full intermediate512; disjoint expert maps covering256;
+  w13 `[128,2048,1024]`, w2 `[128,512,2048]`.
+- Attention is unsharded: QKV projection `[9216,2048]`, GDN QKVZ `[12288,2048]`.
+  These are partition geometry receipts, not numerical/performance qualification.
+
+Both native DP startups captured graphs and answered the first8193-token cold
+retrieval correctly, but the immediately following warm request had zero cached
+input tokens. The controller lacked DP affinity. Pinned completions accepts
+`X-data-parallel-rank`; `X-Correlation-ID` alone is a relay convention, not native
+internal-DP affinity. Revised qualification assigns cold/warm to the same rank
+and spreads concurrent lanes modulo DP size. SWE measurement must use the same
+explicit affinity and verify per-rank cache/load, not merely keep a cache salt.
+
+The prototype's parallel Worker installs the private-host-mailbox MTP correctness
+bridge from9f58da1 after model load, in both native and FULL controls. Existing
+frozen TP benchmark capsules are not retroactively changed. New FULL staging
+remains UNQUALIFIED: TP2/EP2 keeps attention geometry; TP1/DP2 doubles GDN/FIA
+heads/strides while preserving request slots, byte alignment and query capacities.
+Rebuild/repin its host adapter and run leaf/state/FULL/real-MTP gates before timing.
+Never substitute global8→16 replacements for those distinct quantities.
