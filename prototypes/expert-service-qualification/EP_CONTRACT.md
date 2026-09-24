@@ -29,3 +29,10 @@ fixed-order route reduction. Required gates: CPU geometry/ABI/launch ordering,
 clean EP2/EP4 builds, bounded changing-route/skew/empty-owner numerical replay,
 41-layer native shadows, concurrent MTP HTTP and exact EOF generations. No
 throughput or released capability claim follows from source/build alone.
+
+
+The local2026-09-24 EP2 leaves now pass for real layers0/40: single-client28
+cases and two-client29 cases/client, including changed FULL replay,4096-row
+skew/empty-owner cases and observed cross-source co-batching. See README for the
+three-physical-card/client-colocation boundary and evidence. This advances leaf
+acceptance only; all41-layer model/MTP service and EP4 are still unqualified.

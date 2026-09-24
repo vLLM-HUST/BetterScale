@@ -39,3 +39,46 @@ Both native DP and separated groups use the same loopback relay. `test_router.py
 checks salt affinity and exact body/stream preservation. Keep server-side APC
 metrics alongside client occupancy/turn coverage; correct IDs alone do not prove
 cache hits. Each900s C64 run owns a fresh admitted eight-device deployment.
+
+
+## Two/three-card real-expert leaves
+
+Use `ep_leaf.py` for a client plus EP2 owners; `--devices` is an explicit physical
+client,owner0,owner1 map. Never infer physical IDs0..2 from an owner count.
+`--sources 2 --shared-client-device` colocates two independent clients on the
+first card, retaining separate generations; this tests co-batching with EP2 on
+three physical cards, not four-rank scaling. EP4 requires a separate allocation.
+
+`batch_leaf.py` uses three distinct physical cards: client0,client1,one owner.
+Only real target layer0 and physical draft40 are loaded, so this bounded E1 leaf
+is legal; it does not loosen the product's full-model E2/E4 requirement. Supply
+a source-owned layer build with `--sources-per-wave 1` or7. Ready-source admission
+must produce exactly432 waves under cap1 and fewer under the current cap7 fixture;
+wave/generation checks are in the leaf, not a guessed performance score.
+
+Example commands **inside the external selected-device admission scope**, with
+CANN environment and `BETTERSCALE_EXPERT_EXTERNAL_WATCHDOG=1`:
+
+```bash
+python ep_leaf.py /absolute/model --output /absolute/new-ep \
+  --build /absolute/ep2-cap7-build --owners 2 --devices 4,5,6
+python ep_leaf.py /absolute/model --output /absolute/new-ep-multi \
+  --build /absolute/ep2-cap7-build --owners 2 --devices 4,5,6 \
+  --sources 2 --shared-client-device
+python batch_leaf.py /absolute/model --output /absolute/new-layer \
+  --build /absolute/layer-cap7-build --devices 4,5,6
+```
+
+Device IDs above are examples, never reservations. The supervisor starts owners
+before clients, watches failures, bounds completion and terminates only children.
+The external guard owns leases, hardware observation and process-group cleanup.
+
+2026-09-24 local receipts: workspace `runs/qwen35-expert-mtp/20260924-local-leaves`.
+All four accepted runs pass, all roles exit0 and4/5/6 return to idle. Layer cap1:
+432 frames/432 waves; cap7:432/326 (106 paired). EP2 one-client:28 numerical/replay
+cases; EP2 two-client:29/client,126 frames per owner,94/95 waves (32/31 paired).
+Worst relativeL2 across these independent unfused full-output comparisons is
+0.004572 (gate0.02). This establishes bounded real-weight FULL reuse/co-batching,
+not whole-model MTP semantics, EP4, or a serving-performance gain. Layer bursts
+use hot8, EP multi burst uses broad routing; only the final repeated-burst output
+is compared, in addition to every changed-input case. Preserve these populations.

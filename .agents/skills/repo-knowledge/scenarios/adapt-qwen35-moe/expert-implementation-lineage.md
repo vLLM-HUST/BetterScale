@@ -93,3 +93,31 @@ Hardware gates remain before promoting cap>1 or expert placement: actual
 co-batch observations, changing full outputs, same-graph reuse, empty owners,
 max4096/skew, multi-source retirement, exact-build model shadows and matched
 service cost. Do not use the old cap1 or W8A8 receipts as those gates.
+
+
+## Local three-card hardware follow-through (2026-09-24)
+
+Fletcher restricted validation to2–3 local cards while benchmarks continued.
+The queued selected-card job waited for foreign leases; no lock was replaced or
+foreign process interrupted. Runtime source782c9e2, unchanged cap7 binaries from
+the profile capsule, local real Qwen35 weights, layers0/40. Evidence root:
+`runs/qwen35-expert-mtp/20260924-local-leaves`; read `README.md` and `results.json`.
+
+- `ep2-v2`: physical client4/owners5,6,28 eager/FULL changing-route cases,
+  max relativeL2 .0043242,30 generations per owner; includes empty owner and4096.
+- `batch1-v1`/`batch7-v1`: physical clients4,5/owner6,432 total source frames;
+  cap1 has432 waves, cap7 has326 (106 actual double-source waves). Both clients'
+  complete changed-input outputs pass, worst relativeL2 .0045712. Same-layer
+  real-weight hot8/broad mutations and FULL replay, no host per-wave scheduler.
+- `ep2-multi-v2`: two clients share physical4, owners5/6.29 cases/client,
+  nonuniform BF16 probabilities and an independent broad4096 FULL burst.
+  Each owner completes126 source frames, in94/95 waves (32/31 paired).
+  Max relativeL2 .0043969. This is three-card protocol coverage, NOT four-card
+  attention throughput or a proof that colocated clients have no interference.
+
+All accepted admissions/roles exit0 and exact generations agree. Final30s probe
+shows4/5/6 IDLE, with no owned worker/queue left. Complete model/MTP-state,
+EP4 and performance gates remain; defaults still cap1. Fewer waves is not a
+measured speedup. `ep2-multi-v1` was a fixture startup failure (missing owner
+launches), not a kernel failure; preserved evidence and CPU launch-order regression
+precede the successful v2. The original30-minute queue expiry launched no worker.
