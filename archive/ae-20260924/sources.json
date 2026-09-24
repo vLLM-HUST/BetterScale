@@ -1,0 +1,26 @@
+{
+  "transport-mod": {
+    "commit": "d7546e44648a9845f7fe0b18afa92adf410c92fb",
+    "branch": "archive/ae-transport-mod"
+  },
+  "transport-prototypes": {
+    "commit": "f98c2b785e8ddda9f819b813a98371e76a3cde48",
+    "branch": "archive/ae-transport-prototypes"
+  },
+  "event-client": {
+    "commit": "f4da0f288a67f8a96e68351e0fc71506893b91c9",
+    "branch": "archive/ae-event-client"
+  },
+  "mtp-mod": {
+    "commit": "9f58da17ddacf4ce1ef8c0c238dbfc38386c0c87",
+    "branch": "archive/ae-mtp-mod"
+  },
+  "mtp-serving": {
+    "commit": "a4588cfe605794e41c1b6e99a1125ec97edb464d",
+    "branch": "archive/ae-mtp-serving"
+  },
+  "v2lite": {
+    "commit": "5162aa2cb26e0f3da0c6e10b2d876194024c157e",
+    "branch": "archive/ae-v2lite"
+  }
+}

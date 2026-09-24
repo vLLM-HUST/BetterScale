@@ -1,3 +1,11 @@
+# Archived AE research fork
+
+This fork preserves retired attention/expert separation experiments. Start with
+[the archive guide](archive/ae-20260924/README.md).
+The maintained product is [vLLM-HUST/BetterScale](https://github.com/vLLM-HUST/BetterScale).
+
+---
+
 # BetterScale
 
 Less host waiting. More device execution.

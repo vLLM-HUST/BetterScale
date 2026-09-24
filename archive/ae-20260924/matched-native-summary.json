@@ -1,0 +1,119 @@
+{
+  "status": "PASS",
+  "devices": [
+    6,
+    7
+  ],
+  "geometry": {
+    "hidden": 2048,
+    "inner": 512,
+    "active_experts": 128,
+    "topk": 8
+  },
+  "seed": 20260924,
+  "fixture": "remote128-sentinel: same seeded N-row BF16 recipe, int32 IDs128..255, final x row zero",
+  "native": "native-dfc-sentinel-full; original BF16 provider in dfc-provider/provenance.json",
+  "remote": "MOD397efcf, mod-fused-build2; no input-ready overlap",
+  "caveats": [
+    "Native distributes N-1 inputs to rank0 and one final zero-valued token to rank1; ours sends all N from rank0.",
+    "Only rank1 performs useful expert GEMM in both arms; global expert counts and weights match.",
+    "Global routing/counts and generation recipe match; random payloads were not byte-compared across runtime versions.",
+    "Native saves one token of remote traffic. This is material at tiny N and not exact source-placement parity.",
+    "Native synchronous EP2 vs asynchronous whole-layer IPC/reduced return; compatible runtime/provider differs.",
+    "Five FULL-graph samples per case, sixteen calls each; same selected devices, sequential shared-host observation.",
+    "Complete FFN semantic work reference, not isolated network bandwidth or full-serving throughput.",
+    "The zero-input-rank attempt failed507015 before graph timing; it is not included."
+  ],
+  "results": [
+    {
+      "layer": 0,
+      "global_rows": 3,
+      "native_us": 477.37249732017517,
+      "remote_us": 199.4449943304062,
+      "latency_change": -0.5822025871829021,
+      "native_changed_l2": 0.0039780763909220695,
+      "remote_changed_l2": 0.004594765603542328
+    },
+    {
+      "layer": 0,
+      "global_rows": 96,
+      "native_us": 649.4062542915344,
+      "remote_us": 798.770010471344,
+      "latency_change": 0.23000048920495386,
+      "native_changed_l2": 0.003976249601691961,
+      "remote_changed_l2": 0.004387251567095518
+    },
+    {
+      "layer": 0,
+      "global_rows": 512,
+      "native_us": 1878.8987398147583,
+      "remote_us": 1215.3924703598022,
+      "latency_change": -0.3531357254092211,
+      "native_changed_l2": 0.0039818440563976765,
+      "remote_changed_l2": 0.004400149453431368
+    },
+    {
+      "layer": 0,
+      "global_rows": 1024,
+      "native_us": 3506.5836906433105,
+      "remote_us": 1357.433795928955,
+      "latency_change": -0.6128899476858278,
+      "native_changed_l2": 0.003999038599431515,
+      "remote_changed_l2": 0.004408050328493118
+    },
+    {
+      "layer": 0,
+      "global_rows": 4096,
+      "native_us": 13394.164085388184,
+      "remote_us": 3522.1951007843018,
+      "latency_change": -0.7370350939162604,
+      "native_changed_l2": 0.004012781195342541,
+      "remote_changed_l2": 0.004429584369063377
+    },
+    {
+      "layer": 40,
+      "global_rows": 3,
+      "native_us": 470.5125093460083,
+      "remote_us": 198.9537477493286,
+      "latency_change": -0.5771552428523833,
+      "native_changed_l2": 0.003792807925492525,
+      "remote_changed_l2": 0.004389917943626642
+    },
+    {
+      "layer": 40,
+      "global_rows": 96,
+      "native_us": 652.4174809455872,
+      "remote_us": 803.9562702178955,
+      "latency_change": 0.23227272980588176,
+      "native_changed_l2": 0.004110288806259632,
+      "remote_changed_l2": 0.00450706435367465
+    },
+    {
+      "layer": 40,
+      "global_rows": 512,
+      "native_us": 1878.944993019104,
+      "remote_us": 1204.9674987792969,
+      "latency_change": -0.3586999602137658,
+      "native_changed_l2": 0.004138134885579348,
+      "remote_changed_l2": 0.00454667117446661
+    },
+    {
+      "layer": 40,
+      "global_rows": 1024,
+      "native_us": 3511.590003967285,
+      "remote_us": 1358.4175109863281,
+      "latency_change": -0.6131616989877433,
+      "native_changed_l2": 0.004154445603489876,
+      "remote_changed_l2": 0.004562969319522381
+    },
+    {
+      "layer": 40,
+      "global_rows": 4096,
+      "native_us": 13396.265983581543,
+      "remote_us": 3330.368757247925,
+      "latency_change": -0.7513957425651578,
+      "native_changed_l2": 0.004152584820985794,
+      "remote_changed_l2": 0.004564435686916113
+    }
+  ]
+}
