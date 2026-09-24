@@ -208,3 +208,19 @@ SEND followed by a separate client remote pull. It does not add partial DONE or
 permit early buffer reuse. A2E1 real-weight/changed-input/generation-drain gates
 pass, as do the A4E4/A6E2 full-model/serving gates above. This is not a default
 change, EP acceptance, intra-frame GEMM/communication overlap, or a new release.
+
+### Planned-frame admission vectorization
+
+Native-plan frames now independently validate route IDs via FP32 Cast plus
+ReduceMin/Max in disjoint existing UB scratch. Conversion exactly preserves
+membership in[0,256) for int32 IDs; invalid frames still fail before claiming.
+The scalar-GM ID cache is not materialized when native Group does not consume it.
+Small frames retain the old loop; default threshold0 and EP behavior are unchanged.
+
+Local `ffn-vector-wide1` passed28 target/draft hot8/broad cases, rows3/96/1023/
+1024/4096/4097/8193, changed inputs and4520 exact generations. Max changed L2
+.004907. `validate2` independently exercises illegal int32 IDs under graph replay.
+Matched observer experiments show4096-broad Accept~699/719us controls versus15us
+vector, fullcall~4.8ms versus4.0ms. Shared-host tiny-call timings drift, so do not
+claim a precise decode gain. This source delta still needs its full-model gate;
+the prior completed SWE comparison describes the pre-vector9e9ad68 capsule.

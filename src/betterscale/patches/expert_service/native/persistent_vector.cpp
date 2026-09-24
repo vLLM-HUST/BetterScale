@@ -2,6 +2,7 @@
 #include "persistent_protocol.hpp"
 #include "priority_policy.hpp"
 #include "route_plan.hpp"
+#include "route_validate.hpp"
 using namespace AscendC;
 using namespace Persistent;
 
@@ -346,10 +347,17 @@ __aicore__ inline int Accept(Transfer &io, __gm__ int64_t *cfg, Slot &s,
     auto src = (__gm__ int32_t *)SourcePointer(cfg, c);
     int gen = generations[c], n = rows[c], layer = layers[c];
     io.Read(src + 64, (n * TOPK + 7) / 8 * 8);
-    for (int i = 0; i < n * TOPK; ++i) {
-      s.ids[c][i] = io.words.GetValue(i);
-      if (s.ids[c][i] < 0 || s.ids[c][i] >= EXPERTS)
+    if (ExpertRoutePlan::MIN_ROWS && n >= ExpertRoutePlan::MIN_ROWS) {
+      // Native Group consumes counts/maps; retain range validation without
+      // serially materializing the unused scalar-GM ID cache.
+      if (!PlannedRouteIdsValid(io.words, io.buf.Get<float>(), n * TOPK))
         return -1;
+    } else {
+      for (int i = 0; i < n * TOPK; ++i) {
+        s.ids[c][i] = io.words.GetValue(i);
+        if (s.ids[c][i] < 0 || s.ids[c][i] >= EXPERTS)
+          return -1;
+      }
     }
     claimed[c] = gen;
     s.gen[c] = gen;

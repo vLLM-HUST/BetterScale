@@ -60,9 +60,9 @@ class Batching(unittest.TestCase):
         begin=source.index('__aicore__ inline int Accept(')
         accept=source[begin:source.index('__aicore__ inline void Group(',begin)]
         with tempfile.TemporaryDirectory() as tmp:
-            for cap in (1,2,7):
-                cpp=Path(tmp)/f'cap{cap}.cpp';binary=cpp.with_suffix('')
-                cpp.write_text(HARNESS.replace('CAP_VALUE',str(cap)).replace('ACCEPT_BODY',accept))
+            for cap,minimum in ((1,0),(2,0),(7,0),(1,1024)):
+                cpp=Path(tmp)/f'cap{cap}-plan{minimum}.cpp';binary=cpp.with_suffix('')
+                cpp.write_text(HARNESS.replace('CAP_VALUE',str(cap)).replace('PLAN_MIN',str(minimum)).replace('ACCEPT_BODY',accept))
                 compiled=subprocess.run(['g++','-std=c++17','-O2','-Wall','-Wextra','-Werror',
                                          '-I',str(NATIVE),str(cpp),'-o',str(binary)],capture_output=True,text=True)
                 self.assertEqual(compiled.returncode,0,compiled.stderr)
@@ -72,6 +72,8 @@ HARNESS=r'''
 #include <cassert>
 #include <cstdint>
 #include <algorithm>
+#include <vector>
+#include <climits>
 #define __aicore__
 #define __gm__
 constexpr int SOURCES=7,TOPK=8,EXPERTS=256,LAYERS=41,TOKENS=4096;
@@ -80,7 +82,15 @@ constexpr bool SINGLE_LAYER=true;
 #include "priority_policy.hpp"
 using namespace Persistent;
 struct Words {int *p=nullptr;int GetValue(int i) const{return p[i];}};
-struct Transfer {Words words;int Flag(int *p){return *p;}void Read(int *p,int){words.p=p;}};
+namespace ExpertRoutePlan {constexpr int MIN_ROWS=PLAN_MIN;}
+// CPU stand-in for the independently device-tested vector predicate. This
+// harness tests admission, cache ownership and failure-before-claim, not SIMD.
+struct Buffer {template<class T> int Get(){return 0;}};
+bool PlannedRouteIdsValid(Words ids,int,int count){
+ for(int i=0;i<count;++i)if(ids.GetValue(i)<0 || ids.GetValue(i)>=EXPERTS)return false;
+ return true;
+}
+struct Transfer {Words words;Buffer buf;int Flag(int *p){return *p;}void Read(int *p,int){words.p=p;}};
 int64_t SourcePointer(int64_t *cfg,int c){return ((int64_t*)cfg[27])[c];}
 bool SameLayer(int *gen,int *layers,int layer){
  for(int c=0;c<SOURCES;++c)if(gen[c] && layers[c]!=layer)return false;
@@ -107,6 +117,21 @@ struct Fixture {
  int accept(){return Accept(io,cfg,s,claimed,finished,closed,policy);}
 };
 int main(){
+ if(SOURCES_PER_WAVE==1)for(int rows:{1023,1024,4096}) {
+  for(int bad:{0,-1,256,INT_MIN,INT_MAX}) {
+   Fixture f;f.ready(0);
+   std::vector<int> frame(64+rows*TOPK),cache(rows*TOPK,-77);
+   std::copy(f.frames[0],f.frames[0]+64,frame.begin());frame[10]=rows;
+   for(int i=0;i<rows*TOPK;++i)frame[64+i]=i%256;
+   frame.back()=bad;f.pointers[0]=(int64_t)frame.data();f.s.ids[0]=cache.data();
+   if(bad){assert(f.accept()==-1);assert(!f.claimed[0]);}
+   else {
+    assert(f.accept()==1 && f.claimed[0]==1);
+    for(int i=0;i<rows*TOPK;++i)
+     assert(cache[i]==((ExpertRoutePlan::MIN_ROWS && rows>=ExpertRoutePlan::MIN_ROWS)?-77:frame[64+i]));
+   }
+  }
+ }
  {Fixture f;assert(f.accept()==0);}
  {Fixture f;for(int c=0;c<SOURCES;++c)f.ready(c);
   assert(f.accept()==(1<<SOURCES_PER_WAVE)-1);assert(f.accept()==0);
