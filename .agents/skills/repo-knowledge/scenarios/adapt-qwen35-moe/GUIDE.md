@@ -514,3 +514,12 @@ remain required. Benchmark controls must beDP8EP8 orTP8EP8 with32 local routed
 experts at all41 physical layers, not eight replicated models. Development wheels
 still carry0.5.1 metadata for local inspection only; never upload them over the
 published artifact or describe this experimental branch as released0.5.1.
+
+`a6e2-direct1` also passed the same installede800fc9 protocol:246 layer shadows,
+128 requests, real draft/accepted counters positive on every source, all8 exits0
+and matched direct-owner generations. The earlier graph-server diagnostic is no
+longer the only A6 evidence. `synthetic-tp1-leaf1` and `synthetic-tp8-leaf1` passed
+12*4096-row independent-oracle cases per rank, real HCCL/native distributed argmax,
+including mixed0..2 drafts and intentionally different rank RNG states; all ranks
+agreed, admission exited0. This extends only benchmark sampler qualification;
+real-generation semantics still belong to the separate native inquiry.
