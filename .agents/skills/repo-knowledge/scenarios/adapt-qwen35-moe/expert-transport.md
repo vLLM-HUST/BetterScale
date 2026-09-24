@@ -200,3 +200,11 @@ output DMA; push places that output in client-owned memory and avoids a later
 remote client pull. Existing numerical order and final-DONE lifetime are unchanged.
 MOD7248d10 exposes the mode explicitly, layer-only/default-pull;144 CPU tests pass.
 No full-model/EP/default-on/public performance claim is made.
+
+ffn-push-wide1 subsequently PASS on local5/6: real target0/draft40, hot8/broad
+routing,3/96/4096/4097/8193 rows, FULL replay, changed hidden/IDs/nonuniform
+probabilities. All20 cases pass; maximum relativeL2 .004680;3616 source/server
+generations agree and devices release. The4097/8193 cases exercise mixed native
+planned4096 frames plus legacy one-row tails and repeated bank reuse. No new
+native binary was needed: exact mod-plan-build2, source-owned return-mode closure.
+This closes the multi-frame leaf gate, not eight-card model acceptance.
