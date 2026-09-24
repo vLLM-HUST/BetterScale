@@ -11,7 +11,7 @@ mkdir "$PROBE_CAPSULE"
 mkdir "$PROBE_CAPSULE/source"
 cp "$repo/prototypes/joint-wave/"{storage,transport}.py "$PROBE_CAPSULE/source/"
 cp "$repo/prototypes/joint-wave/qwen/"*.py "$PROBE_CAPSULE/source/"
-cp "$repo/prototypes/attention-client/device-service/admit_subset.py" "$PROBE_CAPSULE/source/admit.py"
+cp "$repo/prototypes/host-admission/admit_subset.py" "$PROBE_CAPSULE/source/admit.py"
 git -C "$repo" rev-parse HEAD > "$PROBE_CAPSULE/base-commit.txt"
 for file in worker/model_runner_v1.py attention/attention_v1.py attention/utils.py ascend_forward_context.py; do
   cmp "$repo/upstream/vllm-ascend/vllm_ascend/$file" "$runtime/lib/python3.12/site-packages/vllm_ascend/$file"

@@ -56,6 +56,6 @@ if [[ $ARM == partition-full ]]; then
   export CAPSULE VLLM_SERVER_DEV_MODE=1 MIXED_COEXIST=1
   command=("$runtime/bin/python" "$CAPSULE/source/partition_probe.py")
 fi
-exec "$runtime/bin/python" /workspace/strengthen-dsv4/prototypes/attention-client/device-service/admit_subset.py \
+exec "$runtime/bin/python" "$repo/prototypes/host-admission/admit_subset.py" \
  --devices "$ASCEND_RT_VISIBLE_DEVICES" --wait-seconds 1800 --output "$CAPSULE/admission" -- \
  "${command[@]}"

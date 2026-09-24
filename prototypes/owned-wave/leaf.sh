@@ -7,7 +7,7 @@ mkdir -p "$(dirname "$PROBE_CAPSULE")"
 mkdir "$PROBE_CAPSULE"
 mkdir "$PROBE_CAPSULE/source" "$PROBE_CAPSULE/result"
 cp "$repo/prototypes/owned-wave/attention_probe.py" "$PROBE_CAPSULE/source/"
-cp "$repo/prototypes/attention-client/device-service/admit_subset.py" "$PROBE_CAPSULE/source/admit.py"
+cp "$repo/prototypes/host-admission/admit_subset.py" "$PROBE_CAPSULE/source/admit.py"
 set +u; source /usr/local/Ascend/cann-9.0.1/set_env.sh; set -u
 export ASCEND_RT_VISIBLE_DEVICES=0 OMP_NUM_THREADS=4 TASK_QUEUE_ENABLE=1
 export PYTHONPATH="$repo/src${PYTHONPATH:+:$PYTHONPATH}" PYTHONDONTWRITEBYTECODE=1
