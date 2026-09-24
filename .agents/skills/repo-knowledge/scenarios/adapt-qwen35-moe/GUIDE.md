@@ -477,3 +477,12 @@ The first leaf attempt stopped at a leftover TP2 head assertion in
 that assertion and preserves the kernel. Host adapter was rebuilt for32 heads.
 These are leaf/state/oracle gates only; FULL DP serving/communication remains a
 separate gate. Do not treat the metadata-only staging contract as qualification.
+
+DP FULL startup needs the frontend readiness deadline to include cold capture.
+Both initial DP FULL deployments captured all32 descriptors (~440s capture,
+~535–557s engine initialization), but their earlier-started API frontends hit
+`VLLM_ENGINE_READY_TIMEOUT_S=600` just before readiness. This was a startup
+lifetime mismatch, not an operator failure. The qualification controller now
+defaults that existing upstream setting to1800s, matching its own bounded wait;
+explicit caller overrides remain respected. Reuse task-owned compilation caches
+on identical-source retries rather than recompiling everything in a new run dir.

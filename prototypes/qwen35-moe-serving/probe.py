@@ -145,9 +145,13 @@ def main():
                 'text':result['choices'][0]['text']}
     server = None
     try:
+        environment = dict(os.environ, CAPSULE=str(output.resolve()))
+        # DP frontends begin waiting before engines finish FULL capture. Match
+        # this controller's bounded readiness window, not the donor's600s default.
+        environment.setdefault('VLLM_ENGINE_READY_TIMEOUT_S', '1800')
         with (output / 'server.log').open('w') as log:
             server = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT,
-                                      env=dict(os.environ, CAPSULE=str(output.resolve())),
+                                      env=environment,
                                       start_new_session=True)
         deadline = time.monotonic()+1800
         while time.monotonic() < deadline:
