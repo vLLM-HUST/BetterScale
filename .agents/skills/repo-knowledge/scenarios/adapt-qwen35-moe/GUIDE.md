@@ -428,3 +428,16 @@ and retains the completed matched memory diagnostic plus reusable capture/pool
 profiling helpers. FULL lowers some transient demand but has not beaten native
 in whole-serving footprint; the remaining128MiB graph-external FIA planner
 allocation is a concrete next investigation, not an already-qualified saving.
+
+### Draft-only communication and copy increment (September24)
+
+For the opt-in TP2/MTP2 change, enter
+`prototypes/qwen-mtp-small-fish/README.md` and its staging/runtime sources.
+Clean serving control/candidate pass24 retrievals through262080+C16; two-rank
+full-profile TraceLoom exact members confirm full-vocab draft gathers removed,
+60 gate slices removed per target and mixed QKV packs halved. Request-bounded
+sampling is the prior fix, not this increment. Independent repeated analyzer
+summaries agree. Do not equate diagnostic graph medians with SWE throughput.
+Keep standalone oracle graph families alive together, and keep those diagnostic
+allocations out of serving startup: the embedded-oracle service failed32K even
+though the clean service passed. The root cause remains unlocalized.

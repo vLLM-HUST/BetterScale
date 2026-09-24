@@ -1,5 +1,10 @@
 # Optimize Qwen hybrid TP2 serving
 
+For retained TP2/MTP2 draft communication and GDN/RoPE small-op investigation,
+read [the offline timeline audit](mtp-timeline-small-fish.md). It distinguishes
+historical sampling-row inflation from the later MoE fix and the still-separate
+second-draft model envelope; reuse its exact-member queries before recapturing.
+
 ## Before transferring this route to Qwen3.5-35B-A3B / AgentX
 
 2026-09-23 source audit at BetterScale `c685a2b`: CPU-only `models.select`
