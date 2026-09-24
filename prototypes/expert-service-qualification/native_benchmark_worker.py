@@ -19,6 +19,11 @@ class Worker(NPUWorker):
         result=super().load_model(*args, **kwargs)
         from betterscale.patches.qwen_mtp_feedback import install
         install(self.model_runner)
+        # Same mode0 FULL-decode route as the separated client. The pinned
+        # native flag otherwise keys off Dynamo mode and skips FIA workspaces.
+        if not self.vllm_config.model_config.enforce_eager:
+            assert int(self.vllm_config.compilation_config.mode)==0
+            self.model_runner.use_aclgraph=True
         return result
 
     def ep_receipt(self):
@@ -39,6 +44,8 @@ class Worker(NPUWorker):
                 count+=1
             assert count==({'target':40,'draft':1}[domain]),(domain,count)
         receipt=dict(ep_size=ep.world_size,ep_rank=ep.rank_in_group,
-                     dp_size=dp.world_size,tp_size=tp.world_size,layers=layers)
+                     dp_size=dp.world_size,tp_size=tp.world_size,layers=layers,
+                     use_aclgraph=self.model_runner.use_aclgraph,
+                     feedback_isolated=hasattr(self.model_runner,"_bs_mtp_feedback"))
         (Path(os.environ['EXPERT_BENCH_OUTPUT'])/f'ep-rank-{ep.rank_in_group}.json').write_text(json.dumps(receipt)+'\n')
         return receipt
