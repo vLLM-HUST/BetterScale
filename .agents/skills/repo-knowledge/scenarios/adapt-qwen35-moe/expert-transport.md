@@ -189,3 +189,14 @@ oracles, generation drain and guarded release. 96/4096-row isolated medians are
 A bracketing pull is queued to test shared-host drift; do not call this a serving
 speedup or enable push by default. hw3 whole-model gate remains unlaunched after
 one-hour busy admission; the next remote snapshot still has foreign occupancy.
+
+
+Bracketing native-plan pull (concurrent-pull-repeat1, same5/6/7) also PASS:
+isolated96/4096 rows1483/5687us, simultaneous2448/6831us. Push remains faster
+than both adjacent pull controls: isolated1342/4814us, simultaneous2289/5183us.
+The result is a whole FFN-call observation, not proof of exactly which DMA/vector
+cycles overlap. Both modes already pipeline vector reduction against prior token
+output DMA; push places that output in client-owned memory and avoids a later
+remote client pull. Existing numerical order and final-DONE lifetime are unchanged.
+MOD7248d10 exposes the mode explicitly, layer-only/default-pull;144 CPU tests pass.
+No full-model/EP/default-on/public performance claim is made.
