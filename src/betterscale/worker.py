@@ -45,7 +45,10 @@ class Worker(NPUWorker):
         return native() if hook is None else hook(self, native)
 
     def load_model(self, *args, **kwargs):
-        result = super().load_model(*args, **kwargs)
+        native_load = super().load_model
+        native = lambda: native_load(*args, **kwargs)
+        hook = getattr(self._patches, "load_model", None)
+        result = native() if hook is None else hook(self, native)
         hook = getattr(self._patches, "model_loaded", None)
         if hook is not None:
             hook(self)
@@ -57,3 +60,23 @@ class Worker(NPUWorker):
         if hook is not None:
             hook(self)
         return result
+
+    def expert_receipt(self):
+        hook = getattr(self._patches, "expert_receipt", None)
+        if hook is None:
+            raise RuntimeError("This Worker has no separated expert service")
+        return hook(self)
+
+    def close_expert_service(self):
+        hook = getattr(self._patches, "close_expert_service", None)
+        if hook is None:
+            return {"drained": True, "not_configured": True}
+        return hook(self)
+
+    def shutdown(self):
+        try:
+            hook = getattr(self._patches, "shutdown", None)
+            if hook is not None:
+                hook(self)
+        finally:
+            super().shutdown()

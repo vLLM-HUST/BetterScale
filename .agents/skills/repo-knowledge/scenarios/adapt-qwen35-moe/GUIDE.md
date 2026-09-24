@@ -428,3 +428,29 @@ and retains the completed matched memory diagnostic plus reusable capture/pool
 profiling helpers. FULL lowers some transient demand but has not beaten native
 in whole-serving footprint; the remaining128MiB graph-external FIA planner
 allocation is a concrete next investigation, not an already-qualified saving.
+
+
+### Bringing separated experts into the single MOD entry
+
+The `codex/expert-mtp-mod` worktree starts from0e9470d, independent of the older
+`codex/expert-serving-v2lite` prototype. Enter
+`src/betterscale/patches/expert_service/README.md` for owned build, loader,
+client/server and drain boundaries. The previous successful C64 MTP0 runs used
+vLLM0.23, whereas the public MOD donor pins are0.25; their evidence does not
+qualify the port. Do not import old prototype modules from the new MOD route.
+
+The physical MTP catalog adds **one** remote layer40 for MTP2's repeated draft
+steps. Checkpoint inspection on hw0 found target layers fused into two tensors,
+but draft layer0 stored as256*3 individual tensors. Do not extend the fused
+loader by prefix substitution alone. CPU contracts preserve this distinction.
+Zero-stride placeholder construction must wrap both target and draft loading;
+loading full experts and freeing them afterward cannot admit TP1.
+
+Development artifacts are in workspace `runs/qwen35-expert-mtp/20260924`.
+The first41-layer packaged native build passed (CANN9.0.1, sequential compiler).
+114 CPU contracts pass after initializing the pinned Ascend submodule; a
+missing donor checkout initially failed one source-comparison test, not runtime
+behavior. Real MTP/graph acceptance is still pending; no new benchmark or PyPI
+release follows from these source/build gates. The qualified0.25 Python is the
+`runs/rp-legacy/20260903T155041Z-layout/rp-upstream-0.25.1/.venv/bin/python`
+environment, not `/usr/local/python3.12.13` (which has0.23/Transformers5.5.4).

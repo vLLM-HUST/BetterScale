@@ -17,3 +17,5 @@ recursive-include src/betterscale/patches/qwen_gdn *.h *.sh
 
 recursive-include src/betterscale/patches/qwen_gdn *.cpp *.so
 recursive-include src/betterscale/patches/qwen_fia *.cpp *.so
+
+recursive-include src/betterscale/patches/expert_service *.cpp *.hpp *.sh

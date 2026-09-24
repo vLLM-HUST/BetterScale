@@ -8,6 +8,8 @@ def select(config):
         from . import dsv4 as implementation
     elif hf.model_type == "qwen3_5_text":
         from . import qwen as implementation
+    elif hf.model_type == "qwen3_5_moe_text":
+        from . import qwen_experts as implementation
     else:
         raise ValueError(f"Unsupported BetterScale model: {hf.model_type}")
     route = implementation.validate(config)

@@ -19,10 +19,12 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "betterscale.patches.qwen_fia" = ["*.json", "*.cpp", "*.so", "README.md"]
-betterscale = ["pins.json", "qwen_pins.json", "qwen_mixed_pins.json"]
+betterscale = ["pins.json", "qwen_pins.json", "qwen_mixed_pins.json", "expert_pins.json"]
 "*" = ["README.md"]
 "betterscale.patches.qwen_gdn" = ["*.json", "*.h", "*.cpp", "*.sh", "*.so", "README.md"]
 "betterscale.patches.hc_workspace" = ["*.json", "*.so", "*.patch", "*.txt", "README.md"]
+
+"betterscale.patches.expert_service" = ["*.json", "*.sh", "native/*.cpp", "native/*.hpp", "README.md"]
 
 [project.urls]
 Homepage = "https://vllm-hust.sage.org.ai/betterscale.html"

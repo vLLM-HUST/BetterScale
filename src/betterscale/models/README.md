@@ -15,6 +15,7 @@ installation. There is no registry, profile, Worker factory or subclass per patc
 | Qualified DSV4 DP8 / DSpark K5 | `dsv4.py` | Existing native DSA and async-decode patches |
 | Qualified Qwen27 TP2, no speculation | `qwen.py` | Owned K-V GDN and wave FIA |
 | Qualified Qwen27 TP2, native MTP2 | `qwen.py` | Native model/proposer; packed conv weights |
+| Experimental Qwen35 TP1 attention with explicit expert topology | `qwen_experts.py` | Native attention/MTP; persistent remote routed experts |
 
 These are the existing bounded admissions, not claims of arbitrary model support.
 Native configuration remains authoritative; no invalid or missing-library route
@@ -27,7 +28,9 @@ multiple independently configured models in one process.
 ## Lifecycle
 
 Worker delegates only native lifecycle seams: before/after initialization,
-model loaded, device/memory initialization, and completion of native warmup.
+scoped model loading, model loaded, device/memory initialization, completion of
+native warmup, and shutdown. The expert route scopes weight construction before
+native target/draft load and drains IPC before native shutdown.
 Absent optional hooks preserve the native call and return value. The components
 own the implementation, not more Worker subclasses.
 
