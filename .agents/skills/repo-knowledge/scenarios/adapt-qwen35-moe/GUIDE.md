@@ -441,3 +441,10 @@ summaries agree. Do not equate diagnostic graph medians with SWE throughput.
 Keep standalone oracle graph families alive together, and keep those diagnostic
 allocations out of serving startup: the embedded-oracle service failed32K even
 though the clean service passed. The root cause remains unlocalized.
+
+The same prototype README now records completed35B SWE C1/2/4/8/16 smoke points
+and the separately gated dense27B envelope extension. Dense27 candidate24/24
+retrievals pass; native5/16 concurrent retrievals truncate before EOS despite
+8/8 serial long/cold/warm passing. Do not turn native throughput protocol
+validity into correctness acceptance, or attribute the historical20.25→24.25GiB
+KV-budget comparison solely to draft communication/copy changes.

@@ -62,3 +62,44 @@ Retain the failure and do not quietly inject fixture allocations into production
 SWE Prefix Reuse performance is a separate gate, using the same prepared file,
 exact returned-token continuation, natural MTP2 and900-second windows. Never
 publish profiler timings as leaderboard throughput.
+
+### Completed35B SWE smoke
+
+The five sealed900s windows (`swe35-summary.json` under the evidence root) have
+2717 requests and zero failures. C1/2/4/8/16 output tokens/s/chip are
+58.9217/102.7344/160.8350/242.4622/368.9278; P90 request decode tokens/s are
+133.3429/125.8538/102.3561/74.0577/55.3789. The native public SWE client is
+`vLLM-HUST/swe-prefix-reuse` at29136f1, with exact generated-token continuation
+and fresh per-session salts, not synthetic acceptance.
+
+These use explicit24.25GiB KV/chip. Historical FULL used20.25GiB, so the C16
+throughput increase from349.6761 is **not an isolated small-fish speedup**.
+The earlier request-bounded sampling fix enabled that larger KV budget. Keep
+source/configuration curves distinct; same-config best-of chooses a whole run,
+never independently maximal throughput and decode speed.
+
+### Dense27B extension observation, not generic admission
+
+The evidence root's `stage27.py` stages a separate dense Qwen3.8-27B capsule
+from the September22 qualified dense seed:64layers/hidden5120,48GDN+16FA,
+GDNv24/packed5120, FAq12/KV2, and dense MC2 preserved. It expands the query/host
+allocation envelope to4096 and16 request seats, rebuilds/re-pins only the host
+adapter, then applies this increment with an explicit dense-model guard.
+Do not run the MoE-only runtime admission unchanged or transplant MoE literals.
+The actual local checkpoint has no attested immutable upstream revision.
+
+`qualified27-candidate.json` binds independent two-bank GDN/state/conv checks,
+120 target+72 draft FIA waves, and24/24 real cold/warm/long/concurrent retrievals
+through262080 input tokens. Exact-member candidate profiles show target gate
+slices0, QKV packs48, z slices48 and no draft vocabulary gathers; complete decode
+captures contain320 local greedy-stat tensor bytes across both rounds. Dense z
+input is64 heads, not72. Mixed incomplete collective joins remain nonclaims.
+This is not a dense before/after performance ablation or general quality proof.
+
+The matched native deployment's8/8 serial cold/warm retrievals passed, but5/16
+concurrent outputs ended at `cobalt-seven-` rather than `cobalt-seven-42`.
+`native27-functional-limit.json` preserves response IDs2/5/8/11/13 and the
+clean exit. This is failed native correctness, not MOD regression or established
+harmless rounding. The related35B limitation does not prove a shared root cause.
+Keep a native throughput-only policy exception explicit; never rewrite that
+receipt as PASS or admit it as a correctness-qualified deployment.
