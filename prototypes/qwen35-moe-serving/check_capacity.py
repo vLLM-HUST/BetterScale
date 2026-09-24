@@ -15,7 +15,21 @@ def function(path, name, namespace):
     return namespace[name]
 
 
-def check(root):
+def host_fixture(module, requests, decode):
+    slot_rows, offsets = requests+1, requests+2
+    h = object.__new__(module.HostMetadata)
+    h.capacity, h.width, h.decode = 4096, 3, decode
+    z = lambda *shape: np.zeros(shape, dtype=np.int64)
+    h.h = NS(cu=z(offsets), prefill_conv=z(slot_rows,1), verify_conv=z(slot_rows,1),
+             initial=z(slot_rows), accepted=z(slot_rows), prefill_map=z(4096),
+             verify_map=z(requests*3), restore=z(4096), verify_ids=z(slot_rows))
+    h.p = NS(cu=z(offsets), state=z(slot_rows,2))
+    h.v = NS(cu=z(offsets), slots=z(slot_rows,3), accepted=z(slot_rows))
+    h.indices = {size:z((4096+size-1)//size+requests-1, 2) for size in (64,256,1216)}
+    return h
+
+
+def check(root, dp_skew=False):
     import copy
     import dataclasses
     requests = json.loads((root / "capacity-contract.json").read_text())["max_requests"]
@@ -35,15 +49,7 @@ def check(root):
         assert padded.num_reqs == min(requests, tokens)
     for count in sorted({1, 8, 9, 16, requests-1, requests}):
         for decode in (False, True):
-            h = object.__new__(module.HostMetadata)
-            h.capacity, h.width, h.decode = 4096, 3, decode
-            z = lambda *shape: np.zeros(shape, dtype=np.int64)
-            h.h = NS(cu=z(offsets), prefill_conv=z(slot_rows,1), verify_conv=z(slot_rows,1),
-                     initial=z(slot_rows), accepted=z(slot_rows), prefill_map=z(4096),
-                     verify_map=z(requests*3), restore=z(4096), verify_ids=z(slot_rows))
-            h.p = NS(cu=z(offsets), state=z(slot_rows,2))
-            h.v = NS(cu=z(offsets), slots=z(slot_rows,3), accepted=z(slot_rows))
-            h.indices = {size:z((4096+size-1)//size+requests-1, 2) for size in (64,256,1216)}
+            h = host_fixture(module, requests, decode)
             # Shrinking and reversing membership catches stale row/sentinel reuse.
             for n in (count, 1, count):
                 roles = [decode or i % 2 == 1 for i in range(n)]
@@ -75,10 +81,23 @@ def check(root):
         pass
     else:
         raise AssertionError('compacted a live request beyond capacity')
+    if dp_skew:
+        h = host_fixture(module, requests, False)
+        lengths = [1+i%3 for i in range(requests)]
+        slots = np.arange(requests*3).reshape(requests,3)
+        h.prepare(lengths, [True]*requests, slots, [True]*requests)
+        assert np.all(h.h.prefill_conv == -1) and np.all(h.p.cu == 0)
+        assert np.all(h.p.state == 0)
+        assert np.all(h.h.restore[:sum(lengths)] == 4096+np.arange(sum(lengths)))
+        assert np.all(h.h.restore[sum(lengths):] == 4096)
+        for rows in h.indices.values():
+            assert np.all(rows[:,0] == requests) and np.all(rows[:,1] == 0)
     print(f'PASS: up to C{requests} publication, shrinking reuse, sentinel and draft compaction')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('capsule', type=Path)
-    check(parser.parse_args().capsule)
+    parser.add_argument('--dp-skew', action='store_true')
+    args = parser.parse_args()
+    check(args.capsule, args.dp_skew)

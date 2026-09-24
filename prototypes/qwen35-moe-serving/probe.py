@@ -195,6 +195,51 @@ def main():
             rows = list(pool.map(lambda i:completion(prompt(4097+i*31),f'concurrent-{i}',
                                 i % args.data_parallel_size),range(args.concurrency)))
         receipt['requests'].extend(rows)
+        if args.data_parallel_size == 2 and not args.raw_stress:
+            # Start cold long prefill only after the other rank is decoding.
+            # Forced length applies to this shape stress, not retrieval quality.
+            import threading
+            for decode_rank in (0, 1):
+                post('/reset_prefix_cache', {})
+                decoding = threading.Event()
+                def stream_decode():
+                    body = {'model':'qwen35-moe', 'prompt':prompt(4097),
+                            'max_tokens':512, 'temperature':0, 'ignore_eos':True,
+                            'stream':True, 'stream_options':{'include_usage':True}}
+                    req = urllib.request.Request(url+'/v1/completions',
+                        data=json.dumps(body).encode(), headers={
+                            'Content-Type':'application/json',
+                            'X-data-parallel-rank':str(decode_rank)})
+                    chunks, usage, done = [], None, False
+                    started = time.monotonic()
+                    with urllib.request.urlopen(req, timeout=3600) as response:
+                        for raw in response:
+                            if not raw.startswith(b'data: '):
+                                continue
+                            value = raw[6:].strip()
+                            if value == b'[DONE]':
+                                done = True
+                                break
+                            item = json.loads(value)
+                            chunks.append(item)
+                            if item.get('usage'):
+                                usage = item['usage']
+                            if any(c.get('text') for c in item.get('choices', [])):
+                                decoding.set()
+                    (output/f'skew-decode-{decode_rank}.json').write_text(json.dumps(chunks)+'\n')
+                    assert done and usage and usage['completion_tokens'] == 512, usage
+                    assert usage['prompt_tokens'] == 4097, usage
+                    return {'name':f'skew-decode-{decode_rank}', 'usage':usage,
+                            'seconds':time.monotonic()-started, 'forced_length_stress':True}
+                with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+                    short = pool.submit(stream_decode)
+                    if not decoding.wait(120):
+                        raise TimeoutError('DP skew decode did not produce a first token')
+                    assert not short.done(), 'decode finished before skew prefill submission'
+                    long = pool.submit(completion, prompt(131073),
+                                       f'skew-prefill-{1-decode_rank}', 1-decode_rank)
+                    receipt['requests'].extend([short.result(), long.result()])
+                    save()
         metrics = get('/metrics'); (output/'metrics-after.txt').write_text(metrics)
         import re
         def counter(name):

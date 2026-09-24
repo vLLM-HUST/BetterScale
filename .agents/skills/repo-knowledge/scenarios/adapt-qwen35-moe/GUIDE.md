@@ -486,3 +486,30 @@ lifetime mismatch, not an operator failure. The qualification controller now
 defaults that existing upstream setting to1800s, matching its own bounded wait;
 explicit caller overrides remain respected. Reuse task-owned compilation caches
 on identical-source retries rather than recompiling everything in a new run dir.
+
+### DP-promoted FULL envelopes and C32 request capacity
+
+The ready1800 FULL DP2/expertTP2 run passed cold/warm retrieval through262080,
+then failed C4 because `host_metadata.prepare` asserted a local prefill existed.
+DP synchronization can select the large common graph when only the *other* rank
+has prefill. Local pure verification is therefore valid in that graph.
+`stage_dp_skew.py` removes this local-only assumption, keeps empty sentinel
+prefill chunks, and routes every padded restore row to verification storage
+rather than unwritten prefill output. It does not change numerical kernels.
+`check_capacity.py --dp-skew` checks the empty-prefill host metadata. The owned
+`dp-promoted-verify-leaf/receipt.json` passed two4096-envelope published waves,
+including full pool state/conv comparison and finite padded output; maximum
+output error1.907e-6. This is a leaf gate, not service/performance proof.
+Real DP qualification now starts a cold131073-token prefill on one rank only
+after the other rank has emitted its first token of a forced512-token stream,
+then swaps ranks. This extra shape stress is not retrieval-quality evidence.
+
+`stage_capacity.py --requests32` expands request-owned slots/sentinels, host
+metadata, FIA tables, and the96-token MTP verification envelope independently
+of attention head geometry. Rebuild and repin the host adapter. Descriptor
+request counts must not exceed graph token capacity (e.g.16-token prefill).
+Owned `capacity32-leaves/receipt.json` passed mixed, pure verification and FIA
+leaf gates for TP2 attention plus EP2. Service capacity and workload fit remain
+separate gates:32 serving slots never claims32 simultaneous full256K prompts.
+Keep server capacity fixed within a concurrency curve; DP16 per rank supplies
+32 total slots, unlike TP2's single32-slot scheduler. Record both quantities.
