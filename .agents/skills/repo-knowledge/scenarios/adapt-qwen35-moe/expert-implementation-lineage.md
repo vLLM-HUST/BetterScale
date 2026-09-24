@@ -121,3 +121,45 @@ EP4 and performance gates remain; defaults still cap1. Fewer waves is not a
 measured speedup. `ep2-multi-v1` was a fixture startup failure (missing owner
 launches), not a kernel failure; preserved evidence and CPU launch-order regression
 precede the successful v2. The original30-minute queue expiry launched no worker.
+
+## Whole-model and SWE cap comparison on hw3 (2026-09-24)
+
+hw0 was reclaimed; do not reconnect or schedule there. Fletcher accepts local
+and hw3 as equivalent8x910B2/HCCS for comparisons, retaining host provenance.
+Evidence: workspace `runs/qwen35-expert-mtp/20260924-hw3-e2e`, remote
+`/workspace/my-ascend-workspace/runs/qwen35-expert-mtp-hw3-20260924`.
+Runtime is clean archivedd1d67fa source-tree execution, not a new installed-wheel
+qualification; all22 donor source pins match. Reused qualified hw3 model/runtime.
+
+Layer placement cap7 whole-model gates passed A4E4 and A6E2:128 mixed-length
+requests each, realMTP2/C64,164/246 exact-build native layer shadows,
+max relativeL2 .000240644/.000245942, all eight roles exit0. These are bounded
+execution/numerical gates, not semantic SWE-solving quality or EP qualification.
+
+Four SWE Prefix Reuse C64/900s points then passed with zero failed requests,
+realMTP2, query4096/max-seqs32/KV32GiB per chip/native FULL decode, same prepared
+corpus and seed20260924. `analyze-swe.py` verifies client validity, exact owner
+retirement generations, direct resident launch counts, all exits and release.
+
+| Layer placement | cap | Output tok/s/chip | TTFT p95 seconds | Lifetime frames/waves |
+|---|---:|---:|---:|---:|
+| A4E4 |1|141.932639|4.522088|1238880/1238880|
+| A4E4 |7|143.928750|4.832207|1262106/1242972|
+| A6E2 |1|134.023889|2.832773|1834422/1834422|
+| A6E2 |7|138.175972|2.792350|1833162/1639981|
+
+Use `swe-comparison.json` for exact numbers; table values are rounded. Cap7
+observed throughput improvements about1.4%/3.1%, not a dramatic missing-engine
+recovery. A4 TTFT worsened; A6 improved slightly. Lifetime coalescing reduced
+wave count relative to its own source frames by1.52%/10.54%. These counters
+include startup/drain, not only the900s window; they are not per-wave latency
+or matched-work cost. Single closed-loop samples reach different turn mixes;
+no significance claim or default promotion follows. Keep defaultcap1 until
+broader evidence supports a policy. Historical hw0 DP8EP8/TP8EP8 remain labeled
+historical controls; this round did not rerun them or publish the leaderboard.
+
+Migration pitfalls: the first launcher missed `idle_gate.py`, failing on CPU
+before admission; copy the supervisor dependency closure. The first SWE name
+made AF_UNIX control paths too long; it failed before attention startup. Use
+short IDs (`a4e4-c1-swe2`, etc.), check encoded socket-path length before load,
+and retain those failures rather than attributing them to kernel numerics.
