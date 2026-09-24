@@ -208,3 +208,39 @@ generations agree and devices release. The4097/8193 cases exercise mixed native
 planned4096 frames plus legacy one-row tails and repeated bank reuse. No new
 native binary was needed: exact mod-plan-build2, source-owned return-mode closure.
 This closes the multi-frame leaf gate, not eight-card model acceptance.
+
+
+## Same-host full serving acceptance (2026-09-24 evening)
+
+Source9e9ad68 plus exact mod-plan-build2 passed a4-push-gate on hw3:
+128 mixed-length/C64 requests, real MTP2,164 native shadows, max relativeL2
+.000240644, all eight exits0 and exact generations/drain. No semantic-quality
+claim follows from fixed-length generation.
+
+serving-campaign/analyze.py validates four C64/900s SWE points against actual
+mode/threshold/shadows and owner generations, not launch labels. Source9e9ad68
+for both arms; default0/pull uses mod-control-build1, native1024/push uses
+mod-plan-build2. Same prepared SWE protocol744670516..., seed20260924,
+query4096/maxseq32/KV32GiB/device/native FULL decode, real MTP2, hw3 shared
+lease/guard with120s unleased gaps. Every point has zero client errors, all eight
+server exits0, all41 target/draft shadows per attention rank and clean release.
+
+| Whole-layer arm | Default0/pull tok/s/chip | Native1024/push | Change | TTFTp95 old→new |
+|---|---:|---:|---:|---:|
+|A4E4|142.369|160.759|+12.9%|4.444→3.808s|
+|A6E2|133.905|167.219|+24.9%|2.567→2.044s|
+
+Mean in-flight stays63.99 in all points; full-concurrency fraction99.1–99.3%.
+Lifecycle MTP acceptance length2.881/2.900 (A4),2.892/2.906 (A6). These counters
+include startup/drain, not just900s. Faster closed-loop configurations reach
+different context/turn mixes (max prompts40–57k); no statistical repeatability,
+equal fixed-request causal attribution or tuned-peak claim. No publication or
+superproject pin update. Candidate options remain explicit/layer-cap1 only.
+
+Native128→64 M-tile feasibility control ffn-plan-m64-1 also passes local5/6
+real target/draft,96/512/4096rows/hot8/broad/changed inputs. It is NOT an overlap
+implementation.4096 layer40 hot/broad complete calls4116/4813us, versus earlier
+M128 push4128/4755us; no dramatic standalone math penalty or useful speedup is
+established. Uniform4096/top8/E256 has128 routed rows/expert: smaller M tiles
+might expose earlier input dependencies, but old PackGate still waits for the
+whole expert. Do not claim readiness overlap from this tiling-only test.

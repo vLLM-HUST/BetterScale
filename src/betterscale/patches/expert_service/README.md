@@ -185,9 +185,13 @@ server-side host operator launch is introduced. Runtime source needs no prototyp
 module. Receipts include the selected threshold and bank memory including dummy
 plan inputs. This is not communication/compute overlap or a public release.
 
-The package-owned implementation passes the real-weight two-layer leaf and
-141 CPU contracts; whole-model qualification is still pending. Track fresh acceptance in the
-repo-knowledge expert-transport scenario before recommending the option.
+The package-owned implementation passes144 CPU contracts and real-weight
+target/draft leaf gates including4097/8193-row multi-frame calls. Native1024 plus
+push return also passes full-model A4E4/A6E2 real-MTP2 shadows, HTTP workloads and
+exact generation drain. Same-host SWE C64/900s observations improve throughput
+12.9%/24.9% against default0/pull, respectively. These are single sequential
+closed-loop samples, not repeatability, task-solving quality or tuned-peak claims.
+See the repo-knowledge expert-transport scenario for evidence and limitations.
 
 ### Experimental reduced-output push return
 
@@ -202,5 +206,5 @@ canonical weighted token directly into client-owned memory. Its vector reduction
 can overlap the prior token's output DMA, instead of finishing an owner-local
 SEND followed by a separate client remote pull. It does not add partial DONE or
 permit early buffer reuse. A2E1 real-weight/changed-input/generation-drain gates
-pass; full-model MTP/shadow and serving acceptance remain pending. This is not a
-default change, EP acceptance, or a new release.
+pass, as do the A4E4/A6E2 full-model/serving gates above. This is not a default
+change, EP acceptance, intra-frame GEMM/communication overlap, or a new release.
