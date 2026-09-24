@@ -32,7 +32,10 @@ def validate(config):
     if not all(checks.values()):
         raise ValueError('Outside experimental expert service: ' + '; '.join(k for k,v in checks.items() if not v))
     # Include topology/path identity: process-global hooks cannot serve two worlds.
-    return ('qwen35-experts', service)
+    spec=config.speculative_config
+    sampling=(getattr(spec,'rejection_sample_method','standard'),
+              tuple(getattr(spec,'synthetic_acceptance_rates',None) or ()))
+    return ('qwen35-experts', service, sampling)
 
 
 def check(config):
@@ -48,6 +51,9 @@ def before_init(worker, config):
     service.bind(config.model_config.model, rows)
     from ..patches.expert_service.mamba_abi import install
     install()
+    if getattr(config.speculative_config, 'rejection_sample_method', None) == 'synthetic':
+        from ..patches.benchmark_mtp import install as install_benchmark_sampler
+        install_benchmark_sampler(config)
 
 
 def load_model(worker, native):

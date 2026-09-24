@@ -46,6 +46,9 @@ class Deployment:
             raise ValueError('invalid bounded service lifetime')
         if os.environ.get('BETTERSCALE_EXPERT_EXTERNAL_WATCHDOG') != '1':
             raise ValueError('requires admitted devices and an actual bounded external watchdog')
+        self.synthetic_length=getattr(args,'synthetic_acceptance_length',None)
+        if self.synthetic_length is not None and (args.mtp_tokens!=2 or not 1 <= self.synthetic_length <= 3):
+            raise ValueError('benchmark acceptance length requires MTP2 and AL in [1,3]')
         self.service = ServiceConfig(str(self.output/'control'), str(Path(args.build).resolve()),
             args.owners, args.sources, 0, int(bool(args.mtp_tokens)), args.qualification)
         self.service.validate(); self.service.check_build()
@@ -54,6 +57,8 @@ class Deployment:
         self.deadline = time.monotonic()+args.lifetime
         self.receipt = dict(status='STARTED', commands=[], model=str(args.model),
             sources=args.sources, owners=args.owners, mtp_tokens=args.mtp_tokens,
+            sampling_policy='real' if self.synthetic_length is None else 'benchmark-only synthetic',
+            synthetic_acceptance_length=self.synthetic_length,
             package_root=str(Path(__file__).parents[2]), devices=self.devices)
 
     def save(self):
@@ -119,8 +124,13 @@ class Deployment:
                     '--seed','17','--generation-config','vllm','--shutdown-timeout','60',
                     '--safetensors-load-strategy','lazy','--compilation-config',json.dumps(dict(mode=0,
                         cudagraph_mode='FULL_DECODE_ONLY',cudagraph_capture_sizes=sizes,max_cudagraph_capture_size=max(sizes)))]
+                if self.synthetic_length is not None:
+                    command+=['--override-generation-config','{"temperature":0}']
                 if a.mtp_tokens:
-                    command+=['--speculative-config',json.dumps(dict(method='mtp',num_speculative_tokens=a.mtp_tokens))]
+                    spec=dict(method='mtp',num_speculative_tokens=a.mtp_tokens)
+                    if self.synthetic_length is not None:
+                        spec.update(rejection_sample_method='synthetic',synthetic_acceptance_length=self.synthetic_length)
+                    command+=['--speculative-config',json.dumps(spec)]
                 self.launch(f'attention{source}',command,self.devices[source])
             self.save(); self.wait(lambda:all(self.healthy(port) for port in self.ports)); self.ready=True
             self.receipt['startup']=[self.rpc(port,'expert_receipt') for port in self.ports]
@@ -192,6 +202,7 @@ def add_arguments(parser):
     parser.add_argument('--kv-gib',type=float,default=32)
     parser.add_argument('--mtp-tokens',type=int,choices=(0,2),default=2)
     parser.add_argument('--qualification')
+    parser.add_argument('--synthetic-acceptance-length',type=float,help='benchmark ONLY; never use generated output as quality evidence')
     parser.add_argument('--lifetime',type=int,default=10800)
 
 

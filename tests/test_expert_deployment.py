@@ -20,10 +20,11 @@ class Child:
 
 
 class Group(unittest.TestCase):
-    def make(self,root):
+    def make(self,root,**overrides):
         args=S(output=Path(root)/'run',model='/model',build='/build',devices='0,1,2,3',
             sources=2,owners=2,max_seqs=16,mtp_tokens=2,port_base=32510,kv_gib=32,
             lifetime=2400,qualification=None)
+        vars(args).update(overrides)
         with patch.dict(os.environ,{'BETTERSCALE_EXPERT_EXTERNAL_WATCHDOG':'1'}),patch.object(ServiceConfig,'check_build'):
             return Deployment(args)
 
@@ -31,6 +32,18 @@ class Group(unittest.TestCase):
         self.assertEqual(capture_sizes(16,2),[3,6,12,24,48])
         self.assertEqual(capture_sizes(32,0),[1,2,4,8,16,32])
         self.assertEqual(capture_sizes(5,2),[3,6,12,15])
+
+    def test_synthetic_is_explicit_benchmark_only_and_requires_mtp2(self):
+        with tempfile.TemporaryDirectory() as root:
+            real=self.make(root)
+            self.assertEqual(real.receipt['sampling_policy'],'real')
+            benchmark=self.make(root,synthetic_acceptance_length=2.63)
+            self.assertEqual(benchmark.receipt['sampling_policy'],'benchmark-only synthetic')
+            self.assertEqual(benchmark.receipt['synthetic_acceptance_length'],2.63)
+            for changes in (dict(mtp_tokens=0,synthetic_acceptance_length=2.63),
+                            dict(synthetic_acceptance_length=float('nan')),
+                            dict(synthetic_acceptance_length=3.1)):
+                with self.assertRaises(ValueError):self.make(root,**changes)
 
     def test_drain_is_concurrent_then_clients_stop_and_owner_receipts_match(self):
         with tempfile.TemporaryDirectory() as root:

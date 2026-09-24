@@ -18,6 +18,7 @@ def main():
     parser.add_argument('--concurrency',type=int,default=64)
     parser.add_argument('--requests',type=int,default=128)
     args=parser.parse_args()
+    assert args.synthetic_acceptance_length is None
     assert args.mtp_tokens==2 and args.requests>=args.concurrency>=args.sources
     group=Deployment(args)
     receipt=dict(status='STARTED',scope='real MTP execution, not quality or frontier throughput',requests=[])
