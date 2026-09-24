@@ -90,30 +90,24 @@ class Engine:
                 self.weight_table.data_ptr(),G.total_layers,self.source_pointers.data_ptr(),self.output_pointers.data_ptr()]
         assert len(values)==29
         self.config=torch.tensor(values,dtype=torch.int64,device='npu')
-        self.streams=[];self.graphs=[];self.functions=[]
-        self.server_graph=os.environ.get('BETTERSCALE_EXPERT_PERSISTENT_SERVER_GRAPH','1')=='1'
+        self.streams=[];self.functions=[]
+        # The resident pair is launched once, directly. Attention graphs remain
+        # independent; do not inherit the prototype's optional server graph.
         for name,blocks,cube in [('persistent_vector',17,False),('persistent_cube',24,True)]:
             fn=self.kernels.load(name,name);stream=torch.npu.Stream()
-            if self.server_graph:
-                graph=torch.npu.NPUGraph()
-                with torch.npu.stream(stream):
-                    with torch.npu.graph(graph):self.kernels.call(fn,self.config,None,None,blocks,cube)
-                self.graphs.append(graph)
             self.streams.append(stream);self.functions.append((fn,blocks,cube))
         self.config[10]=1;torch.npu.synchronize()
     def start(self):
-        for index,(stream,(fn,blocks,cube)) in enumerate(zip(self.streams,self.functions)):
+        for stream,(fn,blocks,cube) in zip(self.streams,self.functions):
             with torch.npu.stream(stream):
-                if self.server_graph:self.graphs[index].replay()
-                else:self.kernels.call(fn,self.config,None,None,blocks,cube)
+                self.kernels.call(fn,self.config,None,None,blocks,cube)
     def finish(self):
         for stream in self.streams:stream.synchronize()
         c=self.control.cpu().tolist();assert c[0][0]==c[43][0]==1,c[:3]+c[43:44]
         return dict(completed_counts=c[43][4:11],waves=c[43][1],pulls_during_cube=c[43][2],
                     admitted_promotions=c[43][11],events=self.events.cpu().tolist(),
-                    trace=self.trace.cpu().tolist(),host_forward_requests=0,persistent_graph_launches=2 if self.server_graph else 0,
-                    persistent_kernel_launches=2,server_launch_mode='graph' if self.server_graph else 'direct',
+                    trace=self.trace.cpu().tolist(),host_forward_requests=0,persistent_graph_launches=0,
+                    persistent_kernel_launches=2,server_launch_mode='direct',
                     internal_pipeline=True,fine_pack=self.fine_pack,early_down=True,early_return=not self.combined_return,combined_return=self.combined_return)
     def close(self):
-        for graph in self.graphs:graph.reset()
         self.kernels.close()

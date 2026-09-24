@@ -475,3 +475,25 @@ run.log are authoritative. Later harnesses explicitly write FAIL on exceptions.
 A matched native TP2 control and FULL-decode diagnostic are the next gates,
 not performance points. Both may coexist on disjoint selected-card leases;
 none of their timings establishes isolated throughput.
+
+The serving fork is `codex/expert-mtp-serving`, initiallyc4dca2a. It leaves the
+native semantic investigation in the other worktree and uses hw0, not its local
+cards. Its first A6E2/C64 gate passed128*128 output tokens and all246 layer
+shadows (max L2 unchanged), all8 exits0. **That is a server-graph diagnostic**:
+source inspection found `Engine` still defaulted to graph startup when the old
+prototype environment override was absent. The new MOD removes that branch,
+fixes direct resident launches in source, and adds a CPU launch-shape guard.
+Do not silently relabel gate1 as direct-server evidence.
+
+`serve-experts` / `expert_service.deployment` now owns group startup and concurrent
+drain in the package. The workload probe consumes this group instead of owning a
+second execution launcher. Lifecycle CPU tests cover concurrent EOF, partial
+startup cancellation and exact owner/source counts. The full suite passes121
+tests at this step. Clean development sdist/wheel inspection already proved all
+native source resources and pins are included and installed build emission works;
+that initial package check predates the new group/direct-server change and must
+be rebuilt before installed-service acceptance. No new PyPI release is authorized.
+Artifacts for this fork are `runs/qwen35-expert-mtp/20260924-serving`; hw0 owns
+`/workspace/betterscale-hw0/qwen35-expert-mtp-20260924`. Its source snapshot is
+pinned0.25; a private copied venv avoids modifying ambient0.23. hw0 lacks `rsync`;
+use a checked tar-over-SSH transfer, not repeated missing-command attempts.

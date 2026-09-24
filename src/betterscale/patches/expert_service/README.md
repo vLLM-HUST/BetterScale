@@ -74,3 +74,33 @@ not merely the live-request count. Qwen0.25 donor seams are pinned explicitly in
   concurrent requests and clean device reclamation are required before this
   migration is called serving-qualified. Existing no-MTP throughput is not a
   performance claim about this new entry.
+
+## Owned group lifecycle
+
+The package also owns startup and concurrent drain; no prototype launcher is
+needed for a real deployment:
+
+```bash
+# Under the caller's admitted-device lease and bounded external watchdog:
+python -m betterscale serve-experts /absolute/model \
+  --output /absolute/new-run --build /absolute/build \
+  --devices 0,1,2,3,4,5,6,7 --sources 6 --owners 2 --mtp-tokens 2
+```
+
+This starts six independent native attention HTTP endpoints on loopback
+ports32510..32515 and two expert owners. `ready` lists the endpoints;
+`deployment.json` binds package location, commands, startup/final receipts,
+generation counts and exits. A `stop` file under that run directory, or SIGINT
+to the foreground launcher, drains all clients concurrently before terminating
+HTTP services. Admission/foreign-owner guards remain the external host
+supervisor's responsibility; a package launcher is not a device reservation.
+
+The source fixes expert owners to **direct** launches of the two resident
+kernels. Attention FULL decode graphs are unaffected. The first migration had
+retained the prototype's default server-graph branch: short MTP gates exercised
+that branch, not the older matrix's direct launch. It is removed rather than
+relying on a deployment script to remember an environment override. Full Qwen35
+placement admits E2/E4, not E1: the whole BF16 expert catalog plus service scratch
+cannot fit one910B2. Independent workload/acceptance tests live in
+`prototypes/expert-service-qualification/`; they consume this packaged group,
+not private execution code.

@@ -136,3 +136,23 @@ class DonorSeams(unittest.TestCase):
                   and isinstance(n.value,ast.Name) and n.value.id=='module'}
         self.assertTrue(consumed)
         self.assertEqual(consumed-declared,set())
+
+class ResidentLaunch(unittest.TestCase):
+    def test_resident_pair_is_direct_even_though_attention_uses_graphs(self):
+        import ast
+        from contextlib import nullcontext
+        root=Path(__file__).resolve().parents[1]
+        tree=ast.parse((root/'src/betterscale/patches/expert_service/persistent_engine.py').read_text())
+        engine=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='Engine')
+        start=next(n for n in engine.body if isinstance(n,ast.FunctionDef) and n.name=='start')
+        calls=[]
+        scope={'torch':S(npu=S(stream=lambda _:nullcontext()))}
+        exec(compile(ast.Module(body=[start],type_ignores=[]),'<resident-start>','exec'),scope)
+        owner=S(streams=['vector','cube'],functions=[('vector-kernel',17,False),('cube-kernel',24,True)],
+                config='config',kernels=S(call=lambda *args:calls.append(args)))
+        scope['start'](owner)
+        self.assertEqual(calls,[('vector-kernel','config',None,None,17,False),
+                                ('cube-kernel','config',None,None,24,True)])
+        # Guard against restoring the old capture-on-init branch as a default.
+        self.assertFalse(any(isinstance(n,ast.Attribute) and n.attr in ('NPUGraph','graph','replay')
+                             for n in ast.walk(engine)))

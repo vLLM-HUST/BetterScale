@@ -58,13 +58,19 @@ def main():
     qwen.add_argument(
         "--cache-dir", type=Path, default=Path.home() / ".cache/betterscale/qwen27"
     )
+    from .patches.expert_service import deployment
+    experts = sub.add_parser("serve-experts", help="experimental Qwen35 persistent expert separation / MTP")
+    deployment.add_arguments(experts)
     args = parser.parse_args()
     if platform.system() != "Linux" or platform.machine() != "aarch64":
         parser.error(
             "This qualified native package requires Linux/aarch64 Ascend 910B2"
         )
     if not args.model.is_dir():
-        parser.error("model must be an existing local Qwen27 checkpoint directory")
+        parser.error("model must be an existing local checkpoint directory")
+    if args.command == "serve-experts":
+        deployment.run(args)
+        return
     try:
         command, env = prepare(args.model, args.devices, args.port, args.cache_dir)
     except (ValueError, FileNotFoundError) as exc:

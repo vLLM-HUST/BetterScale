@@ -34,8 +34,8 @@ class ServiceConfig:
     def validate(self):
         if any(type(x) is not int for x in (self.owners, self.sources, self.source, self.draft_layers)):
             raise ValueError('Expert topology fields must be integers')
-        if self.owners not in (1, 2, 4) or not 1 <= self.sources <= 7 or self.owners + self.sources > 8:
-            raise ValueError('Expert topology requires E1/E2/E4 and <=8 total devices')
+        if self.owners not in (2, 4) or not 1 <= self.sources <= 7 or self.owners + self.sources > 8:
+            raise ValueError('Expert topology requires E2/E4 and <=8 total devices')
         if not 0 <= self.source < self.sources or self.draft_layers not in (0, 1):
             raise ValueError('Invalid attention source or physical draft layer count')
         for name in ('control', 'build'):
@@ -63,7 +63,7 @@ class ServiceConfig:
         if module is not None and module.GEOMETRY.total_layers != 40+self.draft_layers:
             raise RuntimeError('Expert geometry already bound; start a fresh process')
         env = dict(DRAFT_LAYERS=str(self.draft_layers), MODEL=str(model), PERSISTENT='1',
-                   PERSISTENT_BUILD=self.build, NATIVE_CONTROL=self.control,
+                   PERSISTENT_BUILD=self.build, PERSISTENT_SERVER_GRAPH='0', NATIVE_CONTROL=self.control,
                    NATIVE_PLACEMENT='layer', NATIVE_OWNERS=str(self.owners),
                    NATIVE_SOURCE=str(self.source), GRAPH_BATCH=str(graph_rows),
                    NATIVE_RETAIN_WEIGHTS='1' if self.qualification is None else '0',
