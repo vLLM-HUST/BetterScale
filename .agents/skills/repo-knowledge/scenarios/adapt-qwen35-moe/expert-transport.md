@@ -244,3 +244,28 @@ M128 push4128/4755us; no dramatic standalone math penalty or useful speedup is
 established. Uniform4096/top8/E256 has128 routed rows/expert: smaller M tiles
 might expose earlier input dependencies, but old PackGate still waits for the
 whole expert. Do not claim readiness overlap from this tiling-only test.
+
+
+### Residual admission scan removed
+
+MODf8d8847 adds planned-frame vector range validation without caching IDs unused
+by native Group. Existing small/default0/EP admission stays scalar. A2 reduction
+accepts FP32, not int32; Cast preserves membership in[0,256) even at int32 extremes.
+Disjoint scratch fits the original196608-byte UB; no new tensor/IPC lifetime.
+Standalone validate2 passed108 changing boundary/invalid graph checks. Real
+ffn-vector-wide1 passed28 target0/draft40 hot8/broad cases across3/96/1023/1024/
+4096/4097/8193 rows, max changed L2 .004907 and4520 exact generations.144 CPU tests
+pass, including actual Accept fail-before-claim and cache ownership at threshold.
+
+The same coordinator observer brackets scalar controls at699/719us versus vector
+15.32us for4096-broad admission; fullcall4.82–4.88ms versus4.07ms. Small-call control
+timing drift194->244us precludes a precise decode effect. Dropping only unused
+GM stores still costs409us and was not promoted. Noinline validator builds but
+fails persistent_vector binary loading before ready; retain that failed probe,
+not a purported timing result. The accepted helper stays inline.
+
+Exact mod-vector-build1/sourcef8d8847 then passed hw3 a4-vector-gate:128 mixed-length
+C64/real MTP2 requests,164 shadows max relative L2 .000240644, all8 exits0 and
+exact generations/drain, hardware released. Evidence archived locally under the
+same20260924 root; analyze-vector-gate.py checks receipts against exact leaf build.
+No new SWE throughput, semantic quality, EP plan or intra-frame overlap claim.

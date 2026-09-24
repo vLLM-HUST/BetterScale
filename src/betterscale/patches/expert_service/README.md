@@ -222,5 +222,6 @@ Local `ffn-vector-wide1` passed28 target/draft hot8/broad cases, rows3/96/1023/
 .004907. `validate2` independently exercises illegal int32 IDs under graph replay.
 Matched observer experiments show4096-broad Accept~699/719us controls versus15us
 vector, fullcall~4.8ms versus4.0ms. Shared-host tiny-call timings drift, so do not
-claim a precise decode gain. This source delta still needs its full-model gate;
-the prior completed SWE comparison describes the pre-vector9e9ad68 capsule.
+claim a precise decode gain. Sourcef8d8847 then passed hw3 a4-vector-gate:128 mixed-length/C64 requests,
+real MTP2,164 native shadows (max L2 .000240644), all8 exits0/exact drain.
+The prior completed SWE comparison still describes pre-vector9e9ad68, not this delta.
