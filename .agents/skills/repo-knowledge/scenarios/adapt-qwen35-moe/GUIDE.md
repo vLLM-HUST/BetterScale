@@ -513,3 +513,12 @@ leaf gates for TP2 attention plus EP2. Service capacity and workload fit remain
 separate gates:32 serving slots never claims32 simultaneous full256K prompts.
 Keep server capacity fixed within a concurrency curve; DP16 per rank supplies
 32 total slots, unlike TP2's single32-slot scheduler. Record both quantities.
+
+Follow-up real serving receipts passed with server exit0: both
+`full-attention-dp2-expert-{tp2,ep2}-skew1` completed16 checks (12 retrievals plus
+both directed skew pairs), with native accepted/rejected MTP evidence and the
+same41-layer partition checks. `full-attention-tp2-expert-ep2-capacity32` passed
+all40 retrievals (8 cold/warm plus32 concurrent). Subsequent60s SWE C32 capacity
+checks for both FULL DP arms observed32 running requests total, zero preemptions,
+and peak per-rank KV fractions0.470/0.479. These short checks permit measuring
+longer windows; they do not establish sustained full-trace capacity or a speedup.
