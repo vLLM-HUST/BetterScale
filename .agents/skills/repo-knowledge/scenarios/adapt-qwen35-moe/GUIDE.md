@@ -460,3 +460,20 @@ remains UNQUALIFIED: TP2/EP2 keeps attention geometry; TP1/DP2 doubles GDN/FIA
 heads/strides while preserving request slots, byte alignment and query capacities.
 Rebuild/repin its host adapter and run leaf/state/FULL/real-MTP gates before timing.
 Never substitute global8→16 replacements for those distinct quantities.
+
+The rank-affine native reruns (`*-affinity1/qualification/`) each completed12
+retrievals, including cold/warm262080 and staggeredC4, with actual MTP and server
+exit0. DP warm262080 reused258048 tokens. Native DP2/EP2 then passed the exact
+SWE streaming client0.1.2 (`swe-prefix-reuse`860e7c9) C2/60s:13 requests,
+99.987% full client concurrency,5 cached requests. This is a protocol smoke,
+not a900s Frontier point or a maximum-throughput claim.
+
+TP1 attention leaf receipt `dp-attention-leaves2/` passed4 mixed/full-prefill
+GDN waves (4096 query envelope,16 request slots,32 value heads),2 pure MTP
+verification waves,120 target FIA and72 draft FIA replays. Both FIA comparisons
+had zero maximum error; GDN output maxima were1.526e-5 mixed and1.907e-6 verify.
+The first leaf attempt stopped at a leftover TP2 head assertion in
+`decode_kv.py`; its recurrent kernel already parameterizes H/HV. Source2 corrects
+that assertion and preserves the kernel. Host adapter was rebuilt for32 heads.
+These are leaf/state/oracle gates only; FULL DP serving/communication remains a
+separate gate. Do not treat the metadata-only staging contract as qualification.

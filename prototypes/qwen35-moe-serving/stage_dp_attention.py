@@ -56,6 +56,9 @@ def stage(seed, output, ep):
         gdn+'host.cpp': {
             '{1, 16, chunks, 128, 128}': '{1, 32, chunks, 128, 128}',
             '{1, 16, tokens, 128}': '{1, 32, tokens, 128}'},
+        gdn+'decode_kv.py': {
+            'H == 8 and K == V == 128 and v.shape[2] == 16':
+                'H == 16 and K == V == 128 and v.shape[2] == 32'},
         'mixed_core.py': {
             'd < 2048': 'd < 4096', '* 2048 + d': '* 4096 + d',
             '(1, self.capacity, 16, 128)': '(1, self.capacity, 32, 128)',
