@@ -46,7 +46,10 @@ drafting step. Every layer has exactly one owner (`layer % owners`); all256
 experts of that layer reside there. The checkpoint has **two fused tensors per
 target layer but768 separate tensors in the draft layer**. Native loader hooks
 skip both formats and retain only two2-byte CPU metadata parameters per layer.
-Attention, shared MLP, routing, KV/state and real acceptance remain native.
+Attention, shared MLP, routing and real acceptance remain native. The pinned
+asynchronous Mamba feedback uses a private host mailbox so InputBatch row
+changes cannot overwrite the previous-order state-selection receipt; see
+`../qwen_mtp_feedback.py`. Native APC reset semantics are preserved.
 
 By default each global layer is compared once with the donor routed FFN
 (relative L2<=.02) during untimed startup. A subsequent deployment can supply
@@ -74,3 +77,10 @@ not merely the live-request count. Qwen0.25 donor seams are pinned explicitly in
   concurrent requests and clean device reclamation are required before this
   migration is called serving-qualified. Existing no-MTP throughput is not a
   performance claim about this new entry.
+
+The first bounded real-MTP gate now passes eight cold/warm/concurrent retrievals
+with A1E2 and native FULL decode after the feedback ownership correction; the
+unpatched native TP2 control reproduced the semantic failure and the repaired
+control also passed. This is not yet a multi-attention-rank or high-concurrency
+performance qualification. Details and retained failed controls live in the
+`adapt-qwen35-moe` repo-knowledge scenario.

@@ -475,3 +475,52 @@ run.log are authoritative. Later harnesses explicitly write FAIL on exceptions.
 A matched native TP2 control and FULL-decode diagnostic are the next gates,
 not performance points. Both may coexist on disjoint selected-card leases;
 none of their timings establishes isolated throughput.
+
+#### Native MTP feedback ownership investigation
+
+Same artifact root: `native-eager2` (TP2/MTP2) also failed7/8 with an extra7,
+while `native-nospec1` passed8/8. `graph1` A1E2 FULL-decode reproduced eager2's
+outputs and failed-position logprobs exactly; graph capture alone is not the
+observed discriminator. Native TP2 and separated TP1 are not a bitwise-matched
+numerical comparison. No-MTP's correct4 had ~99.999% probability versus ~14%
+in a failing MTP response, so do not classify this as an established tiny
+rounding branch change.
+
+`native-observe1` records native GDN metadata with read-only CPU observations.
+A live request moved previous row2 to row0 while its state-selection receipt
+became1 despite three-token logical progress. Pinned base runner postprocess
+D2H targets InputBatch's accepted-count tensor, whose NumPy backing is also
+mutated by add/condense/swap; Ascend _prepare_inputs subsequently treats that
+buffer as previous-order and remaps it. A private D2H mailbox is the candidate
+repair; preserve APC-reset selection counts rather than substituting raw
+sampler progress. `native-feedback1` made all four concurrent retrievals
+correct, but failed a warm4097 request by early EOS. That first repair wrongly
+published stale feedback when there was no previous-request map, undoing the
+fresh batch's neutral1. Revised fresh-batch handling is under qualification;
+this is NOT a completed quality fix or a released MOD capability.
+
+Independent `native-state-contract.json` exposes additional native GDN gaps:
+uniform[3,3] passed, but widths[1,3]/accepted[1,1] selected the wrong state row,
+and width[1]/accepted[3] returned without the expected update. These use exact
+constant-state/zero-key CPU oracles. They are NOT the observed retrieval
+trigger: every speculative query in `native-observe1` had uniform width3.
+Keep the latent operator defect separate from feedback-buffer causality.
+
+Revised private-feedback handling then passed `native-feedback2` (TP2/eager)
+and `graph-feedback1` (A1E2/FULL_DECODE_ONLY), **8/8 each**, cold/warm4097 and8193
+plus C4 staggered lengths4100..4193, real MTP2 acceptance. Correct digit4
+returned to near-unit probability. Original unpatched controls and first failed
+repair are retained, not overwritten. This supports feedback ownership as a
+causal defect in this bounded reproducer; it does not certify arbitrary C16,
+256K, multi-attention-rank workloads or repair the separate ragged GDN gap.
+
+The correction now lives in `patches/qwen_mtp_feedback.py`, installed by the
+experimental single MOD Worker expert route after model loading, with expanded
+base-runner/InputBatch pins. Native donor files are untouched.122 CPU tests
+pass, including early/late D2H, permutation, APC reset and fresh-batch regression.
+The separated gate captured three FULL decode graphs (0.47GiB), retained164bytes
+of routed metadata, made zero host-forward requests and drained all roles with
+exit0. Its41-layer FFN numerical qualification is the prior exact-build shadow
+receipt, not new per-request native shadows. Runtime frozen source `mod-source5`
+includes the repair and MOD wiring; `mod-source4` is the native-control repair.
+No throughput benchmark, broad model-quality claim or PyPI release follows.

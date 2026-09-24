@@ -52,7 +52,10 @@ def before_init(worker, config):
 
 def load_model(worker, native):
     from ..patches.expert_service.client import load_model
-    return load_model(worker, native)
+    result = load_model(worker, native)
+    from ..patches.qwen_mtp_feedback import install
+    install(worker.model_runner)
+    return result
 
 
 def expert_receipt(worker):

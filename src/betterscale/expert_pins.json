@@ -115,6 +115,11 @@
       "distribution": "vllm-ascend",
       "path": "vllm_ascend/patch/worker/patch_process_weights_after_loading.py",
       "sha256": "85c1fbf7e7ebaa52901e2173728be5dfacdcf796cebeb92f6d0ad9dd930c1d09"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/worker/gpu_input_batch.py",
+      "sha256": "de1ea4fc9d43fc6079dd375e407c2b6d93f5e1a11f49732d13654c41eaf30a65"
     }
   ]
 }
