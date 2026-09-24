@@ -13,7 +13,7 @@ class ServingCapacity(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         for full in (False, True):
-            for requests in (8, 16):
+            for requests in (8, 16, 32):
                 args = SimpleNamespace(model='/model', port=1234, worker='worker.Worker',
                     candidate_full=full, max_num_seqs=requests, gpu_memory_utilization=.95,
                     max_num_batched_tokens=4096, kv_cache_memory_bytes=21743271936)

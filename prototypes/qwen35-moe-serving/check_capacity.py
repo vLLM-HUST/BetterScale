@@ -1,7 +1,8 @@
-"""CPU-only checks of a staged sixteen-row publication/padding envelope."""
+"""CPU-only checks of a staged request-row publication/padding envelope."""
 import argparse
 import ast
 import importlib.util
+import json
 from pathlib import Path
 from types import SimpleNamespace as NS
 
@@ -16,22 +17,33 @@ def function(path, name, namespace):
 
 def check(root):
     import copy
+    import dataclasses
+    requests = json.loads((root / "capacity-contract.json").read_text())["max_requests"]
+    assert requests in (16, 32)
+    slot_rows, offsets = requests + 1, requests + 2
     spec = importlib.util.spec_from_file_location('host_metadata_capacity', root/'host_metadata.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     chunks = function(root/'package/betterscale/patches/qwen_gdn/metadata.py', 'chunk_rows', {})
     compact = function(root/'draft_fia.py', 'compact_padding', {'copy': copy})
-    for count in (1, 8, 9, 16):
+    descriptor = function(root/'package/betterscale/patches/qwen_gdn/graphs.py',
+                          'descriptor', {'dataclasses': dataclasses,
+                                         'PREFILLS': (16, 32, 64, 4096)})
+    batch = dataclasses.make_dataclass('Batch', ['num_tokens', 'num_reqs'])
+    for tokens in (16, 32, 64, 4096):
+        padded = descriptor(batch(tokens, 1))
+        assert padded.num_reqs == min(requests, tokens)
+    for count in sorted({1, 8, 9, 16, requests-1, requests}):
         for decode in (False, True):
             h = object.__new__(module.HostMetadata)
             h.capacity, h.width, h.decode = 4096, 3, decode
             z = lambda *shape: np.zeros(shape, dtype=np.int64)
-            h.h = NS(cu=z(18), prefill_conv=z(17,1), verify_conv=z(17,1),
-                     initial=z(17), accepted=z(17), prefill_map=z(4096),
-                     verify_map=z(48), restore=z(4096), verify_ids=z(17))
-            h.p = NS(cu=z(18), state=z(17,2))
-            h.v = NS(cu=z(18), slots=z(17,3), accepted=z(17))
-            h.indices = {size:z((4096+size-1)//size+15, 2) for size in (64,256,1216)}
+            h.h = NS(cu=z(offsets), prefill_conv=z(slot_rows,1), verify_conv=z(slot_rows,1),
+                     initial=z(slot_rows), accepted=z(slot_rows), prefill_map=z(4096),
+                     verify_map=z(requests*3), restore=z(4096), verify_ids=z(slot_rows))
+            h.p = NS(cu=z(offsets), state=z(slot_rows,2))
+            h.v = NS(cu=z(offsets), slots=z(slot_rows,3), accepted=z(slot_rows))
+            h.indices = {size:z((4096+size-1)//size+requests-1, 2) for size in (64,256,1216)}
             # Shrinking and reversing membership catches stale row/sentinel reuse.
             for n in (count, 1, count):
                 roles = [decode or i % 2 == 1 for i in range(n)]
@@ -48,22 +60,22 @@ def check(root):
                     pre = [x for x,role in zip(lengths,roles) if not role]
                     for size, rows in h.indices.items():
                         assert rows.tolist() == [list(row) for row in chunks(pre,size,4096)]
-                    assert h.p.cu[16] == h.p.cu[17]
+                    assert h.p.cu[requests] == h.p.cu[requests+1]
             m = NS(actual_seq_lengths_q=list(range(1,86)), seq_lens_list=[7]*count+[0]*(85-count),
                    seq_lens=list(range(85)), _mtp_device_seq_lens=list(range(85)))
             result = compact(m)
-            assert len(result.actual_seq_lengths_q) == 17
+            assert len(result.actual_seq_lengths_q) == slot_rows
             assert result.actual_seq_lengths_q[-1] == 85
             assert result.seq_lens_list[:count] == [7]*count
             assert len(m.actual_seq_lengths_q) == 85
-    m.seq_lens_list[16] = 7
+    m.seq_lens_list[requests] = 7
     try:
         compact(m)
     except ValueError:
         pass
     else:
-        raise AssertionError('compacted a live seventeenth request')
-    print('PASS: C1/C8/C9/C16 publication, shrinking reuse, sentinel and draft compaction')
+        raise AssertionError('compacted a live request beyond capacity')
+    print(f'PASS: up to C{requests} publication, shrinking reuse, sentinel and draft compaction')
 
 
 if __name__ == '__main__':

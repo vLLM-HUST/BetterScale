@@ -47,6 +47,13 @@ def server_command(args):
         command[command.index('--max-num-batched-tokens')+1] = str(args.max_num_batched_tokens)
     if getattr(args, 'kv_cache_memory_bytes', None) is not None:
         command += ['--kv-cache-memory-bytes', str(args.kv_cache_memory_bytes)]
+    if getattr(args, 'max_num_seqs', 8) == 32:
+        index = command.index('--compilation-config')+1
+        config = json.loads(command[index])
+        extra = [40, 48, 80, 96] if getattr(args, 'candidate_full', False) else [48, 96]
+        config['cudagraph_capture_sizes'] = sorted(set(config['cudagraph_capture_sizes'] + extra))
+        config['max_cudagraph_capture_size'] = max(config['cudagraph_capture_sizes'])
+        command[index] = json.dumps(config)
     return command
 
 
@@ -60,11 +67,11 @@ def main():
     parser.add_argument('--data-parallel-size', type=int, choices=(1,2), default=1)
     parser.add_argument('--enable-expert-parallel', action='store_true')
     parser.add_argument('--candidate-full', action='store_true')
-    parser.add_argument('--max-num-seqs', type=int, choices=(8,16), default=8)
+    parser.add_argument('--max-num-seqs', type=int, choices=(8,16,32), default=8)
     parser.add_argument('--max-num-batched-tokens', type=int)
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.90)
     parser.add_argument('--kv-cache-memory-bytes', type=int)
-    parser.add_argument('--concurrency', type=int, choices=(4,16), default=4)
+    parser.add_argument('--concurrency', type=int, choices=(4,16,32), default=4)
     parser.add_argument('--raw-stress', action='store_true',
                         help='Retain raw, forced-length stress and strict equality; not normal chat quality')
     args = parser.parse_args()
