@@ -224,4 +224,21 @@ Matched observer experiments show4096-broad Accept~699/719us controls versus15us
 vector, fullcall~4.8ms versus4.0ms. Shared-host tiny-call timings drift, so do not
 claim a precise decode gain. Sourcef8d8847 then passed hw3 a4-vector-gate:128 mixed-length/C64 requests,
 real MTP2,164 native shadows (max L2 .000240644), all8 exits0/exact drain.
-The prior completed SWE comparison still describes pre-vector9e9ad68, not this delta.
+The first SWE comparison above describes pre-vector9e9ad68; the final combined
+qualification follows below.
+
+### Direct peer-chunk fanout and combined qualification
+
+Native-planned cap1 frames freeze routing before FETCH. Movers read eight-token
+peer chunks once and fan out directly to expert destinations, removing redundant
+owner-local staging/REPACK. READY_UP still waits for FETCH; no early Cube admission
+or intra-frame communication/GEMM overlap is enabled. Defaults remain0/pull.
+
+Source397efcf passes144 CPU contracts,28 target/draft leaf cases (including
+4097/8193-row multi-frame calls), exact generations and changed-input oracles.
+Final same-protocol SWE C64/900s/real-MTP2 on hw3: A4E4 163.913 and A6E2
+173.576 output tok/s/chip, +15.1%/+29.6% against original0/pull; TTFTp95
+3.633/1.996s. All shadows, requests and eight-rank drain/release pass. These
+remain single sequential closed-loop observations, not a default change or
+public release. The repo-knowledge expert-transport scenario retains exact
+evidence, native-reference limitations and rejected readiness prototypes.
