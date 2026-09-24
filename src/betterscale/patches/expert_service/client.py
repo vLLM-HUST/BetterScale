@@ -43,6 +43,7 @@ def load_model(self, native):
         assert len(placeholders)==2*len(G.layers)
         assert all(v.device.type=='cpu' and v.untyped_storage().nbytes()==2 for v in placeholders)
         self.native_release['expert_parameter_storage_bytes']=sum(v.untyped_storage().nbytes() for v in placeholders)
+        print('expert role-only weight receipt',json.dumps(self.native_release,sort_keys=True),flush=True)
     if not self.native_retain:
         qualified=Path(os.environ['BETTERSCALE_EXPERT_NATIVE_QUALIFICATION'])
         receipt=json.loads(qualified.read_text())
@@ -70,7 +71,7 @@ def load_model(self, native):
                 if match and hasattr(module,'_forward_shared_experts'):
                     layer=offset+int(match.group(1))
                     assert layer not in self.native_shared_modules
-                    assert module._shared_experts is not None and not module.shared_multistream_overlap_gate
+                    assert module._shared_experts is not None and not module.multistream_overlap_shared_expert
                     self.native_shared_modules[layer]=module
                     self.native_shared_originals.append((module,module._forward_shared_experts))
                     def take_shared(module_self,hidden,events,layer=layer):
