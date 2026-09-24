@@ -591,27 +591,35 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
         // Rejoin the ready selection instead of chaining the next DMA chunk.
         vs = -1;
       } else if (slot.stage == PULL) {
-        // No wait-to-coalesce: one snapshot after useful DMA completes.
-        int added = Accept(io, cfg, slot, claimed, finished, closed, policy);
-        if (added < 0) {
-          Store(ctrl + STOP * LINE, -31);
-          break;
-        }
-        if (added) {
-          Descriptor(io, ptr, slot);
-          vkind = FETCH;
-          vbegin = GetSystemCycle();
-          Command(ctrl, VCMD, ++vgen, FETCH, vs, added);
-          if (cs >= 0)
-            ++pullsDuringCube;
+        if (ExpertRoutePlan::MIN_ROWS &&
+            SumSources(slot.rows)>=ExpertRoutePlan::MIN_ROWS && !cfg[16] && !cfg[17]) {
+          // Cap1 maps were frozen before FETCH; its completed DMA already
+          // produced expert-major input. No second admission or REPACK.
+          slot.stage=READY_UP;
+          vs=-1;
         } else {
-          Group(io, ptr, slot, cfg[7], cfg[14], cfg[15], cfg);
-          slot.stage = PACK;
-          vkind = REPACK;
-          vbegin = GetSystemCycle();
-          if (cfg[20])
-            Store(ctrl + (PACK_EPOCH + vs) * LINE, vgen + 1);
-          Command(ctrl, VCMD, ++vgen, REPACK, vs);
+          // No wait-to-coalesce: one snapshot after useful DMA completes.
+          int added = Accept(io, cfg, slot, claimed, finished, closed, policy);
+          if (added < 0) {
+            Store(ctrl + STOP * LINE, -31);
+            break;
+          }
+          if (added) {
+            Descriptor(io, ptr, slot);
+            vkind = FETCH;
+            vbegin = GetSystemCycle();
+            Command(ctrl, VCMD, ++vgen, FETCH, vs, added);
+            if (cs >= 0)
+              ++pullsDuringCube;
+          } else {
+            Group(io, ptr, slot, cfg[7], cfg[14], cfg[15], cfg);
+            slot.stage = PACK;
+            vkind = REPACK;
+            vbegin = GetSystemCycle();
+            if (cfg[20])
+              Store(ctrl + (PACK_EPOCH + vs) * LINE, vgen + 1);
+            Command(ctrl, VCMD, ++vgen, REPACK, vs);
+          }
         }
       } else {
         if (vkind == REPACK) {
@@ -791,7 +799,13 @@ __aicore__ inline void Coordinator(__gm__ int64_t *cfg, Transfer &io) {
           if (mask) {
             vs = i;
             s[i].stage = PULL;
-            Descriptor(io, slots + i * 16, s[i]);
+            // Native plans are build-restricted to cap1/layer ownership, so
+            // no later source can invalidate this catalog during direct fanout.
+            if (ExpertRoutePlan::MIN_ROWS &&
+                SumSources(s[i].rows)>=ExpertRoutePlan::MIN_ROWS && !cfg[16] && !cfg[17])
+              Group(io, slots+i*16, s[i], cfg[7], cfg[14], cfg[15], cfg);
+            else
+              Descriptor(io, slots + i * 16, s[i]);
             vkind = FETCH;
             vpart = 0;
             vbegin = GetSystemCycle();

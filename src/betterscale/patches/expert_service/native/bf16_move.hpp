@@ -2,6 +2,7 @@
 // DFC-style slot-owned MTE2/MTE3 pipeline. No vector/scalar fence per row.
 // Whole-layer placement: FETCH transfers token-major input once; REPACK loads
 // each token once and fans it out to its K expert-major destinations locally.
+// Native-planned cap1 FETCH directly fans out peer chunks after maps freeze.
 // Fine-pack/urgent preemption are disabled for this full-command completion path.
 struct V2LiteMovePipeline {
   LocalTensor<int32_t> scratch;
@@ -36,6 +37,21 @@ struct V2LiteMovePipeline {
     }
     SetFlag<HardEvent::MTE3_MTE2>(event);++sequence;
   }
+
+  __aicore__ inline void RemoteFanout(__gm__ int32_t *src,
+                                     __gm__ int32_t *dst,int *map,int tokens) {
+    auto event=(sequence&1)?EVENT_ID2:EVENT_ID1;
+    auto local=scratch[(sequence&1)*8192];
+    GlobalTensor<int32_t> in,out;in.SetGlobalBuffer(src);
+    WaitFlag<HardEvent::MTE3_MTE2>(event);
+    DataCopy(local,in,tokens*HIDDEN/2);
+    SetFlag<HardEvent::MTE2_MTE3>(event);WaitFlag<HardEvent::MTE2_MTE3>(event);
+    for(int t=0;t<tokens;++t)for(int k=0;k<TOPK;++k) {
+      out.SetGlobalBuffer(dst+map[t*TOPK+k]*HIDDEN/2);
+      DataCopy(out,local[t*HIDDEN/2],HIDDEN/2);
+    }
+    SetFlag<HardEvent::MTE3_MTE2>(event);++sequence;
+  }
   __aicore__ inline void Finish() {
     // Also gates the next source's metadata read, not merely buffer reuse.
     WaitFlag<HardEvent::MTE3_MTE2>(EVENT_ID1);
@@ -50,7 +66,22 @@ __aicore__ inline void V2LiteMove(__gm__ int64_t *cfg,Transfer &io,
     io.Read((__gm__ int32_t*)ptr[5]+c*MAP,8);
     int gen=io.words.GetValue(0),n=io.words.GetValue(1);
     if(!gen || (kind==FETCH && !(mask&(1<<c))))continue;
-    if(kind==FETCH) {
+
+    if(kind==FETCH && ExpertRoutePlan::MIN_ROWS &&
+       n>=ExpertRoutePlan::MIN_ROWS && !cfg[16] && !cfg[17]) {
+      int per=(n+VW-1)/VW,first=worker*per,last=ScalarMin(n,first+per);
+      if(first>=last)continue;
+      int map[(TOKENS+VW-1)/VW*TOPK];
+      io.Read((__gm__ int32_t*)ptr[5]+c*MAP+8+first*TOPK,(last-first)*TOPK);
+      for(int i=0;i<(last-first)*TOPK;++i)map[i]=io.words.GetValue(i);
+      V2LiteMovePipeline copy;copy.Init(io.words);
+      for(int t=first;t<last;t+=8)
+        copy.RemoteFanout((__gm__ int32_t*)sources[c]+V2LITE_PAYLOAD_WORDS+t*HIDDEN/2,
+                          (__gm__ int32_t*)ptr[1],map+(t-first)*TOPK,
+                          ScalarMin(8,last-t));
+      copy.Finish();
+    } else if(kind==FETCH) {
+
       V2LiteMovePipeline copy;copy.Init(io.words);
       int words=n*HIDDEN/2;
       for(int off=worker*8192;off<words;off+=VW*8192)
