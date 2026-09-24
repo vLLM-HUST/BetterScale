@@ -17,13 +17,14 @@ class ServiceConfig:
     draft_layers: int
     qualification: str | None = None
     placement: str = 'layer'
+    return_mode: str = 'pull'
 
     @classmethod
     def from_vllm(cls, config):
         values = dict((getattr(config, 'additional_config', None) or {}).get('betterscale_experts', {}))
         if values.pop('experimental', False) is not True:
             raise ValueError('Expert service is experimental; explicit experimental=true required')
-        allowed = {'control', 'build', 'owners', 'sources', 'source', 'qualification', 'placement'}
+        allowed = {'control', 'build', 'owners', 'sources', 'source', 'qualification', 'placement', 'return_mode'}
         if values.keys() - allowed:
             raise ValueError(f'Unknown expert options: {sorted(values.keys() - allowed)}')
         spec = config.speculative_config
@@ -34,6 +35,10 @@ class ServiceConfig:
         return result
 
     def validate(self):
+        if self.return_mode not in ('pull', 'push'):
+            raise ValueError('Unsupported expert return mode')
+        if self.return_mode == 'push' and self.placement != 'layer':
+            raise ValueError('Push return currently requires layer placement')
         if self.placement not in ('layer', 'expert'):
             raise ValueError('Unsupported expert placement')
         if any(type(x) is not int for x in (self.owners, self.sources, self.source, self.draft_layers)):
@@ -78,7 +83,7 @@ class ServiceConfig:
                    NATIVE_PLACEMENT=self.placement, NATIVE_OWNERS=str(self.owners),
                    NATIVE_SOURCE=str(self.source), GRAPH_BATCH=str(graph_rows),
                    NATIVE_RETAIN_WEIGHTS='1' if self.qualification is None else '0',
-                   FINE_PACK='0', RETURN_MODE='pull')
+                   FINE_PACK='0', RETURN_MODE=self.return_mode)
         if self.qualification is not None:
             env['NATIVE_QUALIFICATION'] = self.qualification
         for key, value in env.items():

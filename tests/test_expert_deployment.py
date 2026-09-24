@@ -73,5 +73,21 @@ class Group(unittest.TestCase):
             self.assertEqual(group.receipt['status'],'FAIL')
             self.assertEqual([c.signals for c in group.children],[[signal.SIGINT],[signal.SIGINT]])
 
+    def test_push_option_reaches_both_role_commands(self):
+        with tempfile.TemporaryDirectory() as root:
+            group=self.make(root,return_mode='push')
+            commands=[]
+            group.launch=lambda role,command,device:commands.append((role,command))
+            group.wait=lambda predicate:None
+            group.rpc=lambda port,method:{}
+            group.start()
+            self.assertEqual(group.receipt['return_mode'],'push')
+            for role,command in commands:
+                if role.startswith('expert'):
+                    self.assertEqual(command[command.index('--return-mode')+1],'push')
+                else:
+                    config=json.loads(command[command.index('--additional-config')+1])
+                    self.assertEqual(config['betterscale_experts']['return_mode'],'push')
+
     def test_one_owner_full_model_is_rejected_before_launch(self):
         with self.assertRaises(ValueError):ServiceConfig('/control','/build',1,7,0,1).validate()

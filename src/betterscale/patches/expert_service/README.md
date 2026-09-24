@@ -188,3 +188,19 @@ plan inputs. This is not communication/compute overlap or a public release.
 The package-owned implementation passes the real-weight two-layer leaf and
 141 CPU contracts; whole-model qualification is still pending. Track fresh acceptance in the
 repo-knowledge expert-transport scenario before recommending the option.
+
+### Experimental reduced-output push return
+
+Layer placement additionally accepts explicit
+`betterscale_experts.return_mode="push"`; the packaged deployment/server CLI
+uses `--return-mode push`. Default remains `pull`; EP push is rejected pending
+separate qualification. Both roles bind the same mode, the IPC handshake checks
+it, and a retained exact-build qualification must also match the return mode.
+
+This reuses the existing native reduced-output path: the server writes the
+canonical weighted token directly into client-owned memory. Its vector reduction
+can overlap the prior token's output DMA, instead of finishing an owner-local
+SEND followed by a separate client remote pull. It does not add partial DONE or
+permit early buffer reuse. A2E1 real-weight/changed-input/generation-drain gates
+pass; full-model MTP/shadow and serving acceptance remain pending. This is not a
+default change, EP acceptance, or a new release.

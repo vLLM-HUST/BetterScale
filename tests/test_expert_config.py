@@ -156,3 +156,20 @@ class ResidentLaunch(unittest.TestCase):
         # Guard against restoring the old capture-on-init branch as a default.
         self.assertFalse(any(isinstance(n,ast.Attribute) and n.attr in ('NPUGraph','graph','replay')
                              for n in ast.walk(engine)))
+
+class ReturnMode(unittest.TestCase):
+    def test_explicit_push_config_and_binding(self):
+        values=dict(experimental=True,control='/control',build='/build',
+                    owners=2,sources=6,source=0,return_mode='push')
+        config=S(additional_config={'betterscale_experts':values},speculative_config=None)
+        service=ServiceConfig.from_vllm(config)
+        with patch.dict(os.environ,{},clear=True):
+            service.bind('/model',96)
+            self.assertEqual(os.environ['BETTERSCALE_EXPERT_RETURN_MODE'],'push')
+            with self.assertRaisesRegex(RuntimeError,'Conflicting'):
+                ServiceConfig('/control','/build',2,6,0,0).bind('/model',96)
+
+    def test_push_rejects_unqualified_ep_and_unknown_mode(self):
+        for kwargs in ({'return_mode':'push','placement':'expert'}, {'return_mode':'auto'}):
+            with self.assertRaises(ValueError):
+                ServiceConfig('/control','/build',2,6,0,0,**kwargs).validate()

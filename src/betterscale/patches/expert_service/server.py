@@ -18,11 +18,12 @@ def main():
     parser.add_argument('--owners', type=int, required=True)
     parser.add_argument('--sources', type=int, required=True)
     parser.add_argument('--placement', choices=('layer','expert'), default='layer')
+    parser.add_argument('--return-mode', choices=('pull','push'), default='pull')
     parser.add_argument('--owner', type=int, required=True)
     parser.add_argument('--draft-layers', type=int, choices=(0, 1), default=0)
     parser.add_argument('--receipt', type=Path, required=True)
     args = parser.parse_args()
-    config = ServiceConfig(args.control, args.build, args.owners, args.sources, 0, args.draft_layers, placement=args.placement)
+    config = ServiceConfig(args.control, args.build, args.owners, args.sources, 0, args.draft_layers, placement=args.placement, return_mode=args.return_mode)
     config.validate()
     config.check_build()
     if not 0 <= args.owner < args.owners:

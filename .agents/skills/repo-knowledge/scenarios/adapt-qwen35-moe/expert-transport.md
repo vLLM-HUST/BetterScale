@@ -173,3 +173,19 @@ drain and admission exit0.141 CPU tests pass.4096 complete medians~4.31ms hot8 /
 not whole-model or cap7/EP qualification. Subsequent source tightens per-expert
 plan-count bounds (<=frame routes) before whole-model acceptance; no normal-input
 arithmetic changes. New build and exact-build shadow receipts remain required.
+
+### Explicit return-mode admission
+
+The source-owned service config and deployment expose opt-in layer-only push
+return, default pull unchanged. Existing low-level IPC/weighted-combine already
+implements this mode; previously ServiceConfig.bind forced pull even when a
+leaf selected push. Both role commands now bind the explicit choice, and the
+existing retained qualification check requires matching return_mode. EP push is
+rejected rather than inheriting untested route-output behavior.
+
+A2E1 concurrent-push1 on local5/6/7 passed real layer0, initial and changed-input
+oracles, generation drain and guarded release. 96/4096-row isolated medians are
+1342/4814us, simultaneous2289/5183us, vs native-plan pull1483/5735 and2400/6639.
+A bracketing pull is queued to test shared-host drift; do not call this a serving
+speedup or enable push by default. hw3 whole-model gate remains unlaunched after
+one-hour busy admission; the next remote snapshot still has foreign occupancy.
