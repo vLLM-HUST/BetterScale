@@ -125,7 +125,8 @@ class Deployment:
                     '--safetensors-load-strategy','lazy','--compilation-config',json.dumps(dict(mode=0,
                         cudagraph_mode='FULL_DECODE_ONLY',cudagraph_capture_sizes=sizes,max_cudagraph_capture_size=max(sizes)))]
                 if self.synthetic_length is not None:
-                    command+=['--override-generation-config','{"temperature":0}']
+                    command+=['--override-generation-config','{"temperature":0}',
+                              '--default-chat-template-kwargs','{"enable_thinking":false}']
                 if a.mtp_tokens:
                     spec=dict(method='mtp',num_speculative_tokens=a.mtp_tokens)
                     if self.synthetic_length is not None:

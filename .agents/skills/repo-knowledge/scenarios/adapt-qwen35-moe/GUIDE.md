@@ -497,3 +497,20 @@ Artifacts for this fork are `runs/qwen35-expert-mtp/20260924-serving`; hw0 owns
 `/workspace/betterscale-hw0/qwen35-expert-mtp-20260924`. Its source snapshot is
 pinned0.25; a private copied venv avoids modifying ambient0.23. hw0 lacks `rsync`;
 use a checked tar-over-SSH transfer, not repeated missing-command attempts.
+
+`a4e4-direct1` then passed through the clean installed development wheel built
+frome800fc9 onhw0: realMTP2, C64,128 requests*128outputs, lengths257..32769,
+max-seqs16/query4096/nativeFULLdecode. All164 layer shadows passed (max relative
+L2=.000240644), all eight roles exited0, every owner recorded exactly two direct
+persistent launches/no server graphs and matching source generations. Admission
+exit0 and release observed no NPU processes. This is installed execution/lifecycle
+qualification, **not** semantic quality or AgentX throughput. The pending direct
+A6 gate must not be replaced with earlier server-graph evidence.
+
+The new explicit `patches/benchmark_mtp` packages the previously qualifiedTP2
+synthetic adapter and addsTP1/TP8 admission for matched expert/native comparisons.
+It is never selected by realMTP qualification. New distributed and HTTP gates
+remain required. Benchmark controls must beDP8EP8 orTP8EP8 with32 local routed
+experts at all41 physical layers, not eight replicated models. Development wheels
+still carry0.5.1 metadata for local inspection only; never upload them over the
+published artifact or describe this experimental branch as released0.5.1.

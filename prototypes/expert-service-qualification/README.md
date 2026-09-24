@@ -17,3 +17,18 @@ zero output-length/request errors; two directly launched persistent kernels per
 owner; exact client/owner generation equality; clean all-role exits and the
 external supervisor's device-release observation. Server graphs are not admitted
 as a substitute for the direct resident launch contract.
+
+`synthetic_probe.py` separately qualifies the explicit benchmark-only sampler at
+TP1/TP8 against an independent CPU oracle and cross-rank agreement. `benchmark.py`
+uses the installed group for candidates, and a tiny native observation Worker for
+DP8EP8/TP8EP8 controls. Controls must prove all41 target/draft layers have32 local
+experts and a complete nonoverlapping256-expert union; eight independent replicas
+are not an admissible baseline. Both routes use the same pinned synthetic adapter,
+MTP2/AL2.63, query4096, FULL decode and native262144 context. AgentX client evidence
+is separate from deployment evidence and generated synthetic text is not quality.
+
+The90-line `agentx_router.py` is retained byte-identical from the prior qualified
+matrix: new sessions round-robin, later turns sticky, child sessions independent.
+It changes neither workload bodies nor streamed responses and does not implement
+model execution. The endpoint binds only loopback. Each900s C64 smoke needs its
+own admitted eight-device deployment; no formal-hour or publication is implied.
