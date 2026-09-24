@@ -454,3 +454,24 @@ behavior. Real MTP/graph acceptance is still pending; no new benchmark or PyPI
 release follows from these source/build gates. The qualified0.25 Python is the
 `runs/rp-legacy/20260903T155041Z-layout/rp-upstream-0.25.1/.venv/bin/python`
 environment, not `/usr/local/python3.12.13` (which has0.23/Transformers5.5.4).
+
+The first real package gate (`eager1`, sourcebe475d3) completed target+draft
+shape-only loading, then rejected an old0.23 shared-overlap attribute name.
+The0.25 runner field is `multistream_overlap_shared_expert`; sourcee81db80
+corrects it. `test_expert_config.DonorSeams` now checks consumed runner members
+against the pinned source before another device load.
+
+`eager2` (A1E2/local0,1,2, MTP2/eager/query4096/C4) passed all41 native routed
+shadows, max relative L2=0.000240644. It skipped848 checkpoint tensors /
+66,035,122,176bytes; all82 metadata parameters total164bytes. This establishes
+physical draft remote routing and no local routed weight payload. All three
+roles exited0; server/client completion counts agreed (owner0=770, owner1=700).
+It **failed** semantic retrieval:7/8 correct, concurrent-1 returned
+`cobalt-seven-7-42`; at the extra7, selected logprob exceeded4 by0.75.
+Do not call that a near tie, dismiss it as harmless numerical error, or promote
+the entire gate to PASS because the layer shadows passed. `receipt.json`
+retained STARTED after the assertion in that first harness; admission exit1 and
+run.log are authoritative. Later harnesses explicitly write FAIL on exceptions.
+A matched native TP2 control and FULL-decode diagnostic are the next gates,
+not performance points. Both may coexist on disjoint selected-card leases;
+none of their timings establishes isolated throughput.

@@ -121,3 +121,18 @@ except ValueError: pass
 else: raise AssertionError('extra physical draft layer accepted')
 '''
         subprocess.run([sys.executable,'-c',code],check=True)
+
+class DonorSeams(unittest.TestCase):
+    def test_shared_expert_hook_uses_declared_pinned_runner_members(self):
+        import ast
+        root=Path(__file__).resolve().parents[1]
+        source=ast.parse((root/'upstream/vllm-ascend/vllm_ascend/ops/fused_moe/fused_moe.py').read_text())
+        runner=next(node for node in source.body if isinstance(node,ast.ClassDef) and node.name=='AscendMoERunner')
+        declared={n.name for n in runner.body if isinstance(n,(ast.FunctionDef,ast.AsyncFunctionDef))}
+        declared.update(n.attr for n in ast.walk(runner) if isinstance(n,ast.Attribute)
+                        and isinstance(n.value,ast.Name) and n.value.id=='self' and isinstance(n.ctx,ast.Store))
+        client=ast.parse((root/'src/betterscale/patches/expert_service/client.py').read_text())
+        consumed={n.attr for n in ast.walk(client) if isinstance(n,ast.Attribute)
+                  and isinstance(n.value,ast.Name) and n.value.id=='module'}
+        self.assertTrue(consumed)
+        self.assertEqual(consumed-declared,set())
