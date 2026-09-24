@@ -19,16 +19,23 @@ external supervisor's device-release observation. Server graphs are not admitted
 as a substitute for the direct resident launch contract.
 
 `synthetic_probe.py` separately qualifies the explicit benchmark-only sampler at
-TP1/TP8 against an independent CPU oracle and cross-rank agreement. `benchmark.py`
-uses the installed group for candidates, and a tiny native observation Worker for
-DP8EP8/TP8EP8 controls. Controls must prove all41 target/draft layers have32 local
-experts and a complete nonoverlapping256-expert union; eight independent replicas
-are not an admissible baseline. Both routes use the same pinned synthetic adapter,
-MTP2/AL2.63, query4096, FULL decode and native262144 context. AgentX client evidence
-is separate from deployment evidence and generated synthetic text is not quality.
+TP1/TP8 against an independent CPU oracle and cross-rank agreement. Fletcher stopped
+the AgentX comparison before completion and switched to `vLLM-HUST/swe-prefix-reuse`.
+Do not resume the old matrix or relabel its partial data.
 
-The90-line `agentx_router.py` is retained byte-identical from the prior qualified
-matrix: new sessions round-robin, later turns sticky, child sessions independent.
-It changes neither workload bodies nor streamed responses and does not implement
-model execution. The endpoint binds only loopback. Each900s C64 smoke needs its
-own admitted eight-device deployment; no formal-hour or publication is implied.
+`benchmark.py` uses installed Deployment for candidates, and a tiny native
+observation Worker for DP8EP8/TP8EP8 controls. Controls prove all41 target/draft
+layers have32 local experts and a complete nonoverlapping256-expert union;
+eight independent replicas are not an admissible baseline. Both paths include
+the qualified async feedback ownership repair and use **real** MTP2 acceptance,
+query4096, FULL decode and native262144 context. The SWE client uses unchanged
+prepared input deltas and actual generated token IDs, not synthetic acceptance.
+This is fixed-shape serving, not correctness of generated tool calls or SWE solving.
+
+The session relay retains `agentx_router.py` as its historical filename but now
+routes by SWE `cache_salt` when no correlation header exists. New session plays
+round-robin, later turns stay on their rank; request bodies/SSE bytes are unchanged.
+Both native DP and separated groups use the same loopback relay. `test_router.py`
+checks salt affinity and exact body/stream preservation. Keep server-side APC
+metrics alongside client occupancy/turn coverage; correct IDs alone do not prove
+cache hits. Each900s C64 run owns a fresh admitted eight-device deployment.

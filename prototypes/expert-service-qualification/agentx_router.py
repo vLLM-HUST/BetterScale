@@ -1,6 +1,6 @@
 """Session-affine streaming relay; workload bodies and SSE bytes are unchanged.
 
-The official harness supplies X-Correlation-ID per session. New sessions are
+SWE supplies cache_salt per session play; legacy AgentX supplies X-Correlation-ID. New sessions are
 assigned round-robin; subsequent turns stay on that attention/DP rank. Child
 sessions get their own placement. This is not root-tree affinity or caching.
 Only inference/readiness paths are exposed; native development RPC stays private.
@@ -23,7 +23,7 @@ class Affinity:
 
     def select(self, session):
         if not session:
-            raise ValueError('X-Correlation-ID is required for inference')
+            raise ValueError('cache_salt or X-Correlation-ID is required for inference')
         if session not in self.sessions:
             if len(self.sessions) >= 100000:
                 raise ValueError('bounded session table exhausted')
@@ -44,7 +44,7 @@ def application(backends, dp_size, receipt):
                                  auto_decompress=False, trust_env=False) as client:
             app['client'] = client
             yield
-        receipt.write_text(json.dumps({'policy':'round-robin new X-Correlation-ID, sticky turns; independent children',
+        receipt.write_text(json.dumps({'policy':'round-robin new session salt/correlation ID; sticky turns',
                                        'sessions':len(affinity.sessions),
                                        'requests_per_rank':dict(affinity.counts)}, indent=2)+'\n')
     app.cleanup_ctx.append(lifetime)
@@ -52,10 +52,16 @@ def application(backends, dp_size, receipt):
     async def relay(request):
         if request.path not in ('/health', '/v1/models', '/v1/chat/completions', '/v1/completions'):
             raise web.HTTPNotFound()
+        body = await request.read()
         rank = 0
         if request.method == 'POST':
             try:
-                rank = affinity.select(request.headers.get('X-Correlation-ID'))
+                session = request.headers.get('X-Correlation-ID')
+                if not session:
+                    session = json.loads(body).get('cache_salt')
+                if not isinstance(session,str):
+                    raise ValueError('session key must be a string')
+                rank = affinity.select(session)
             except ValueError as error:
                 raise web.HTTPBadRequest(text=str(error))
         headers = {k:v for k,v in request.headers.items()
@@ -64,7 +70,7 @@ def application(backends, dp_size, receipt):
             headers['X-data-parallel-rank'] = str(rank)
         backend = backends[0 if dp_size > 1 else rank]
         async with app['client'].request(request.method, backend+request.path,
-                                        data=await request.read(), headers=headers) as upstream:
+                                        data=body, headers=headers) as upstream:
             response = web.StreamResponse(status=upstream.status,
                 headers={k:v for k,v in upstream.headers.items() if k.lower() not in HOP})
             await response.prepare(request)

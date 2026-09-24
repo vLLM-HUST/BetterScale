@@ -15,6 +15,12 @@ class Worker(NPUWorker):
         benchmark_mtp.install(vllm_config)
         super().__init__(vllm_config, *args, **kwargs)
 
+    def load_model(self, *args, **kwargs):
+        result=super().load_model(*args, **kwargs)
+        from betterscale.patches.qwen_mtp_feedback import install
+        install(self.model_runner)
+        return result
+
     def ep_receipt(self):
         from vllm.distributed import get_dp_group, get_ep_group, get_tp_group
         ep,dp,tp=get_ep_group(),get_dp_group(),get_tp_group()

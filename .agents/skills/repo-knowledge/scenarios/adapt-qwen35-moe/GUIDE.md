@@ -571,3 +571,14 @@ exit0. Its41-layer FFN numerical qualification is the prior exact-build shadow
 receipt, not new per-request native shadows. Runtime frozen source `mod-source5`
 includes the repair and MOD wiring; `mod-source4` is the native-control repair.
 No throughput benchmark, broad model-quality claim or PyPI release follows.
+
+The serving fork merged9f58da1's feedback fix (merge d71d9a1); its native control
+fixture installs the same fix after load, so a donor state-ownership bug is not
+silently left in the baseline. Fletcher then cancelled AgentX in favor of
+`vLLM-HUST/swe-prefix-reuse`. The partial `a6e2-mtp2-c64-smoke1` was intentionally
+cancelled and released, not accepted throughput. Its forcedAL2.63 is NOT the new
+protocol: SWE continuation uses real MTP, exact generated IDs, fresh per-play
+cache salts and no warmup. Relay affinity follows that salt. Do not resume the
+old queued AgentX matrix, reinterpret its cancellation as kernel failure, or
+relabel its output as SWE Prefix Reuse. Keep the new workload's prepared identity,
+actual coverage/occupancy and native prefix-cache counters with each comparison.

@@ -1,4 +1,4 @@
-"""Eight-device AgentX endpoint: installed expert group or native true EP control.
+"""Eight-device workload endpoint: installed expert group or native true EP control.
 
 Caller owns admission/watchdog. This fixture owns only HTTP routing, benchmark
 configuration and native control observation; expert execution lives in the MOD.
@@ -21,14 +21,15 @@ def main():
     parser.add_argument('--arm',choices=['a4e4','a6e2','dp8ep8','tp8ep8'],required=True)
     parser.add_argument('--router-port',type=int,default=32900)
     args=parser.parse_args()
-    assert args.mtp_tokens==2 and args.synthetic_acceptance_length==2.63
+    assert args.mtp_tokens==2
+    assert args.synthetic_acceptance_length is None, 'SWE continuation uses real MTP acceptance'
     assert args.devices=='0,1,2,3,4,5,6,7'
     separated=args.arm.startswith('a')
     group=Deployment(args) if separated else None
     out=args.output.resolve();children=[];stopping=False
     ports=group.ports if group else [args.port_base]
     deadline=time.monotonic()+args.lifetime
-    receipt=dict(status='STARTED',arm=args.arm,commands=[],scope='synthetic benchmark, not semantic quality')
+    receipt=dict(status='STARTED',arm=args.arm,commands=[],scope='real MTP fixed-shape serving, not task-solving quality')
     def stop(*_):
         nonlocal stopping
         stopping=True
@@ -69,7 +70,7 @@ def main():
                 '--compilation-config',json.dumps(dict(mode=0,cudagraph_mode='FULL_DECODE_ONLY',
                     cudagraph_capture_sizes=sizes,max_cudagraph_capture_size=max(sizes))),
                 '--speculative-config',json.dumps(dict(method='mtp',num_speculative_tokens=2,
-                    rejection_sample_method='synthetic',synthetic_acceptance_length=2.63))]
+                    rejection_sample_method='standard'))]
             if tp==1:cmd+=['--data-parallel-size','8','--data-parallel-size-local','8','--api-server-count','1']
             launch('native',cmd);save()
             while not ready(ports[0]):check();time.sleep(1)
@@ -102,7 +103,11 @@ def main():
                     for name in ('num_drafts','num_draft_tokens','num_accepted_tokens')}
             assert counts['num_drafts']>0
             counts['observed_acceptance_length']=1+counts['num_accepted_tokens']/counts['num_drafts']
-            assert abs(counts['observed_acceptance_length']-2.63)<.08,counts
+            assert counts['num_accepted_tokens']>0,counts
+            counts['prefix_cache_hits']=sum(float(line.rsplit(' ',1)[1]) for line in metrics.splitlines()
+                if line.startswith('vllm:prefix_cache_hits_total{'))
+            counts['prefix_cache_queries']=sum(float(line.rsplit(' ',1)[1]) for line in metrics.splitlines()
+                if line.startswith('vllm:prefix_cache_queries_total{'))
             receipt['metrics'][str(port)]=counts
         receipt['status']='PASS'
     except BaseException as error:
