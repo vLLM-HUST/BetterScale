@@ -10,6 +10,9 @@ scenario itself does not grant new hardware authority. For serving qualification
 use the neighboring
 `adapt-qwen35-moe` and `optimize-qwen-hybrid-serving` scenarios.
 
+For the approved optional execution path and current graph-lifecycle evidence,
+read [owned-execution.md](owned-execution.md) before extending the runtime entry.
+
 ## Latest policy correction: hot resident seats
 
 Read [resident-seat-policy.md](resident-seat-policy.md) before using any earlier

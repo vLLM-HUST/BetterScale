@@ -44,3 +44,12 @@ to run that same boundary test against the distribution artifact.
 
 The Qwen prototype imports this namespace directly. No LiveInference checkout,
 editable install, package discovery or extra PYTHONPATH is required.
+
+## First selected architecture backend
+
+`arch/ascend/graph.py` separately transfers the small ACLGraphBackend from the
+same donor revision (`arch/ascend/runtime/aclgraph.py`). It specializes the common
+capture lifecycle using torch-npu graph/stream primitives, with no native binary
+intake and no import-time device initialization. Select it explicitly; no legacy
+root export or runtime auto-detection is added. Its CPU protocol tests and the
+Qwen GDN two-bank NPU probe qualify this narrow path, not full serving.

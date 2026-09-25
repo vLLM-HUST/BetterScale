@@ -2,7 +2,7 @@
 
 Experimental, opt-in, **not wired into the serving Worker**. Native runtimes and
 qualified graph capsules are unchanged. This is a declaration/allocation and
-numerical-addressing cut, not a completed model migration or speed claim.
+numerical-addressing and owned-graph cut, not a completed model migration or speed claim.
 
 ## Ownership and realization
 
@@ -64,7 +64,16 @@ The independent CPU history/recurrence checks every candidate and convolution
 row. Recurrence consumes observed BF16 convolution outputs so convolution ULP
 rounding does not masquerade as a persistent-State error; convolution outputs
 are checked separately. This is not an independent end-to-end model oracle.
-External probe graphs are synchronized and reset before closing the State root.
+`gdn_graph.py` declares two LiveGraph banks, stable output MetaTensors and explicit
+host metadata construction actions. The BetterScale Ascend backend owns their
+warmup, capture and retirement. State touched by graph build is declared as
+resident0..3 (all three candidates are lowered by StateTensor), with no token-page
+writes. The probe checks that nonzero initialization survives build, active
+invocations block close, and retired graph executions cannot run after a new
+root generation activates. No full-forward shadow fallback is enabled.
+
+The historical leaf2 receipt used external NPUGraphs; the owned-graphs3 receipt
+is the new lifecycle evidence. These are separate observations.
 
 `gdn_candidates.py` is an isolated copy of the previously qualified experimental
 candidate kernel (original Git blob `4c1518d498467947f8f8e2b42e71e299a0cf1db7`),
@@ -84,8 +93,9 @@ script outside an admitted workload.
 ## Remaining integration boundary
 
 No resident directory, eviction, FA page allocator, prefill-to-decode handoff,
-real MTP verifier, draft continuation, model loader or owned graph execution has
-been connected here. A request finish must eventually retain its hot seat;
+real MTP verifier, draft continuation, model loader has
+been connected here. Owned graph execution is qualified only for the GDN leaf
+probe, not yet for the complete model. A request finish must eventually retain its hot seat;
 reuse needs compatible complete continuation, and eviction must quiesce writers
 and invalidate identity before clearing. The old scheduler/blockpool must not
 remain the hidden authority behind a new tensor binding. Full-model TP1 output

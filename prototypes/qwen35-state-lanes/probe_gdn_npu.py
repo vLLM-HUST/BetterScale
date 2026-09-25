@@ -1,10 +1,7 @@
-"""Bounded NPU proof: accepted-prefix conv/GDN continuation in two FULL graphs.
+"""Owned graph lifecycle plus independent CPU candidate-state numerical oracle.
 
-Derived from the September24 candidate_state_probe; no model weights or serving hooks.
-Real Qwen0.8B TP1 State geometry, realized by LiveInference; separate conv seats
-and recurrent candidates. Native NPUGraphs are explicitly reset before close. Independent CPU recurrence checks every live
-output and candidate state, not merely graph/eager agreement. Metadata changes
-between replays; state stays in its physical K-V pool throughout execution.
+Reuses the previous 24-wave candidate oracle; capture/replay/retirement now belong
+to the BetterScale root, not external NPUGraph holders. No weights or serving.
 """
 
 import json
@@ -13,11 +10,16 @@ from pathlib import Path
 
 import torch
 import torch_npu
-from betterscale.live import LiveRuntime, TorchStateBackend, live_runtime
-from state import Capacity, Geometry, QwenStateRoot
 from vllm_ascend.utils import enable_custom_op
-
-from gdn_candidates import fused_recurrent_gated_delta_rule_fwd
+from betterscale.live import (
+    LiveModuleError,
+    LiveRuntime,
+    TorchStateBackend,
+    live_runtime,
+)
+from betterscale.live.arch.ascend.graph import ACLGraphBackend
+from state import Capacity, Geometry
+from gdn_graph import GDNGraphRoot
 
 
 def main():
@@ -25,107 +27,38 @@ def main():
     torch.npu.set_device(0)
     torch.manual_seed(71)
     torch.set_num_threads(4)
-    device = "npu"
-    width = 3
-    requests, capacity, channels = 5, 12, 6144
+    width, capacity, channels = 3, 12, 6144
     geometry = Geometry.from_config(
         json.loads(Path(__file__).with_name("qwen35-0.8b-text-config.json").read_text())
     )
+    weight_cpu = (torch.randn(4, channels) * 0.2).bfloat16()
     with live_runtime(
         LiveRuntime(
-            device=device,
-            state_backend=TorchStateBackend(device, memory_budget_bytes=512 << 20),
+            device="npu",
+            state_backend=TorchStateBackend("npu", memory_budget_bytes=512 << 20),
+            graph_backend=ACLGraphBackend(device="npu"),
         )
     ):
-        root = QwenStateRoot(geometry, Capacity(4, 5, token_pages=32))
+        root = GDNGraphRoot(geometry, Capacity(4, 5, token_pages=32), weight_cpu)
     assert not any(s.is_bound for _, s in root.named_states())
+    assert not any(g.prepared for _, g in root.named_graphs())
     root.activate()
-    # Nontrivial resident order; seat4 remains hot/inactive throughout all waves.
+    assert all(not g.metadata.requires_forward_replay for _, g in root.named_graphs())
+    stream = torch.npu.current_stream()
+    old_execution = dict(root.named_graphs())["bank0"]._execution
     resident_ids = torch.tensor([2, 0, 3, 1, -1])
     physical = resident_ids[:, None] * width + torch.arange(width)[None, :]
     physical[-1].fill_(-1)
     pool, conv = root.target["0"].recurrent.tensor, root.target["0"].conv.tensor
+    # Warmup/capture must restore the seeded State before READY.
+    assert torch.all(pool == 0.125).item()
+    assert torch.all(conv == 0.25).item()
     pool_seed = torch.randn(pool.shape) * 0.01
     conv_seed = (torch.randn(conv.shape) * 0.1).bfloat16()
     pool.copy_(pool_seed)
     conv.copy_(conv_seed)
-    weight_cpu = (torch.randn(4, channels) * 0.2).bfloat16()
-    weight = weight_cpu.to(device)
-    x = torch.empty(capacity, channels, dtype=torch.bfloat16, device=device)
-    g = torch.empty(1, capacity, 16, device=device)
-    beta = torch.empty_like(g)
-    banks = []
-    for _ in range(2):
-        # Non-unit column stride guards the candidate address calculation.
-        slots_storage = torch.full(
-            (requests, 2 * width), -1, dtype=torch.int64, device=device
-        )
-        banks.append(
-            dict(
-                ids=torch.arange(5, dtype=torch.int64, device=device),
-                cu=torch.tensor(
-                    [0, width, 2 * width, 3 * width, 4 * width, 4 * width],
-                    dtype=torch.int32,
-                    device=device,
-                ),
-                slots=slots_storage[:, ::2],
-                conv_slots=resident_ids[:, None].int().contiguous().to(device),
-                accepted=torch.ones(requests, dtype=torch.int32, device=device),
-            )
-        )
-        banks[-1]["slots"].copy_(physical)
-
-    def forward(bank):
-        y = torch.empty_like(x)
-        torch.ops._C_ascend.npu_causal_conv1d_custom(
-            y,
-            x,
-            weight,
-            conv_state=conv,
-            bias_opt=None,
-            query_start_loc_opt=bank["cu"],
-            cache_indices_opt=bank["conv_slots"],
-            initial_state_mode_opt=None,
-            num_accepted_tokens_opt=bank["accepted"],
-            activation_mode=1,
-            pad_slot_id=-1,
-            run_mode=1,
-        )
-        q, k, v = (
-            part.reshape(1, capacity, heads, 128).contiguous()
-            for part, heads in zip(y.split([2048, 2048, 2048], -1), [16, 16, 16])
-        )
-        out, _ = fused_recurrent_gated_delta_rule_fwd(
-            q,
-            k,
-            v,
-            g,
-            beta,
-            128**-0.5,
-            pool,
-            cu_seqlens=bank["cu"],
-            ssm_state_indices=bank["slots"],
-            num_accepted_tokens=bank["accepted"],
-            use_qk_l2norm_in_kernel=True,
-        )
-        return y, out
-
-    x.zero_()
-    g.fill_(-0.1)
-    beta.fill_(0.5)
-    graphs, outputs = [], []
     try:
         with torch.inference_mode():
-            for bank in banks:
-                forward(bank)
-                torch.npu.synchronize()
-                graph = torch.npu.NPUGraph()
-                with torch.npu.graph(graph):
-                    result = forward(bank)
-                graphs.append(graph)
-                outputs.append(result)
-            pool.copy_(pool_seed)
-            conv.copy_(conv_seed)
             expected_pool, expected_conv = pool_seed.clone(), conv_seed.clone()
             previous_lengths = [width] * 4
             rows = []
@@ -148,19 +81,28 @@ def main():
                 cpu_x = (torch.randn(capacity, channels) * 0.1).bfloat16()
                 cpu_g = -torch.rand(1, capacity, 16) * 0.2
                 cpu_beta = torch.rand(1, capacity, 16)
-                bank = banks[wave % 2]
-                bank["cu"].copy_(ends)
-                bank["slots"].copy_(mapping)
-                bank["conv_slots"].copy_(resident_ids[order + [4], None].int())
-                bank["accepted"].copy_(
-                    torch.tensor(ordered_accepted, dtype=torch.int32)
+                invocation = root.replay(
+                    f"bank{wave % 2}",
+                    cpu_x,
+                    cpu_g,
+                    cpu_beta,
+                    ends,
+                    mapping,
+                    resident_ids[order + [4], None].int(),
+                    torch.tensor(ordered_accepted, dtype=torch.int32),
+                    wave % 2,
+                    stream=stream,
                 )
-                x.copy_(cpu_x)
-                g.copy_(cpu_g)
-                beta.copy_(cpu_beta)
-                graphs[wave % 2].replay()
+                if wave == 0:
+                    try:
+                        root.close()
+                    except LiveModuleError:
+                        pass
+                    else:
+                        raise AssertionError("root closed over an in-flight invocation")
                 torch.npu.synchronize()
-                actual_y, actual_o = [t.cpu() for t in outputs[wave % 2]]
+                invocation.retire()
+                actual_y, actual_o = [t.cpu() for t in root.outputs(wave % 2)]
                 reference_y, reference_o = [], []
                 for row, request in enumerate(order):
                     length = lengths[request]
@@ -271,31 +213,40 @@ def main():
                 graphs=2,
                 waves=rows,
                 state_layout="K-V",
-                allocator="LiveInference StateTensor",
+                allocator="betterscale.live StateTensor",
+                lifecycle="root-owned graphs and invocations",
                 resident_seats=5,
                 token_pages=32,
                 numerical_lanes=50,
                 model="Qwen3.5-0.8B",
                 scope="one real-geometry GDN leaf, full State allocation; not model/serving integration",
             )
-            Path(os.environ["CAPSULE"], "receipt.json").write_text(
-                json.dumps(receipt, indent=2)
-            )
-            print(
-                json.dumps(
-                    dict(
-                        passed=True,
-                        waves=len(rows),
-                        state_max=max(r["state_max"] for r in rows),
-                    )
-                ),
-                flush=True,
-            )
     finally:
         torch.npu.synchronize()
-        for graph in graphs:
-            graph.reset()
         root.close()
+    assert not any(g.prepared for _, g in root.named_graphs())
+    assert not any(s.is_bound for _, s in root.named_states())
+    # Reactivation publishes a different generation, not a reusable old capture.
+    root.activate()
+    try:
+        try:
+            old_execution.replay(stream=stream)
+        except LiveModuleError:
+            pass
+        else:
+            raise AssertionError("retired graph executed against a new generation")
+        assert torch.all(root.target["0"].recurrent.tensor == 0.125).item()
+    finally:
+        root.close()
+    receipt["lifecycle_passed"] = True
+    receipt["forward_shadow"] = False
+    Path(os.environ["CAPSULE"], "receipt.json").write_text(
+        json.dumps(receipt, indent=2)
+    )
+    print(
+        "owned lifecycle: close-busy rejection, reactivation, stale graph rejection passed",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

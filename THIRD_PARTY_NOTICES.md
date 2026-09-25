@@ -58,3 +58,8 @@ compatibility exports are omitted. The matching State/grouped-backend tests are
 adapted from the same revision. See `betterscale/live/README.md` for scope and
 changes and `licenses/Apache-2.0.txt` for the license. LiveInference models,
 architecture implementations and native binaries are not included by this intake.
+
+The separately selected `betterscale.live.arch.ascend.graph` backend and its
+CPU protocol tests are also transferred from LiveInference
+`05ac15419c0e73650e687ceb9daffeb7874865f0`, Apache-2.0, with import paths relocated.
+This adds a Python torch-npu graph specialization, not any donor native binaries.
