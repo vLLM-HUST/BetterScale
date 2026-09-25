@@ -40,17 +40,55 @@ uses test seeds and fixed 0.8B geometry; do not use it as a full LLM root.
 Inherited LiveModule lifecycle owns allocation, initialization, capture and
 retirement rather than a second runner owning the same tensors.
 
-The optional `--runtime live` route is under qualification on this work branch.
-Its loopback HTTP ingress supports greedy, non-streaming text completions/chat;
-request execution is serialized, with independent resident and token-page budgets.
-It never constructs a native Worker or KV manager. Unsupported features fail
-rather than falling back. Default native execution is unchanged.
+## Optional live serving entry
 
-The small0.8B TP1 four-graph/MTP/hot-seat vertical passed.35B-A3B TP2 currently
-has an unresolved warm/cold token discrepancy; it is **not yet qualified**.
-The experiment scripts and repo knowledge retain that failure and the active
-independent-native/teacher-forced investigation. No speed or concurrent-serving
-claim follows from these bounded correctness probes.
+From this development source build, in the pinned donor/CANN environment:
 
-CPU contracts and the admitted GDN numerical probe live under
-`prototypes/qwen35-state-lanes`; they now consume this installed package API.
+```bash
+python -m betterscale serve-qwen /models/Qwen3.5-35B-A3B \
+  --runtime live --devices 0,1
+```
+
+The root is `QwenLiveLLMRoot` in `graphs.py`, with real target/draft execution
+in `execution.py` and numerical leaves in `numerics.py`. BetterScale owns State
+allocation, initialization, four graph captures, invocation and retirement.
+No external `livemodule`, native Worker, native KV planner or native runner
+fallback is used. Default `--runtime native` remains unchanged.
+
+Loopback HTTP on127.0.0.1:8000 exposes `/health`, `/v1/models`,
+`/v1/completions` and `/v1/chat/completions`. Only greedy, non-streaming text,
+`n=1`, is supported; unsupported features fail before distributed execution.
+Generation honors model EOS unless `ignore_eos` is explicitly requested.
+
+Defaults are512 context tokens (including prompt, output and two-token MTP
+lookahead),20 resident seats,64 shared128-token pages, and one execution seat.
+`--live-context-tokens`, `--live-resident-seats`, `--live-token-pages` and
+`--live-distributed-port` configure those explicit bounds. GDN/continuation
+lanes are resident-owned; target and draft FA use the shared token-page domain.
+Finish retains hot State. Matching continuation resumes its seat; shorter
+prefixes cannot use later recurrent State. Unrelated work prefers empty seats;
+seat/page pressure evicts only idle residents. No CPU offload is provided.
+
+## Qualified scope
+
+The real0.8B TP1 four-graph/MTP vertical passed, followed by35B-A3B BF16 TP2.
+The latter's installed public entry passed at512 context /20 residents /64
+pages: arithmetic and exact-copy chats including EOS,12 raw outputs and8 warm
+continuation outputs match an independent pinned native baseline token-for-token.
+A189-token chat crosses token-page boundaries and repeats identically.
+Separate TP2 checks prove untouched hot GDN/FA State,19-token prefix reuse,
+cold-target equality, graph retirement and fresh-generation replay.
+
+The MoE loader explicitly preserves native Ascend's FP32 router-weight contract
+for both target and draft. Omitting it silently selects BF16 routing and caused
+the now-resolved token discrepancy; it is not a cache-layout workaround.
+
+This remains a serialized correctness entry, not a high-throughput scheduler,
+C16/C32 qualification, maximum-context claim or universal BF16 batch-invariance
+guarantee. Attention deliberately uses a bounded plain implementation; no speed
+claim follows from these probes. The existing published PyPI0.5.1 predates this
+source addition; no new PyPI release is implied.
+
+CPU contracts and admitted probes are under `prototypes/qwen35-state-lanes`;
+they consume this packaged API. See `docs/evidence/qwen35-live-e2e.json` in the
+source repository for the bounded receipts and failed-attempt history.

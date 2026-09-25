@@ -23,6 +23,23 @@ def loaded_parameter_names(model, reported):
     return resolved
 
 
+def prepare_moe_routing(model):
+    """Preserve Ascend's FP32 router contract without native Worker bootstrap.
+
+    AscendUnquantizedLinearMethod normally creates this weight during native
+    post-load. Core linear leaves do not; its absence silently switches the
+    reused AscendMoERunner to BF16 routing. The immutable buffer is a weight,
+    not resident/request State, and must exist before graph activation.
+    """
+    for layer in model.model.layers:
+        gate = layer.mlp.gate
+        gate.register_buffer(
+            "weight_fp32", gate.weight.detach().float(), persistent=False
+        )
+        if not layer.mlp.experts.is_internal_router:
+            raise RuntimeError("pinned Ascend MoE did not select FP32 internal routing")
+
+
 def load_models(config, model_path, device):
     import torch
     from safetensors import safe_open
@@ -84,5 +101,7 @@ def load_models(config, model_path, device):
         )
     for model in (target, draft):
         process_weights_after_loading(model, config.model_config, torch.device(device))
+        if moe:
+            prepare_moe_routing(model)
         model.eval()
     return target, draft

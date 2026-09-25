@@ -10,6 +10,7 @@ class Tokenizer:
 
     def apply_chat_template(self, messages, **kwargs):
         assert kwargs["enable_thinking"] is False
+        assert kwargs["return_dict"] is False
         return [3, 4]
 
 

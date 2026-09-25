@@ -4,8 +4,8 @@ Fletcher approved the plan on2026-09-25: make live execution an optional
 BetterScale path, with one owner for State initialization, warmup, capture,
 invocation and retirement. Default native execution remains unchanged. The
 intended configuration is a mutually exclusive native/live selection, not
-independent allocation/capture switches; the CLI spelling is now `--runtime native|live`. Live serving remains
-reserved and rejects before native resource preparation. Unsupported live configurations must reject before initialization,
+independent allocation/capture switches; the CLI spelling is now `--runtime native|live`. The initial fail-closed reservation is now a qualified bounded live route
+(see the final acceptance below), branching before native resource preparation. Unsupported live configurations must reject before initialization,
 never fall back after partial activation.
 
 Construction order:
@@ -197,3 +197,84 @@ in greedy-only mode (TP value/index pair reduction). Full vocabulary output is
 retained only as an explicit diagnostic mode. Loopback HTTP/CLI integration is
 being prepared, but must remain on this work branch until the TP2 discrepancy
 and public-entry acceptance are closed.
+
+The TP2 discrepancy was subsequently narrowed, not waived:
+- `20260925-tp2-diagnostics1` teacher-forces the same23-token prefix through
+ eager1/graph1/eager3/graph3. Pair-reduced greedy equals full-vocabulary argmax
+ on every call/rank. Eager1 and graph1 choose15 at position22; both width3
+ routes choose13. No resident reuse or draft participates, so neither is
+ required to reproduce the difference. Early GDN layers0/1/2 end with identical
+ selected SSM across modes. This does not prove every later State transition.
+- `20260925-native-reference2` is a separate native Worker/runner baseline,
+ BASE+N source, BF16 TP2 MTP2 eager, APC off. Raw7-token prompt's first output
+ is198, versus current live220. Arithmetic and exact-copy chats produce `4`
+ and `ORCHID-7319`, including248046 EOS. Exit0/release passed. The first native
+ attempt failed in its chat harness because Transformers5.14.1 defaults
+ `apply_chat_template(return_dict=True)`; explicitly requestFalse at token-list
+ consumers. Raw outputs are now saved before later chat work can fail.
+- `20260925-moe-cpu-reference2` independently loads full35B Transformers BF16
+ CPU weights and runs the same7-token prefix. Final top logits are198=11.8125,
+ 220=11.75; live eager has220=11.6875,198=11.625. The final hidden cosine is
+ 0.99784. These close margins constrain interpretation: the initial token
+ mismatch alone is not proof of a layout bug. CPU1 failed only because its
+ meta-initialized nonpersistent rotary buffers were not materialized; CPU2
+ explicitly reconstructs the rotary module on CPU before forwarding.
+- `20260925-layer-diagnostics1` and `20260925-attention-diagnostics1` retain
+ layer residual sums and first-FA projected inputs for independent comparison.
+ First-FA outputs closely match CPU FP64 attention over the same projected
+ inputs; width-dependent differences already exist in its qkv inputs.
+- A concrete unqualified numerical seam remains: native Ascend linear
+ post-load creates a FP32 MoE router weight; AscendMoERunner then uses its
+ internal FP32 routing path. Direct core leaf construction currently leaves
+ that weight absent and uses BF16 routing. `20260925-router-precision1/probe.py` isolates
+ this one change before any decision to adopt it. Do not import the whole
+ native Worker bootstrap to obtain a numerical leaf contract.
+
+The router seam is now resolved. `20260925-router-precision1` changes only
+that FP32 router weight and asserts AscendMoERunner's internal route. All four
+teacher-forced modes now have identical greedy IDs; the first7 choices also
+match independent Transformers CPU. The old final15/13 branch no longer differs
+across the four modes. The production loader now prepares a detached,
+nonpersistent FP32 weight buffer for target and draft MoE routers after loading,
+before activation. This is immutable model weight storage, not resident State.
+No native Worker, global arithmetic registration or cache bootstrap is added.
+
+`20260925-tp2-live4` passes the original strict gate without weakening it:
+12 eager target-only IDs =12 graph/MTP IDs = independent native12 IDs;
+8 warm continuation IDs = cold eager8 IDs = independent native8 IDs.
+MTP accepted7/10 proposals initially,4/8 on continuation; warm hit19 on seat0.
+Unrelated B uses seat1 and leaves all seat0 GDN candidates/history and both target
+and draft FA page0 byte-exact. A fresh root generation repeats A→C without B and
+matches the A→B→C outputs exactly. Close leaves all four graphs unprepared.
+Both ranks agree and exit0/release pass. This is bounded correctness evidence,
+not universal BF16 batch-invariance or a throughput result.
+
+
+## Installed public-entry acceptance
+
+`20260925-live-package1` builds a fresh sdist and wheel, with wheel built from
+that sdist and the four unchanged qualified native libraries. Strict Twine
+metadata checks pass;131 installed payload files directly equal staged files.
+No prototype, external livemodule package or new entry points are present.
+71 focused CPU tests and20 installed-package tests pass (the namespace check
+also executes14 State contracts in an isolated subprocess).
+
+`20260925-http-installed2` consumes that isolated installation, asserts package
+origin, and runs the actual public CLI on local0/1 under selected-card leases,
+fresh30s admission and continuing foreign-owner guard. Configuration isBF16 TP2,
+MTP2,512 context,20 residents,64 shared128-token pages, one execution seat.
+Four owned graphs are reported. Arithmetic2-token and exact-copy9-token chats
+match independent native including EOS; raw12 and warm8 IDs also match native.
+Warm reuse hits19 tokens. A189-token chat crosses a page boundary and two cold
+repetitions return the same9 IDs, without falsely hitting a shorter prefix from
+later GDN State. Unsupported non-greedy input returns400 and service remains
+healthy. Rank0's normal shutdown releases the other rank; service/probe exit0,
+and physical0/1 return idle. `http-live1` was an earlier source-entry pass for
+chat/ingress only and retained the pre-router-fix raw mismatch; don't use it as
+final numerical evidence.
+
+The final documentation-only rebuild may change prose/metadata. Compare all
+behavior-bearing installed payload files directly with this qualified install;
+do not repeat NPU loading merely to date-stamp unchanged code. Scope stays
+serialized greedy text and a bounded plain-attention envelope, not throughput,
+C16/C32, offload, all graph shapes or full long-context model qualification.

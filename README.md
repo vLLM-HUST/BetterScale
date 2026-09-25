@@ -196,3 +196,23 @@ separately; a faster step is not by itself an end-to-end throughput claim.
 BetterScale is open source under the [Apache License 2.0](LICENSE).
 See [third-party notices](THIRD_PARTY_NOTICES.md) for the upstream execution paths
 adapted by the patches. The pinned upstream repositories retain their own licenses.
+
+## Optional owned live runtime (development source)
+
+The source now includes a separate BetterScale-owned `QwenLiveLLMRoot` and
+LiveModule/StateTensor execution path:
+
+```bash
+python -m betterscale serve-qwen /models/Qwen3.5-35B-A3B \
+  --runtime live --devices 0,1
+```
+
+It owns initialization and graph capture as well as resident State, with no
+external `livemodule` dependency or native runner fallback. The35B-A3B BF16 TP2
++ MTP2 installed entry passed bounded end-to-end correctness checks. Default
+native serving is unchanged. This is currently serialized, greedy-only,
+loopback HTTP with512-token default context,20 resident seats and a separate
+shared token-page budget—not a throughput replacement or C16/C32 qualification.
+See the [model entry](src/betterscale/live/llm/qwen35/README.md) and
+[evidence](docs/evidence/qwen35-live-e2e.json). Published PyPI0.5.1 predates this
+source addition; no new package release is implied.

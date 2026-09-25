@@ -51,7 +51,11 @@ def request_tokens(payload, tokenizer, *, chat, context_tokens, vocab_size):
         ):
             raise ValueError("messages must contain plain role/content text pairs")
         tokens = tokenizer.apply_chat_template(
-            messages, tokenize=True, add_generation_prompt=True, enable_thinking=False
+            messages,
+            tokenize=True,
+            return_dict=False,
+            add_generation_prompt=True,
+            enable_thinking=False,
         )
     else:
         prompt = payload.get("prompt")

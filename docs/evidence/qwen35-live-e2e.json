@@ -1,0 +1,66 @@
+{
+  "date": "2026-09-25",
+  "model": "Qwen3.5-35B-A3B",
+  "model_revision": "712cf74392b05026a6db2bf213d343747d1f6d45",
+  "scope": {
+    "dtype": "BF16",
+    "tp": 2,
+    "mtp_depth": 2,
+    "execution_seats": 1,
+    "resident_seats": 20,
+    "token_pages": 64,
+    "page_tokens": 128,
+    "context_tokens": 512,
+    "runtime_root": "betterscale.live.llm.qwen35.graphs.QwenLiveLLMRoot",
+    "native_runner_fallback": false,
+    "external_livemodule": false
+  },
+  "native_reference": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260925-native-reference2/reference.json",
+  "state_graph_receipt": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260925-tp2-live4",
+  "installed_entry_receipt": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260925-http-installed2",
+  "qualified_installed_payload": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260925-live-package1/installed",
+  "checks": {
+    "cpu_tests": 71,
+    "installed_tests": 20,
+    "isolated_nested_state_tests": 14,
+    "payload_files_compared": 131,
+    "raw_and_warm_native_token_equality": true,
+    "chat_native_token_equality_including_eos": true,
+    "hot_state_untouched_by_unrelated_request": true,
+    "fresh_generation_replay_equal": true,
+    "long_chat_prompt_tokens": 189,
+    "long_chat_repeat_equal": true,
+    "unsupported_input_status": 400,
+    "service_exit": 0,
+    "npu_released": [
+      0,
+      1
+    ]
+  },
+  "speculation": {
+    "initial_proposed": 10,
+    "initial_accepted": 7,
+    "continuation_proposed": 8,
+    "continuation_accepted": 4,
+    "cached_tokens": 19
+  },
+  "resolved_failures": [
+    "MoE weight-loader receipt aliases omit routed_experts owner",
+    "MTP numerical context must not use target model layer-index predicate",
+    "Transformers5.14.1 chat template defaults to a mapping, not token-list",
+    "Missing native FP32 router-weight preparation silently selected BF16 MoE routing"
+  ],
+  "historical_rejections": {
+    "20260925-model-graphs1": "invalid graph claim: harness used eager class; never cite as capture evidence",
+    "20260925-tp2-live3": "warm/cold mismatch before FP32 router fix; retained unchanged",
+    "20260925-http-live1": "chat/ingress passed but raw token mismatch before router fix"
+  },
+  "not_claimed": [
+    "new PyPI publication",
+    "throughput improvement",
+    "concurrent C16/C32 serving",
+    "CPU offload",
+    "maximum-context qualification",
+    "universal BF16 batch-invariance"
+  ]
+}

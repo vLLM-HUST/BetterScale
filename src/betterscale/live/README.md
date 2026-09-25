@@ -59,6 +59,6 @@ Qwen GDN two-bank NPU probe qualify this narrow path, not full serving.
 model-specific declarations. The two-bank probe root and its lazy numerical
 kernel are colocated; no implementation is imported from the prototype directory.
 See [the model entry](llm/qwen35/README.md) for explicit construction and the
-not-yet-qualified serving boundary. This is new BetterScale composition, not a
+bounded, qualified optional serving entry. This is new BetterScale composition, not a
 copy of the complete LiveInference serving root. The numerical kernel alone
 requires the pinned vLLM Triton environment when executed.
