@@ -9,8 +9,16 @@ import platform
 import sys
 
 
-def prepare(model, devices, port, cache_dir):
+def prepare(model, devices, port, cache_dir, *, runtime="native"):
     """Prepare a new process; never preload CANN into this interpreter."""
+    if runtime == "live":
+        raise ValueError(
+            "live serving is not qualified yet: use betterscale.live.llm.qwen35 "
+            "for experimental State roots; target/MTP execution and scheduling "
+            "are not connected. No native fallback was started."
+        )
+    if runtime != "native":
+        raise ValueError(f"unknown runtime: {runtime}")
     pair = devices.split(",")
     if (
         len(pair) != 2
@@ -52,6 +60,12 @@ def main():
     qwen = sub.add_parser("serve-qwen", help="Qwen27 BF16 TP2 / FULL / APC / no MTP")
     qwen.add_argument("model", type=Path)
     qwen.add_argument(
+        "--runtime",
+        choices=("native", "live"),
+        default="native",
+        help="native (default); live is experimental and not yet available for serving",
+    )
+    qwen.add_argument(
         "--devices", required=True, help="two idle 910B2 devices, e.g. 0,1"
     )
     qwen.add_argument("--port", type=int, default=8000)
@@ -66,7 +80,9 @@ def main():
     if not args.model.is_dir():
         parser.error("model must be an existing local Qwen27 checkpoint directory")
     try:
-        command, env = prepare(args.model, args.devices, args.port, args.cache_dir)
+        command, env = prepare(
+            args.model, args.devices, args.port, args.cache_dir, runtime=args.runtime
+        )
     except (ValueError, FileNotFoundError) as exc:
         parser.error(str(exc))
     root = Path(__file__).parent / "patches"
