@@ -13,7 +13,8 @@ from betterscale.live import (
     live_runtime,
 )
 from betterscale.live.runtime.grouped_state import GroupedStateBackend
-from state import AttentionState, Capacity, GDNState, Geometry, QwenStateRoot
+from betterscale.live.llm.qwen35 import Capacity, Geometry, QwenStateRoot
+from betterscale.live.llm.qwen35.state import AttentionState, GDNState
 
 
 SMALL = Geometry(("linear_attention", "full_attention"), 1, 4, 1, 2, 4, 4, 4, 8)

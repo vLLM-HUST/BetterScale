@@ -66,3 +66,11 @@ class QwenLauncher(unittest.TestCase):
         with patch.dict(os.environ, {"BETTERSCALE_GDN_LIBRARY": "/missing/native.so"}):
             with self.assertRaises(FileNotFoundError):
                 prepare(Path("/model"), "0,1", 8000, Path("/tmp/cache"))
+
+    def test_live_rejects_before_native_resource_preparation(self):
+        # This must not depend on native device count, libraries or model paths.
+        with patch('betterscale.__main__.Path.resolve', side_effect=AssertionError('native preparation')):
+            with self.assertRaisesRegex(ValueError, 'live serving is not qualified.*No native fallback'):
+                prepare(Path('/missing/model'), '0', 8000, Path('/missing/cache'), runtime='live')
+            with self.assertRaisesRegex(ValueError, 'unknown runtime'):
+                prepare(Path('/missing/model'), '0,1', 8000, Path('/missing/cache'), runtime='typo')

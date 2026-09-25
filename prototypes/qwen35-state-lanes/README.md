@@ -6,7 +6,7 @@ numerical-addressing and owned-graph cut, not a completed model migration or spe
 
 ## Ownership and realization
 
-`state.py` uses BetterScale-owned `LiveModule`, `StateTensor`, `StateDomain`
+`betterscale.live.llm.qwen35.root` and its `state` leaves use BetterScale-owned `LiveModule`, `StateTensor`, `StateDomain`
 and backend from `betterscale.live`, transferred from LiveInference. Constructing the module tree declares requirements without
 allocating storage; `activate()` realizes all domains and initializes the
 continuation. Leaves declare their own tensors; the root composes them.
@@ -64,7 +64,7 @@ The independent CPU history/recurrence checks every candidate and convolution
 row. Recurrence consumes observed BF16 convolution outputs so convolution ULP
 rounding does not masquerade as a persistent-State error; convolution outputs
 are checked separately. This is not an independent end-to-end model oracle.
-`gdn_graph.py` declares two LiveGraph banks, stable output MetaTensors and explicit
+`betterscale.live.llm.qwen35.gdn_graph` declares two LiveGraph banks, stable output MetaTensors and explicit
 host metadata construction actions. The BetterScale Ascend backend owns their
 warmup, capture and retirement. State touched by graph build is declared as
 resident0..3 (all three candidates are lowered by StateTensor), with no token-page
@@ -75,13 +75,13 @@ root generation activates. No full-forward shadow fallback is enabled.
 The historical leaf2 receipt used external NPUGraphs; the owned-graphs3 receipt
 is the new lifecycle evidence. These are separate observations.
 
-`gdn_candidates.py` is an isolated copy of the previously qualified experimental
+`betterscale.live.llm.qwen35.gdn_candidates` is an isolated copy of the previously qualified experimental
 candidate kernel (original Git blob `4c1518d498467947f8f8e2b42e71e299a0cf1db7`),
 with the geometry guard changed from Qwen35 TP2 H8/HV16 to0.8B TP1 H16/HV16;
 formatter-only changes aside, the numerical implementation is unchanged.
 The production `src/betterscale/patches/qwen_gdn/decode_kv.py` at this worktree's
 base is non-speculative/H8/HV24: do not import it for this test or silently relax
-its contract. The prototype copy protects that published path; consolidate only
+its contract. The isolated experimental copy protects that published path; consolidate only
 when a separately qualified production integration owns both interfaces.
 
 Run only through the workspace's selected-device lease/admission/foreign-owner

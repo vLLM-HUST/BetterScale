@@ -4,8 +4,8 @@ Fletcher approved the plan on2026-09-25: make live execution an optional
 BetterScale path, with one owner for State initialization, warmup, capture,
 invocation and retirement. Default native execution remains unchanged. The
 intended configuration is a mutually exclusive native/live selection, not
-independent allocation/capture switches; exact public CLI spelling is not yet
-implemented. Unsupported live configurations must reject before initialization,
+independent allocation/capture switches; the CLI spelling is now `--runtime native|live`. Live serving remains
+reserved and rejects before native resource preparation. Unsupported live configurations must reject before initialization,
 never fall back after partial activation.
 
 Construction order:
@@ -23,7 +23,7 @@ Automatic capacity fitting, CPU offload and TP2/MoE remain later gates.
 
 ## Observed first cut: owned GDN graph lifecycle
 
-`prototypes/qwen35-state-lanes/gdn_graph.py` composes the complete small-model
+`src/betterscale/live/llm/qwen35/gdn_graph.py` composes the complete small-model
 State tree with two declared LiveGraphs and banked stable output MetaTensors.
 It is intentionally a fixed0.8B GDN probe, not a full model or generic runner.
 Capture declares resident0..3 writes and no token-page writes; StateTensor lowers
@@ -101,3 +101,23 @@ real0.8B config. This adds2KiB per resident, not per context token. Writing the
 correct accepted target boundary and preserving draft-prefix validity are still
 model-integration work, not implied by allocating the tensor. The historical
 owned-graphs3 result predates this declaration-only extension.
+
+## Packaged root boundary
+
+The root, State declarations and bounded graph/kernel closure now live under
+`src/betterscale/live/llm/qwen35/`. Prototype scripts only exercise the package;
+no runtime source is resolved from that directory. QwenStateRoot is the model
+State composition, not a completed LiveLLM forward implementation. GDNGraphRoot
+remains an explicitly seeded numerical fixture. Do not rename either into a
+fully qualified serving root. Python construction/activation is the working
+opt-in entry; CLI live serving is a fail-closed reservation until the real-weight
+vertical and scheduler are connected. Native remains the default.
+
+Packaging acceptance:47 focused CPU tests passed (including the nested14 State
+contracts); a fresh sdist/wheel includes the full root closure and no prototype
+or external livemodule package. The installed wheel passed15 focused tests,
+including isolated root imports, graph lifecycle and native/live launcher
+admission. Receipt: `runs/qwen35-state-lanes/20260925-packaged-root/`. Numerical
+AST comparison is identical except import relocation; no new NPU result is
+claimed. The transferred experimental kernel retains its donor unused-local
+lint warning; it was not numerically edited for packaging.

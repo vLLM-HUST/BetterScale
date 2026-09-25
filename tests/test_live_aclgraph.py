@@ -464,20 +464,15 @@ if __name__ == "__main__":
 
 def test_qwen_graph_declarations_build_without_forward_shadow():
     """CPU contract probe of the actual entry with stand-in numerical kernels."""
-    import importlib
     import json
     from pathlib import Path
     import sys
     import types
     from betterscale.live import TorchStateBackend
+    from betterscale.live.llm.qwen35 import Geometry, Capacity
+    from betterscale.live.llm.qwen35 import gdn_graph as module
 
     prototype = Path(__file__).resolve().parents[1] / 'prototypes/qwen35-state-lanes'
-    sys.path.insert(0, str(prototype))
-    try:
-        module = importlib.import_module('gdn_graph')
-    finally:
-        sys.path.pop(0)
-    from state import Geometry, Capacity
     geometry = Geometry.from_config(json.loads((prototype / 'qwen35-0.8b-text-config.json').read_text()))
     events = []
 
@@ -489,11 +484,11 @@ def test_qwen_graph_declarations_build_without_forward_shadow():
         state[:12].add_(1)
         return torch.zeros_like(v), state
 
-    kernel = types.ModuleType('gdn_candidates')
+    kernel = types.ModuleType('betterscale.live.llm.qwen35.gdn_candidates')
     kernel.fused_recurrent_gated_delta_rule_fwd = recurrence
     with (patch.object(torch, 'npu', _FakeNPU(events), create=True),
           patch.object(torch.ops._C_ascend, 'npu_causal_conv1d_custom', conv, create=True),
-          patch.dict(sys.modules, {'gdn_candidates': kernel})):
+          patch.dict(sys.modules, {'betterscale.live.llm.qwen35.gdn_candidates': kernel})):
         root = construct_live(LiveRuntime(
             device='cpu', state_backend=TorchStateBackend('cpu', memory_budget_bytes=512 << 20),
             graph_backend=ACLGraphBackend(device='cpu')),

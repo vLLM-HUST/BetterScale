@@ -18,8 +18,8 @@ from betterscale.live import (
     live_runtime,
 )
 from betterscale.live.arch.ascend.graph import ACLGraphBackend
-from state import Capacity, Geometry
-from gdn_graph import GDNGraphRoot
+from betterscale.live.llm.qwen35 import Capacity, Geometry
+from betterscale.live.llm.qwen35.gdn_graph import GDNGraphRoot
 
 
 def main():

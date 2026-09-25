@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import torch
 from betterscale.live import GraphCallSchema, MetaTensor, construct_meta_tensors
-from state import QwenStateRoot
+from .root import QwenStateRoot
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -65,7 +65,7 @@ class GDNGraphRoot(QwenStateRoot):
         self.target["0"].conv.tensor.fill_(0.25)
 
     def step(self, x, g, beta, cu, slots, conv_slots, accepted, bank):
-        from gdn_candidates import fused_recurrent_gated_delta_rule_fwd
+        from .gdn_candidates import fused_recurrent_gated_delta_rule_fwd
 
         state = self.target["0"]
         y, output = construct_meta_tensors(
