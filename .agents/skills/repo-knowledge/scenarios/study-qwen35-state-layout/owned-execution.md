@@ -64,3 +64,33 @@ contract errors before NPU admission. No guards were disabled to obtain the pass
 
 This does not yet qualify full-model graph execution, concurrent bank reuse,
 request scheduling, State eviction or HTTP serving.
+
+## Bounded donor loading seam
+
+The pinned0.8B snapshot is now downloaded at
+`/workspace/models/Qwen3.5-0.8B`, revision
+`2fc06364715b967f1860aea9cf38778875588b17`. A single-card0 admitted probe
+(`runs/qwen35-state-lanes/20260925-loader1/`) used native `initialize_model`
+with explicit text target and MTP classes, loaded248 target parameter names and13
+draft parameter names, and shared the target embedding/lm_head with the draft.
+Seven attention cache fields (six target plus one draft) had zero payload;
+GDN cache fields are not published by these constructors. No Worker or runner
+was constructed, no native cache planner was called, and no graph or forward was
+executed. Device0 returned to IDLE. This proves a usable loader seam, not model
+numerical equivalence or a finished model adapter.
+
+[probe_donor_load.py](probe_donor_load.py) retains the bounded construction
+recipe. It requires the pinned donor runtime, admitted NPU environment, exact
+local model snapshot, and an explicit `CAPSULE` output directory. Its file-based
+single-rank distributed rendezvous belongs to that output directory. Never
+execute or import it outside admission. Vision tensors are deliberately skipped;
+text prefixes are remapped explicitly. Do not turn this probe into a general
+model loader without parameter-coverage and actual-forward acceptance.
+
+A concrete next census item: native MTP forward consumes both input token
+embeddings and target hidden states (`pre_fc_norm_embedding`,
+`pre_fc_norm_hidden`, then `fc`). The current declaration-only continuation has
+anchor token/progress but no hidden boundary tensor. Full continuation needs a
+bounded per-resident hidden seed and a defined valid boundary; carrying only the
+anchor token is insufficient. This is source-derived, not a passed continuation
+transition. Do not reintroduce an entire target-hidden history to fill that gap.
