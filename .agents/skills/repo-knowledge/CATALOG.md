@@ -33,3 +33,7 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 - **Adapt Qwen3.5-35B-A3B BF16/MTP/native256K:** read
   [adapt-qwen35-moe](scenarios/adapt-qwen35-moe/GUIDE.md) for the experimental
   versus released source boundary, changed geometry and current qualification.
+
+- **Declare and qualify independent Qwen35 resident State lanes:** read
+  [study-qwen35-state-layout](scenarios/study-qwen35-state-layout/GUIDE.md)
+  for the native boundary, accepted resident-seat policy and implementation entry.
