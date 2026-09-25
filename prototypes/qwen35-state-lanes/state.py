@@ -34,6 +34,7 @@ class Geometry:
     gdn_key_dim: int
     gdn_value_dim: int
     conv_kernel: int
+    hidden_size: int
     draft_layers: int = 1
 
     def __post_init__(self):
@@ -45,6 +46,7 @@ class Geometry:
             "gdn_key_dim",
             "gdn_value_dim",
             "conv_kernel",
+            "hidden_size",
             "draft_layers",
         ):
             positive(name, getattr(self, name))
@@ -80,6 +82,7 @@ class Geometry:
             text["linear_key_head_dim"],
             text["linear_value_head_dim"],
             text["linear_conv_kernel_dim"],
+            text["hidden_size"],
             text["mtp_num_hidden_layers"],
         )
 
@@ -250,8 +253,18 @@ class GDNState(NumericalState):
 
 
 class ContinuationState(LiveModule):
-    def __init__(self, capacity, domain):
+    def __init__(self, geometry, capacity, domain):
         super().__init__()
+        self.register_state(
+            "anchor_hidden",
+            StateTensor(
+                role="target-hidden-at-committed-boundary",
+                requirement="bounded MTP seed; valid only with the committed anchor",
+                block_shape=(geometry.hidden_size,),
+                storage_dtype=torch.bfloat16,
+                domain=domain,
+            ),
+        )
         for name in ("resident_epoch", "target_cursor", "draft_cursor", "anchor_token"):
             self.register_state(
                 name,
@@ -287,6 +300,7 @@ class ContinuationState(LiveModule):
     def _initialize_live_generation(self):
         self.selection.tensor.fill_(1)
         self.anchor_token.tensor.fill_(-1)
+        self.anchor_hidden.tensor.zero_()
         self.proposal.tensor.fill_(-1)
         for name in ("resident_epoch", "target_cursor", "draft_cursor"):
             getattr(self, name).tensor.zero_()
@@ -320,7 +334,7 @@ class QwenStateRoot(LiveModule):
             }
         )
         self.draft = AttentionState(geometry, capacity, self.pages)
-        self.continuation = ContinuationState(capacity, self.residents)
+        self.continuation = ContinuationState(geometry, capacity, self.residents)
 
     def attach_consumers(self, target, draft):
         if set(target) != set(self.target):

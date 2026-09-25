@@ -6,12 +6,17 @@ from pathlib import Path
 
 import torch
 from torch import nn
-from betterscale.live import LiveRuntime, StateTensorError, TorchStateBackend, live_runtime
+from betterscale.live import (
+    LiveRuntime,
+    StateTensorError,
+    TorchStateBackend,
+    live_runtime,
+)
 from betterscale.live.runtime.grouped_state import GroupedStateBackend
 from state import AttentionState, Capacity, GDNState, Geometry, QwenStateRoot
 
 
-SMALL = Geometry(("linear_attention", "full_attention"), 1, 4, 1, 2, 4, 4, 4)
+SMALL = Geometry(("linear_attention", "full_attention"), 1, 4, 1, 2, 4, 4, 4, 8)
 
 
 class Consumer(nn.Module):
@@ -79,6 +84,11 @@ class StateTests(unittest.TestCase):
                 resident_bytes, 5 * 18 * (6144 * 5 * 2 + 3 * 16 * 128 * 128 * 4)
             )
             self.assertEqual(page_bytes, 32 * 128 * 7 * 2 * 2 * 256 * 2)
+            self.assertEqual(r.continuation.anchor_hidden.tensor.shape, (5, 1024))
+            self.assertEqual(r.continuation.anchor_hidden.tensor.dtype, torch.bfloat16)
+            self.assertTrue(torch.all(r.continuation.anchor_hidden.tensor == 0))
+            # This is one boundary vector per resident, never a token-history axis.
+            self.assertEqual(r.continuation.anchor_hidden.tensor.numel(), 5 * 1024)
         finally:
             r.close()
 

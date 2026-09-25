@@ -17,16 +17,16 @@ continuation. Leaves declare their own tensors; the root composes them.
 - Target/draft attention: separate BF16 K and V token-page lanes, one shared page
   capacity domain. No maximum-context array per resident seat.
 - Continuation: resident identity epoch, target/draft progress, accepted-input
-  selection, anchor and two proposals. These fields have allocation and initial
+  selection, anchor token plus one hidden boundary vector, and two proposals. These fields have allocation and initial
   values, **not yet scheduler transition semantics**.
 - Execution width is a constraint, not an allocation multiplier. Resident count
   is exact; token pages may be exact or consume the remaining backend budget.
 
 The small-model fixture is the full text config from `Qwen/Qwen3.5-0.8B` revision
 `2fc06364715b967f1860aea9cf38778875588b17`, not synthetic toy geometry. Its 18 GDN,
-6 target FA and 1 draft FA leaves declare 50 numerical tensors plus 6 continuation
+6 target FA and 1 draft FA leaves declare 50 numerical tensors plus 7 continuation
 tensors. R5/P32/page128 needs 275.2734375 MiB GDN and 56 MiB FA payload, plus
-260 bytes continuation (backend alignment/temporary tensors excluded).
+10,500 bytes continuation (backend alignment/temporary tensors excluded).
 
 `attach_consumers` is an explicit generation-scoped borrowing seam: it refuses
 preallocated native caches and consumers that have not opted into the exact

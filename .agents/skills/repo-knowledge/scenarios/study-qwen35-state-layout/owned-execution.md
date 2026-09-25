@@ -94,3 +94,10 @@ anchor token/progress but no hidden boundary tensor. Full continuation needs a
 bounded per-resident hidden seed and a defined valid boundary; carrying only the
 anchor token is insufficient. This is source-derived, not a passed continuation
 transition. Do not reintroduce an entire target-hidden history to fill that gap.
+
+The follow-up declaration now includes `anchor_hidden[R, hidden_size]` BF16,
+initialized invalid alongside anchor_token=-1; its shape is checked using the
+real0.8B config. This adds2KiB per resident, not per context token. Writing the
+correct accepted target boundary and preserving draft-prefix validity are still
+model-integration work, not implied by allocating the tensor. The historical
+owned-graphs3 result predates this declaration-only extension.
