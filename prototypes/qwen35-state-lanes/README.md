@@ -6,8 +6,8 @@ numerical-addressing cut, not a completed model migration or speed claim.
 
 ## Ownership and realization
 
-`state.py` uses LiveInference's actual `LiveModule`, `StateTensor`, `StateDomain`
-and backend. Constructing the module tree declares requirements without
+`state.py` uses BetterScale-owned `LiveModule`, `StateTensor`, `StateDomain`
+and backend from `betterscale.live`, transferred from LiveInference. Constructing the module tree declares requirements without
 allocating storage; `activate()` realizes all domains and initializes the
 continuation. Leaves declare their own tensors; the root composes them.
 
@@ -37,11 +37,12 @@ consumer rebinding is rejected until that ownership is implemented.
 
 ## Reproduce CPU contracts
 
-LiveInference reference: `05ac15419c0e73650e687ceb9daffeb7874865f0`.
-No new allocator or private copy of that project is bundled here.
+Source reference: LiveInference `05ac15419c0e73650e687ceb9daffeb7874865f0`.
+Its common runtime closure now lives in `src/betterscale/live`; no external
+LiveInference install or checkout is needed. See that package README for the
+intake boundary and preserved license.
 
 ```bash
-LIVEINFERENCE_ROOT=/absolute/LiveInference \
 PYTHON_BIN=/absolute/torch-environment/bin/python \
   ./check_cpu.sh
 ```
@@ -76,7 +77,7 @@ when a separately qualified production integration owns both interfaces.
 
 Run only through the workspace's selected-device lease/admission/foreign-owner
 guard. It needs the pinned native/Ascend runtime from the repo-knowledge scenario,
-the pinned LiveInference `src`, and an output directory in
+this checkout's `src`, and an output directory in
 `CAPSULE`; no model weights are needed. Do not import NPU modules to inspect this
 script outside an admitted workload.
 

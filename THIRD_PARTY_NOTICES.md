@@ -49,3 +49,12 @@ Ascend processors only and dynamically depend on, but do not bundle, CANN and
 Torch/Torch-NPU runtime libraries. Per-file source notices remain available in
 the public repository's `prototypes/qwen38-serving/ascendc_gdn` tree and the
 pinned Catlass source. The package includes all applicable license texts.
+
+The common execution and State closure in `src/betterscale/live/` is transferred
+from LiveInference commit `05ac15419c0e73650e687ceb9daffeb7874865f0`
+(`src/livemodule/`), licensed Apache-2.0. SPDX notices are retained; imports are
+relocated into BetterScale's own namespace, and architecture-specific root
+compatibility exports are omitted. The matching State/grouped-backend tests are
+adapted from the same revision. See `betterscale/live/README.md` for scope and
+changes and `licenses/Apache-2.0.txt` for the license. LiveInference models,
+architecture implementations and native binaries are not included by this intake.

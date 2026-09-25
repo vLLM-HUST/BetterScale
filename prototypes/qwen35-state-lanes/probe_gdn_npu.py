@@ -13,7 +13,7 @@ from pathlib import Path
 
 import torch
 import torch_npu
-from livemodule import LiveRuntime, TorchStateBackend, live_runtime
+from betterscale.live import LiveRuntime, TorchStateBackend, live_runtime
 from state import Capacity, Geometry, QwenStateRoot
 from vllm_ascend.utils import enable_custom_op
 

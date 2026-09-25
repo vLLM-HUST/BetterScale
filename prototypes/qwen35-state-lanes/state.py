@@ -1,4 +1,4 @@
-"""Experimental Qwen35 State declarations, realized by the actual LiveInference root.
+"""Experimental Qwen35 State declarations, realized by the BetterScale-owned live root.
 
 No allocator, native runner, cache manager, model math or request scheduler lives
 here. The numerical consumer may borrow a generation's tensors after activation.
@@ -9,7 +9,7 @@ from typing import Mapping
 
 import torch
 from torch import nn
-from livemodule import (
+from betterscale.live import (
     ElasticStateCapacity,
     ExactStateCapacity,
     LiveModule,

@@ -18,7 +18,11 @@ other dirty parent work was not copied or removed.
 Enter [the prototype README](../../../../../prototypes/qwen35-state-lanes/README.md)
 for exact declarations, reproducible CPU checks and outstanding interfaces.
 LiveInference was clean at `05ac15419c0e73650e687ceb9daffeb7874865f0`.
-Use that actual library, not a private facsimile of StateTensor/backend.
+That first cut imported the external library. Fletcher subsequently rejected
+that dependency boundary: the same common runtime closure is now transferred
+into `betterscale.live`, not reimplemented or re-exported from `livemodule`.
+See `src/betterscale/live/README.md` for the precise intake; the historical NPU
+observation below remains tied to its original external-library source.
 
 ## Observed result
 
@@ -85,3 +89,29 @@ Continue at the composed execution/continuation boundary using the accepted
 hot-resident policy. Do not interpret the continuation's allocated counters as
 an implemented state machine or let old native blockpool authority survive
 behind a new `kv_cache` reference.
+
+## Owned namespace follow-up
+
+The PR review requires BetterScale to own its runtime dependency closure. The22
+common implementation modules (plus package initializers) are transferred with
+namespace substitution and change notices, retaining upstream module boundaries.
+No models, serving stack, architecture ports or native binaries were taken.
+The root deliberately drops the old lazy Ascend-only compatibility export.
+No upstream import, module alias, editable install or checkout search is used.
+
+The prototype and its runner now import `betterscale.live`. The CPU regression
+set includes transferred SIMD State/grouped-backend contracts and an isolated
+process that forbids `livemodule` imports while executing all14 Qwen tests.
+Namespace-only implementation equivalence is checked against the pinned source;
+this is not a new hardware or full-model qualification.
+
+Observed relocation gate:33 CPU tests passed (32 transferred State/backend
+contracts plus the subprocess boundary test running14 Qwen cases). A fresh
+sdist/wheel build contained all26 owned Python files and the package README;
+native payloads came from the retained0.5.1 wheel and passed existing build-pin
+checks. The wheel was installed with no dependencies into a separate target;
+the forbidden-external-import gate also passed against that installed artifact.
+Two existing public-package identity/Worker-import checks passed. Artifacts and
+the22-module AST comparison receipt are under
+`runs/qwen35-state-lanes/20260925-owned-runtime/`. No installed runtime was
+modified, no PyPI release was made, and no namespace-only NPU rerun was needed.

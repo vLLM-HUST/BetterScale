@@ -6,8 +6,8 @@ from pathlib import Path
 
 import torch
 from torch import nn
-from livemodule import LiveRuntime, StateTensorError, TorchStateBackend, live_runtime
-from livemodule.runtime.grouped_state import GroupedStateBackend
+from betterscale.live import LiveRuntime, StateTensorError, TorchStateBackend, live_runtime
+from betterscale.live.runtime.grouped_state import GroupedStateBackend
 from state import AttentionState, Capacity, GDNState, Geometry, QwenStateRoot
 
 
