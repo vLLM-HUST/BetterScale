@@ -19,8 +19,9 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "betterscale.patches.qwen_fia" = ["*.json", "*.cpp", "*.so", "README.md"]
-betterscale = ["pins.json", "qwen_pins.json", "qwen_mixed_pins.json"]
+betterscale = ["pins.json", "qwen_pins.json", "qwen_mixed_pins.json", "live_qwen_pins.json"]
 "*" = ["README.md"]
+"betterscale.live.llm.qwen35" = ["README.md", "serve.sh"]
 "betterscale.patches.qwen_gdn" = ["*.json", "*.h", "*.cpp", "*.sh", "*.so", "README.md"]
 "betterscale.patches.hc_workspace" = ["*.json", "*.so", "*.patch", "*.txt", "README.md"]
 

@@ -502,3 +502,40 @@ def test_qwen_graph_declarations_build_without_forward_shadow():
         finally:
             root.close()
         assert events.count('graph-reset') == 2
+
+
+def test_full_qwen_root_declares_and_retires_all_four_graphs():
+    """Actual model-root metadata protocol; mocked arithmetic is not a model oracle."""
+    from betterscale.live import TorchStateBackend
+    from betterscale.live.llm.qwen35 import Capacity, Geometry
+    from betterscale.live.llm.qwen35.graphs import QwenLiveLLMRoot
+
+    geometry = Geometry(('linear_attention', 'full_attention'), 1, 4, 1, 2, 4, 4, 4, 8)
+    target = torch.nn.Module()
+    target.model = torch.nn.Module()
+    target.model.layers = torch.nn.ModuleList([torch.nn.Identity(), torch.nn.Identity()])
+    target.model.vocab_size = 32
+
+    def target_math(self, ids, positions, write, read, **kwargs):
+        self.target['0'].recurrent.tensor.add_(1)
+        return torch.ones(len(ids), 8, dtype=torch.bfloat16), torch.ones(len(ids), 32, dtype=torch.bfloat16)
+
+    def draft_math(self, ids, seed, positions, write, read):
+        self.draft.key.tensor.add_(1)
+        return target_math(self, ids, positions, write, read)
+
+    events = []
+    with (patch.object(torch, 'npu', _FakeNPU(events), create=True),
+          patch.object(QwenLiveLLMRoot, '_target_forward', target_math),
+          patch.object(QwenLiveLLMRoot, '_draft_forward', draft_math)):
+        root = construct_live(LiveRuntime(device='cpu',
+            state_backend=TorchStateBackend('cpu', memory_budget_bytes=1 << 20),
+            graph_backend=ACLGraphBackend(device='cpu')),
+            lambda: QwenLiveLLMRoot(geometry, Capacity(1, 1, token_pages=1), target, torch.nn.Identity()))
+        root.activate()
+        assert [name for name, _ in root.named_graphs()] == ['target1', 'target3', 'draft1', 'draft2']
+        assert all(not graph.metadata.requires_forward_replay for _, graph in root.named_graphs())
+        assert torch.count_nonzero(root.target['0'].recurrent.tensor) == 0
+        assert torch.count_nonzero(root.draft.key.tensor) == 0
+        root.close()
+        assert events.count('graph-reset') == 4

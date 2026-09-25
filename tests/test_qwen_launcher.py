@@ -67,10 +67,29 @@ class QwenLauncher(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 prepare(Path("/model"), "0,1", 8000, Path("/tmp/cache"))
 
-    def test_live_rejects_before_native_resource_preparation(self):
-        # This must not depend on native device count, libraries or model paths.
-        with patch('betterscale.__main__.Path.resolve', side_effect=AssertionError('native preparation')):
-            with self.assertRaisesRegex(ValueError, 'live serving is not qualified.*No native fallback'):
-                prepare(Path('/missing/model'), '0', 8000, Path('/missing/cache'), runtime='live')
-            with self.assertRaisesRegex(ValueError, 'unknown runtime'):
-                prepare(Path('/missing/model'), '0,1', 8000, Path('/missing/cache'), runtime='typo')
+    def test_live_prepares_its_own_entry_without_native_libraries(self):
+        import json
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "config.json").write_text(
+                json.dumps(
+                    {
+                        "model_type": "qwen3_5_moe_text",
+                        "num_hidden_layers": 40,
+                        "hidden_size": 2048,
+                    }
+                )
+            )
+            with patch.dict(
+                os.environ, {"BETTERSCALE_GDN_LIBRARY": "/missing/native.so"}
+            ):
+                command, env = prepare(
+                    root, "0,1", 8000, root / "cache", runtime="live"
+                )
+            self.assertTrue(command[1].endswith("live/llm/qwen35/serve.sh"))
+            self.assertEqual(env["BETTERSCALE_LIVE_TP"], "2")
+            with self.assertRaisesRegex(ValueError, "supports"):
+                prepare(root, "0", 8000, root / "cache", runtime="live")
+        with self.assertRaisesRegex(ValueError, "unknown runtime"):
+            prepare(Path("/model"), "0,1", 8000, Path("/cache"), runtime="typo")

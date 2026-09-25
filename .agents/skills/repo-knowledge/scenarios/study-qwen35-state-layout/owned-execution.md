@@ -121,3 +121,79 @@ admission. Receipt: `runs/qwen35-state-lanes/20260925-packaged-root/`. Numerical
 AST comparison is identical except import relocation; no new NPU result is
 claimed. The transferred experimental kernel retains its donor unused-local
 lint warning; it was not numerically edited for packaging.
+
+## Real-weight execution frontier (2026-09-25 evening)
+
+Fletcher authorized continuing through35B-A3B TP2 live execution end to end.
+Work branch `codex/qwen35-live-e2e` starts from merged main6347a9e. The numerical
+root is now being built in `execution.py`/`numerics.py`; `residents.py` owns only
+host leases/page IDs, and `generation.py` advances the resident continuation.
+No native Worker/runner/KV allocation is called. These additions are under
+qualification, not yet the public serving route.
+
+Observed small0.8B TP1 gates:
+- `runs/qwen35-state-lanes/20260925-target4/`: complete weight-name coverage,
+ 7 successive real target tokens through all24 layers. Independent Transformers
+ BF16 CPU cold-prefix reference (`target1/reference.pt`) agrees on all7 greedy
+ choices; worst full-vocabulary logit RMS0.064645, worst hidden cosine0.999617.
+ These are observed cross-backend differences, not a general error tolerance.
+- `20260925-generation1/`: eager MTP2 emits the same12 tokens as target-only;
+ real accepted7/10 proposals. Unrelated B uses empty seat1 and leaves seat0's
+ complete GDN candidates/history exactly unchanged. C hits19 committed tokens
+ on seat0 and its8 outputs equal independent cold target-only recomputation.
+ D evicts the older seat1. Root close/reactivation resets the generation.
+ All selected-card jobs exited and released; these are functional, not speed
+ or full-graph results. Frozen package snapshots live inside each later capsule.
+- Eight CPU resident/protocol tests protect empty-first hot hits, shorter-prefix
+ misses, live-lease eviction rejection, page exhaustion without partial growth,
+ EOS truncation and target-hidden correction of recursive draft rows.
+
+Paid integration details:
+- Native MTP first pass shifts input IDs but **keeps target positions**. Only
+ recursive proposal steps increment position. After target verification, replace
+ recursive draft prefix rows with corresponding target-hidden seeds; retain only
+ one boundary vector per resident and the current short wave, not full history.
+- Direct donor construction supplies original QwenGatedDeltaNetAttention,
+ whose method is `split_ba`, not Ascend adapter `_split_ba_for_tp`.
+- Device selection/custom-op loading alone does not initialize donor Triton
+ device properties. Call `init_device_properties_triton()` explicitly under
+ admission before fused gating; this must not require constructing a Worker.
+- `construct_live` was a test-local helper, not an exported runtime API. The
+ packaged example now correctly uses `with live_runtime(runtime): Root(...)`.
+
+The full-model graph root (`graphs.py`) reuses the same numerical forward,
+registers target1/3 and draft1/2, and bounds plain attention to an explicit
+context envelope.17 focused CPU tests include the real four-graph metadata
+entry with stand-in arithmetic and no forward-shadow fallback. Its model NPU
+qualification is the next gate; do not label the eager receipt as capture proof.
+
+`20260925-model-graphs2/` subsequently passed the real0.8B four-graph vertical:
+actual root type/count were asserted, no forward-shadow graphs, same12 output
+IDs as eager target, real7/10 proposal acceptance, exact untouched hot GDN State,
+19-token warm hit and8-token warm/cold equality. Close/reactivation and release
+passed. `model-graphs1` is explicitly **not graph evidence**: a harness class
+selection error plus a preparation edit racing script load meant its scope label
+was wrong. Its separate `qualification.json` invalidates that claim. Never edit
+an admitted/queued capsule; stage a new one and assert actual runtime identity.
+
+TP2 frontier is NOT yet accepted: `20260925-tp2-live3` loaded both ranks'35B
+weights, executed eager and four owned graphs, and matched the initial12 IDs.
+The warm/cold check then differed at output3 (zero-based): warm13 vs cold15.
+Do not label this harmless numerical noise or publish the live route as qualified.
+Independent native reference and teacher-forced eager1/graph1/eager3/graph3
+comparisons are prepared to separate State reuse, batch shape and capture.
+Earlier TP2 integration failures exposed two concrete donor seams:
+- MoERunner.load_weights returns flattened RoutedExperts names, while
+  named_parameters includes `.routed_experts.`. Coverage now resolves only
+  aliases backed by the actual routed module and reported parameter; never
+  exclude all expert weights from coverage.
+- Native MTP context passes `model_instance=None`. The donor's has_layer_idx
+  caches its first target observation; passing the draft model after target
+  incorrectly reads draft.model.start_layer. Match native's explicit boundary,
+  not a fabricated draft attribute.
+
+Both target and draft now use the same native logits_processor.get_top_tokens
+in greedy-only mode (TP value/index pair reduction). Full vocabulary output is
+retained only as an explicit diagnostic mode. Loopback HTTP/CLI integration is
+being prepared, but must remain on this work branch until the TP2 discrepancy
+and public-entry acceptance are closed.

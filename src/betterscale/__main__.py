@@ -9,13 +9,29 @@ import platform
 import sys
 
 
-def prepare(model, devices, port, cache_dir, *, runtime="native"):
+def prepare(
+    model,
+    devices,
+    port,
+    cache_dir,
+    *,
+    runtime="native",
+    context_tokens=512,
+    resident_seats=20,
+    token_pages=64,
+    distributed_port=29535,
+):
     """Prepare a new process; never preload CANN into this interpreter."""
     if runtime == "live":
-        raise ValueError(
-            "live serving is not qualified yet: use betterscale.live.llm.qwen35 "
-            "for experimental State roots; target/MTP execution and scheduling "
-            "are not connected. No native fallback was started."
+        return prepare_live(
+            model,
+            devices,
+            port,
+            cache_dir,
+            context_tokens,
+            resident_seats,
+            token_pages,
+            distributed_port,
         )
     if runtime != "native":
         raise ValueError(f"unknown runtime: {runtime}")
@@ -54,37 +70,120 @@ def prepare(model, devices, port, cache_dir, *, runtime="native"):
     return ["bash", str(root / "patches/qwen_gdn/serve.sh")], env
 
 
+def prepare_live(
+    model,
+    devices,
+    port,
+    cache_dir,
+    context_tokens,
+    resident_seats,
+    token_pages,
+    distributed_port,
+):
+    """Inert launch admission: no torch, donor, device or native artifact imports."""
+    selected = devices.split(",")
+    if (
+        len(selected) not in (1, 2)
+        or len(set(selected)) != len(selected)
+        or any(not d.isdigit() or int(d) not in range(8) for d in selected)
+    ):
+        raise ValueError("live requires one or two distinct 910B2 device IDs")
+    if not (
+        1 <= port <= 65535
+        and 1 <= distributed_port <= 65535
+        and port != distributed_port
+    ):
+        raise ValueError("HTTP and distributed ports must be distinct and in 1..65535")
+    if not (3 <= context_tokens <= 4096 and resident_seats > 0 and token_pages > 0):
+        raise ValueError("invalid live context or State capacity")
+    config = json.loads((model / "config.json").read_text())
+    text = config.get("text_config", config)
+    envelope = (
+        text.get("model_type"),
+        text.get("num_hidden_layers"),
+        text.get("hidden_size"),
+        len(selected),
+    )
+    if envelope not in (
+        ("qwen3_5_text", 24, 1024, 1),
+        ("qwen3_5_moe_text", 40, 2048, 2),
+    ):
+        raise ValueError("live supports Qwen3.5-0.8B TP1 or 35B-A3B TP2 only")
+    env = os.environ.copy()
+    env.update(
+        ASCEND_RT_VISIBLE_DEVICES=devices,
+        PYTHON=sys.executable,
+        VLLM_CACHE_ROOT=str((cache_dir / "live").resolve()),
+        BETTERSCALE_LIVE_TP=str(len(selected)),
+        BETTERSCALE_LIVE_DISTRIBUTED_PORT=str(distributed_port),
+    )
+    return [
+        "bash",
+        str(Path(__file__).parent / "live/llm/qwen35/serve.sh"),
+        str(model),
+        "--port",
+        str(port),
+        "--context-tokens",
+        str(context_tokens),
+        "--resident-seats",
+        str(resident_seats),
+        "--token-pages",
+        str(token_pages),
+    ], env
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    qwen = sub.add_parser("serve-qwen", help="Qwen27 BF16 TP2 / FULL / APC / no MTP")
+    qwen = sub.add_parser(
+        "serve-qwen", help="qualified native Qwen27 or experimental live Qwen35"
+    )
     qwen.add_argument("model", type=Path)
     qwen.add_argument(
         "--runtime",
         choices=("native", "live"),
         default="native",
-        help="native (default); live is experimental and not yet available for serving",
+        help="native (default); live owns Qwen35 State and full-model graphs",
     )
     qwen.add_argument(
-        "--devices", required=True, help="two idle 910B2 devices, e.g. 0,1"
+        "--devices",
+        required=True,
+        help="idle 910B2 IDs; native/35B live: two, 0.8B live: one",
     )
     qwen.add_argument("--port", type=int, default=8000)
     qwen.add_argument(
         "--cache-dir", type=Path, default=Path.home() / ".cache/betterscale/qwen27"
     )
+    qwen.add_argument("--live-context-tokens", type=int, default=512)
+    qwen.add_argument("--live-resident-seats", type=int, default=20)
+    qwen.add_argument("--live-token-pages", type=int, default=64)
+    qwen.add_argument("--live-distributed-port", type=int, default=29535)
     args = parser.parse_args()
     if platform.system() != "Linux" or platform.machine() != "aarch64":
         parser.error(
             "This qualified native package requires Linux/aarch64 Ascend 910B2"
         )
     if not args.model.is_dir():
-        parser.error("model must be an existing local Qwen27 checkpoint directory")
+        parser.error(
+            "model must be an existing supported local Qwen checkpoint directory"
+        )
     try:
         command, env = prepare(
-            args.model, args.devices, args.port, args.cache_dir, runtime=args.runtime
+            args.model,
+            args.devices,
+            args.port,
+            args.cache_dir,
+            runtime=args.runtime,
+            context_tokens=args.live_context_tokens,
+            resident_seats=args.live_resident_seats,
+            token_pages=args.live_token_pages,
+            distributed_port=args.live_distributed_port,
         )
-    except (ValueError, FileNotFoundError) as exc:
+    except (ValueError, OSError) as exc:
         parser.error(str(exc))
+    if args.runtime == "live":
+        os.execvpe(command[0], command, env)
+        return
     root = Path(__file__).parent / "patches"
     for variable, patch, key in (
         ("BETTERSCALE_GDN_LIBRARY", "qwen_gdn", "sha256"),

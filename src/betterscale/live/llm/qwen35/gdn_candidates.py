@@ -16,7 +16,7 @@ exp = tl.exp
 # BetterScale: pinned vLLM752a3a50 general FLA recurrence, K-V pool addresses.
 # Isolated experimental MTP adapter from September24 capacity32 capsule,
 # source Git blob 4c1518d498467947f8f8e2b42e71e299a0cf1db7.
-# Only geometry guard changes here: Qwen0.8B TP1 has H=HV=16.
+# Geometry admission: Qwen0.8B TP1 H16/HV16 and Qwen35B TP2 H8/HV16.
 # Do not replace the published non-speculative adapter without its own gate.
 
 
@@ -234,7 +234,7 @@ def fused_recurrent_gated_delta_rule_fwd(
         assert ssm_state_indices.ndim == 1
     assert len(ssm_state_indices) == len(cu_seqlens) - 1
     B, T, H, K, V = *k.shape, v.shape[-1]
-    assert B == 1 and H == 16 and K == V == 128 and v.shape[2] == 16
+    assert B == 1 and H in (8, 16) and K == V == 128 and v.shape[2] == 16
     HV = v.shape[2]
     N = B if cu_seqlens is None else len(cu_seqlens) - 1
     BK = triton.next_power_of_2(K)

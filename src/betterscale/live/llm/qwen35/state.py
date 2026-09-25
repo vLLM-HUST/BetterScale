@@ -60,11 +60,21 @@ class Geometry:
             )
 
     @classmethod
-    def from_config(cls, config: Mapping):
-        """TP1 text geometry only; no implicit topology/device discovery."""
+    def from_config(cls, config: Mapping, *, tensor_parallel_size=1):
+        """Explicit dense TP1 / MoE TP2 geometry; no topology/device discovery."""
         text = config.get("text_config", config)
-        if text.get("model_type") != "qwen3_5_text":
-            raise ValueError("first model gate is dense Qwen3.5 TP1, not MoE/TP2")
+        if (text.get("model_type"), tensor_parallel_size) not in (
+            ("qwen3_5_text", 1),
+            ("qwen3_5_moe_text", 2),
+        ):
+            raise ValueError("live model geometry supports dense TP1 or MoE TP2 only")
+        for field in (
+            "num_key_value_heads",
+            "linear_num_key_heads",
+            "linear_num_value_heads",
+        ):
+            if text[field] % tensor_parallel_size:
+                raise ValueError(f"{field} must divide evenly across TP")
         if text.get("mamba_ssm_dtype", "float32") != "float32":
             raise ValueError("first gate requires FP32 recurrent State")
         layers = tuple(text["layer_types"])
@@ -72,10 +82,10 @@ class Geometry:
             raise ValueError("layer_types and num_hidden_layers disagree")
         return cls(
             layers,
-            text["num_key_value_heads"],
+            text["num_key_value_heads"] // tensor_parallel_size,
             text["head_dim"],
-            text["linear_num_key_heads"],
-            text["linear_num_value_heads"],
+            text["linear_num_key_heads"] // tensor_parallel_size,
+            text["linear_num_value_heads"] // tensor_parallel_size,
             text["linear_key_head_dim"],
             text["linear_value_head_dim"],
             text["linear_conv_kernel_dim"],
@@ -304,4 +314,3 @@ class ContinuationState(LiveModule):
 
     def _rebind_live_state(self):
         self._initialize_live_generation()
-
