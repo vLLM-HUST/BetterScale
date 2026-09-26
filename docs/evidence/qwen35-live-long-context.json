@@ -1,6 +1,6 @@
 {
   "date": "2026-09-26",
-  "status": "model passed; HTTP numerical/SSE passed but shutdown failed; leaderboard paused for capacity audit",
+  "status": "model/HTTP protocol passed; repaired shutdown passed; full C16 900s valid but throughput regressed 76.3%",
   "source_parent": "b27efb822a7762e5a27af60e330de98d743515ce",
   "scope": {
     "model": "Qwen3.5-35B-A3B",
@@ -84,11 +84,11 @@
   },
   "cpu": {
     "source_tests": 203,
-    "installed_tests": 51,
+    "installed_tests": 52,
     "note": "One source test initially lacked its pinned donor checkout; materialized the exact gitlink and passed it separately."
   },
   "packaging": {
-    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-long-package1",
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-long-package2",
     "payload_files_compared": 135,
     "strict_metadata": true,
     "pypi_published": false
@@ -101,7 +101,8 @@
   ],
   "failed_attempts": {
     "20260926-long-tp2-1": "Old bounded physical fitter exhausted eight one-page decrements before READY.",
-    "20260926-long-fit-diagnostic1": "Same behavior observed: every attempt had identical allocated/reserved waterlines; free floor missed by about190\u2013206MiB."
+    "20260926-long-fit-diagnostic1": "Same behavior observed: every attempt had identical allocated/reserved waterlines; free floor missed by about190\u2013206MiB.",
+    "20260926-live-swe/c16-lease1": "Measurement invalidated: terminal-associated outer guard exited143 at09:39:22UTC while child retained leases; stopped only owned run, service exit0. Root cause not established. Retry detached guard lifetime and fail-closed child parent-liveness check; no serving source change."
   },
   "not_claimed": [
     "throughput improvement",
@@ -123,9 +124,104 @@
     "selected_devices_released_idle": [
       0,
       1
+    ],
+    "shutdown_requalification": {
+      "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-live-swe/c16-lease2",
+      "service_exit": 0,
+      "repair": "owned Uvicorn capture-signals scope restores None as SIG_DFL and does not re-raise graceful shutdown signal"
+    }
+  },
+  "leaderboard": {
+    "scope": "Fletcher resumed C16 only after capacity audit; C8 remains paused; result not published to leaderboard",
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-live-swe/c16-lease2",
+    "run_id": "d0379d5034c44ce1a0918b85f3bea95c",
+    "valid": true,
+    "summary": {
+      "valid": true,
+      "measurement_seconds": 900.0,
+      "requests_started": 341,
+      "max_prompt_tokens_observed": 40244,
+      "prompt_tokens_p50": 13086.0,
+      "max_turn_index_reached": 29,
+      "distinct_trajectories_started": 8,
+      "sessions_completed": 6,
+      "requests_completed_in_window": 325,
+      "requests_drained": 16,
+      "failed_requests": 0,
+      "observed_output_tokens_in_window": 157420,
+      "output_tokens_per_second": 174.9111111111111,
+      "output_tokens_per_second_per_chip": 87.45555555555555,
+      "decode_tokens_per_second_p90": 13.245434505208541,
+      "decode_speed_samples": 325,
+      "ttft_seconds_p95": 6.042242948198693,
+      "mean_client_inflight": 15.99924979736207,
+      "full_concurrency_fraction": 0.9993283884446524,
+      "drain_seconds": 227.2424268280156,
+      "aborted": false,
+      "planned_measurement_seconds": 900.0
+    },
+    "baseline_capsule": "/root/my-ascend-workspace/runs/betterscale-mtp-small-fish/20260924T160000Z-qualification/swe/optimized35b-c16/c16",
+    "comparison": {
+      "output_tokens_per_second_per_chip": {
+        "baseline": 368.9277777777778,
+        "live": 87.45555555555555,
+        "relative_change_pct": -76.29466773081151
+      },
+      "decode_tokens_per_second_p90": {
+        "baseline": 55.37886376773831,
+        "live": 13.245434505208541,
+        "relative_change_pct": -76.08214830704986
+      },
+      "ttft_seconds_p95": {
+        "baseline": 0.823467961992719,
+        "live": 6.042242948198693,
+        "relative_change_pct": 633.7556804975148
+      },
+      "requests_completed_in_window": {
+        "baseline": 1055,
+        "live": 325,
+        "relative_change_pct": -69.19431279620854
+      },
+      "failed_requests": {
+        "baseline": 0,
+        "live": 0,
+        "relative_change_pct": null
+      },
+      "drain_seconds": {
+        "baseline": 33.25995697299368,
+        "live": 227.2424268280156,
+        "relative_change_pct": 583.2312712025793
+      }
+    },
+    "configuration_differences": [
+      "owned live execution versus prior native-runner BetterScale",
+      "prefill budget 1024 versus 4096",
+      "auto fixed-resident plus pooled-attention State versus explicit 24.25GiB hybrid State",
+      "shared host; not an isolated causal ablation or repeatability estimate"
+    ],
+    "workload_sha256": "8044561ffa1bb430bea8f778ef814d96649321e1a92654b95f64263b996d5e85",
+    "token_pages": 16913,
+    "token_slots": 2164864,
+    "minimum_sampled_free_pages": 13051,
+    "scheduler_after": {
+      "max_active": 16,
+      "max_batch": 16,
+      "completed": 341,
+      "cancelled": 0,
+      "preemptions": 0,
+      "preemptions_with_output": 0,
+      "waves": 33023,
+      "active": 0,
+      "waiting": 0,
+      "token_pages": 16913,
+      "free_pages": 13051
+    },
+    "service_exit": 0,
+    "selected_devices_released_idle": [
+      0,
+      1
     ]
   },
-  "leaderboard": "not started; explicitly paused by Fletcher for capacity accounting",
   "capacity_ledger": {
     "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-capacity-ledger1",
     "rank": 0,
@@ -161,5 +257,6 @@
       "bytes_per_rank": 382419152,
       "attention_token_equivalent": 33950.563920454544
     }
-  }
+  },
+  "tested_source": "6bc65464f16ed1799f970e34d8184a39df1919e3"
 }

@@ -72,8 +72,8 @@ frozen before hardware admission; use its source, not mutable current work.
 
 The35B TP2 long-context/C16 gate and installed HTTP/leaderboard gates remain
 separate; do not promote these operator/small-model observations into those
-claims. The current implementation is work in progress until their receipts
-are added here.
+claims. The receipts below close model and HTTP lifetime gates; the measured C16
+performance gate failed substantially.
 
 ## Fixed-first sizing correction (2026-09-26)
 
@@ -132,13 +132,13 @@ logical State budget, subtracting R20 then rounding to pages predicts16733
 pages/2141824 tokens (+3.33% versus native's256K effective-capacity figure).
 That last row is arithmetic, not a newly allocated native/live control pair.
 
-Fletcher paused all leaderboard runs on September26 until capacity accounting
-is reviewed. `20260926-live-swe/CANCEL` enforces that pause; no C8/C16 benchmark
-was launched. `20260926-long-http1` passed actual native-token/SSE/C16/salt and
-stream-cancellation checks but exited1 after application shutdown because
-Uvicorn raised TypeError while restoring a saved signal handler (its value was
-not recorded). Both cards released;
-fix and requalify shutdown before calling the installed service fully qualified.
+Fletcher initially paused leaderboard work for the capacity audit, then resumed
+**C16 only**, using the installed package and a full900-second window. C8 remains
+paused. `20260926-long-http1` passed native-token/SSE/C16/salt and cancellation
+checks but exited1 while Uvicorn restored a saved signal handler (value unknown).
+The owned HTTP signal scope now normalizes an unset handler and returns normally
+through distributed cleanup instead of re-raising graceful shutdown. Package2
+passed52 installed CPU tests; the completed C16 service below exited0.
 
 `20260926-capacity-ledger1` isolates capacity accounting without generation or
 HTTP. The already model-qualified source reached READY with16982 pages; the
@@ -164,3 +164,46 @@ residuals, not claims of fully attributed graph/communication cost. Hardware
 reports64GiB HBM, while torch exposes60.957GiB; keep that3.043GiB visibility
 boundary separate from usage inside the torch-visible budget. Both TP ranks hold
 shards of the same token pool, not two independent2.17M-token pools.
+
+## Installed C16 performance gate — regression, not acceptance
+
+Tested source `6bc65464f16ed1799f970e34d8184a39df1919e3`, installed wheel from
+`20260926-long-package2`, SWE client `4b452cfcade95870a4904d71738bb539d5af5f44`.
+`20260926-live-swe/c16-lease2` ran the unchanged workload/seed20260924 for900s
+on local physical0/1, BF16 TP2 MTP2, E16/R20, context262144. Actual max batch16,
+mean client inflight15.99925; all341 requests succeeded,325 completed in-window,
+16 drained in227.24s. Service and guard exited0; both cards returned IDLE.
+
+Primary control is the earlier **BetterScale small-fish C16**, not native or the
+weaker20.25GiB run: `runs/betterscale-mtp-small-fish/20260924T160000Z-qualification/
+swe/optimized35b-c16/c16` (run `fcdf3dd59edf4b4b89f3931f554297a4`).
+
+| Metric | Prior BetterScale | Owned live |
+| --- | ---: | ---: |
+| Output tokens/s/chip | 368.9278 | 87.4556 |
+| Decode tokens/s P90 | 55.3789 | 13.2454 |
+| TTFT seconds P95 | 0.82347 | 6.04224 |
+| Requests completed in900s | 1055 | 325 |
+
+Throughput fell76.29%; this does **not** pass non-regression. No request was
+preempted. The16913-page pool had at least13051 free pages in222 samples
+(1670528 token slots); this run did not exhaust capacity. Actual C16 and almost
+full client concurrency exclude merely failing to submit16 clients, not all
+execution scheduling overhead. The bottleneck is not yet localized.
+
+Same workload does not mean the closed-loop run visits the same turns: this
+slower run reached maximum prompt40244 versus90095 in the control. Runtime,
+prefill budget (1024 vs4096), graph portfolio and State policy differ. The
+control uses24.25GiB hybrid State; this uses fixed seats plus automatic remaining
+KV. Shared-host conditions and a single window preclude attributing the loss to
+one mechanism. Do not publish this as a performance win or silently substitute a
+weaker baseline. Full receipts and comparison live in the capsule and compact
+`docs/evidence/qwen35-live-long-context.json`.
+
+The preceding `c16-lease1` attempt is invalid: the terminal-associated guard
+exited143 mid-window, while the child retained inherited device leases. Owned
+workers were explicitly stopped, service exit0, cards released. The trigger is
+not established. The retry detached the outer launcher from the terminal and
+made the serving supervisor fail closed if its admission-guard parent vanished;
+no serving source changed. Keep long-run supervision independent of a transient
+terminal and preserve parent-liveness cleanup, not just inherited lock FDs.
