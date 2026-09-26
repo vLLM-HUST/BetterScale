@@ -207,3 +207,51 @@ not established. The retry detached the outer launcher from the terminal and
 made the serving supervisor fail closed if its admission-guard parent vanished;
 no serving source changed. Keep long-run supervision independent of a transient
 terminal and preserve parent-liveness cleanup, not just inherited lock FDs.
+
+## Diagnose the C16 regression before changing State again
+
+`20260926-live-swe/c16-profile1` captures scheduler ticks500..579 on both ranks
+of installed6bc6546 plus capsule-only profiler/CPU annotations. TraceLoomab8b513
+recovers119 exact graph launches and197345 exact body members per rank. Rank0's
+3334.26ms tick span contains2617.48ms of graph envelopes and707.44ms between
+graphs (rank1:3341.72/2652.38/679.42ms). The median between-graph gap is5.41ms
+(rank1 5.11ms). Thus do not blame only host gaps; most sampled time is in graph
+bodies. Synchronize API durations mostly include waiting for those same bodies
+and must not be added as independent overhead.
+
+There is a concrete numerical-dispatch regression. For the same B8/3-token
+**target shape**, old small-fish candidate3 has1266 exact members, versus3425
+in the new root:80 AddRmsNormBias kernels become0, with131 Pows and131 ReduceMean
+kernels absent from the old graph. Native Worker initializes
+`register_ascend_customop`, which selects AscendRMSNorm, AscendGemmaRMSNorm and
+other optimized leaves; the owned bootstrap only checks `enable_custom_op` and
+constructs core models without that registration. Runtime logs explicitly warn
+that RMSNorm/fused-add-RMSNorm have no selected priority and use native fallback.
+This is lost optimized dispatch while replacing execution ownership, not proof
+that exclusive State lanes or LiveModule intrinsically cost more. Restore the
+intended numerical composition deliberately; do not blindly import the whole
+native Worker or assume a global registration change preserves root semantics.
+
+Other observed/source-supported seams remain distinct: C16 ready work splits
+into serial binary buckets (e.g.14 target rows ->8+4+2); MTP proposals and
+accepted-hidden repair use separate graph calls; `_run` synchronizes before and
+after output clones; per-seat protocol uses scalar readbacks and small writes.
+The profile has287 item readbacks and2697 copy_ calls on rank0. Nested host API
+sums are not an additive cost ledger. MTP acceptance rate is not established by
+this capture, nor is each seam's share of the900s regression.
+
+Old candidate3 C8 decode/mixed timelines are structural references, not matched
+C16/context controls. New target B8/3-token body median42.93ms across5 launches
+cannot be promoted to a causal layout ratio. See
+`docs/evidence/qwen35-live-c16-profile.json` and capsule `analysis/findings.json`;
+raw profiles, two rank Perfetto timelines, exact SQLite and same-scale SVG stay
+in the capsule. No production code changed during this diagnostic.
+
+Capture boundary: both finite windows and exports completed, but synchronous
+profiler export took~79s and exceeded the supervisor's60s health timeout. The
+surrounding180s diagnostic client was interrupted; no successful SWE score is
+claimed. Owned service exited0 and both cards released. The later tick679
+sidecar was not written, so graph shapes are instead matched from official
+profiler CPU labels to CANN execute connection IDs. Future probes must save
+sidecars before export and move export offline or give bounded finalization its
+own timeout rather than rerunning the same health-timeout failure.

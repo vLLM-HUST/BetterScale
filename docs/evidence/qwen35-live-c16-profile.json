@@ -1,0 +1,53 @@
+{
+  "status": "Both rank-local finite capture windows analyzed; surrounding HTTP diagnostic interrupted during synchronous export, not a successful SWE run",
+  "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-live-swe/c16-profile1",
+  "source": "6bc65464f16ed1799f970e34d8184a39df1919e3",
+  "analyzer": "ab8b5131191c6d5aeee2dd8566c34411f49ceab0",
+  "window": "SWE C16 seed20260924 ticks500..579, first500 ticks excluded; one rank-bound profiler per rank",
+  "rank_ledgers": [
+    {
+      "rank": 0,
+      "span_ms": 3334.25669,
+      "graph_union_ms": 2617.48256,
+      "between_graph_ms": 707.4436199999999,
+      "graphs": 119,
+      "exact_members": 197345,
+      "gap_median_ms": 5.414
+    },
+    {
+      "rank": 1,
+      "span_ms": 3341.71615,
+      "graph_union_ms": 2652.37626,
+      "between_graph_ms": 679.42172,
+      "graphs": 119,
+      "exact_members": 197345,
+      "gap_median_ms": 5.1102
+    }
+  ],
+  "old_reference": "20260924T160000Z-qualification/serve-candidate3-traceloom/decode-rank0.db; C8, not a matched C16/context control",
+  "target_b8_w3_census": {
+    "old_members": 1266,
+    "live_members": 3425,
+    "old_AddRmsNormBias": 80,
+    "live_AddRmsNormBias": 0,
+    "old_Pows": 0,
+    "live_Pows": 131,
+    "old_ReduceMean": 0,
+    "live_ReduceMean": 131
+  },
+  "source_findings": [
+    "Native Worker calls register_ascend_customop before weight model construction; owned bootstrap calls enable_custom_op (availability) but not registration. Actual profiler census and explicit RMSNorm native-fallback warnings corroborate lost fused numerical dispatch.",
+    "Scheduler chooses one (kind,width) family and binary-decomposes real rows: 14 ready rows run B8+B4+B2 serially. C16 client concurrency is not a B16 target guarantee.",
+    "Each root._run drains replay, clones output banks, drains copies, then retires invocation. Protocol also performs per-seat .item/.tolist and small device State writes.",
+    "Generation protocol issues two separate draft proposal steps and optional accepted-target-hidden draft repair before commit; this differs from old fused draft execution."
+  ],
+  "nonclaims": [
+    "No causal allocation of the full76.3% loss",
+    "No LiveModule-intrinsic slowdown claim",
+    "No timing-equivalent old/new context or traffic",
+    "No fresh performance improvement",
+    "MTP acceptance rate not recovered from this capture"
+  ],
+  "capture_failure": "Both80-tick windows and profiler exports completed. Synchronous rank-local export took~79s, exceeding60s HTTP health timeout; supervisor stopped owned service (exit0), bothcards released. Dispatch JSON written at tick679 was not reached. CPU labels in official profiler DB matched119 graph launches via exact CANN API correlation instead. No successful180s SWE score claimed.",
+  "next_capture_rule": "Dump dispatch receipt before export; make export offline or allow its bounded completion without a shorter health timeout. Preserve finite window and fail-closed ownership guard."
+}
