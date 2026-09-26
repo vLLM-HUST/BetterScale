@@ -20,6 +20,7 @@ class Request:
     tokens: list[int]
     count: int
     stops: tuple[int, ...]
+    cache_salt: str | None = None
     output: list[int] = field(default_factory=list)
     progress: Progress = field(default_factory=Progress)
     protocol: object = None
@@ -54,14 +55,14 @@ class Scheduler:
     def busy(self):
         return bool(self.waiting or self.active)
 
-    def submit(self, key, tokens, count, stops=()):
+    def submit(self, key, tokens, count, stops=(), cache_salt=None):
         if key in self.keys:
             raise ValueError("duplicate request identity")
         if len(self.keys) >= self.max_pending:
             raise ValueError("live request queue is full")
         if not tokens or type(count) is not int or count <= 0:
             raise ValueError("nonempty prompt and positive output count required")
-        horizon = len(tokens) + count + 2
+        horizon = len(tokens) + count
         table = self.root.residents_table
         # A request must be able to complete alone. This is validation, NOT a
         # reservation: physical pages remain shared and are acquired on demand.
@@ -74,9 +75,11 @@ class Scheduler:
             )
         self.sequence += 1
         self.keys.add(key)
-        self.waiting.append(
-            Request(key, self.sequence, list(tokens), count, tuple(stops))
+        request = Request(
+            key, self.sequence, list(tokens), count, tuple(stops), cache_salt
         )
+        self.waiting.append(request)
+        return request
 
     @torch.inference_mode()
     def cancel(self, key):
@@ -143,7 +146,7 @@ class Scheduler:
         ):
             request = self.waiting.popleft()
             prompt = request.tokens + request.output
-            admission = table.acquire(prompt)
+            admission = table.acquire(prompt, request.cache_salt)
             request.lease = admission[0]
             if request.cached is None:
                 request.cached = admission[1]
@@ -202,6 +205,8 @@ class Scheduler:
                     min(r.order for r, _ in rows),
                 ),
             )
+            if len(group[0][1].tokens) > 3:
+                group = [min(group, key=lambda row: (row[0].ready_since, row[0].order))]
             offset = 0
             while offset < len(group):
                 # Binary decomposition: no dummy GDN rows or padding State seat.

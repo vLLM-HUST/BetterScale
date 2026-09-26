@@ -1,0 +1,165 @@
+{
+  "date": "2026-09-26",
+  "status": "model passed; HTTP numerical/SSE passed but shutdown failed; leaderboard paused for capacity audit",
+  "source_parent": "b27efb822a7762e5a27af60e330de98d743515ce",
+  "scope": {
+    "model": "Qwen3.5-35B-A3B",
+    "model_revision": "712cf74392b05026a6db2bf213d343747d1f6d45",
+    "dtype": "BF16",
+    "tp": 2,
+    "mtp_depth": 2,
+    "execution_seats": 16,
+    "resident_seats": 20,
+    "context_tokens": 262144,
+    "prefill_tokens": 1024,
+    "page_tokens": 128,
+    "graphs": 30,
+    "native_runner_fallback": false,
+    "external_livemodule": false
+  },
+  "capacity": {
+    "policy": "fixed domains first; driver-free bytes minus explicit floor and allocator padding; TP MIN before one shared allocation",
+    "iterative_allocation_search": false,
+    "inactive_cache_credited": false,
+    "context_times_seat_cap": false,
+    "observed_pages_per_rank": [
+      16981,
+      16981
+    ],
+    "observed_token_slots": 2173568,
+    "rank_receipts": [
+      {
+        "free_after_fixed_bytes": 26019221504,
+        "minimum_free_bytes": 1073741824,
+        "allocation_padding_bytes": 461373418,
+        "shared_budget_bytes": 24484106262,
+        "local_units": 16981,
+        "admitted_units": 16981,
+        "free_after_allocation_bytes": 1521324032
+      },
+      {
+        "free_after_fixed_bytes": 26019573760,
+        "minimum_free_bytes": 1073741824,
+        "allocation_padding_bytes": 461373418,
+        "shared_budget_bytes": 24484458518,
+        "local_units": 16981,
+        "admitted_units": 16981,
+        "free_after_allocation_bytes": 1521319936
+      }
+    ]
+  },
+  "tp2": {
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-long-tp2-2",
+    "both_ranks_passed": true,
+    "cases": [
+      {
+        "length": 8193,
+        "seconds": 1.1328127650194801,
+        "text": "cobalt-seven-42\n"
+      },
+      {
+        "length": 32769,
+        "seconds": 4.240754148981068,
+        "text": "cobalt-seven-42\n"
+      },
+      {
+        "length": 131073,
+        "seconds": 19.97773247899022,
+        "text": "cobalt-seven-42\n"
+      },
+      {
+        "length": 262080,
+        "seconds": 52.836604209966026,
+        "text": "cobalt-seven-42\n"
+      }
+    ],
+    "native_raw_and_warm_ids_match": true,
+    "max_actual_batch": 16,
+    "concurrent_requests": 16,
+    "native_ids_per_concurrent_request": 12,
+    "selected_devices_released_idle": [
+      0,
+      1
+    ]
+  },
+  "cpu": {
+    "source_tests": 203,
+    "installed_tests": 51,
+    "note": "One source test initially lacked its pinned donor checkout; materialized the exact gitlink and passed it separately."
+  },
+  "packaging": {
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-long-package1",
+    "payload_files_compared": 135,
+    "strict_metadata": true,
+    "pypi_published": false
+  },
+  "leaf_and_small_model_capsules": [
+    "20260926-long-fia1",
+    "20260926-paged-root1",
+    "20260926-chunk-leaf1",
+    "20260926-chunk-root1"
+  ],
+  "failed_attempts": {
+    "20260926-long-tp2-1": "Old bounded physical fitter exhausted eight one-page decrements before READY.",
+    "20260926-long-fit-diagnostic1": "Same behavior observed: every attempt had identical allocated/reserved waterlines; free floor missed by about190\u2013206MiB."
+  },
+  "not_claimed": [
+    "throughput improvement",
+    "C32 execution",
+    "universal BF16 batch invariance",
+    "CPU offload",
+    "intermediate recurrent checkpoints",
+    "PyPI publication"
+  ],
+  "http": {
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-long-http1",
+    "native_chats_and_tokens": true,
+    "strict_swe_sse_client": true,
+    "salt_isolation_and_warm_reuse": true,
+    "actual_c16": true,
+    "stream_disconnect_cancelled": true,
+    "service_exit": 1,
+    "shutdown_failure": "Uvicorn capture_signals raised TypeError while restoring a saved signal handler after application shutdown. The saved handler value was not recorded. Not a clean installed-service qualification.",
+    "selected_devices_released_idle": [
+      0,
+      1
+    ]
+  },
+  "leaderboard": "not started; explicitly paused by Fletcher for capacity accounting",
+  "capacity_ledger": {
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-capacity-ledger1",
+    "rank": 0,
+    "bytes": {
+      "weights_and_model_buffers": 35747218928,
+      "resident_state": 1912095760,
+      "attention_kv": 24484511744,
+      "other_live_allocator": 279632896,
+      "default_pool_inactive": 189110784,
+      "graph_private_pool_reserved": 174063616,
+      "outside_allocator_residual": 1163534336,
+      "driver_free": 1501945856
+    },
+    "total_bytes": 65452113920,
+    "admitted_pages": 16982,
+    "tokens": 2173696,
+    "scope": "Actual READY rank0 waterline; rank1 has the same tensor and pool accounting. Outside-allocator residual is not attributed exclusively to graph execution.",
+    "native_reference": {
+      "capsule": "/workspace/my-ascend-workspace/runs/swe-frontier-sequential-20260924/native16",
+      "explicit_hybrid_budget_bytes": 26038239232,
+      "reported_effective_tokens": 2072810,
+      "reported_full_context_concurrency": 7.91,
+      "capacity_maximum_proven": false
+    },
+    "same_state_budget_arithmetic": {
+      "state_budget_bytes": 26038239232,
+      "resident_seats": 20,
+      "attention_pages": 16733,
+      "attention_tokens": 2141824,
+      "measured_control_pair": false
+    },
+    "four_extra_seats": {
+      "bytes_per_rank": 382419152,
+      "attention_token_equivalent": 33950.563920454544
+    }
+  }
+}

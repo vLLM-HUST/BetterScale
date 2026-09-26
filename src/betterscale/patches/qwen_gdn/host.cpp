@@ -33,7 +33,7 @@ void initialize(const std::string& path) {
 }
 
 int64_t workspace_size(int64_t cores, int64_t requests) {
-  TORCH_CHECK(cores == 24 && requests > 0 && requests <= 9,
+  TORCH_CHECK(cores == 24 && requests > 0 && requests <= 33,
               "Outside qualified GDN workspace contract");
   auto align = [](int64_t n) { return (n + 511) / 512 * 512; };
   // Same reserved system prefix and user offsets as the immutable H/O tiling.
@@ -58,12 +58,16 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> pool_forward(
   const auto tokens = q.size(2);
   const auto chunks = indices.size(0);
   const auto requests = cu.numel() - 1;
-  TORCH_CHECK(tokens > 0 && tokens <= 2048 && requests == 9,
+  const auto key_heads = q.size(1);
+  const auto value_heads = w.size(1);
+  TORCH_CHECK(tokens > 0 && tokens <= 4096 && requests > 0 && requests <= 33,
               "Outside owned mixed GDN capacity");
+  TORCH_CHECK((key_heads == 8 && (value_heads == 16 || value_heads == 24)) ||
+              (key_heads == 16 && value_heads == 16), "Outside owned GDN head geometry");
   // Framework allocator allocations inside capture belong to its graph pool.
   // They are invocation-local: no bank/capacity/group retains a scratch arena.
-  auto h = at::empty({1, 24, chunks, 128, 128}, q.options());
-  auto v = at::empty({1, 24, tokens, 128}, q.options());
+  auto h = at::empty({1, value_heads, chunks, 128, 128}, q.options());
+  auto v = at::empty({1, value_heads, tokens, 128}, q.options());
   auto output = at::empty_like(v);
   auto workspace = at::empty({workspace_size(cores, requests)}, q.options().dtype(at::kByte));
   auto stream = c10_npu::getCurrentNPUStream().stream(false);

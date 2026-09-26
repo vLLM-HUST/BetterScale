@@ -115,7 +115,16 @@ class QwenExecutionRoot(QwenStateRoot):
         return hidden, logits
 
     def _target_forward(
-        self, ids, positions, write, read, seat=0, accepted=1, candidate_metadata=None
+        self,
+        ids,
+        positions,
+        write,
+        read,
+        seat=0,
+        accepted=1,
+        candidate_metadata=None,
+        attention_wave=None,
+        gdn_prefill=None,
     ):
         with self._numerical_context(self.target_model, ids, is_draft=False):
             hidden = self.target_model.model.embed_tokens(ids)
@@ -133,12 +142,25 @@ class QwenExecutionRoot(QwenStateRoot):
                     seat,
                     accepted,
                     candidate_metadata,
+                    attention_wave,
+                    gdn_prefill,
                 )
             hidden, _ = self.target_model.model.norm(hidden, residual)
-            logits = self._sample(self.target_model, hidden)
+            logits = self._sample(
+                self.target_model, hidden[-1:] if gdn_prefill else hidden
+            )
             return hidden, logits
 
-    def _draft_forward(self, ids, hidden_seed, positions, write, read):
+    def _draft_forward(
+        self,
+        ids,
+        hidden_seed,
+        positions,
+        write,
+        read,
+        attention_wave=None,
+        prefill=False,
+    ):
         with self._numerical_context(self.draft_model, ids, is_draft=True):
             model = self.draft_model.model
             embedding = model.pre_fc_norm_embedding(model.embed_tokens(ids))
@@ -155,9 +177,14 @@ class QwenExecutionRoot(QwenStateRoot):
                 self.geometry,
                 0,
                 1,
+                attention_wave=attention_wave,
             )
             hidden, _ = model.norm(hidden, residual)
-            logits = self._sample(self.draft_model, hidden)
+            logits = (
+                torch.zeros_like(ids[:1])
+                if prefill and self.greedy_only
+                else self._sample(self.draft_model, hidden[-1:] if prefill else hidden)
+            )
             return hidden, logits
 
     def _sample(self, model, hidden):

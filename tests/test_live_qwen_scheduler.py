@@ -49,6 +49,52 @@ def drain(scheduler):
     raise AssertionError("scheduler made no bounded progress")
 
 
+def test_streamed_commits_survive_preemption_without_duplicates():
+    import asyncio
+
+    from betterscale.live.llm.qwen35.ingress import Ingress
+
+    async def run():
+        ingress = Ingress(BatchRoot(pages=4), lambda commands: None)
+        pump = asyncio.create_task(ingress.pump())
+        updates = [[], []]
+        tasks = [
+            asyncio.create_task(ingress.execute(
+                prompt, 10, (), cache_salt=str(i),
+                on_tokens=lambda ids, i=i: updates[i].append(list(ids)),
+            ))
+            for i, prompt in enumerate(([1, 2, 3], [20, 21, 22]))
+        ]
+        try:
+            results = await asyncio.gather(*tasks)
+            assert ingress.scheduler.stats["preemptions_with_output"] > 0
+            for parts, result in zip(updates, results, strict=True):
+                assert len(parts) > 1
+                assert [token for part in parts for token in part] == result["token_ids"]
+        finally:
+            pump.cancel()
+            try:
+                await pump
+            except asyncio.CancelledError:
+                pass
+            ingress.scheduler.close()
+
+    asyncio.run(run())
+
+
+def test_cache_salt_is_part_of_resident_identity():
+    root = BatchRoot()
+    scheduler = Scheduler(root)
+    scheduler.submit("a", [1, 2, 3], 3, cache_salt="first")
+    a = drain(scheduler)["a"]
+    scheduler.submit("b", [1, 2, 3, 4, 5, 6], 2, cache_salt="second")
+    b = drain(scheduler)["b"]
+    assert b["cached_tokens"] == 0 and b["seat"] != a["seat"]
+    scheduler.submit("c", [1, 2, 3, 4, 5, 6], 2, cache_salt="first")
+    c = drain(scheduler)["c"]
+    assert c["cached_tokens"] == 6 and c["seat"] == a["seat"]
+
+
 @pytest.mark.parametrize("bad_draft", [False, True])
 def test_real_grouping_turnover_and_hot_resume(bad_draft):
     root = BatchRoot(bad_draft=bad_draft)

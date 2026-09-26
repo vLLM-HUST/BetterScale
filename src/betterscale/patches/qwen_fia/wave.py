@@ -9,7 +9,10 @@ import torch
 
 
 class Planner:
-    def __init__(self, library):
+    def __init__(self, library, *, heads=12, kvheads=2):
+        if heads <= 0 or kvheads <= 0 or heads % kvheads:
+            raise ValueError("invalid FIA head geometry")
+        self.heads, self.kvheads = heads, kvheads
         self.lib = library
         u64 = ctypes.c_uint64
         i64 = ctypes.c_int64
@@ -49,7 +52,7 @@ class Planner:
         offsets = m.actual_seq_lengths_q
         lengths = m.seq_lens_list
         if (
-            not 0 < len(offsets) == len(lengths) <= 9
+            not 0 < len(offsets) == len(lengths) <= frame.requests
             or not 0 < offsets[-1] <= frame.tokens
         ):
             raise ValueError("FIA request/query capacity exceeded")
@@ -62,8 +65,8 @@ class Planner:
             ptrs,
             len(offsets),
             frame.tokens,
-            12,
-            2,
+            self.heads,
+            self.kvheads,
             k.shape[0],
             frame.columns,
             scale,
@@ -97,20 +100,21 @@ class Planner:
 
 
 class Frame:
-    def __init__(self, tokens, columns, device, stream):
+    def __init__(self, tokens, columns, device, stream, *, requests=9):
         self.tokens = tokens
         self.columns = columns
+        self.requests = requests
         self.stream = stream
-        size = 2528 + 9 * 16 + 9 * columns * 4
+        size = 2528 + requests * 16 + requests * columns * 4
         self.host = torch.empty(size, dtype=torch.uint8, pin_memory=True)
         self.device = torch.empty(size, dtype=torch.uint8, device=device)
 
         def views(t):
             return (
                 t[:2528],
-                t[2528:2600].view(torch.int64),
-                t[2600:2672].view(torch.int64),
-                t[2672:].view(torch.int32).view(9, columns),
+                t[2528 : 2528 + requests * 8].view(torch.int64),
+                t[2528 + requests * 8 : 2528 + requests * 16].view(torch.int64),
+                t[2528 + requests * 16 :].view(torch.int32).view(requests, columns),
             )
 
         self.h_tiling, self.h_q, self.h_kv, self.h_table = views(self.host)

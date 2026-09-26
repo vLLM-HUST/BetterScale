@@ -11,9 +11,10 @@ from .solve_tril import solve_tril
 
 def chunk_wy(k, v, beta, cumulative_g, meta):
     batch, tokens, key_heads, dim = k.shape
-    assert batch == 1 and key_heads == 8 and dim == 128
-    assert v.shape == (1, tokens, 24, 128)
-    heads, block = 24, 64
+    heads, block = v.shape[2], 64
+    assert batch == 1 and dim == 128
+    assert (key_heads, heads) in ((8, 24), (8, 16), (16, 16))
+    assert v.shape == (1, tokens, heads, 128)
     indices = meta.indices[block]
     tasks = len(indices)
     # For B=1, [H,B,T] (KKT) and [B,H,T] (WY/H/O) share byte order.

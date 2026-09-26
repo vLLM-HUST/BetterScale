@@ -176,6 +176,7 @@ class WorkspaceContract(unittest.TestCase):
         )
         released = []
         planner = Planner.__new__(Planner)
+        planner.heads, planner.kvheads = 12, 2
         planner.fixtures = (pointer, pointer, pointer, pointer, 0.0625)
         planner.calls = 0
         planner.lib = SimpleNamespace(
@@ -187,7 +188,13 @@ class WorkspaceContract(unittest.TestCase):
             plan_release=lambda p: released.append(p),
         )
         frame = SimpleNamespace(
-            tokens=16, columns=64, table=pointer, h_tiling=pointer, plan=3, workspace=1
+            tokens=16,
+            requests=9,
+            columns=64,
+            table=pointer,
+            h_tiling=pointer,
+            plan=3,
+            workspace=1,
         )
         with (
             patch(

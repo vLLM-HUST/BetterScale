@@ -39,7 +39,21 @@ def host_adapter(host_path, kernel_path):
 
 
 class Kernels:
-    def __init__(self, library, tokens, requests, chunks, cores=24, state_pool=False):
+    def __init__(
+        self,
+        library,
+        tokens,
+        requests,
+        chunks,
+        cores=24,
+        state_pool=False,
+        *,
+        key_heads=8,
+        value_heads=24,
+    ):
+        if (key_heads, value_heads) not in ((8, 24), (8, 16), (16, 16)):
+            raise ValueError("unqualified GDN head geometry")
+        self.key_heads, self.value_heads = key_heads, value_heads
         assert os.environ.get("TASK_QUEUE_ENABLE") == "0"
         self.lib = C.CDLL(str(library))
         self.state_pool = state_pool
@@ -57,27 +71,29 @@ class Kernels:
             None
             if self.host
             else torch.empty(
-                (1, 24, chunks, 128, 128), dtype=torch.bfloat16, device="npu"
+                (1, value_heads, chunks, 128, 128), dtype=torch.bfloat16, device="npu"
             )
         )
         self.v = (
             None
             if self.host
-            else torch.empty((1, 24, tokens, 128), dtype=torch.bfloat16, device="npu")
+            else torch.empty(
+                (1, value_heads, tokens, 128), dtype=torch.bfloat16, device="npu"
+            )
         )
         self.final = (
             None
             if state_pool
             else torch.empty(
-                (requests, 24, 128, 128), dtype=torch.float32, device="npu"
+                (requests, value_heads, 128, 128), dtype=torch.float32, device="npu"
             )
         )
         self.o = None if self.host else torch.empty_like(self.v)
         th, to = tiling_type("h")(), tiling_type("o")()
         for t in (th, to):
             t.seqlen = tokens
-            t.kNumHead = 8
-            t.vNumHead = 24
+            t.kNumHead = key_heads
+            t.vNumHead = value_heads
             t.kHeadDim = t.vHeadDim = 128
             t.chunkSize = 64
             t.isVariedLen = t.shapeBatch = 1
@@ -144,14 +160,14 @@ class Kernels:
         The scheduler validates unique in-range slots and token/chunk capacities
         before publishing metadata. No data-dependent host read occurs here.
         """
-        assert self.state_pool and bank.shape[1:] == (24, 128, 128)
+        assert self.state_pool and bank.shape[1:] == (self.value_heads, 128, 128)
         assert bank.dtype == torch.float32 and bank.is_contiguous()
         assert state_meta.shape == (self.N, 2) and state_meta.dtype == torch.int64
         assert cu.shape == (self.N + 1,) and cu.dtype == torch.int64
         assert indices.shape == (self.C, 2) and indices.dtype == torch.int64
-        assert q.shape == k.shape == (1, 8, self.T, 128)
-        assert w.shape == u.shape == (1, 24, self.T, 128)
-        assert g.shape == (1, 24, self.T) and g.dtype == torch.float32
+        assert q.shape == k.shape == (1, self.key_heads, self.T, 128)
+        assert w.shape == u.shape == (1, self.value_heads, self.T, 128)
+        assert g.shape == (1, self.value_heads, self.T) and g.dtype == torch.float32
         assert all(t.dtype == torch.bfloat16 for t in (q, k, w, u))
         assert all(
             t.device == bank.device and t.is_contiguous()

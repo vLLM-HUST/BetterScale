@@ -67,7 +67,7 @@ class QwenLauncher(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 prepare(Path("/model"), "0,1", 8000, Path("/tmp/cache"))
 
-    def test_live_prepares_its_own_entry_without_native_libraries(self):
+    def test_live_prepares_owned_entry_with_numerical_libraries(self):
         import json
 
         with tempfile.TemporaryDirectory() as directory:
@@ -81,14 +81,29 @@ class QwenLauncher(unittest.TestCase):
                     }
                 )
             )
-            with patch.dict(
-                os.environ, {"BETTERSCALE_GDN_LIBRARY": "/missing/native.so"}
-            ):
+            library = root / "numerical.so"
+            library.touch()
+            overrides = {
+                name: str(library)
+                for name in (
+                    "BETTERSCALE_GDN_LIBRARY",
+                    "BETTERSCALE_GDN_HOST_LIBRARY",
+                    "BETTERSCALE_FIA_LIBRARY",
+                )
+            }
+            with patch.dict(os.environ, overrides):
                 command, env = prepare(
                     root, "0,1", 8000, root / "cache", runtime="live"
                 )
             self.assertTrue(command[1].endswith("live/llm/qwen35/serve.sh"))
             self.assertEqual(env["BETTERSCALE_LIVE_TP"], "2")
+            self.assertEqual(command[command.index("--context-tokens") + 1], "262144")
+            self.assertEqual(env["BETTERSCALE_FIA_LIBRARY"], str(library))
+            with patch.dict(
+                os.environ, {"BETTERSCALE_GDN_LIBRARY": "/missing/native.so"}
+            ):
+                with self.assertRaises(FileNotFoundError):
+                    prepare(root, "0,1", 8000, root / "cache", runtime="live")
             with self.assertRaisesRegex(ValueError, "supports"):
                 prepare(root, "0", 8000, root / "cache", runtime="live")
         with self.assertRaisesRegex(ValueError, "unknown runtime"):

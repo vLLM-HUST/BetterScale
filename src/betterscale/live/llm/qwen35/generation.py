@@ -5,7 +5,7 @@ host prefix identity advance together after verification; no hidden history is
 kept beyond the current short wave and one boundary vector per resident.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import torch
 
@@ -32,6 +32,7 @@ class PageRequest:
 class Progress:
     proposed: int = 0
     accepted_drafts: int = 0
+    token_ids: list[int] = field(default_factory=list)
 
 
 def generate(root, prompt, max_new_tokens, **kwargs):
@@ -62,18 +63,51 @@ def generation_steps(
     eos_token_ids=(),
     admission=None,
     progress=None,
+    cache_salt=None,
 ):
     """Yield bounded numerical calls; only completed replies advance identity."""
     if max_new_tokens <= 0:
         raise ValueError("max_new_tokens must be positive")
     table = root.residents_table
-    lease, cached = admission if admission is not None else table.acquire(list(prompt))
+    lease, cached = (
+        admission if admission is not None else table.acquire(list(prompt), cache_salt)
+    )
     seat = lease.seat
     c = root.continuation
     emitted = []
     progress = Progress() if progress is None else progress
     try:
-        for position in range(cached, len(prompt)):
+        position = cached
+        while position < len(prompt):
+            # One ordinary step first canonicalizes an arbitrary accepted MTP
+            # candidate and its convolution history. Subsequent chunks consume
+            # and replace candidate zero without gathering recurrent State.
+            widths = getattr(root, "prefill_widths", ()) if position > cached else ()
+            width = max((w for w in widths if w <= len(prompt) - position), default=1)
+            if width > 1:
+                tokens = prompt[position : position + width]
+                slots = yield PageRequest(lease, position + width)
+                hidden, logits = yield ModelStep(
+                    "target",
+                    tokens,
+                    {"seat": seat, "position": position, "slots": slots, "accepted": 1},
+                )
+                # Draft inputs are shifted by one; target hidden is retained
+                # only for this chunk, never for the whole context history.
+                yield ModelStep(
+                    "draft",
+                    tokens,
+                    {"position": position - 1, "slots": slots[:-1]},
+                    torch.cat((c.anchor_hidden.tensor[seat : seat + 1], hidden[:-1])),
+                )
+                c.anchor_hidden.tensor[seat].copy_(hidden[-1])
+                c.anchor_token.tensor[seat] = greedy(logits)[-1]
+                c.selection.tensor[seat] = 1
+                position += width
+                c.target_cursor.tensor[seat] = position
+                c.draft_cursor.tensor[seat] = position - 1
+                table.commit(lease, tokens)
+                continue
             token = prompt[position]
             slots = yield PageRequest(lease, position + 1)
             if position:
@@ -99,10 +133,14 @@ def generation_steps(
             c.target_cursor.tensor[seat] = position + 1
             c.draft_cursor.tensor[seat] = position
             table.commit(lease, [token])
+            position += 1
         while len(emitted) < max_new_tokens:
             position = len(table.seats[seat].tokens)
             anchor = int(c.anchor_token.tensor[seat].item())
-            width = 3 if speculative else 1
+            # Never reserve unobservable lookahead beyond the caller's output
+            # budget. The last one/two tokens use ordinary target steps, so the
+            # full model context remains available to committed tokens.
+            width = 3 if speculative and max_new_tokens - len(emitted) >= 3 else 1
             slots = yield PageRequest(lease, position + width)
             seed, logits = yield ModelStep(
                 "draft",
@@ -111,7 +149,7 @@ def generation_steps(
                 c.anchor_hidden.tensor[seat : seat + 1],
             )
             tokens = [anchor]
-            if speculative:
+            if width == 3:
                 first = int(greedy(logits)[-1].item())
                 _, logits = yield ModelStep(
                     "draft",
@@ -159,6 +197,7 @@ def generation_steps(
             c.draft_cursor.tensor[seat] = position + count - 1
             table.commit(lease, tokens[:count])
             emitted.extend(tokens[:count])
+            progress.token_ids.extend(tokens[:count])
             progress.accepted_drafts += count - 1
             if emitted[-1] in eos_token_ids:
                 break

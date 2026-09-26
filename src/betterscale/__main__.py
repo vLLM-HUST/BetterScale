@@ -16,7 +16,7 @@ def prepare(
     cache_dir,
     *,
     runtime="native",
-    context_tokens=512,
+    context_tokens=262144,
     resident_seats=20,
     token_pages=0,
     execution_seats=16,
@@ -55,6 +55,13 @@ def prepare(
         VLLM_CACHE_ROOT=str(cache_dir.resolve()),
         PYTHON=sys.executable,
     )
+    prepare_libraries(root, env)
+    # serve.sh sets queue mode, AIV and LD_PRELOAD before the new Python process;
+    # Worker independently verifies donor pins and all three artifact digests.
+    return ["bash", str(root / "patches/qwen_gdn/serve.sh")], env
+
+
+def prepare_libraries(root, env):
     libraries = {
         "BETTERSCALE_GDN_LIBRARY": root / "patches/qwen_gdn/libbs_gdn.so",
         "BETTERSCALE_GDN_HOST_LIBRARY": root / "patches/qwen_gdn/libbs_gdn_host.so",
@@ -67,9 +74,6 @@ def prepare(
                 f"Missing {name}: {path}; install the complete distribution"
             )
         env[name] = str(path)
-    # serve.sh sets queue mode, AIV and LD_PRELOAD before the new Python process;
-    # Worker independently verifies donor pins and all three artifact digests.
-    return ["bash", str(root / "patches/qwen_gdn/serve.sh")], env
 
 
 def prepare_live(
@@ -98,7 +102,7 @@ def prepare_live(
     ):
         raise ValueError("HTTP and distributed ports must be distinct and in 1..65535")
     if not (
-        3 <= context_tokens <= 4096
+        3 <= context_tokens <= 262144
         and 1 <= execution_seats <= resident_seats
         and (token_pages == 0 or token_pages >= execution_seats)
     ):
@@ -117,6 +121,7 @@ def prepare_live(
     ):
         raise ValueError("live supports Qwen3.5-0.8B TP1 or 35B-A3B TP2 only")
     env = os.environ.copy()
+    prepare_libraries(Path(__file__).parent, env)
     env.update(
         ASCEND_RT_VISIBLE_DEVICES=devices,
         PYTHON=sys.executable,
@@ -163,14 +168,14 @@ def main():
     qwen.add_argument(
         "--cache-dir", type=Path, default=Path.home() / ".cache/betterscale/qwen27"
     )
-    qwen.add_argument("--live-context-tokens", type=int, default=512)
+    qwen.add_argument("--live-context-tokens", type=int, default=262144)
     qwen.add_argument("--live-execution-seats", type=int, default=16)
     qwen.add_argument("--live-resident-seats", type=int, default=20)
     qwen.add_argument(
         "--live-token-pages",
         type=int,
         default=0,
-        help="shared pages; 0 fits observed memory up to the useful context ceiling",
+        help="shared pages; 0 fits remaining physical memory after execution calibration",
     )
     qwen.add_argument("--live-distributed-port", type=int, default=29535)
     args = parser.parse_args()
@@ -197,9 +202,6 @@ def main():
         )
     except (ValueError, OSError) as exc:
         parser.error(str(exc))
-    if args.runtime == "live":
-        os.execvpe(command[0], command, env)
-        return
     root = Path(__file__).parent / "patches"
     for variable, patch, key in (
         ("BETTERSCALE_GDN_LIBRARY", "qwen_gdn", "sha256"),

@@ -15,17 +15,59 @@ class Tokenizer:
         return [3, 4]
 
 
-def test_request_admission_leaves_two_mtp_lookahead_tokens():
+def test_swe_exact_token_stream_and_usage():
+    import asyncio
+    import json
+    from types import SimpleNamespace
+
+    from fastapi.testclient import TestClient
+
+    from betterscale.live.llm.qwen35.http import create_app
+
+    class StreamTokenizer(Tokenizer):
+        def decode(self, ids, **kwargs):
+            return "".join(str(i) for i in ids)
+
+    async def execute(tokens, count, stops, *, on_tokens, cache_salt):
+        assert cache_salt == "trajectory-A"
+        on_tokens([3, 4])
+        await asyncio.sleep(0.01)
+        on_tokens([5])
+        return {"token_ids": [3, 4, 5], "cached_tokens": 1}
+
+    root = SimpleNamespace(context_tokens=128, target_model=SimpleNamespace(
+        model=SimpleNamespace(config=SimpleNamespace(eos_token_id=9), vocab_size=10)))
+    app = create_app(root, StreamTokenizer(), "fixture", execute)
+    with TestClient(app) as client:
+        reply = client.post("/v1/completions", json=dict(
+            model="fixture", prompt=[1, 2], max_tokens=3, ignore_eos=True,
+            temperature=0, seed=27, stream=True, stream_options={"include_usage": True},
+            return_token_ids=True, cache_salt="trajectory-A",
+        ))
+    assert reply.status_code == 200
+    frames = [line[6:] for line in reply.text.splitlines() if line.startswith("data: ")]
+    assert frames.pop() == "[DONE]"
+    data = [json.loads(line) for line in frames]
+    choices = [c for frame in data for c in frame["choices"]]
+    assert choices[0]["prompt_token_ids"] == [1, 2]
+    assert [t for c in choices for t in c["token_ids"]] == [3, 4, 5]
+    assert "".join(c["text"] for c in choices) == "345"
+    assert choices[-1]["finish_reason"] == "length"
+    assert data[-1]["usage"]["completion_tokens"] == 3
+    assert data[-1]["usage"]["prompt_tokens_details"]["cached_tokens"] == 1
+
+
+def test_request_admission_preserves_the_entire_context_for_committed_tokens():
     assert request_tokens(
-        {"prompt": [1, 2], "max_tokens": 4},
+        {"prompt": [1, 2], "max_tokens": 6},
         Tokenizer(),
         chat=False,
         context_tokens=8,
         vocab_size=10,
-    ) == ([1, 2], 4)
-    with pytest.raises(ValueError, match="lookahead"):
+    ) == ([1, 2], 6)
+    with pytest.raises(ValueError, match="context"):
         request_tokens(
-            {"prompt": [1, 2], "max_tokens": 5},
+            {"prompt": [1, 2], "max_tokens": 7},
             Tokenizer(),
             chat=False,
             context_tokens=8,
@@ -37,7 +79,7 @@ def test_request_admission_leaves_two_mtp_lookahead_tokens():
     "extra",
     [
         {"temperature": 1},
-        {"stream": True},
+        {"stream": "true"},
         {"n": 2},
         {"top_p": 0.9},
         {"presence_penalty": 0.1},
@@ -222,3 +264,42 @@ def test_detected_disconnect_cancels_execution_without_an_asgi_failure():
         assert cancelled == [True]
 
     asyncio.run(run())
+
+
+def test_owned_shutdown_restores_native_handler_as_default_without_reraising(monkeypatch):
+    import signal
+    from unittest.mock import Mock
+
+    import uvicorn
+
+    from betterscale.live.llm.qwen35.http import run_owned_http
+
+    installed = []
+    previous = {signal.SIGINT: None, signal.SIGTERM: signal.SIG_IGN}
+
+    def handler(sig, value):
+        installed.append((sig, value))
+        return previous[sig]
+
+    class Server:
+        def __init__(self, config):
+            self.config = config
+
+        def handle_exit(self, sig, frame):
+            pass
+
+        def run(self):
+            with self.capture_signals():
+                assert self.config.host == "127.0.0.1"
+                self.handle_exit(signal.SIGINT, None)
+
+    monkeypatch.setattr(signal, "signal", handler)
+    reraised = Mock()
+    monkeypatch.setattr(signal, "raise_signal", reraised)
+    monkeypatch.setattr(uvicorn, "Server", Server)
+    run_owned_http(object(), port=18950)
+    assert installed[-2:] == [
+        (signal.SIGINT, signal.SIG_DFL),
+        (signal.SIGTERM, signal.SIG_IGN),
+    ]
+    reraised.assert_not_called()

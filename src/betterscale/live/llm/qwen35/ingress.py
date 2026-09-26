@@ -12,20 +12,23 @@ class Ingress:
         self.broadcast = broadcast
         self.commands = []
         self.futures = {}
+        self.streams = {}
         self.wakeup = asyncio.Event()
         self.failure = None
         self.sequence = 0
         root.scheduler = self.scheduler
         root.serving_error = None
 
-    async def execute(self, tokens, count, stops):
+    async def execute(self, tokens, count, stops, *, cache_salt=None, on_tokens=None):
         if self.failure is not None:
             raise RuntimeError("live execution owner failed") from self.failure
         self.sequence += 1
         key = str(self.sequence)
         # Event-loop single writer: validation/host admission cannot race a wave.
-        self.scheduler.submit(key, tokens, count, stops)
-        self.commands.append(("submit", key, tokens, count, stops))
+        request = self.scheduler.submit(key, tokens, count, stops, cache_salt)
+        self.commands.append(("submit", key, tokens, count, stops, cache_salt))
+        if on_tokens is not None:
+            self.streams[key] = [on_tokens, request.progress, 0]
         future = asyncio.get_running_loop().create_future()
         self.futures[key] = future
         self.wakeup.set()
@@ -37,6 +40,7 @@ class Ingress:
             raise
         finally:
             self.futures.pop(key, None)
+            self.streams.pop(key, None)
 
     async def pump(self):
         try:
@@ -50,6 +54,11 @@ class Ingress:
                         if command[0] == "cancel":
                             self.scheduler.cancel(command[1])
                     results = self.scheduler.tick()
+                    for stream in self.streams.values():
+                        callback, progress, offset = stream
+                        if len(progress.token_ids) > offset:
+                            callback(progress.token_ids[offset:])
+                            stream[2] = len(progress.token_ids)
                     for key, result in results.items():
                         future = self.futures.get(key)
                         if future is not None and not future.done():

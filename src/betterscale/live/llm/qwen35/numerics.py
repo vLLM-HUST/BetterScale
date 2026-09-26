@@ -6,7 +6,7 @@
 import torch
 
 
-def attention(module, state, hidden, positions, write_slots, read_slots):
+def attention(module, state, hidden, positions, write_slots, read_slots, wave=None):
     """Bounded eager oracle path over explicit physical token addresses.
 
     read_slots covers only this request's valid prefix plus this wave. This
@@ -23,6 +23,15 @@ def attention(module, state, hidden, positions, write_slots, read_slots):
     values.index_copy_(
         0, write_slots, v.reshape(-1, module.num_kv_heads, module.head_dim)
     )
+    if wave is not None:
+        output = wave(
+            q.reshape(-1, module.num_heads, module.head_dim).contiguous(),
+            state.key.tensor,
+            state.value.tensor,
+        ).reshape(hidden.shape[0], -1)
+        if gate is not None:
+            output = output * torch.sigmoid(gate)
+        return module.o_proj(output)[0]
     # Flattened token projections, but separate prefix axes: requests must
     # never attend across the batch. Single-request callers retain the same math.
     reads = read_slots.reshape(1, -1) if read_slots.ndim == 1 else read_slots
@@ -49,7 +58,16 @@ def attention(module, state, hidden, positions, write_slots, read_slots):
     return module.o_proj(output)[0]
 
 
-def gdn(module, state, hidden, geometry, seat, accepted, candidate_metadata=None):
+def gdn(
+    module,
+    state,
+    hidden,
+    geometry,
+    seat,
+    accepted,
+    candidate_metadata=None,
+    prefill=None,
+):
     from vllm_ascend.device.device_op import DeviceOperator
 
     from .gdn_candidates import fused_recurrent_gated_delta_rule_fwd
@@ -85,11 +103,11 @@ def gdn(module, state, hidden, geometry, seat, accepted, candidate_metadata=None
         bias_opt=module.conv1d.bias,
         query_start_loc_opt=cu,
         cache_indices_opt=conv_slots,
-        initial_state_mode_opt=None,
-        num_accepted_tokens_opt=selected,
+        initial_state_mode_opt=None if prefill is None else prefill.initial,
+        num_accepted_tokens_opt=selected if prefill is None else None,
         activation_mode=1,
         pad_slot_id=-1,
-        run_mode=1,
+        run_mode=1 if prefill is None else 0,
     )
     q, k, v = y.split(
         [geometry.gdn_key_heads * geometry.gdn_key_dim] * 2
@@ -99,19 +117,22 @@ def gdn(module, state, hidden, geometry, seat, accepted, candidate_metadata=None
     q = q.reshape(1, -1, geometry.gdn_key_heads, geometry.gdn_key_dim).contiguous()
     k = k.reshape_as(q).contiguous()
     v = v.reshape(1, -1, geometry.gdn_value_heads, geometry.gdn_value_dim).contiguous()
-    out, _ = fused_recurrent_gated_delta_rule_fwd(
-        q,
-        k,
-        v,
-        g,
-        beta,
-        geometry.gdn_key_dim**-0.5,
-        state.recurrent.tensor,
-        cu_seqlens=cu,
-        ssm_state_indices=slots,
-        num_accepted_tokens=selected,
-        use_qk_l2norm_in_kernel=True,
-    )
+    if prefill is not None:
+        out = prefill(q, k, v, g, beta, state, conv_slots)
+    else:
+        out, _ = fused_recurrent_gated_delta_rule_fwd(
+            q,
+            k,
+            v,
+            g,
+            beta,
+            geometry.gdn_key_dim**-0.5,
+            state.recurrent.tensor,
+            cu_seqlens=cu,
+            ssm_state_indices=slots,
+            num_accepted_tokens=selected,
+            use_qk_l2norm_in_kernel=True,
+        )
     output = torch.empty_like(hidden)
     module._output_projection(out, z, output, hidden.shape[0])
     return output
@@ -129,6 +150,8 @@ def decoder(
     seat,
     accepted,
     candidate_metadata=None,
+    attention_wave=None,
+    gdn_prefill=None,
 ):
     if layer.layer_scale:
         raise ValueError("layer scaling is outside this Qwen35 execution envelope")
@@ -146,10 +169,17 @@ def decoder(
             seat,
             accepted,
             candidate_metadata,
+            gdn_prefill,
         )
     else:
         hidden = attention(
-            layer.self_attn, state, hidden, positions, write_slots, read_slots
+            layer.self_attn,
+            state,
+            hidden,
+            positions,
+            write_slots,
+            read_slots,
+            attention_wave,
         )
     hidden, residual = layer.post_attention_layernorm(hidden, residual)
     return layer.mlp(hidden), residual

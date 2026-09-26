@@ -26,7 +26,13 @@ class QwenStateRoot(LiveModule):
         self.residents = StateDomain(ExactStateCapacity(capacity.resident_seats))
         self.pages = StateDomain(
             ElasticStateCapacity(
-                StateCapacityUnit(minimum_units=capacity.execution_seats)
+                StateCapacityUnit(
+                    minimum_units=max(
+                        capacity.execution_seats,
+                        (capacity.prefill_tokens + capacity.page_tokens - 1)
+                        // capacity.page_tokens,
+                    )
+                )
             )
             if capacity.token_pages is None
             else ExactStateCapacity(capacity.token_pages)

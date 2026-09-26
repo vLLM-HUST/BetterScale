@@ -12,6 +12,7 @@ import torch
 from betterscale.live import GraphCallSchema, MetaTensor, construct_meta_tensors
 
 from .execution import QwenExecutionRoot
+from .residents import TokenSlots
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -30,13 +31,26 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
         *,
         context_tokens=128,
         greedy_only=False,
+        paged_attention=False,
     ):
         super().__init__(
             geometry, capacity, target_model, draft_model, greedy_only=greedy_only
         )
-        if not 3 <= context_tokens <= 4096:
-            raise ValueError("bounded graph context must be in 3..4096")
+        if not 3 <= context_tokens <= (262144 if paged_attention else 4096):
+            raise ValueError("context exceeds the selected attention implementation")
         self.context_tokens = context_tokens
+        if paged_attention and capacity.page_tokens != 128:
+            raise ValueError("paged FIA requires 128-token physical pages")
+        self.paged_attention = paged_attention
+        self._attention_waves = {}
+        self._gdn_prefills = {}
+        self.prefill_widths = tuple(
+            n for n in (4, 16, 64, 256, 1024, 4096) if n <= capacity.prefill_tokens
+        )
+        if capacity.prefill_tokens > context_tokens:
+            raise ValueError("prefill query capacity cannot exceed context")
+        if self.prefill_widths and not paged_attention:
+            raise ValueError("chunked prefill requires paged attention")
         self._metadata_actions = {}
         # All waves are serial on one stream; only retained output banks cross
         # calls. The common backend may therefore reuse transient graph scratch.
@@ -45,7 +59,9 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
             2**i for i in range(capacity.execution_seats.bit_length())
         )
         if capacity.token_pages is not None and capacity.token_pages < max(
-            self.batch_sizes
+            max(self.batch_sizes),
+            (capacity.prefill_tokens + capacity.page_tokens - 1)
+            // capacity.page_tokens,
         ):
             raise ValueError("capture needs one physical token page per execution lane")
         for batch in self.batch_sizes:
@@ -56,6 +72,94 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
                 ("draft", 2),
             ):
                 self._declare_call(kind, width, batch)
+        for width in self.prefill_widths:
+            self._declare_call("target", width, 1)
+            self._declare_call("draft", width, 1)
+
+    def _call_shapes(self):
+        return [
+            (kind, width, batch)
+            for batch in self.batch_sizes
+            for kind, width in (
+                ("target", 1),
+                ("target", 3),
+                ("draft", 1),
+                ("draft", 2),
+            )
+        ] + [
+            (kind, width, 1)
+            for width in self.prefill_widths
+            for kind in ("target", "draft")
+        ]
+
+    def _attention_state(self):
+        index = self.geometry.layer_types.index("full_attention")
+        return self.target[str(index)], self.target_model.model.layers[index].self_attn
+
+    def _initialize_live_generation(self):
+        super()._initialize_live_generation()
+        if not self.paged_attention:
+            return
+        from betterscale.live.arch.ascend.attention import PagedAttentionWave
+
+        state, module = self._attention_state()
+        try:
+            for kind, width, batch in self._call_shapes():
+                name = self.call_name(kind, width, batch)
+                wave = PagedAttentionWave(
+                    tokens=batch * width,
+                    requests=batch,
+                    context_tokens=self.context_tokens,
+                    heads=module.num_heads,
+                    key=state.key.tensor,
+                    value=state.value.tensor,
+                )
+                self._attention_waves[name] = wave
+                pages = (
+                    width + self.capacity.page_tokens - 1
+                ) // self.capacity.page_tokens
+                wave.prepare(
+                    [width] * batch,
+                    [width] * batch,
+                    [list(range(i * pages, (i + 1) * pages)) for i in range(batch)],
+                )
+            from betterscale.live.arch.ascend.gdn_prefill import GDNPrefill
+
+            for width in self.prefill_widths:
+                self._gdn_prefills[width] = GDNPrefill(
+                    width, self.geometry, self.live_device
+                )
+        except BaseException:
+            self._release_live_generation()
+            raise
+
+    def _rebind_live_state(self):
+        # Fixed wave storage survives calibration; only borrowed descriptors change.
+        QwenExecutionRoot._initialize_live_generation(self)
+        if self.paged_attention:
+            state, _ = self._attention_state()
+            for wave in self._attention_waves.values():
+                wave.bind_cache(state.key.tensor, state.value.tensor)
+                width = wave.tokens // wave.requests
+                pages = (
+                    width + self.capacity.page_tokens - 1
+                ) // self.capacity.page_tokens
+                wave.prepare(
+                    [width] * wave.requests,
+                    [width] * wave.requests,
+                    [
+                        list(range(i * pages, (i + 1) * pages))
+                        for i in range(wave.requests)
+                    ],
+                )
+
+    def _release_live_generation(self):
+        for wave in self._attention_waves.values():
+            wave.close()
+        self._attention_waves.clear()
+        for prefill in self._gdn_prefills.values():
+            prefill.close()
+        self._gdn_prefills.clear()
 
     @staticmethod
     def call_name(kind, width, batch):
@@ -65,6 +169,7 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
         name = self.call_name(kind, width, batch)
         self._metadata_actions[name] = partial(self._output_metadata, name)
         rows = batch * width
+        sampled_rows = 1 if width in self.prefill_widths else rows
         self.register_meta_tensor(
             name + "_hidden",
             MetaTensor((rows, self.geometry.hidden_size), dtype=torch.bfloat16),
@@ -72,20 +177,23 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
         self.register_meta_tensor(
             name + "_logits",
             MetaTensor(
-                (rows,)
+                (sampled_rows,)
                 if self.greedy_only
-                else (rows, self.target_model.model.vocab_size),
+                else (sampled_rows, self.target_model.model.vocab_size),
                 dtype=torch.int64 if self.greedy_only else torch.bfloat16,
             ),
         )
         ids = torch.ones(rows, dtype=torch.long)
         pos = torch.arange(width).repeat(batch).expand(3, -1).contiguous()
-        read = torch.zeros(batch, self.context_tokens, dtype=torch.long)
+        read = torch.zeros(
+            batch, 0 if self.paged_attention else self.context_tokens, dtype=torch.long
+        )
         write = (
             torch.arange(batch)[:, None] * self.capacity.page_tokens
             + torch.arange(width)[None, :]
         )
-        read[:, :width] = write
+        if not self.paged_attention:
+            read[:, :width] = write
         args = (ids, pos, read, write.flatten())
         if kind == "target":
             args += (
@@ -111,7 +219,15 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
                 graph_pool_key=self._graph_pool,
                 capture_state_blocks={
                     self.residents: tuple(range(batch)),
-                    self.pages: tuple(range(batch)),
+                    self.pages: tuple(
+                        range(
+                            batch
+                            * (
+                                (width + self.capacity.page_tokens - 1)
+                                // self.capacity.page_tokens
+                            )
+                        )
+                    ),
                 },
             ),
         )
@@ -136,6 +252,16 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
             write,
             read,
             candidate_metadata=(cu, conv_slots, candidates, accepted),
+            **(
+                {"attention_wave": self._attention_waves[name]}
+                if self.paged_attention
+                else {}
+            ),
+            **(
+                {"gdn_prefill": self._gdn_prefills[ids.shape[0]]}
+                if ids.shape[0] in self._gdn_prefills and cu.shape[0] == 2
+                else {}
+            ),
         )
         out_hidden.copy_(hidden)
         out_logits.copy_(logits)
@@ -144,14 +270,32 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
         out_hidden, out_logits = construct_meta_tensors(
             self._metadata_actions[name], context=None
         )
-        hidden, logits = self._draft_forward(ids, seed, positions, write, read)
+        hidden, logits = self._draft_forward(
+            ids,
+            seed,
+            positions,
+            write,
+            read,
+            **(
+                {"attention_wave": self._attention_waves[name]}
+                if self.paged_attention
+                else {}
+            ),
+            **(
+                {"prefill": True}
+                if name in {self.call_name("draft", w, 1) for w in self.prefill_widths}
+                else {}
+            ),
+        )
         out_hidden.copy_(hidden)
         out_logits.copy_(logits)
 
     def _inputs(self, tokens, position, slots):
         if not 0 <= position < len(slots) <= self.context_tokens:
             raise ValueError("call exceeds the owned graph context envelope")
-        if len(slots) != position + len(tokens) or len(set(slots)) != len(slots):
+        if len(slots) != position + len(tokens) or (
+            not isinstance(slots, TokenSlots) and len(set(slots)) != len(slots)
+        ):
             raise ValueError("KV slots must cover exactly the valid prefix and wave")
         ids = torch.tensor(tokens, dtype=torch.long, device="cpu")
         positions = (
@@ -159,14 +303,21 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
             .expand(3, -1)
             .contiguous()
         )
-        read = torch.zeros(self.context_tokens, dtype=torch.long, device="cpu")
-        read[: len(slots)] = torch.tensor(slots, dtype=torch.long, device="cpu")
-        write = read[position : len(slots)].clone()
+        read = torch.zeros(
+            0 if self.paged_attention else self.context_tokens,
+            dtype=torch.long,
+            device="cpu",
+        )
+        if not self.paged_attention:
+            read[: len(slots)] = torch.tensor(slots, dtype=torch.long, device="cpu")
+        write = torch.tensor(slots[position:], dtype=torch.long, device="cpu")
         return ids, positions, read, write
 
     def _run(self, name, args):
         stream = torch.npu.current_stream(self.live_device)
         invocation = self.replay(name, *args, stream=stream)
+        if self.paged_attention:
+            self._attention_waves[name].consumed()
         stream.synchronize()
         # These copies are readers of the graph's output bank too. Retire only
         # after they complete, so a synchronous call cannot race root.close().
@@ -185,7 +336,9 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
         kind, width = steps[0].kind, len(steps[0].tokens)
         if (
             kind not in ("target", "draft")
-            or width not in ((1, 3) if kind == "target" else (1, 2))
+            or width
+            not in (((1, 3) if kind == "target" else (1, 2)) + self.prefill_widths)
+            or (width in self.prefill_widths and batch != 1)
             or any(step.kind != kind or len(step.tokens) != width for step in steps)
         ):
             raise ValueError("unqualified mixed graph wave")
@@ -197,6 +350,28 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
         if len(set(writes)) != len(writes):
             raise ValueError("batch writers cannot alias token State")
         name = self.call_name(kind, width, batch)
+        if self.paged_attention:
+            block_rows = []
+            lengths = []
+            for step in steps:
+                slots = step.metadata["slots"]
+                if isinstance(slots, TokenSlots):
+                    if slots.page_tokens != self.capacity.page_tokens:
+                        raise ValueError("token view page geometry differs from State")
+                    block_rows.append(slots.block_row())
+                    lengths.append(len(slots))
+                    continue
+                pages = slots[:: self.capacity.page_tokens]
+                if any(slot % self.capacity.page_tokens for slot in pages) or any(
+                    slot
+                    != pages[i // self.capacity.page_tokens]
+                    + i % self.capacity.page_tokens
+                    for i, slot in enumerate(slots)
+                ):
+                    raise ValueError("paged FIA requires whole ordered physical pages")
+                block_rows.append([slot // self.capacity.page_tokens for slot in pages])
+                lengths.append(len(slots))
+            self._attention_waves[name].prepare([width] * batch, lengths, block_rows)
         args = (
             torch.cat([v[0] for v in inputs]),
             torch.cat([v[1] for v in inputs], dim=1),
@@ -210,6 +385,10 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
                 len(set(seats)) != batch
                 or any(not 0 <= seat < self.capacity.resident_seats for seat in seats)
                 or any(not 1 <= count <= 3 for count in accepted)
+                or (
+                    width in self.prefill_widths
+                    and (accepted != [1] or steps[0].metadata["position"] == 0)
+                )
             ):
                 raise ValueError("invalid resident or candidate selection")
             args += (

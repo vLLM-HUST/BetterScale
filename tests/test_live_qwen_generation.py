@@ -97,3 +97,41 @@ def test_eos_truncates_commit_and_next_candidate_selection():
     assert result["token_ids"] == [4, 5]
     assert root.residents_table.seats[0].tokens == [1, 2, 3, 4, 5]
     assert root.continuation.selection.tensor[0] == 2
+
+
+def test_chunked_prefill_shift_and_hot_candidate_canonicalization():
+    root = ProtocolRoot()
+    root.prefill_widths = (4, 16)
+    with patch.object(
+        torch, "npu", SimpleNamespace(synchronize=lambda _: None), create=True
+    ):
+        first = generate(root, [1, 2, 3], 6, eos_token_ids=(5,))
+        assert root.continuation.selection.tensor[first["seat"]] == 2
+        root.calls.clear()
+        second = generate(root, list(range(1, 15)), 2)
+    assert second["cached_tokens"] == 5
+    assert second["token_ids"] == [15, 16]
+    targets = [call for call in root.calls if call[0] == "target"]
+    assert targets[0][1] == [6] and targets[0][2]["accepted"] == 2
+    assert targets[1][1] == [7, 8, 9, 10] and targets[1][2]["accepted"] == 1
+    chunks = [call for call in root.calls if call[0] == "draft" and len(call[1]) == 4]
+    assert [call[3]["position"] for call in chunks] == [5, 9]
+    torch.testing.assert_close(
+        chunks[0][2], torch.tensor([[6.0, 6.0], [7.0, 7.0], [8.0, 8.0], [9.0, 9.0]])
+    )
+    torch.testing.assert_close(
+        chunks[1][2],
+        torch.tensor([[10.0, 10.0], [11.0, 11.0], [12.0, 12.0], [13.0, 13.0]]),
+    )
+
+
+def test_output_budget_ends_at_last_physical_token_without_extra_lookahead():
+    root = ProtocolRoot()
+    root.residents_table = ResidentTable(
+        Capacity(1, 2, page_tokens=4, token_pages=2), clear_seat=root.clear_seat
+    )
+    with patch.object(torch, "npu", SimpleNamespace(synchronize=lambda _: None), create=True):
+        result = generate(root, [1, 2, 3, 4, 5, 6], 2)
+    assert result["token_ids"] == [7, 8]
+    assert root.continuation.target_cursor.tensor[result["seat"]] == 8
+    assert max(len(call[-1]["slots"]) for call in root.calls) == 8

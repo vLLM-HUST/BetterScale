@@ -101,3 +101,46 @@ def test_state_budget_charges_actual_declarations_and_bounds_elastic_pages():
         == budget
     )
     root.close()
+
+
+def test_physical_budget_grows_pages_without_growing_resident_seats():
+    from betterscale.live import SIMDStateLane, compile_simd_state_schema
+
+    geometry = Geometry(
+        layer_types=("linear_attention", "full_attention"),
+        kv_heads=1,
+        attention_head_dim=2,
+        gdn_key_heads=1,
+        gdn_value_heads=1,
+        gdn_key_dim=2,
+        gdn_value_dim=2,
+        conv_kernel=4,
+        hidden_size=8,
+    )
+    capacity = Capacity(2, 3, page_tokens=4)
+    with live_runtime(LiveRuntime()):
+        root = QwenStateRoot(geometry, capacity)
+    schemas = tuple(
+        compile_simd_state_schema(
+            tuple(
+                SIMDStateLane("", name, state)
+                for name, state in root.named_states()
+                if state.domain is domain
+            ),
+            domain=domain,
+        )
+        for domain in (root.residents, root.pages)
+    )
+    # No bootstrap quota: the same exact residents and minimum calibration
+    # accept the budget supplied by physical fitting, even far beyond R pages.
+    backend = TorchStateBackend("cpu")
+    calibration = backend.realize_calibration_state(schemas)
+    assert [d.plan.num_blocks for d in calibration.domains] == [3, 2]
+    backend.release_state(calibration)
+    for pages in (7, 101):
+        realization = backend.realize_state(
+            schemas,
+            memory_budget_bytes=state_budget_bytes(geometry, capacity, pages),
+        )
+        assert [d.plan.num_blocks for d in realization.domains] == [3, pages]
+        backend.release_state(realization)

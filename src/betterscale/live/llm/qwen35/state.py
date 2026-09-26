@@ -108,6 +108,7 @@ class Capacity:
     page_tokens: int = 128
     token_pages: int | None = None
     speculative_tokens: int = 2
+    prefill_tokens: int = 0
 
     def __post_init__(self):
         for name in (
@@ -123,6 +124,10 @@ class Capacity:
             positive("token_pages", self.token_pages)
         if self.speculative_tokens != 2:
             raise ValueError("initial consumer contract is MTP2")
+        if self.prefill_tokens not in (0, 4, 16, 64, 256, 1024, 4096):
+            raise ValueError(
+                "prefill capacity must be zero or a qualified power-of-four bucket"
+            )
 
 
 class NumericalState(LiveModule):

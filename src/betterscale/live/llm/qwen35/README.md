@@ -57,19 +57,22 @@ No external `livemodule`, native Worker, native KV planner or native runner
 fallback is used. Default `--runtime native` remains unchanged.
 
 Loopback HTTP on127.0.0.1:8000 exposes `/health`, `/v1/models`,
-`/v1/completions` and `/v1/chat/completions`. Only greedy, non-streaming text,
-`n=1`, is supported; unsupported features fail before distributed execution.
+`/v1/completions` and `/v1/chat/completions`. Only greedy text with
+`n=1` is supported; completions additionally supports exact-token SSE streaming; unsupported features fail before distributed execution.
 Generation honors model EOS unless `ignore_eos` is explicitly requested.
 
-Defaults are512 context tokens (including prompt, output and two-token MTP
-lookahead),16 execution seats and20 resident seats. `--live-execution-seats`,
-`--live-context-tokens`, `--live-resident-seats`, `--live-token-pages` and
-`--live-distributed-port` configure these bounds. `--live-token-pages 0` (default)
-uses observed-memory fitting with a1GiB free-memory floor. Calibration, State
-rebinding and final capture use the existing LiveModule transaction, with
-failure-aware CPU-group capacity agreement across TP ranks. Useful pages are
-capped at R × ceil(context/128), not every remaining byte of HBM. A positive
-page count is an explicit fixed-capacity override.
+Defaults are262144 context tokens (prompt plus committed output),16 execution
+seats and20 resident seats. MTP tail steps do not reserve unusable lookahead
+positions. `--live-execution-seats`, `--live-context-tokens`,
+`--live-resident-seats`, `--live-token-pages` and `--live-distributed-port`
+configure these bounds. A positive page count is a fixed-capacity override.
+
+With `--live-token-pages 0`, graph calibration precedes fixed resident-State
+allocation. Real remaining free memory, less a1GiB floor and explicit allocator
+rounding allowance, becomes the shared page budget. Inactive allocator cache
+is not credited. Ranks agree on the smaller page count before allocating KV
+once; there is no repeated allocation search or seat-times-context cap.
+Rebinding and final capture remain in the existing LiveModule transaction.
 
 GDN/continuation lanes are resident-owned; target and draft FA use one shared
 128-token page domain. Pages grow on demand, **not** by reserving an entire
@@ -85,13 +88,17 @@ The surviving cohort drains before re-admitting victims to avoid immediate
 thrashing. Cancellation also invalidates the whole seat. No CPU offload or
 intermediate recurrent checkpoint is provided.
 
-One execution owner groups compatible target/draft calls. Graph buckets are
-1/2/4/8/16 for C16 (20 graphs); odd counts decompose into real smaller batches,
-without dummy State rows. Prefill remains one token per request per protocol
-step and interleaves with decode at completed-wave boundaries. The portfolio
-shares serial scratch; its retained MetaTensor output banks and copied replies
-are not disposable scratch. `/health` includes actual maximum active/batch
-counts and current shared-page/queue/preemption counters.
+One execution owner groups compatible target/draft calls. Decode graph buckets
+are1/2/4/8/16 for C16; odd counts decompose into real smaller batches, without
+dummy State rows. Prefill has independent single-request4/16/64/256/1024-token
+buckets, interleaved at completed-wave boundaries rather than multiplied by C.
+The first token after a hot boundary normalizes accepted GDN/conv history before
+chunked prefill; draft chunks consume shifted target hidden states.
+
+Paged FIA and GDN chunk kernels are packaged numerical leaves; no native runner
+patch is installed. `/health` exposes capacity arithmetic and actual scheduler
+activity. SSE reports only committed output, including after recomputation;
+`cache_salt` isolates hot resident identity across independent session plays.
 
 ## Qualified scope
 
@@ -122,8 +129,8 @@ seat; service exit0 and both cards released. Receipts and the final CPU-only
 disconnect-error presentation fix are in `docs/evidence/qwen35-live-scheduler.json`.
 
 This is not a maximum-context claim, C32 execution qualification, or a universal
-BF16 batch-invariance guarantee. Attention deliberately uses a bounded plain implementation; no speed
-claim follows from these probes. The existing published PyPI0.5.1 predates this
+BF16 batch-invariance guarantee. These historical receipts used bounded plain attention; they do not qualify the
+new paged/chunked long-context implementation or its speed. The existing published PyPI0.5.1 predates this
 source addition; no new PyPI release is implied.
 
 CPU contracts and admitted probes are under `prototypes/qwen35-state-lanes`;

@@ -409,7 +409,7 @@ def validate_state_generation_realization(
 class TorchStateBackend(StateBackend):
     """Supply every admitted domain lane as one independent Torch tensor."""
 
-    __slots__ = ("_device",)
+    __slots__ = ("_device", "_allocation_granularity_bytes", "capacity_report")
 
     def __init__(
         self,
@@ -417,12 +417,20 @@ class TorchStateBackend(StateBackend):
         *,
         memory_budget_bytes: int | None = None,
         capacity_coordinator: StateCapacityCoordinator | None = None,
+        allocation_granularity_bytes: int = 1,
     ) -> None:
         super().__init__(
             memory_budget_bytes=memory_budget_bytes,
             capacity_coordinator=capacity_coordinator,
         )
         self._device = torch.device(device)
+        if (
+            type(allocation_granularity_bytes) is not int
+            or allocation_granularity_bytes < 1
+        ):
+            raise ValueError("allocation granularity must be a positive byte count")
+        self._allocation_granularity_bytes = allocation_granularity_bytes
+        self.capacity_report = None
 
     @property
     def device(self) -> torch.device:
@@ -482,183 +490,178 @@ class TorchStateBackend(StateBackend):
         *,
         memory_observer: TorchDeviceMemoryObserver,
         minimum_free_bytes: int,
-        max_attempts: int = 8,
     ) -> StateGenerationRealization:
-        """Fit locally, agree on capacity, then confirm final storage everywhere.
+        """Allocate fixed State, size the shared domain, agree, allocate once.
 
-        Resource failure is an explicit zero-capacity vote, not a missing rank.
-        Final allocation also needs agreement because a smaller coordinated
-        count is not by itself a proof of physical fit under fragmentation.
+        Calibration already holds execution resources. Cache fragments are not
+        budget: only driver-free bytes after fixed State count. Reserve at most
+        one configured allocator quantum per elastic lane for segment rounding.
+        No OOM-driven search, speculative allocation or largest-fit claim.
         """
+        if (
+            not isinstance(memory_observer, TorchDeviceMemoryObserver)
+            or memory_observer.device != self.device
+        ):
+            raise StateTensorError(
+                "invalid-state-fit-observer",
+                "State sizing requires its exact device observer",
+            )
+        if type(minimum_free_bytes) is not int or minimum_free_bytes < 0:
+            raise StateTensorError(
+                "invalid-state-fit-budget", "invalid free-memory floor"
+            )
         coordinator = self._capacity_coordinator
-        if coordinator is None:
-            return self._fit_state_locally(schemas, memory_observer=memory_observer,
-                minimum_free_bytes=minimum_free_bytes, max_attempts=max_attempts)
-        if not isinstance(coordinator, StateFitCoordinator):
-            raise StateTensorError("unsupported-distributed-state-fit",
-                                   "physical fit requires a failure-aware distributed admission protocol; "
-                                   "the positive-only block coordinator is not sufficient")
+        if coordinator is not None and not isinstance(coordinator, StateFitCoordinator):
+            raise StateTensorError(
+                "unsupported-distributed-state-fit",
+                "State sizing requires failure-aware rank agreement",
+            )
         ordered = tuple(schemas)
-        held: StateGenerationRealization | None = None
-        local_error: Exception | None = None
+        fixed = elastic = None
+        error = None
         local_units = 0
+        self.capacity_report = None
         try:
             try:
-                held = self._fit_state_locally(ordered, memory_observer=memory_observer,
-                    minimum_free_bytes=minimum_free_bytes, max_attempts=max_attempts)
-                primary = next(domain for domain in held.domains if isinstance(
-                    domain.plan.schema.capacity_requirement, ElasticStateCapacity))
-                local_units = (primary.plan.num_blocks
-                               // primary.plan.schema.capacity_requirement.blocks_per_unit)
-            except Exception as error:
-                local_error = error
-            admitted = coordinator.admit_fitted_units(local_units)
-            if type(admitted) is not int or not 0 <= admitted <= local_units:
-                raise StateTensorError("invalid-fitted-state-capacity",
-                                       "fitted capacity agreement must return a local-bounded nonnegative count")
-            if admitted == 0:
-                if local_error is not None:
-                    raise local_error
-                raise StateTensorError("peer-state-fit-failed",
-                                       "a rank could not fit State; no rank may publish this generation")
-            assert held is not None and local_error is None
-            if admitted != local_units:
-                local_domains = held.domains
-                self.release_state(held)
-                held = None
-                try:
-                    memory_observer.reclaim()
-                    budget = 0
-                    for domain in local_domains:
-                        schema = domain.plan.schema
-                        req = schema.capacity_requirement
-                        budget += (domain.plan.committed_state_bytes
-                                   if isinstance(req, ExactStateCapacity)
-                                   else schema.fixed_state_bytes + admitted
-                                   * req.blocks_per_unit * schema.bytes_per_simd_block)
-                    plans = self._plan_state(ordered, memory_budget_bytes=budget,
-                                             capacity_coordinator=None)
-                    plans = tuple(_PlannedStateDomain(final.plan, initial.local_max_capacity)
-                                  for initial, final in zip(local_domains, plans, strict=True))
-                    held = self._realize_state_plans(plans)
-                    memory_observer.reclaim()
-                    if memory_observer.snapshot().free_bytes < minimum_free_bytes:
-                        raise StateTensorError("coordinated-state-no-longer-fits",
-                                               "final State allocation no longer satisfies the device budget")
-                except Exception as error:
-                    local_error = error
-            confirmed = coordinator.confirm_fitted_allocation(local_error is None)
-            if type(confirmed) is not bool:
-                raise StateTensorError("invalid-state-allocation-confirmation",
-                                       "final State agreement must return a bool")
-            if local_error is not None:
-                raise local_error
-            if not confirmed:
-                raise StateTensorError("peer-state-allocation-failed",
-                                       "a rank failed final State allocation; no rank may publish")
-            result, held = held, None
-            assert result is not None
-            return result
-        finally:
-            if held is not None:
-                self.release_state(held)
-                memory_observer.reclaim()
-
-    def _fit_state_locally(
-        self,
-        schemas: Sequence[SIMDStateSchema],
-        *,
-        memory_observer: TorchDeviceMemoryObserver,
-        minimum_free_bytes: int,
-        max_attempts: int = 8,
-    ) -> StateGenerationRealization:
-        """Fit rank-local complete units before capture.
-
-        The caller must hold a stable device budget and all required non-State
-        resources. A free-memory floor is not a reservation or a graph seal.
-        Search descends from a logical upper bound: allocation size classes and
-        fragmentation need not give a monotone physical cost, so binary search
-        would not prove the largest fitting complete unit count. The attempt
-        limit bounds startup work; exhausting it fails, never invents headroom.
-        """
-        if (not isinstance(memory_observer, TorchDeviceMemoryObserver)
-                or memory_observer.device != self.device):
-            raise StateTensorError("invalid-state-fit-observer",
-                                   "physical State fit requires its exact device observer")
-        if (type(minimum_free_bytes) is not int or minimum_free_bytes < 0
-                or type(max_attempts) is not int or max_attempts <= 0):
-            raise StateTensorError("invalid-state-fit-budget",
-                                   "State fit requires a nonnegative free floor and positive attempt limit")
-        ordered = tuple(schemas)
-        memory_observer.reclaim()
-        before = memory_observer.snapshot()
-        if before.free_bytes < minimum_free_bytes:
-            raise StateTensorError("insufficient-state-memory",
-                                   "device is already below the required free-memory floor")
-        # Large private graph pools can exceed many resident units. Counting
-        # their inactive bytes makes bounded fitting exhaust its attempts before
-        # reaching a feasible candidate. Use actual default-pool/stream evidence
-        # when available; unknown layouts retain the legacy optimistic ceiling.
-        # Neither ceiling grants admission: physical supply and the floor decide.
-        cache_bytes = memory_observer.snapshot_state_cache_bytes()
-        if cache_bytes is None:
-            cache_bytes = max(0, before.reserved_bytes - before.active_bytes)
-        upper_bytes = before.free_bytes - minimum_free_bytes + cache_bytes
-        local = self._plan_state(ordered, memory_budget_bytes=max(1, upper_bytes),
-                                 capacity_coordinator=None)
-        primary = next((domain for domain in local if isinstance(
-            domain.plan.schema.capacity_requirement, ElasticStateCapacity)), None)
-        if primary is None or primary.plan.schema.capacity_requirement.unit is None:
-            raise StateTensorError("unsupported-state-fit-geometry",
-                                   "physical fit requires one complete State capacity unit")
-        requirement = primary.plan.schema.capacity_requirement
-        units = primary.plan.num_blocks // requirement.blocks_per_unit
-        minimum_units = requirement.unit.minimum_units
-        fixed = per_unit = 0
-        for domain in local:
-            schema = domain.plan.schema
-            req = schema.capacity_requirement
-            if isinstance(req, ExactStateCapacity):
-                fixed += domain.plan.committed_state_bytes
-            else:
-                fixed += schema.fixed_state_bytes
-                per_unit += schema.bytes_per_simd_block * req.blocks_per_unit
-
-        held: StateGenerationRealization | None = None
-        try:
-            for _ in range(max_attempts):
-                if units < minimum_units:
-                    break
-                plans = self._plan_state(
-                    ordered, memory_budget_bytes=fixed + units * per_unit,
-                    capacity_coordinator=None,
+                fixed_schemas = tuple(
+                    s
+                    for s in ordered
+                    if isinstance(s.capacity_requirement, ExactStateCapacity)
                 )
-                try:
-                    held = self._realize_state_plans(plans)
-                except torch.OutOfMemoryError:
-                    # Only tensor supply outside capture is retried. Other
-                    # allocator/kernel/build failures retain their real error.
-                    held = None
+                variable = tuple(
+                    s
+                    for s in ordered
+                    if not isinstance(s.capacity_requirement, ExactStateCapacity)
+                )
+                primary = tuple(
+                    s
+                    for s in variable
+                    if isinstance(s.capacity_requirement, ElasticStateCapacity)
+                )
+                if len(primary) != 1 or primary[0].capacity_requirement.unit is None:
+                    raise StateTensorError(
+                        "unsupported-state-fit-geometry",
+                        "State sizing requires one elastic capacity unit",
+                    )
+                requirement = primary[0].capacity_requirement
+                if fixed_schemas:
+                    fixed = self._realize_state_plans(
+                        self._plan_state(
+                            fixed_schemas,
+                            memory_budget_bytes=None,
+                            capacity_coordinator=None,
+                        )
+                    )
                 memory_observer.reclaim()
-                if held is not None:
-                    if memory_observer.snapshot().free_bytes >= minimum_free_bytes:
-                        break
-                    self.release_state(held)
-                    held = None
-                    memory_observer.reclaim()
-                units -= 1
-            if held is None:
-                raise StateTensorError("state-physical-fit-not-found",
-                                       "no complete State capacity fit within the bounded search",
-                                       minimum_units=minimum_units, max_attempts=max_attempts)
-
-            result, held = held, None
-            assert result is not None
+                before = memory_observer.snapshot()
+                padding = sum(len(s.lanes) for s in variable) * (
+                    self._allocation_granularity_bytes - 1
+                )
+                budget = before.free_bytes - minimum_free_bytes - padding
+                if self._memory_budget_bytes is not None:
+                    fixed_bytes = (
+                        sum(d.plan.committed_state_bytes for d in fixed.domains)
+                        if fixed
+                        else 0
+                    )
+                    budget = min(budget, self._memory_budget_bytes - fixed_bytes)
+                if budget <= 0:
+                    raise StateTensorError(
+                        "insufficient-state-memory",
+                        "no shared State budget remains after fixed State",
+                    )
+                plans = self._plan_state(
+                    variable, memory_budget_bytes=budget, capacity_coordinator=None
+                )
+                primary_plan = next(d for d in plans if d.plan.schema is primary[0])
+                local_units = (
+                    primary_plan.plan.num_blocks // requirement.blocks_per_unit
+                )
+                self.capacity_report = dict(
+                    free_after_fixed_bytes=before.free_bytes,
+                    minimum_free_bytes=minimum_free_bytes,
+                    allocation_padding_bytes=padding,
+                    shared_budget_bytes=budget,
+                    local_units=local_units,
+                )
+            except Exception as caught:
+                error = caught
+            admitted = (
+                coordinator.admit_fitted_units(local_units)
+                if coordinator
+                else local_units
+            )
+            if type(admitted) is not int or not 0 <= admitted <= local_units:
+                raise StateTensorError(
+                    "invalid-fitted-state-capacity", "invalid shared capacity agreement"
+                )
+            if admitted == 0:
+                if error is not None:
+                    raise error
+                raise StateTensorError(
+                    "peer-state-fit-failed", "a rank could not size shared State"
+                )
+            try:
+                if admitted < requirement.unit.minimum_units:
+                    raise StateTensorError(
+                        "insufficient-admitted-state-capacity",
+                        "shared capacity is below the declared minimum",
+                    )
+                final_plans = tuple(
+                    _PlannedStateDomain(
+                        compile_exact_simd_state_plan(
+                            d.plan.schema,
+                            num_blocks=admitted
+                            * d.plan.schema.capacity_requirement.blocks_per_unit,
+                        ),
+                        d.local_max_capacity,
+                    )
+                    for d in plans
+                )
+                elastic = self._realize_state_plans(final_plans)
+                memory_observer.reclaim()
+                free = memory_observer.snapshot().free_bytes
+                self.capacity_report.update(
+                    admitted_units=admitted, free_after_allocation_bytes=free
+                )
+                if free < minimum_free_bytes:
+                    raise StateTensorError(
+                        "state-allocation-exceeds-budget",
+                        "shared State allocation breached the explicit free-memory floor",
+                        **self.capacity_report,
+                    )
+            except Exception as caught:
+                error = caught
+            confirmed = (
+                coordinator.confirm_fitted_allocation(error is None)
+                if coordinator
+                else error is None
+            )
+            if type(confirmed) is not bool:
+                raise StateTensorError(
+                    "invalid-state-allocation-confirmation",
+                    "invalid allocation agreement",
+                )
+            if error is not None:
+                raise error
+            if not confirmed:
+                raise StateTensorError(
+                    "peer-state-allocation-failed",
+                    "a rank could not allocate shared State",
+                )
+            by_schema = {
+                id(d.plan.schema): d for r in (fixed, elastic) if r for d in r.domains
+            }
+            result = StateGenerationRealization(
+                tuple(by_schema[id(s)] for s in ordered)
+            )
+            fixed = elastic = None
             return result
         finally:
-            if held is not None:
-                self.release_state(held)
-                memory_observer.reclaim()
+            for held in (elastic, fixed):
+                if held is not None:
+                    self.release_state(held)
+            memory_observer.reclaim()
 
     def _allocate_state_domain(
         self,
