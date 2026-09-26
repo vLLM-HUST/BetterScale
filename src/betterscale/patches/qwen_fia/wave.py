@@ -149,7 +149,7 @@ class Frame:
         self.has_consumer = True
 
 
-def install(library):
+def install(library, *, heads=12, kvheads=2, requests=9, tokens=2048):
     from vllm.forward_context import get_forward_context
     from vllm.config import CUDAGraphMode
     from vllm_ascend.worker.model_runner_v1 import NPUModelRunner as Runner
@@ -176,7 +176,7 @@ def install(library):
             return original_forward(self, *a, **kw)
         m = metas[0]
         if not hasattr(self, "_fia_planner"):
-            self._fia_planner = Planner(library)
+            self._fia_planner = Planner(library, heads=heads, kvheads=kvheads)
             self._fia_frames = {}
         # The single full-attention KV group owns these canonical CPU block rows.
         layer = next(k for k, v in ctx.attn_metadata.items() if v is m)
@@ -190,7 +190,11 @@ def install(library):
         key = (tokens, self._owned_bank)
         if key not in self._fia_frames:
             self._fia_frames[key] = Frame(
-                tokens, cpu.shape[1], self.device, self._owned_ingress
+                tokens,
+                cpu.shape[1],
+                self.device,
+                self._owned_ingress,
+                requests=requests,
             )
         frame = self._fia_frames[key]
         planner = self._fia_planner
@@ -223,7 +227,7 @@ def install(library):
         ):
             return original_fia(self, query, key, value, m, output, kv_cache)
         if (
-            (self.num_heads, self.num_kv_heads, self.head_size) != (12, 2, 256)
+            (self.num_heads, self.num_kv_heads, self.head_size) != (heads, kvheads, 256)
             or self.sinks is not None
             or self.sliding_window is not None
             or not m.causal
@@ -241,7 +245,9 @@ def install(library):
             if get_forward_context().capturing:
                 raise RuntimeError("Warm the wave FIA planner before graph capture")
             # One independent query/output fixture, never retain graph intermediates.
-            q = torch.empty((2048, 12, 256), device=query.device, dtype=query.dtype)
+            q = torch.empty(
+                (tokens, heads, 256), device=query.device, dtype=query.dtype
+            )
             planner.fixtures = (q, key, value, torch.empty_like(q), self.scale)
             frame.prepare(
                 planner,

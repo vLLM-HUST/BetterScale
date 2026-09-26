@@ -10,6 +10,10 @@ scenario itself does not grant new hardware authority. For serving qualification
 use the neighboring
 `adapt-qwen35-moe` and `optimize-qwen-hybrid-serving` scenarios.
 
+Before changing the live execution route, read
+[the baseline substitution boundary](baseline-execution-parity.md): State reform
+must not silently replace BetterScale baseline numerics, MTP or async scheduling.
+
 For the approved optional execution path and current graph-lifecycle evidence,
 read [owned-execution.md](owned-execution.md) before extending the runtime entry.
 

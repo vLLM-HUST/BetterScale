@@ -40,8 +40,8 @@ def check_library():
     return library
 
 
-def install():
+def install(**geometry):
     library = check_library()
     from .wave import install as install_wave
 
-    install_wave(library)
+    install_wave(library, **geometry)

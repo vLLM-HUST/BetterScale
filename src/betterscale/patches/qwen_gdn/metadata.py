@@ -19,11 +19,14 @@ def chunk_rows(lengths, size, capacity, requests=8):
 
 
 class Metadata:
-    def __init__(self, tokens, decode, device):
+    def __init__(
+        self, tokens, decode, device, *, requests=8, key_heads=8, value_heads=24
+    ):
         import torch
 
         self.tokens, self.decode = tokens, decode
-        self.requests = tokens if decode else 9
+        self.max_requests = requests
+        self.requests = tokens if decode else requests + 1
         n = self.requests
         self.cu = torch.empty(n + 1, dtype=torch.int64, device=device)
         self.slots = torch.empty(n, dtype=torch.int64, device=device)
@@ -36,7 +39,7 @@ class Metadata:
             if decode
             else {
                 size: torch.empty(
-                    ((tokens + size - 1) // size + 7, 2),
+                    ((tokens + size - 1) // size + requests - 1, 2),
                     dtype=torch.int64,
                     device=device,
                 )
@@ -55,6 +58,8 @@ class Metadata:
                 n,
                 len(self.indices[64]),
                 state_pool=True,
+                key_heads=key_heads,
+                value_heads=value_heads,
             )
 
     def update(self, builder, m, lengths):
@@ -86,7 +91,10 @@ class Metadata:
         self.state[:, 1].copy_(self.conv_initial)
         for size, dest in self.indices.items():
             dest.copy_(
-                torch.tensor(chunk_rows(lengths, size, self.tokens), dtype=torch.int64)
+                torch.tensor(
+                    chunk_rows(lengths, size, self.tokens, self.max_requests),
+                    dtype=torch.int64,
+                )
             )
 
 

@@ -1,7 +1,7 @@
 """Keep immutable Conv1d weights in the native consumer's contiguous layout."""
 
 
-def pack_conv_weights(model, *, consumer=None):
+def pack_conv_weights(model, *, consumer=None, expected_layers=48):
     from vllm.model_executor.layers.mamba.gdn.qwen_gdn_linear_attn import (
         QwenGatedDeltaNetAttention,
     )
@@ -28,6 +28,6 @@ def pack_conv_weights(model, *, consumer=None):
         if not weight.view(weight.shape[0], weight.shape[2]).T.is_contiguous():
             raise RuntimeError("native convolution weight view is not contiguous")
         count += 1
-    if count != 48:
-        raise ValueError(f"expected48 Qwen27 GDN layers, packed{count}")
+    if count != expected_layers:
+        raise ValueError(f"expected{expected_layers} GDN layers, packed{count}")
     return count

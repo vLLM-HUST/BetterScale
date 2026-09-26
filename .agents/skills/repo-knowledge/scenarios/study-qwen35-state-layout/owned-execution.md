@@ -1,5 +1,12 @@
 # Optional live execution: accepted construction order
 
+**Current bootstrap correction (Fletcher, 2026-09-26):** reuse the original
+native device/operator/weight initialization and replace State/capture/execution
+with the live runtime. Earlier prohibitions below on constructing a native Worker
+are historical first-cut boundaries, not the current instruction. Read
+[BetterScale baseline execution parity](baseline-execution-parity.md) before extending this seam.
+
+
 Fletcher approved the plan on2026-09-25: make live execution an optional
 BetterScale path, with one owner for State initialization, warmup, capture,
 invocation and retirement. Default native execution remains unchanged. The

@@ -6,6 +6,8 @@ def select(config):
     hf = getattr(model.hf_config, "text_config", model.hf_config)
     if hf.model_type == "deepseek_v4":
         from . import dsv4 as implementation
+    elif hf.model_type == "qwen3_5_moe_text":
+        from . import qwen35 as implementation
     elif hf.model_type == "qwen3_5_text":
         from . import qwen as implementation
     else:

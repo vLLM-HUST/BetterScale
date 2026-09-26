@@ -1,0 +1,20 @@
+--- a/vllm_ascend/worker/model_runner_v1.py
++++ b/vllm_ascend/worker/model_runner_v1.py
+@@ -1766,7 +1766,7 @@
+                         ):
+                             req_state.prev_num_draft_len = 0
+ 
+-                from device_apc import wait_for_previous
++                from betterscale.models.qwen35.device_apc import wait_for_previous
+                 wait_for_previous(self, scheduler_output)
+                 # Update persistent batch states.
+                 deferred_state_corrections_fn = self._update_states(
+@@ -1878,7 +1878,7 @@
+ 
+                 pad_attn = cudagraph_mode == CUDAGraphMode.FULL
+ 
+-                from device_apc import prepare as prepare_device_apc
++                from betterscale.models.qwen35.device_apc import prepare as prepare_device_apc
+                 prepare_device_apc(self, scheduler_output)
+                 if self.use_compress:
+                     if deferred_state_corrections_fn:
