@@ -4,9 +4,9 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import platform
 import sys
+from pathlib import Path
 
 
 def prepare(
@@ -18,7 +18,8 @@ def prepare(
     runtime="native",
     context_tokens=512,
     resident_seats=20,
-    token_pages=64,
+    token_pages=0,
+    execution_seats=16,
     distributed_port=29535,
 ):
     """Prepare a new process; never preload CANN into this interpreter."""
@@ -32,6 +33,7 @@ def prepare(
             resident_seats,
             token_pages,
             distributed_port,
+            execution_seats,
         )
     if runtime != "native":
         raise ValueError(f"unknown runtime: {runtime}")
@@ -79,6 +81,7 @@ def prepare_live(
     resident_seats,
     token_pages,
     distributed_port,
+    execution_seats=16,
 ):
     """Inert launch admission: no torch, donor, device or native artifact imports."""
     selected = devices.split(",")
@@ -94,7 +97,11 @@ def prepare_live(
         and port != distributed_port
     ):
         raise ValueError("HTTP and distributed ports must be distinct and in 1..65535")
-    if not (3 <= context_tokens <= 4096 and resident_seats > 0 and token_pages > 0):
+    if not (
+        3 <= context_tokens <= 4096
+        and 1 <= execution_seats <= resident_seats
+        and (token_pages == 0 or token_pages >= execution_seats)
+    ):
         raise ValueError("invalid live context or State capacity")
     config = json.loads((model / "config.json").read_text())
     text = config.get("text_config", config)
@@ -125,6 +132,8 @@ def prepare_live(
         str(port),
         "--context-tokens",
         str(context_tokens),
+        "--execution-seats",
+        str(execution_seats),
         "--resident-seats",
         str(resident_seats),
         "--token-pages",
@@ -155,8 +164,14 @@ def main():
         "--cache-dir", type=Path, default=Path.home() / ".cache/betterscale/qwen27"
     )
     qwen.add_argument("--live-context-tokens", type=int, default=512)
+    qwen.add_argument("--live-execution-seats", type=int, default=16)
     qwen.add_argument("--live-resident-seats", type=int, default=20)
-    qwen.add_argument("--live-token-pages", type=int, default=64)
+    qwen.add_argument(
+        "--live-token-pages",
+        type=int,
+        default=0,
+        help="shared pages; 0 fits observed memory up to the useful context ceiling",
+    )
     qwen.add_argument("--live-distributed-port", type=int, default=29535)
     args = parser.parse_args()
     if platform.system() != "Linux" or platform.machine() != "aarch64":
@@ -176,6 +191,7 @@ def main():
             runtime=args.runtime,
             context_tokens=args.live_context_tokens,
             resident_seats=args.live_resident_seats,
+            execution_seats=args.live_execution_seats,
             token_pages=args.live_token_pages,
             distributed_port=args.live_distributed_port,
         )

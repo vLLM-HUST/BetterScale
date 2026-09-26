@@ -74,6 +74,9 @@ class _FakeNPU:
     def __init__(self, events: list[str]) -> None:
         self.events = events
 
+    def graph_pool_handle(self):
+        return object()
+
     def NPUGraph(self) -> _FakeGraph:
         self.events.append("graph-create")
         return _FakeGraph(self.events)
@@ -537,5 +540,19 @@ def test_full_qwen_root_declares_and_retires_all_four_graphs():
         assert all(not graph.metadata.requires_forward_replay for _, graph in root.named_graphs())
         assert torch.count_nonzero(root.target['0'].recurrent.tensor) == 0
         assert torch.count_nonzero(root.draft.key.tensor) == 0
+        # Replay's metadata context is deliberately None, not the capture-time
+        # context. The graph action itself must retain its output-bank identity.
+        replay_stream = _FakeStream(events)
+        for name, width in (("target1", 1), ("target3", 3), ("draft1", 1), ("draft2", 2)):
+            args = root._inputs([1] * width, 0, list(range(width)))
+            args = (args[0], args[1], args[2][None], args[3])
+            if name.startswith("target"):
+                args += (torch.tensor([0, width], dtype=torch.int32),
+                         torch.tensor([[0]], dtype=torch.int32), torch.tensor([[0, 1, 2]]),
+                         torch.ones(1, dtype=torch.int32), name)
+            else:
+                args += (torch.zeros(width, 8, dtype=torch.bfloat16), name)
+            invocation = root.replay(name, *args, stream=replay_stream)
+            invocation.retire()
         root.close()
         assert events.count('graph-reset') == 4

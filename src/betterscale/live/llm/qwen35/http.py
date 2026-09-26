@@ -1,9 +1,11 @@
-"""Narrow loopback HTTP ingress; one synchronous root transaction at a time.
+"""Narrow loopback HTTP ingress; one completed-wave execution owner.
 
 Only greedy text completion/chat is admitted. Unsupported serving features are
 rejected, not silently approximated or delegated to a native engine.
 """
 
+import asyncio
+import inspect
 import json
 import time
 import uuid
@@ -81,7 +83,7 @@ def request_tokens(payload, tokenizer, *, chat, context_tokens, vocab_size):
 
 
 def create_app(root, tokenizer, model_name, execute, *, eos_token_ids=None):
-    from fastapi import FastAPI, HTTPException
+    from fastapi import FastAPI, HTTPException, Request
 
     app = FastAPI(title="BetterScale experimental live runtime")
     eos = (
@@ -93,6 +95,8 @@ def create_app(root, tokenizer, model_name, execute, *, eos_token_ids=None):
 
     @app.get("/health")
     async def health():
+        if getattr(root, "serving_error", None) is not None:
+            raise HTTPException(503, "live execution owner failed")
         return {
             "status": "ok",
             "runtime": "live",
@@ -100,6 +104,10 @@ def create_app(root, tokenizer, model_name, execute, *, eos_token_ids=None):
             "graphs": [name for name, _ in root.named_graphs()],
             "context_tokens": root.context_tokens,
             "resident_seats": root.capacity.resident_seats,
+            "execution_seats": getattr(root.capacity, "execution_seats", 1),
+            "scheduler": root.scheduler.snapshot()
+            if hasattr(root, "scheduler")
+            else None,
         }
 
     @app.get("/v1/models")
@@ -109,7 +117,7 @@ def create_app(root, tokenizer, model_name, execute, *, eos_token_ids=None):
             "data": [{"id": model_name, "object": "model", "owned_by": "betterscale"}],
         }
 
-    def complete(payload, chat):
+    async def complete(payload, chat, request):
         if payload.get("model", model_name) != model_name:
             raise HTTPException(400, "model does not match this live deployment")
         try:
@@ -123,7 +131,25 @@ def create_app(root, tokenizer, model_name, execute, *, eos_token_ids=None):
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
         stops = () if payload.get("ignore_eos", False) else eos
-        result = execute(tokens, count, stops)
+        try:
+            result = execute(tokens, count, stops)
+            if inspect.isawaitable(result):
+                task = asyncio.create_task(result)
+                try:
+                    while not task.done():
+                        await asyncio.wait({task}, timeout=0.1)
+                        if not task.done() and await request.is_disconnected():
+                            raise HTTPException(499, "client disconnected")
+                    result = await task
+                finally:
+                    if not task.done():
+                        task.cancel()
+                        try:
+                            await task
+                        except asyncio.CancelledError:
+                            pass
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
         output = result["token_ids"]
         text = tokenizer.decode(output, skip_special_tokens=True)
         choice = {
@@ -151,12 +177,12 @@ def create_app(root, tokenizer, model_name, execute, *, eos_token_ids=None):
         }
 
     @app.post("/v1/completions")
-    async def completions(payload: dict):
-        return complete(payload, False)
+    async def completions(payload: dict, request: Request):
+        return await complete(payload, False, request)
 
     @app.post("/v1/chat/completions")
-    async def chat_completions(payload: dict):
-        return complete(payload, True)
+    async def chat_completions(payload: dict, request: Request):
+        return await complete(payload, True, request)
 
     return app
 
@@ -169,23 +195,32 @@ def serve(root, model_path, *, port):
 
     group = get_world_group().cpu_group
     rank = torch.distributed.get_rank()
+    from .ingress import Ingress
+    from .scheduler import Scheduler
+
     if rank:
-        while True:
-            message = [None]
-            torch.distributed.broadcast_object_list(message, src=0, group=group)
-            if message[0] is None:
-                return
-            tokens, count, stops = message[0]
-            root.generate(tokens, count, eos_token_ids=stops)
+        scheduler = Scheduler(root)
+        try:
+            while True:
+                message = [None]
+                torch.distributed.broadcast_object_list(message, src=0, group=group)
+                if message[0] is None:
+                    return
+                for command in message[0]:
+                    if command[0] == "submit":
+                        scheduler.submit(*command[1:])
+                    else:
+                        scheduler.cancel(command[1])
+                scheduler.tick()
+        finally:
+            scheduler.close()
     else:
         tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
 
-        def execute(tokens, count, stops):
-            torch.distributed.broadcast_object_list(
-                [(tokens, count, stops)], src=0, group=group
-            )
-            return root.generate(tokens, count, eos_token_ids=stops)
+        def broadcast(commands):
+            torch.distributed.broadcast_object_list([commands], src=0, group=group)
 
+        ingress = Ingress(root, broadcast)
         generation_path = Path(model_path) / "generation_config.json"
         eos = (
             json.loads(generation_path.read_text()).get("eos_token_id")
@@ -193,8 +228,9 @@ def serve(root, model_path, *, port):
             else None
         )
         app = create_app(
-            root, tokenizer, Path(model_path).name, execute, eos_token_ids=eos
+            root, tokenizer, Path(model_path).name, ingress.execute, eos_token_ids=eos
         )
+        app.router.lifespan_context = ingress.lifespan
         try:
             uvicorn.run(app, host="127.0.0.1", port=port)
         finally:

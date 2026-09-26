@@ -35,4 +35,8 @@ without necessarily changing resident contents. A separate checkpoint pool or
 CPU offload pool is optional future capacity/branch support, not required merely
 because A finished. Do not manufacture migrations to fit a three-domain diagram.
 
-Research-only note change; no runtime implementation or device validation.
+For the subsequent 2026-09-26 pressure clarification, read
+[seat-scheduler.md](seat-scheduler.md): normal completion retains hot State;
+without offload, active-request preemption at a quiescent wave boundary
+invalidates the whole seat and requeues CPU history for recomputation.
+This policy note alone is not device validation.

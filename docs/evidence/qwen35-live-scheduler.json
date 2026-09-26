@@ -1,0 +1,135 @@
+{
+  "date": "2026-09-26",
+  "status": "qualified bounded live C16/R20 scheduling and whole-seat preemption",
+  "source_parent": "b81dca08f12e6008f0f9c6e45a8998b062c67c8b",
+  "scope": {
+    "model": "Qwen3.5-35B-A3B",
+    "dtype": "BF16",
+    "tp": 2,
+    "mtp_depth": 2,
+    "execution_seats": 16,
+    "resident_seats": 20,
+    "page_tokens": 128,
+    "context_tokens": 256,
+    "token_pages_per_rank": [
+      40,
+      40
+    ],
+    "graph_count": 20,
+    "native_runner_fallback": false,
+    "external_livemodule": false,
+    "cpu_offload": false
+  },
+  "policy": {
+    "normal_finish": "retain hot seat",
+    "page_allocation": "incremental shared pool",
+    "preemption": "whole-seat invalidation at a drained wave boundary, then recompute CPU history",
+    "victim": "newest active request after exhausting idle reclamation",
+    "readmission": "surviving pressure cohort drains before victims reenter",
+    "request_horizon_reservation": false
+  },
+  "tp2": {
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-scheduler-tp2-1",
+    "passed_ranks": [
+      0,
+      1
+    ],
+    "max_active": 16,
+    "max_actual_batch": 16,
+    "requests": 16,
+    "output_tokens_per_request": 8,
+    "all_match_single_request_target_only": true,
+    "native_anchor_matches": true,
+    "extra_request_seat": 16,
+    "warm_seat": 0,
+    "warm_cached_tokens": 15,
+    "driver_free_bytes_per_rank": [
+      26271166464,
+      26271019008
+    ]
+  },
+  "small_model_fit": {
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-scheduler-small3",
+    "passed": true,
+    "batch": 4,
+    "residents": 5,
+    "fitted_pages": 5,
+    "graphs": 12
+  },
+  "small_model_pressure": {
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-scheduler-pressure1",
+    "passed": true,
+    "prompts_tokens": 125,
+    "shared_pages": 4,
+    "preemptions": 2,
+    "preemptions_with_committed_output": 1,
+    "cancellation_cleared_gdn_and_continuation": true
+  },
+  "packaging": {
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-scheduler-package-final",
+    "payload_files_compared": 133,
+    "strict_metadata": true,
+    "installed_cpu_tests": 43,
+    "pypi_published": false,
+    "npu_tested_install": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-scheduler-package2/installed",
+    "final_change_after_npu": "Detected disconnect raises handled HTTP499 instead of an unhandled CancelledError; CPU cancellation regression passes. Numerical/State/scheduler bodies unchanged."
+  },
+  "cpu_tests": 104,
+  "failed_attempts": {
+    "20260926-scheduler-small1": "capture context name was not retained by replay metadata action",
+    "20260926-scheduler-small2": "automatic-fit calibration rejected Qwen schemas lacking a serial pool key",
+    "20260926-scheduler-http1": "Numerical and TP2 page-pressure cases passed, but phase-locked ingress reached active16/batch8; strict batch16 assertion failed before disconnect test. Oldest-ready single-family waves fixed the grouping."
+  },
+  "not_claimed": [
+    "throughput improvement",
+    "C32 execution",
+    "maximum context",
+    "universal BF16 batch invariance",
+    "offload/checkpoint restore",
+    "shared immutable prefix pages between active requests",
+    "PyPI publication"
+  ],
+  "installed_http": {
+    "capsule": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260926-scheduler-http2",
+    "context_tokens": 512,
+    "shared_pages": 16,
+    "short_concurrent_requests": 16,
+    "short_outputs_per_request": 12,
+    "short_native_exact": true,
+    "long_concurrent_requests": 16,
+    "long_prompt_tokens": 189,
+    "long_outputs_per_request": 9,
+    "long_serial_exact_including_eos": true,
+    "after_pressure": {
+      "max_active": 16,
+      "max_batch": 16,
+      "completed": 39,
+      "cancelled": 0,
+      "preemptions": 8,
+      "preemptions_with_output": 0,
+      "waves": 1814,
+      "active": 0,
+      "waiting": 0,
+      "token_pages": 16,
+      "free_pages": 0
+    },
+    "after_disconnect": {
+      "max_active": 16,
+      "max_batch": 16,
+      "completed": 39,
+      "cancelled": 1,
+      "preemptions": 8,
+      "preemptions_with_output": 0,
+      "waves": 1836,
+      "active": 0,
+      "waiting": 0,
+      "token_pages": 16,
+      "free_pages": 2
+    },
+    "service_exit": 0,
+    "released_devices": [
+      0,
+      1
+    ]
+  }
+}

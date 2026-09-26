@@ -1,6 +1,7 @@
 """Ingress rejects unsupported features before any distributed/model call."""
 
 import pytest
+
 from betterscale.live.llm.qwen35.http import request_tokens
 
 
@@ -78,7 +79,9 @@ def test_chat_is_plain_text_and_uses_native_non_thinking_template():
 
 def test_http_rejects_before_dispatch_and_returns_owned_runtime_receipt():
     from types import SimpleNamespace
+
     from fastapi.testclient import TestClient
+
     from betterscale.live.llm.qwen35.http import create_app
 
     calls = []
@@ -122,3 +125,100 @@ def test_http_rejects_before_dispatch_and_returns_owned_runtime_receipt():
     assert result["choices"][0]["finish_reason"] == "stop"
     assert result["usage"]["prompt_tokens_details"]["cached_tokens"] == 1
     assert calls == [([1, 2], 4, (9,))]
+
+
+def test_async_http_batches_requests_and_reports_failure_as_unhealthy():
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import patch
+
+    import httpx
+    import torch
+    from test_live_qwen_scheduler import BatchRoot
+
+    from betterscale.live.llm.qwen35.http import create_app
+    from betterscale.live.llm.qwen35.ingress import Ingress
+
+    class TextTokenizer(Tokenizer):
+        def decode(self, ids, **kwargs):
+            return str(ids)
+
+    async def run():
+        root = BatchRoot()
+        root.capacity = root.residents_table.capacity
+        root.target_model = SimpleNamespace(
+            model=SimpleNamespace(
+                config=SimpleNamespace(eos_token_id=63), vocab_size=64
+            )
+        )
+        root.named_graphs = list
+        ingress = Ingress(root, lambda commands: None)
+        app = create_app(root, TextTokenizer(), "qwen", ingress.execute)
+        async with (
+            ingress.lifespan(app),
+            httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client,
+        ):
+            responses = await asyncio.gather(
+                *[
+                    client.post(
+                        "/v1/completions", json={"prompt": [i, i + 1], "max_tokens": 4}
+                    )
+                    for i in (1, 20)
+                ]
+            )
+            assert all(r.status_code == 200 for r in responses)
+            assert [r.json()["betterscale"]["token_ids"] for r in responses] == [
+                [3, 4, 5, 6],
+                [22, 23, 24, 25],
+            ]
+            assert (await client.get("/health")).json()["scheduler"]["max_batch"] == 2
+            root.serving_error = "probe failure"
+            assert (await client.get("/health")).status_code == 503
+
+    with patch.object(
+        torch, "npu", SimpleNamespace(synchronize=lambda _: None), create=True
+    ):
+        asyncio.run(run())
+
+
+def test_detected_disconnect_cancels_execution_without_an_asgi_failure():
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, patch
+
+    import httpx
+    from fastapi import Request
+
+    from betterscale.live.llm.qwen35.http import create_app
+
+    cancelled = []
+
+    async def execute(tokens, count, stops):
+        try:
+            await asyncio.Future()
+        finally:
+            cancelled.append(True)
+
+    async def run():
+        root = SimpleNamespace(
+            context_tokens=128,
+            target_model=SimpleNamespace(
+                model=SimpleNamespace(
+                    config=SimpleNamespace(eos_token_id=9), vocab_size=10
+                )
+            ),
+        )
+        app = create_app(root, Tokenizer(), "qwen", execute)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            with patch.object(Request, "is_disconnected", AsyncMock(return_value=True)):
+                response = await client.post(
+                    "/v1/completions", json={"prompt": [1, 2], "max_tokens": 4}
+                )
+        assert response.status_code == 499
+        assert cancelled == [True]
+
+    asyncio.run(run())

@@ -5,6 +5,8 @@ host prefix identity advance together after verification; no hidden history is
 kept beyond the current short wave and one boundary vector per resident.
 """
 
+from dataclasses import dataclass
+
 import torch
 
 
@@ -12,32 +14,84 @@ def greedy(logits_or_ids):
     return logits_or_ids if logits_or_ids.ndim == 1 else logits_or_ids.argmax(-1)
 
 
-def generate(root, prompt, max_new_tokens, *, speculative=True, eos_token_ids=()):
+@dataclass
+class ModelStep:
+    kind: str
+    tokens: list[int]
+    metadata: dict
+    hidden_seed: object = None
+
+
+@dataclass
+class PageRequest:
+    lease: object
+    length: int
+
+
+@dataclass
+class Progress:
+    proposed: int = 0
+    accepted_drafts: int = 0
+
+
+def generate(root, prompt, max_new_tokens, **kwargs):
+    """Synchronous adapter over the same protocol the batch scheduler drives."""
+    protocol = generation_steps(root, prompt, max_new_tokens, **kwargs)
+    reply = None
+    try:
+        while True:
+            step = protocol.send(reply)
+            if isinstance(step, PageRequest):
+                reply = root.residents_table.reserve(step.lease, step.length)
+            elif step.kind == "target":
+                reply = root.target_step(step.tokens, **step.metadata)
+            else:
+                reply = root.draft_step(step.tokens, step.hidden_seed, **step.metadata)
+    except StopIteration as done:
+        return done.value
+    finally:
+        protocol.close()
+
+
+def generation_steps(
+    root,
+    prompt,
+    max_new_tokens,
+    *,
+    speculative=True,
+    eos_token_ids=(),
+    admission=None,
+    progress=None,
+):
+    """Yield bounded numerical calls; only completed replies advance identity."""
     if max_new_tokens <= 0:
         raise ValueError("max_new_tokens must be positive")
     table = root.residents_table
-    lease, cached = table.acquire(list(prompt))
+    lease, cached = admission if admission is not None else table.acquire(list(prompt))
     seat = lease.seat
     c = root.continuation
     emitted = []
-    proposed = accepted_drafts = 0
+    progress = Progress() if progress is None else progress
     try:
         for position in range(cached, len(prompt)):
             token = prompt[position]
-            slots = table.reserve(lease, position + 1)
+            slots = yield PageRequest(lease, position + 1)
             if position:
-                root.draft_step(
+                yield ModelStep(
+                    "draft",
                     [token],
+                    {"position": position - 1, "slots": slots[:position]},
                     c.anchor_hidden.tensor[seat : seat + 1],
-                    position=position - 1,
-                    slots=slots[:position],
                 )
-            hidden, logits = root.target_step(
+            hidden, logits = yield ModelStep(
+                "target",
                 [token],
-                seat=seat,
-                position=position,
-                slots=slots,
-                accepted=int(c.selection.tensor[seat].item()),
+                {
+                    "seat": seat,
+                    "position": position,
+                    "slots": slots,
+                    "accepted": int(c.selection.tensor[seat].item()),
+                },
             )
             c.anchor_hidden.tensor[seat].copy_(hidden[-1])
             c.anchor_token.tensor[seat] = greedy(logits)[-1]
@@ -49,30 +103,36 @@ def generate(root, prompt, max_new_tokens, *, speculative=True, eos_token_ids=()
             position = len(table.seats[seat].tokens)
             anchor = int(c.anchor_token.tensor[seat].item())
             width = 3 if speculative else 1
-            slots = table.reserve(lease, position + width)
-            seed, logits = root.draft_step(
+            slots = yield PageRequest(lease, position + width)
+            seed, logits = yield ModelStep(
+                "draft",
                 [anchor],
+                {"position": position - 1, "slots": slots[:position]},
                 c.anchor_hidden.tensor[seat : seat + 1],
-                position=position - 1,
-                slots=slots[:position],
             )
             tokens = [anchor]
             if speculative:
                 first = int(greedy(logits)[-1].item())
-                _, logits = root.draft_step(
-                    [first], seed, position=position, slots=slots[: position + 1]
+                _, logits = yield ModelStep(
+                    "draft",
+                    [first],
+                    {"position": position, "slots": slots[: position + 1]},
+                    seed,
                 )
                 tokens.extend([first, int(greedy(logits)[-1].item())])
-                proposed += 2
+                progress.proposed += 2
                 c.proposal.tensor[seat].copy_(
                     torch.tensor(tokens[1:], device=root.live_device)
                 )
-            hidden, logits = root.target_step(
+            hidden, logits = yield ModelStep(
+                "target",
                 tokens,
-                seat=seat,
-                position=position,
-                slots=slots,
-                accepted=int(c.selection.tensor[seat].item()),
+                {
+                    "seat": seat,
+                    "position": position,
+                    "slots": slots,
+                    "accepted": int(c.selection.tensor[seat].item()),
+                },
             )
             predictions = greedy(logits).tolist()
             count = 1
@@ -83,15 +143,14 @@ def generate(root, prompt, max_new_tokens, *, speculative=True, eos_token_ids=()
                 if tokens[i] in eos_token_ids:
                     count = i + 1
                     break
-            accepted_drafts += count - 1
             # Replace recursive draft hidden seeds with verified target seeds.
             # The preceding first-pass row (position-1) was already committed.
             if count > 1:
-                root.draft_step(
+                yield ModelStep(
+                    "draft",
                     tokens[1:count],
+                    {"position": position, "slots": slots[: position + count - 1]},
                     hidden[: count - 1],
-                    position=position,
-                    slots=slots[: position + count - 1],
                 )
             c.anchor_hidden.tensor[seat].copy_(hidden[count - 1])
             c.anchor_token.tensor[seat] = predictions[count - 1]
@@ -100,6 +159,7 @@ def generate(root, prompt, max_new_tokens, *, speculative=True, eos_token_ids=()
             c.draft_cursor.tensor[seat] = position + count - 1
             table.commit(lease, tokens[:count])
             emitted.extend(tokens[:count])
+            progress.accepted_drafts += count - 1
             if emitted[-1] in eos_token_ids:
                 break
         torch.npu.synchronize(root.live_device)
@@ -107,8 +167,8 @@ def generate(root, prompt, max_new_tokens, *, speculative=True, eos_token_ids=()
             "token_ids": emitted,
             "seat": seat,
             "cached_tokens": cached,
-            "proposed": proposed,
-            "accepted_drafts": accepted_drafts,
+            "proposed": progress.proposed,
+            "accepted_drafts": progress.accepted_drafts,
         }
     except BaseException:
         # Do not publish a hot identity after any partially completed writer.

@@ -6,8 +6,10 @@ from betterscale.live import (
     ElasticStateCapacity,
     ExactStateCapacity,
     LiveModule,
+    StateCapacityUnit,
     StateDomain,
 )
+
 from .state import AttentionState, Capacity, ContinuationState, GDNState, Geometry
 
 
@@ -23,7 +25,9 @@ class QwenStateRoot(LiveModule):
         self.geometry, self.capacity = geometry, capacity
         self.residents = StateDomain(ExactStateCapacity(capacity.resident_seats))
         self.pages = StateDomain(
-            ElasticStateCapacity()
+            ElasticStateCapacity(
+                StateCapacityUnit(minimum_units=capacity.execution_seats)
+            )
             if capacity.token_pages is None
             else ExactStateCapacity(capacity.token_pages)
         )
@@ -50,3 +54,30 @@ class QwenStateRoot(LiveModule):
             leaf.validate_consumer(consumer)
         for leaf, consumer in zip(leaves, consumers, strict=True):
             leaf.borrow_into(consumer)
+
+
+def state_budget_bytes(geometry, capacity, page_ceiling):
+    """Charge the declarations themselves, not a duplicated model-size formula.
+
+    This temporary tree only declares State; no tensor storage or graph is made.
+    The ceiling limits useful shared pages, not reservations for individual seats.
+    """
+    import math
+
+    import torch
+
+    from betterscale.live import LiveRuntime, live_runtime
+
+    with live_runtime(LiveRuntime()):
+        declaration = QwenStateRoot(geometry, capacity)
+    return sum(
+        math.prod(
+            state.physical_shape(
+                page_ceiling
+                if state.domain is declaration.pages
+                else capacity.resident_seats
+            )
+        )
+        * torch.empty((), dtype=state.storage_dtype, device="meta").element_size()
+        for _, state in declaration.named_states()
+    )

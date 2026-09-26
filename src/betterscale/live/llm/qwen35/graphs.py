@@ -5,14 +5,19 @@ qualification limits. No native runner capture or partial eager fallback exists.
 """
 
 from dataclasses import dataclass
+from functools import partial
+
 import torch
+
 from betterscale.live import GraphCallSchema, MetaTensor, construct_meta_tensors
+
 from .execution import QwenExecutionRoot
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class ModelCallSchema(GraphCallSchema):
     capture_state_blocks: dict
+    graph_pool_key: object
 
 
 class QwenLiveLLMRoot(QwenExecutionRoot):
@@ -32,83 +37,98 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
         if not 3 <= context_tokens <= 4096:
             raise ValueError("bounded graph context must be in 3..4096")
         self.context_tokens = context_tokens
-        for name, width in (
-            ("target1", 1),
-            ("target3", 3),
-            ("draft1", 1),
-            ("draft2", 2),
+        self._metadata_actions = {}
+        # All waves are serial on one stream; only retained output banks cross
+        # calls. The common backend may therefore reuse transient graph scratch.
+        self._graph_pool = object()
+        self.batch_sizes = tuple(
+            2**i for i in range(capacity.execution_seats.bit_length())
+        )
+        if capacity.token_pages is not None and capacity.token_pages < max(
+            self.batch_sizes
         ):
-            self.register_meta_tensor(
-                name + "_hidden",
-                MetaTensor((width, geometry.hidden_size), dtype=torch.bfloat16),
-            )
-            self.register_meta_tensor(
-                name + "_logits",
-                MetaTensor(
-                    (width,) if greedy_only else (width, target_model.model.vocab_size),
-                    dtype=torch.int64 if greedy_only else torch.bfloat16,
-                ),
-            )
-            ids = torch.ones(width, dtype=torch.long)
-            pos = torch.arange(width).expand(3, -1).contiguous()
-            read = torch.zeros(context_tokens, dtype=torch.long)
-            read[:width] = torch.arange(width)
-            write = torch.arange(width)
-            if name.startswith("target"):
-                args = (
-                    ids,
-                    pos,
-                    read,
-                    write,
-                    torch.tensor([0, width], dtype=torch.int32),
-                    torch.tensor([[0]], dtype=torch.int32),
-                    torch.tensor([[0, 1, 2]]),
-                    torch.ones(1, dtype=torch.int32),
-                    name,
-                )
-                entry = self.target_forward
-            else:
-                args = (
-                    ids,
-                    pos,
-                    read,
-                    write,
-                    torch.zeros(width, geometry.hidden_size, dtype=torch.bfloat16),
-                    name,
-                )
-                entry = self.draft_forward
-            self.register_graph(
+            raise ValueError("capture needs one physical token page per execution lane")
+        for batch in self.batch_sizes:
+            for kind, width in (
+                ("target", 1),
+                ("target", 3),
+                ("draft", 1),
+                ("draft", 2),
+            ):
+                self._declare_call(kind, width, batch)
+
+    @staticmethod
+    def call_name(kind, width, batch):
+        return f"{kind}{width}" + (f"_b{batch}" if batch > 1 else "")
+
+    def _declare_call(self, kind, width, batch):
+        name = self.call_name(kind, width, batch)
+        self._metadata_actions[name] = partial(self._output_metadata, name)
+        rows = batch * width
+        self.register_meta_tensor(
+            name + "_hidden",
+            MetaTensor((rows, self.geometry.hidden_size), dtype=torch.bfloat16),
+        )
+        self.register_meta_tensor(
+            name + "_logits",
+            MetaTensor(
+                (rows,)
+                if self.greedy_only
+                else (rows, self.target_model.model.vocab_size),
+                dtype=torch.int64 if self.greedy_only else torch.bfloat16,
+            ),
+        )
+        ids = torch.ones(rows, dtype=torch.long)
+        pos = torch.arange(width).repeat(batch).expand(3, -1).contiguous()
+        read = torch.zeros(batch, self.context_tokens, dtype=torch.long)
+        write = (
+            torch.arange(batch)[:, None] * self.capacity.page_tokens
+            + torch.arange(width)[None, :]
+        )
+        read[:, :width] = write
+        args = (ids, pos, read, write.flatten())
+        if kind == "target":
+            args += (
+                torch.arange(batch + 1, dtype=torch.int32) * width,
+                torch.arange(batch, dtype=torch.int32)[:, None],
+                torch.arange(batch * 3).reshape(batch, 3),
+                torch.ones(batch, dtype=torch.int32),
                 name,
-                entry=entry,
-                schema=ModelCallSchema(
-                    args=args,
-                    kwargs={},
-                    capture_state_blocks={self.residents: (0,), self.pages: (0,)},
-                ),
             )
+            entry = self.target_forward
+        else:
+            args += (
+                torch.zeros(rows, self.geometry.hidden_size, dtype=torch.bfloat16),
+                name,
+            )
+            entry = self.draft_forward
+        self.register_graph(
+            name,
+            entry=entry,
+            schema=ModelCallSchema(
+                args=args,
+                kwargs={},
+                graph_pool_key=self._graph_pool,
+                capture_state_blocks={
+                    self.residents: tuple(range(batch)),
+                    self.pages: tuple(range(batch)),
+                },
+            ),
+        )
 
     def _outputs(self, name):
         return getattr(self, name + "_hidden").tensor, getattr(
             self, name + "_logits"
         ).tensor
 
-    def _target1_metadata(self, context):
-        return self._outputs("target1")
-
-    def _target3_metadata(self, context):
-        return self._outputs("target3")
-
-    def _draft1_metadata(self, context):
-        return self._outputs("draft1")
-
-    def _draft2_metadata(self, context):
-        return self._outputs("draft2")
+    def _output_metadata(self, name, context):
+        return self._outputs(name)
 
     def target_forward(
         self, ids, positions, read, write, cu, conv_slots, candidates, accepted, name
     ):
         out_hidden, out_logits = construct_meta_tensors(
-            getattr(self, "_" + name + "_metadata"), context=None
+            self._metadata_actions[name], context=None
         )
         hidden, logits = self._target_forward(
             ids,
@@ -122,7 +142,7 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
 
     def draft_forward(self, ids, positions, read, write, seed, name):
         out_hidden, out_logits = construct_meta_tensors(
-            getattr(self, "_" + name + "_metadata"), context=None
+            self._metadata_actions[name], context=None
         )
         hidden, logits = self._draft_forward(ids, seed, positions, write, read)
         out_hidden.copy_(hidden)
@@ -156,29 +176,88 @@ class QwenLiveLLMRoot(QwenExecutionRoot):
         return result
 
     @torch.inference_mode()
-    def target_step(self, tokens, *, seat, position, slots, accepted=1):
+    def batch_step(self, steps):
+        """Execute real rows only; the scheduler decomposes odd counts into buckets."""
+        self._require_active("execute batch on")
+        batch = len(steps)
+        if batch not in self.batch_sizes:
+            raise ValueError("unqualified graph batch size")
+        kind, width = steps[0].kind, len(steps[0].tokens)
         if (
-            len(tokens) not in (1, 3)
-            or not 0 <= seat < self.capacity.resident_seats
-            or not 1 <= accepted <= 3
+            kind not in ("target", "draft")
+            or width not in ((1, 3) if kind == "target" else (1, 2))
+            or any(step.kind != kind or len(step.tokens) != width for step in steps)
         ):
-            raise ValueError("unqualified target graph shape or resident selection")
-        name = "target" + str(len(tokens))
-        args = self._inputs(tokens, position, slots) + (
-            torch.tensor([0, len(tokens)], dtype=torch.int32, device="cpu"),
-            torch.tensor([[seat]], dtype=torch.int32, device="cpu"),
-            torch.tensor(
-                [[seat * 3 + i for i in range(3)]], dtype=torch.long, device="cpu"
-            ),
-            torch.tensor([accepted], dtype=torch.int32, device="cpu"),
-            name,
+            raise ValueError("unqualified mixed graph wave")
+        inputs = [
+            self._inputs(s.tokens, s.metadata["position"], s.metadata["slots"])
+            for s in steps
+        ]
+        writes = [slot for s in steps for slot in s.metadata["slots"][-width:]]
+        if len(set(writes)) != len(writes):
+            raise ValueError("batch writers cannot alias token State")
+        name = self.call_name(kind, width, batch)
+        args = (
+            torch.cat([v[0] for v in inputs]),
+            torch.cat([v[1] for v in inputs], dim=1),
+            torch.stack([v[2] for v in inputs]),
+            torch.cat([v[3] for v in inputs]),
         )
-        return self._run(name, args)
+        if kind == "target":
+            seats = [s.metadata["seat"] for s in steps]
+            accepted = [s.metadata.get("accepted", 1) for s in steps]
+            if (
+                len(set(seats)) != batch
+                or any(not 0 <= seat < self.capacity.resident_seats for seat in seats)
+                or any(not 1 <= count <= 3 for count in accepted)
+            ):
+                raise ValueError("invalid resident or candidate selection")
+            args += (
+                torch.arange(batch + 1, dtype=torch.int32) * width,
+                torch.tensor(seats, dtype=torch.int32)[:, None],
+                torch.tensor([[seat * 3 + i for i in range(3)] for seat in seats]),
+                torch.tensor(accepted, dtype=torch.int32),
+                name,
+            )
+        else:
+            if any(
+                s.hidden_seed.shape != (width, self.geometry.hidden_size) for s in steps
+            ):
+                raise ValueError("MTP needs one hidden seed per shifted input")
+            args += (torch.cat([s.hidden_seed for s in steps]), name)
+        hidden, logits = self._run(name, args)
+        return [
+            (hidden[i * width : (i + 1) * width], logits[i * width : (i + 1) * width])
+            for i in range(batch)
+        ]
+
+    @torch.inference_mode()
+    def target_step(self, tokens, *, seat, position, slots, accepted=1):
+        from .generation import ModelStep
+
+        return self.batch_step(
+            [
+                ModelStep(
+                    "target",
+                    tokens,
+                    {
+                        "seat": seat,
+                        "position": position,
+                        "slots": slots,
+                        "accepted": accepted,
+                    },
+                )
+            ]
+        )[0]
 
     @torch.inference_mode()
     def draft_step(self, tokens, hidden_seed, *, position, slots):
-        if len(tokens) not in (1, 2):
-            raise ValueError("unqualified draft graph shape")
-        name = "draft" + str(len(tokens))
-        args = self._inputs(tokens, position, slots) + (hidden_seed, name)
-        return self._run(name, args)
+        from .generation import ModelStep
+
+        return self.batch_step(
+            [
+                ModelStep(
+                    "draft", tokens, {"position": position, "slots": slots}, hidden_seed
+                )
+            ]
+        )[0]

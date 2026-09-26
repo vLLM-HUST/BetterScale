@@ -23,29 +23,36 @@ def attention(module, state, hidden, positions, write_slots, read_slots):
     values.index_copy_(
         0, write_slots, v.reshape(-1, module.num_kv_heads, module.head_dim)
     )
-    k = keys.index_select(0, read_slots).transpose(0, 1)
-    v = values.index_select(0, read_slots).transpose(0, 1)
-    q = q.reshape(-1, module.num_heads, module.head_dim).transpose(0, 1)
+    # Flattened token projections, but separate prefix axes: requests must
+    # never attend across the batch. Single-request callers retain the same math.
+    reads = read_slots.reshape(1, -1) if read_slots.ndim == 1 else read_slots
+    batch, columns = reads.shape
+    rows = hidden.shape[0]
+    width = rows // batch
+    shape = (batch, columns, module.num_kv_heads, module.head_dim)
+    k = keys.index_select(0, reads.flatten()).reshape(shape).transpose(1, 2)
+    v = values.index_select(0, reads.flatten()).reshape(shape).transpose(1, 2)
+    q = q.reshape(batch, width, module.num_heads, module.head_dim).transpose(1, 2)
     repeat = module.num_heads // module.num_kv_heads
-    k = k.repeat_interleave(repeat, dim=0)
-    v = v.repeat_interleave(repeat, dim=0)
+    k = k.repeat_interleave(repeat, dim=1)
+    v = v.repeat_interleave(repeat, dim=1)
     score = torch.matmul(q.float(), k.float().transpose(-1, -2)) * module.scaling
-    # Absolute query positions mask both causal future and padded read slots.
-    rows, columns = hidden.shape[0], read_slots.shape[0]
-    mask = torch.arange(columns, device=hidden.device)[None, :] > (
-        positions[0, :, None] if positions.ndim == 2 else positions[:, None]
+    pos = positions[0] if positions.ndim == 2 else positions
+    mask = torch.arange(columns, device=hidden.device)[None, None, :] > (
+        pos.reshape(batch, width, 1)
     )
-    score.masked_fill_(mask, float("-inf"))
+    score.masked_fill_(mask[:, None], float("-inf"))
     output = torch.matmul(score.softmax(-1), v.float()).to(hidden.dtype)
-    output = output.transpose(0, 1).reshape(rows, -1)
+    output = output.transpose(1, 2).reshape(rows, -1)
     if gate is not None:
         output = output * torch.sigmoid(gate)
     return module.o_proj(output)[0]
 
 
 def gdn(module, state, hidden, geometry, seat, accepted, candidate_metadata=None):
-    from .gdn_candidates import fused_recurrent_gated_delta_rule_fwd
     from vllm_ascend.device.device_op import DeviceOperator
+
+    from .gdn_candidates import fused_recurrent_gated_delta_rule_fwd
 
     mixed, _ = module.in_proj_qkvz(hidden)
     qkv, z = mixed.split(

@@ -50,6 +50,17 @@ class ResidentTable:
             raise ValueError("stale resident/request lease")
         return resident
 
+    def can_reserve(self, lease, length):
+        """Check shared pages, including reclaimable idle residents, without writes."""
+        resident = self._resident(lease)
+        pages = (length + self.capacity.page_tokens - 1) // self.capacity.page_tokens
+        available = (
+            len(resident.pages)
+            + len(self.free_pages)
+            + sum(len(r.pages) for r in self.seats if r.request is None)
+        )
+        return pages <= available
+
     def acquire(self, tokens):
         if not tokens:
             raise ValueError("empty prompt")

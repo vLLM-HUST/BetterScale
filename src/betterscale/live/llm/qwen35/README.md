@@ -5,8 +5,9 @@ Implementation is owned here, not imported from LiveInference or `prototypes`:
 - `root.py`: `QwenStateRoot`, composing model State domains and leaves.
 - `state.py`: geometry/capacity, target GDN and FA, draft FA, continuation State.
 - `execution.py` / `numerics.py`: real-weight synchronous target/draft execution.
-- `graphs.py`: `QwenLiveLLMRoot`, four owned full-model graphs.
+- `graphs.py`: `QwenLiveLLMRoot`, four model-call families in real batch buckets.
 - `generation.py` / `residents.py`: greedy MTP commit, hot residents and shared pages.
+- `scheduler.py` / `ingress.py`: completed-wave batching, preemption and async ingress.
 - `gdn_graph.py`: `GDNGraphRoot`, the bounded two-bank numerical/lifecycle probe.
 - `gdn_candidates.py`: isolated candidate kernel for that probe, requiring the
   pinned vLLM Triton environment. It is loaded only on execution, not root import.
@@ -51,7 +52,7 @@ python -m betterscale serve-qwen /models/Qwen3.5-35B-A3B \
 
 The root is `QwenLiveLLMRoot` in `graphs.py`, with real target/draft execution
 in `execution.py` and numerical leaves in `numerics.py`. BetterScale owns State
-allocation, initialization, four graph captures, invocation and retirement.
+allocation, initialization, graph capture, invocation and retirement.
 No external `livemodule`, native Worker, native KV planner or native runner
 fallback is used. Default `--runtime native` remains unchanged.
 
@@ -61,13 +62,36 @@ Loopback HTTP on127.0.0.1:8000 exposes `/health`, `/v1/models`,
 Generation honors model EOS unless `ignore_eos` is explicitly requested.
 
 Defaults are512 context tokens (including prompt, output and two-token MTP
-lookahead),20 resident seats,64 shared128-token pages, and one execution seat.
+lookahead),16 execution seats and20 resident seats. `--live-execution-seats`,
 `--live-context-tokens`, `--live-resident-seats`, `--live-token-pages` and
-`--live-distributed-port` configure those explicit bounds. GDN/continuation
-lanes are resident-owned; target and draft FA use the shared token-page domain.
-Finish retains hot State. Matching continuation resumes its seat; shorter
-prefixes cannot use later recurrent State. Unrelated work prefers empty seats;
-seat/page pressure evicts only idle residents. No CPU offload is provided.
+`--live-distributed-port` configure these bounds. `--live-token-pages 0` (default)
+uses observed-memory fitting with a1GiB free-memory floor. Calibration, State
+rebinding and final capture use the existing LiveModule transaction, with
+failure-aware CPU-group capacity agreement across TP ranks. Useful pages are
+capped at R × ceil(context/128), not every remaining byte of HBM. A positive
+page count is an explicit fixed-capacity override.
+
+GDN/continuation lanes are resident-owned; target and draft FA use one shared
+128-token page domain. Pages grow on demand, **not** by reserving an entire
+request's maximum output. Finish retains hot State. Matching continuation
+resumes its seat; shorter prefixes cannot use later recurrent State. Unrelated
+work prefers empty seats; page reclamation first uses idle residents.
+
+Under active page pressure, the scheduler waits for the current wave to drain,
+preempts the newest request, invalidates its entire seat and returns all its
+pages. CPU prompt plus committed output IDs are requeued for recomputation;
+GDN candidates/conv, target/draft KV and continuation never survive separately.
+The surviving cohort drains before re-admitting victims to avoid immediate
+thrashing. Cancellation also invalidates the whole seat. No CPU offload or
+intermediate recurrent checkpoint is provided.
+
+One execution owner groups compatible target/draft calls. Graph buckets are
+1/2/4/8/16 for C16 (20 graphs); odd counts decompose into real smaller batches,
+without dummy State rows. Prefill remains one token per request per protocol
+step and interleaves with decode at completed-wave boundaries. The portfolio
+shares serial scratch; its retained MetaTensor output banks and copied replies
+are not disposable scratch. `/health` includes actual maximum active/batch
+counts and current shared-page/queue/preemption counters.
 
 ## Qualified scope
 
@@ -83,9 +107,22 @@ The MoE loader explicitly preserves native Ascend's FP32 router-weight contract
 for both target and draft. Omitting it silently selects BF16 routing and caused
 the now-resolved token discrepancy; it is not a cache-layout workaround.
 
-This remains a serialized correctness entry, not a high-throughput scheduler,
-C16/C32 qualification, maximum-context claim or universal BF16 batch-invariance
-guarantee. Attention deliberately uses a bounded plain implementation; no speed
+The preceding receipts describe the historical E1 entry. The subsequent
+35B TP2 C16/R20 model-root check captured20 graphs, reached actual batch16,
+and matched all16 eight-token outputs against single-request target-only
+controls. Both ranks fitted40 shared pages at256-token context; an unrelated
+request used seat16, and the retained15-token prefix resumed seat0 correctly.
+The0.8B TP1 constrained four-page check forced two whole-seat preemptions,
+including one with committed output; recomputation matched all controls and
+cancellation cleared GDN/continuation. The installed HTTP TP2 entry also reached
+actual batch16 at512-token context with only16 shared pages:16×12 raw outputs
+match native;16×9 long-chat outputs match serial controls, despite eight
+whole-seat preemptions. A real client disconnect cancelled and reclaimed its
+seat; service exit0 and both cards released. Receipts and the final CPU-only
+disconnect-error presentation fix are in `docs/evidence/qwen35-live-scheduler.json`.
+
+This is not a maximum-context claim, C32 execution qualification, or a universal
+BF16 batch-invariance guarantee. Attention deliberately uses a bounded plain implementation; no speed
 claim follows from these probes. The existing published PyPI0.5.1 predates this
 source addition; no new PyPI release is implied.
 

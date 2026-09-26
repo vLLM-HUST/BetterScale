@@ -13,6 +13,9 @@ use the neighboring
 For the approved optional execution path and current graph-lifecycle evidence,
 read [owned-execution.md](owned-execution.md) before extending the runtime entry.
 
+For shared-page pressure, active request preemption, and the C16/R20 scheduler
+frontier, read [seat-scheduler.md](seat-scheduler.md).
+
 ## Latest policy correction: hot resident seats
 
 Read [resident-seat-policy.md](resident-seat-policy.md) before using any earlier

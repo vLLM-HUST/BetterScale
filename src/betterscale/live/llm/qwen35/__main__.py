@@ -8,8 +8,9 @@ def main():
     parser.add_argument("model")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--context-tokens", type=int, default=512)
+    parser.add_argument("--execution-seats", type=int, default=16)
     parser.add_argument("--resident-seats", type=int, default=20)
-    parser.add_argument("--token-pages", type=int, default=64)
+    parser.add_argument("--token-pages", type=int, default=0)
     args = parser.parse_args()
     from .bootstrap import open_model
     from .http import serve
@@ -18,6 +19,7 @@ def main():
         args.model,
         context_tokens=args.context_tokens,
         resident_seats=args.resident_seats,
+        execution_seats=args.execution_seats,
         token_pages=args.token_pages,
     ) as root:
         serve(root, args.model, port=args.port)

@@ -6,11 +6,13 @@ resident admission are separate integration gates, not implicit fallbacks.
 """
 
 from contextlib import nullcontext
+from dataclasses import replace
 
 import torch
-from .root import QwenStateRoot
+
 from . import numerics
 from .residents import ResidentTable
+from .root import QwenStateRoot
 
 
 class QwenExecutionRoot(QwenStateRoot):
@@ -30,7 +32,13 @@ class QwenExecutionRoot(QwenStateRoot):
                 tensor.zero_()
         for tensor in self.draft.numerical_tensors():
             tensor.zero_()
-        self.residents_table = ResidentTable(self.capacity, clear_seat=self.clear_seat)
+        self.residents_table = ResidentTable(
+            replace(self.capacity, token_pages=self.pages.capacity),
+            clear_seat=self.clear_seat,
+        )
+
+    def _rebind_live_state(self):
+        self._initialize_live_generation()
 
     @torch.inference_mode()
     def clear_seat(self, seat):
