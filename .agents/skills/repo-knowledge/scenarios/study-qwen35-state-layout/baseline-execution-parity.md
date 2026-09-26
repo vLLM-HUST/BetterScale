@@ -20,10 +20,28 @@ all queued writers retire; incompatible earlier prefixes are misses.
 
 The rejected two-bank worktree is archived in the workspace audit capsule as
 `paused-two-bank-worktree.tar.gz`. Its arithmetic-address extension and bank
-copies have been removed from current source; baseline numerical leaves are
-again identical to committed namespace port5b976bd. Single-set CPU suite passes
-219 tests. Hardware functional acceptance is recorded below; a fresh matched
-timeline/performance comparison remains required.
+copies have been removed from current source; active-row numerical leaves retain the committed namespace port5b976bd
+behavior; the later negative-slot output correction is described below. The initial single-set CPU suite passed
+219 tests; final write-budget source passes229. Functional and matched
+timeline/performance acceptance are recorded below.
+
+## Current serving entry
+
+Use the real Worker alias`betterscale.qwen35_worker.Worker`, not the earlier
+standalone service loop. For resident State select both:
+
+```text
+--additional-config '{"enable_cpu_binding":false,"using_live_runtime":true}'
+--scheduler-cls betterscale.models.qwen35.seat_scheduler.LiveStateScheduler
+```
+
+The control omits`using_live_runtime` and selects
+`betterscale.models.qwen35.apc_boundary.BoundaryScheduler`. Both retain the same
+FULL keys, query4096, max-seqs16, native MTP2 and async flags; use a qualified
+capsule's complete command rather than these two fragments alone. Source pins
+include the two donor runner imports redirected by`runtime-imports.patch`;
+ordinary unpatched donor installation is not this qualified runtime. Never
+relax pins or put an old capsule on PYTHONPATH to make the import pass.
 
 ## Authoritative baseline and substitution boundary
 
@@ -288,7 +306,7 @@ exact body/cost comparison here is restricted to complete decode coverage.
 Preserve mixed Perfetto/raw evidence and typed unknown regions instead of
 rerunning hardware merely to manufacture a periodic profile.
 
-### Performance follow-up: protect the current length frontier (in progress)
+### Performance follow-up: protect the current length frontier
 
 `20260926-native-state-swe-c16` (6f81f81) passes the900-second C16 protocol,
 542 total requests,0 failures and selected-device release, but delivers only
@@ -332,7 +350,7 @@ hits plus16 independent cold continuations,8 cold/repeated-cold long-context
 checks through262080, and16 pressure requests. Its6GiB State budget triggers2
 actual native preemptions with whole-seat invalidation. Server/launcher exit0,
 selected0/1 released IDLE. Pressure's post-EOS forced text is not a quality oracle.
-Final-source timeline and900-second performance acceptance remain separate gates.
+Final-source timeline and900-second performance gates subsequently passed below.
 
 The old adapter bypassed native prefix-cache statistic recording in its custom
 `get_computed_blocks`. Therefore a server metric saying0% did not prove zero
@@ -367,3 +385,62 @@ visible terminal prefix are different contracts. The finish3 observation proves
 that distinction matters; it does not authorize increasing State capacity to
 satisfy the stronger contract. Fletcher resolved the scope above: keep one baseline candidate set, and do not
 guarantee arbitrary visible-terminal reuse this cut.
+
+
+### Final-source matched acceptance — September26
+
+Source`a8abd05`, same selected0/1 devices, BF16/TP2/MTP2, E16/R20,
+262144 context,4096 query budget, native mixed FULL keys and AsyncScheduler.
+The final fixed resident State is1,912,095,920 bytes/rank; the same
+26,038,239,232-byte total budget leaves16,720 shared128-token FA pages
+(2,140,160 nominal token positions). No second State bank, context reduction,
+capacity search or synchronous fallback was used.
+
+`20260926-state-profile-state2` passes both-rank raw/owner/DB validation and
+clean teardown. `20260926-write-budget-profile-comparison.json` compares its
+12-wave exact C16 decode against`state-profile-baseline1`: identical target/draft
+member symbol counts; target median envelope ratios0.99334/0.99095,
+draft0.99773/0.99623. Between-wave gaps are0.435/0.434ms. The mixed reconstruction
+limitation above still applies; this is not an exact whole-mixed cost claim.
+
+`20260926-write-budget-swe-c16` passes the actual pinned`swe-prefix-reuse`
+29136f1f481ebab8566014a05b7ed53bcf79dc84 C16/900-second protocol with0 failures,
+1194 completions in-window +16 drained, clean server/launcher exit and selected
+cards released IDLE. Same workload/seed, model and runtime pins as the fresh
+`owned-baseline-swe-c16` control; only State entry/scheduler and the qualified
+write-lifetime change differ. This is one predeclared run per arm, not a
+best-of-repeat uncertainty estimate.
+
+| Metric | Fresh baseline | Resident State |
+|---|---:|---:|
+| Output tokens/s/chip |369.1728|414.8011|
+| Decode tokens/s P90 |55.3413|59.4792|
+| TTFT P95 (s) |0.8494|0.4623|
+| Continuation requests with cache hits |997/1039|1170/1170|
+| Prompt-token cache fraction |93.692%|97.516%|
+| Uncached prompt tokens, including drain |1,929,434|905,142|
+
+Throughput is12.36% higher in this bounded comparison, passing the no-more-than5%
+regression working target; TTFT P95 is45.58% lower. Full-concurrency fraction is
+99.495%; no preemptions occurred in this full-budget timing run (use the separate
+reduced-pool gate for preemption evidence). Cache counters include all requests,
+while throughput uses only the900-second window. Different completed workload
+prefixes are inherent to this fixed-time exact-token continuation protocol.
+`20260926-write-budget-swe-comparison.json` retains the derived comparison.
+
+Interpretation: avoiding repeated prefill, not faster decode arithmetic, explains
+the observed recovery. Do not generalize this one C16 point to C32, arbitrary
+EOS/stop rollback, or final live graph-lifecycle ownership. Those remain outside
+this accepted State-only cut. Capsule installs were isolated; no shared installed
+runtime or PyPI release was changed.
+
+
+`20260926-write-budget-hot-delta1` closes the joint continuation gate on the
+same final source:48 requests,16 concurrent forced terminal budgets1..20,
+then actual generated token IDs + a new native-chat user segment with
+37/254/1822/5406 added tokens. All16 resumes hit the exact represented frontier;
+each retrieves the original access code and has exactly the same output IDs as
+its independent cold oracle. The5406-token delta crosses the4096 chunk budget,
+so this covers hot GDN State resuming bulk/chunked prefill, not just a one-token
+resume. Server/launcher exit0, selected0/1 released IDLE. The capsule's126 Python
+files matcha8abd05; no extra observer was required.
