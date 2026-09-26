@@ -7,6 +7,7 @@ from vllm.triton_utils import triton, tl
 def publish(
     SEATS,
     SELECTION,
+    REMAINING,
     SEQ,
     CU,
     PRE_IDS,
@@ -43,10 +44,14 @@ def publish(
         ver = row
     seat = tl.load(SEATS + ver, row < NV, other=0)
     selected = tl.load(SELECTION + seat, row < NV, other=1)
-    tl.store(VER_CONV + ver, seat, row < NV)
+    writable = tl.load(REMAINING + seat, row < NV, other=0) > 0
+    # A queued frame after the known length limit uses the baseline padding
+    # sentinel. It cannot overwrite the terminal candidate/window in this seat.
+    # No second bank, historical snapshot or change to active-row arithmetic.
+    tl.store(VER_CONV + ver, tl.where(writable, seat, -1), row < NV)
     tl.store(VER_ACCEPTED + row, selected, row < NV)
     tl.store(
         VER_SLOTS + row[:, None] * 3 + candidate[None, :],
-        seat[:, None] * 3 + candidate[None, :],
+        tl.where(writable[:, None], seat[:, None] * 3 + candidate[None, :], -1),
         (row[:, None] < NV) & (candidate[None, :] < 3),
     )

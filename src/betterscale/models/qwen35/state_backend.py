@@ -28,9 +28,9 @@ def fixed_state_bytes(config):
     page_bytes = (
         attention_layers * c.page_tokens * g.kv_heads * g.attention_head_dim * 4
     )
-    # Baseline MTP2 candidate set plus one convolution selector per resident.
+    # Baseline MTP2 candidate set plus convolution selector and write budget.
     # Neither resident State nor shared FA capacity scales with async queue depth.
-    return state_budget_bytes(g, c, 1) - page_bytes + c.resident_seats * 4
+    return state_budget_bytes(g, c, 1) - page_bytes + c.resident_seats * 8
 
 
 def determine_available_memory(worker, native):

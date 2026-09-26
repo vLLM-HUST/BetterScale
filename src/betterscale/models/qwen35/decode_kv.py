@@ -88,6 +88,18 @@ def fused_recurrent_gated_delta_rule_fwd_kernel(
 
     if USE_INITIAL_STATE and IS_CONTINUOUS_BATCHING:
         if tl.load(ssm_state_indices + i_n * stride_indices_seq) < 0:
+            # A retired resident can remain in one already-queued async frame.
+            # Its padding address forbids State writes, but downstream model
+            # rows still need finite activations (not uninitialized storage).
+            # Active-row recurrence and candidate arithmetic are unchanged.
+            out_v = tl.arange(0, V)
+            for token in tl.static_range(QUERY_CAPACITY):
+                if token < T:
+                    tl.store(
+                        o + ((i_k * all + bos + token) * HV + i_hv) * V + out_v,
+                        0,
+                        out_v < V,
+                    )
             return
     for i_v in range((V + BV - 1) // BV):
         o_k = i_k * BK + tl.arange(0, BK)

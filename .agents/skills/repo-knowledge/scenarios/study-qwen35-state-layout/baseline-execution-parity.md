@@ -262,6 +262,83 @@ results do not establish final live graph-lifecycle ownership or performance.
   launcher exit0, selected0/1 released IDLE. Forced post-EOS text is not a
   quality oracle or token-for-token numerical parity check.
 
+### Paired native-runtime profiles (September26)
+
+`20260926-state-profile-{baseline,state}1` use identical6f81f81 Python source,
+changing only the optional State flag/scheduler. Both pass exact retrieval,
+C16 decode and heterogeneous mixed dispatch, clean exit and selected0/1 release.
+`20260926-state-profile-comparison.json` records the comparison; per-arm
+`profile-validation.json` binds both rank owners, raw identities and DB integrity.
+Pinned TraceLoom isab8b5131191c6d5aeee2dd8566c34411f49ceab0.
+
+Each rank has12 exact C16 decode waves (48 scheduled tokens),24 graph launches.
+Target/draft graph member symbol counts are identical between arms. New-State
+median target envelope/control ratios are0.99666/0.99968 on ranks0/1; draft
+0.99783/0.99765. Between-wave graph gaps did not grow in this bounded capture.
+This supports restored baseline execution, not production throughput equivalence;
+a matched900-second C16 SWE comparison remains a separate gate.
+
+**Do not misattribute a reconstruction limit to missing device execution.**
+The mixed raw TASK/API window and12 FULL dispatches include the heterogeneous
+arrival. The pinned analyzer's `exact_periodic_suffix` classifies leading
+non-periodic launches as `unrecognized_leading_context` (baseline8 of24 launches).
+Its16 recognized suffix launches must not be aligned to dispatch zero. The old
+whole-window `trace_metrics.py` count assertion rejects this case correctly;
+exact body/cost comparison here is restricted to complete decode coverage.
+Preserve mixed Perfetto/raw evidence and typed unknown regions instead of
+rerunning hardware merely to manufacture a periodic profile.
+
+### Performance follow-up: protect the current length frontier (in progress)
+
+`20260926-native-state-swe-c16` (6f81f81) passes the900-second C16 protocol,
+542 total requests,0 failures and selected-device release, but delivers only
+165.9389 output tokens/s/chip. Of517 continuation requests, only16 hit resident
+State; cached prompt tokens are3.14%. The older small-fish reference hits992/1034
+continuations and93.69% of prompt tokens. Exact decode graph cost above did not
+regress, so repeated prefill is the concrete next performance hypothesis—not a
+reason to rewrite model arithmetic. Fresh same-pair `20260926-owned-baseline-swe-c16` passes900 seconds/0 failures
+at369.1728 output tokens/s/chip, decode P90 55.3413 and TTFT P95 0.8494s.
+Its clean exit/release agrees with the historical throughput reference; this
+rules out namespace migration as the large regression seen in the first State run.
+
+The write-budget implementation qualified in`20260926-write-budget1` does **not**
+add a numerical bank or preserve historical checkpoints. The request's known
+max-output limit bounds its right to advance the current resident State. Device
+postprocess selects the terminal candidate from the existing three; an already
+queued later frame publishes the baseline negative padding addresses for GDN,
+so it cannot overwrite that candidate or its convolution window. Only one extra
+int32 per resident is declared (80 bytes total/rank); sampler raw acceptance,
+FA execution, scheduler queue and active-row recurrence remain unchanged.
+EOS/stop-string rollback is still unsupported. This is not permission to infer
+an arbitrary earlier frontier from a newer matrix.
+
+Padding must produce defined finite activations: the old recurrence returned
+without writing output for negative slots, because padded outputs were unused.
+A retired request is still physically present in the queued model frame, so the
+experiment makes that branch emit zero without touching State. Otherwise garbage
+can reach MoE/draft sampling even though the CPU will discard the frame. The
+leaf gate reuses the independent24-wave convolution/recurrence oracle, adding a
+nonempty negative-slot row: it passes exact zero output, unchanged padding State
+and active-row recurrence (maximum State error1.1176e-8).
+
+A second admission detail matters: a matching length-frozen resident can still
+await the native final-writer fence when the next HTTP turn arrives. Wait for
+that one resident, rather than immediately assigning a cold empty seat. Keep
+normal async scheduling and page-reference fencing; do not publish or reuse
+State before retirement. CPU fixtures cover this wait/hit transition. The full CPU suite passes229 checks, followed by the expanded real-page-manager
+fence fixture. `write-budget1` passes101 HTTP requests:29 original hot/turnover
+cases,16 concurrent starts with budgets1/2/3/4/5/8/16/20, all16 exact terminal
+hits plus16 independent cold continuations,8 cold/repeated-cold long-context
+checks through262080, and16 pressure requests. Its6GiB State budget triggers2
+actual native preemptions with whole-seat invalidation. Server/launcher exit0,
+selected0/1 released IDLE. Pressure's post-EOS forced text is not a quality oracle.
+Final-source timeline and900-second performance acceptance remain separate gates.
+
+The old adapter bypassed native prefix-cache statistic recording in its custom
+`get_computed_blocks`. Therefore a server metric saying0% did not prove zero
+hits; use per-response cached-token usage from retained requests. The experiment
+also restores the existing native stats recorder for the new hit domain.
+
 ### Baseline does not keep two full candidate generations
 
 Pinned core `MambaBase.get_kv_cache_spec` sets speculative blocks to MTP depth2.

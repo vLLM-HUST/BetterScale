@@ -48,11 +48,13 @@ def wait_for_previous(runner, schedule):
             root.continuation.resident_epoch.tensor[seat] = epoch
             runner._live_resident_epochs[seat] = epoch
         runner._live_previous_verify.difference_update(seat for seat, _ in fresh)
+    for rid, remaining in schedule.generation_limits.items():
+        root.remaining_outputs.tensor[leases[rid][0]] = remaining
 
 
 def initialize(runner):
     state = runner._live_ingress = SimpleNamespace()
-    for name in ("seats", "drafts"):
+    for name in ("seats", "drafts", "sampling"):
         host = torch.zeros(16, dtype=torch.int64, pin_memory=True)
         setattr(state, "h_" + name, host)
         setattr(state, name, torch.zeros(16, dtype=torch.int64, device=runner.device))
@@ -70,7 +72,8 @@ def prepare(runner, schedule):
     state.h_drafts.numpy()[:n] = [
         len(schedule.scheduled_spec_decode_tokens.get(rid, ())) for rid in ids
     ]
-    for name in ("seats", "drafts"):
+    state.h_sampling.numpy()[:n] = [rid in schedule.sampling_requests for rid in ids]
+    for name in ("seats", "drafts", "sampling"):
         getattr(state, name)[:n].copy_(
             getattr(state, "h_" + name)[:n], non_blocking=True
         )
@@ -112,6 +115,7 @@ def publish_slots(meta):
     publish[(1,)](
         ingress.seats,
         root.continuation.selection.tensor,
+        root.remaining_outputs.tensor,
         seq,
         meta.cu,
         meta.prefill_ids,
@@ -136,13 +140,24 @@ def postprocess(runner, output_token_ids, schedule):
     ingress, root = runner._live_ingress, runner._live_state_root
     seats = ingress.seats[:n]
     accepted = (output_token_ids != -1).sum(dim=1).to(torch.int32)
+    remaining = root.remaining_outputs.tensor[seats]
+    writable = remaining > 0
+    committed = torch.minimum(accepted, remaining)
     selected = (
-        runner.num_scheduled_tokens.gpu[:n] - ingress.drafts[:n] + accepted - 1
+        runner.num_scheduled_tokens.gpu[:n] - ingress.drafts[:n] + committed - 1
     ).int()
     verify = runner._live_verify_roles[:n]
     recurrent = root.continuation.selection.tensor
-    recurrent.index_copy_(0, seats, torch.where(verify, selected, recurrent[seats]))
-    root.conv_selection.tensor.index_copy_(0, seats, torch.where(verify, selected, 1))
+    recurrent.index_copy_(
+        0, seats, torch.where(verify & writable, selected, recurrent[seats])
+    )
+    conv = root.conv_selection.tensor
+    conv.index_copy_(
+        0, seats, torch.where(writable, torch.where(verify, selected, 1), conv[seats])
+    )
+    root.remaining_outputs.tensor.index_copy_(
+        0, seats, remaining - torch.where(ingress.sampling[:n].bool(), committed, 0)
+    )
     runner.num_accepted_tokens.gpu[:n].copy_(accepted)
     if not hasattr(runner, "_mtp_apc_done"):
         runner._mtp_apc_done = torch.npu.Event()

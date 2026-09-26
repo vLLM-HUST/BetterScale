@@ -16,6 +16,8 @@ from .resident_leases import Frontier, ResidentLeases
 @dataclass
 class StateSchedule(SchedulerOutput):
     resident_leases: dict[str, tuple[int, int]] = field(default_factory=dict)
+    generation_limits: dict[str, int] = field(default_factory=dict)
+    sampling_requests: set[str] = field(default_factory=set)
 
 
 class LiveStateScheduler(AsyncScheduler):
@@ -36,6 +38,7 @@ class LiveStateScheduler(AsyncScheduler):
         self._frontiers = {}
         self._pending_hot = {}
         self._offers = {}
+        self._generation_limits = {}
         manager = self.kv_cache_manager
         self._native_allocate = manager.allocate_slots
         manager.allocate_slots = self._allocate
@@ -50,6 +53,9 @@ class LiveStateScheduler(AsyncScheduler):
             self.kv_cache_manager.block_pool.free_blocks(reversed(group))
 
     def _computed(self, request):
+        if self._waiting_for_resident(request):
+            self._offers.pop(request.request_id, None)
+            return self.kv_cache_manager.empty_kv_cache_blocks, 0
         offer = self.residents.offer(
             request.all_token_ids,
             request.cache_salt,
@@ -57,14 +63,42 @@ class LiveStateScheduler(AsyncScheduler):
             allow_hit=not request.skip_reading_prefix_cache,
         )
         self._offers[request.request_id] = offer
+        cursor = self.residents.seats[offer.seat].cursor if offer and offer.warm else 0
+        manager = self.kv_cache_manager
+        if manager.log_stats and not request.skip_reading_prefix_cache:
+            manager.prefix_cache_stats.record(
+                num_tokens=request.num_tokens,
+                num_hits=cursor,
+                preempted=request.num_preemptions > 0,
+            )
         if offer is not None and offer.warm:
             seat = self.residents.seats[offer.seat]
             return seat.blocks, seat.cursor
         return self.kv_cache_manager.empty_kv_cache_blocks, 0
 
+    def _waiting_for_resident(self, request):
+        # A known length frontier is already frozen, but the queued frame can
+        # still own its FA pages. Wait for that resident's native writer fence
+        # instead of needlessly sending its continuation to a cold empty seat.
+        for key, (_, _, fence, salt, _) in self._pending_hot.items():
+            frontier = self._frontiers.get(key)
+            if (
+                fence > self.processed_step_seq
+                and salt == request.cache_salt
+                and not request.skip_reading_prefix_cache
+                and frontier is not None
+                and frontier.known
+                and frontier.remaining == 0
+                and request.all_token_ids[: len(frontier.tokens)] == frontier.tokens
+            ):
+                return True
+        return False
+
     def _allocate(self, request, *args, **kwargs):
         rid = request.request_id
         new = rid not in self.residents.requests
+        if new and self._waiting_for_resident(request):
+            return None
         offer = self._offers.get(rid) if new else None
         if new and offer is None:
             offer = self.residents.offer(
@@ -92,8 +126,10 @@ class LiveStateScheduler(AsyncScheduler):
             seat = self.residents.claim(rid, offer, self.processed_step_seq)
             cursor = seat.cursor if offer.warm else 0
             self.residents.transferred(rid)
+            remaining = request.max_tokens - request.num_output_tokens
+            self._generation_limits[rid] = remaining
             self._frontiers[rid, seat.index, seat.epoch] = Frontier(
-                list(request.all_token_ids), cursor=cursor
+                list(request.all_token_ids), cursor=cursor, remaining=remaining
             )
             self._offers.pop(rid, None)
         return result
@@ -107,6 +143,14 @@ class LiveStateScheduler(AsyncScheduler):
         return StateSchedule(
             **{f.name: getattr(output, f.name) for f in fields(SchedulerOutput)},
             resident_leases=leases,
+            generation_limits={
+                rid: self._generation_limits.pop(rid)
+                for rid in leases
+                if rid in self._generation_limits
+            },
+            sampling_requests={
+                rid for rid in leases if not self.requests[rid].is_prefill_chunk
+            },
         )
 
     def update_from_output(self, scheduler_output, model_runner_output):
@@ -155,6 +199,7 @@ class LiveStateScheduler(AsyncScheduler):
                 self._frontiers.pop(key, None)
             self.residents.retire(rid, fence=fence)
             self._offers.pop(rid, None)
+            self._generation_limits.pop(rid, None)
         super()._free_request_blocks(request)
         # Handles a finish/abort outside update_from_output as well.
         self._publish_completed_residents()

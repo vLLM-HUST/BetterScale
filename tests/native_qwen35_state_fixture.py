@@ -34,6 +34,7 @@ s.residents = ResidentLeases(20, release_blocks=s._release_resident_blocks)
 s._frontiers = {}
 s._pending_hot = {}
 s._offers = {}
+s._generation_limits = {}
 s._native_allocate = manager.allocate_slots
 
 
@@ -109,4 +110,36 @@ s._free_request_blocks(c)
 assert manager.block_pool.get_num_free_blocks() == 15
 assert not any(seat.tokens for seat in s.residents.seats)
 assert not s._frontiers and not s._pending_hot
-print("PASS: native page references, partial-tail hot handoff, final-writer fence, whole-seat preemption")
+
+# A length-frozen frontier must wait for its queued writer, not silently miss
+# just because another empty seat is available when the next HTTP turn arrives.
+d = Request("D", [1, 2, 3], SamplingParams(max_tokens=1), None)
+s._computed(d)
+assert s._allocate(d, 3) is not None
+index = s.residents.requests["D"]
+epoch = s.residents.seats[index].epoch
+terminal = s._frontiers["D", index, epoch]
+terminal.advance(3, 0, [4])
+d.append_output_token_ids([4])
+d.last_sched_seq = s.sched_step_seq = 5
+d.status = RequestStatus.FINISHED_LENGTH_CAPPED
+s._free_request_blocks(d)
+e = request("E", [1, 2, 3, 4, 5])
+assert s._computed(e)[1] == 0
+assert s._allocate(e, 5) is None
+terminal.advance(3, 2, [6, 7, 8])
+assert terminal.checkpoint() == (1, 2, 3, 4)
+s.processed_step_seq = 5
+s._drain_deferred_frees()
+s._publish_completed_residents()
+hit, cursor = s._computed(e)
+assert cursor == 3
+assert s._allocate(e, 2, num_new_computed_tokens=cursor, new_computed_blocks=hit)
+assert s.residents.requests["E"] == index
+e.last_sched_seq = 5
+e.status = RequestStatus.FINISHED_ABORTED
+s._free_request_blocks(e)
+assert manager.block_pool.get_num_free_blocks() == 15
+print(
+    "PASS: native page references, partial-tail hot handoff, final-writer fence, whole-seat preemption"
+)

@@ -75,6 +75,27 @@ def test_missing_frontier_evidence_fails_closed():
     assert not f.known and f.checkpoint() == ()
 
 
+@pytest.mark.parametrize("budget", range(1, 10))
+def test_known_length_limit_keeps_only_the_current_terminal_frontier(budget):
+    from betterscale.models.qwen35.resident_leases import Frontier
+
+    f = Frontier([10, 11, 12, 13], remaining=budget)
+    f.advance(2, 0, [])
+    assert f.remaining == budget
+    f.advance(2, 0, [100])
+    next_token = 101
+    while f.remaining:
+        f.advance(3, 2, [next_token, next_token + 1, next_token + 2])
+        next_token += 3
+    expected = (10, 11, 12, 13, *range(100, 100 + budget))
+    assert f.checkpoint() == expected
+    assert f.cursor == len(expected) - 1
+    # The device write-budget guard pads this queued row; it does not advance
+    # physical GDN State. No older State bank is stored or restored.
+    f.advance(3, 2, [999, 998, 997])
+    assert f.checkpoint() == expected
+
+
 def test_selected_victim_releases_capacity_before_new_allocation():
     releases = []
     pool = ResidentLeases(1, release_blocks=releases.append)

@@ -150,18 +150,23 @@ class ResidentLeases:
 
 @dataclass
 class Frontier:
-    """CPU observation of raw accepted model output, before scheduler EOS trimming."""
+    """Identity of selected State, observing raw output before CPU EOS trimming.
+
+    A known length budget mirrors the device write fence, not a saved snapshot.
+    Other terminal conditions retain only the actual final physical frontier.
+    """
 
     tokens: list[int]
     cursor: int = 0
     known: bool = True
+    remaining: int | None = None
     prompt_length: int = field(init=False)
 
     def __post_init__(self):
         self.prompt_length = len(self.tokens)
 
     def advance(self, query_tokens, draft_tokens, sampled):
-        if not self.known:
+        if not self.known or self.remaining == 0:
             return
         if self.cursor < self.prompt_length:
             # Intermediate prefill sampling is discarded; actual next prompt
@@ -175,10 +180,15 @@ class Frontier:
                     self.known = False
                     return
                 self.tokens.extend(sampled)
+                if self.remaining is not None:
+                    self.remaining -= 1
         else:
             if query_tokens - draft_tokens != 1 or not sampled:
                 self.known = False
                 return
+            if self.remaining is not None:
+                sampled = sampled[: self.remaining]
+                self.remaining -= len(sampled)
             self.cursor += len(sampled)
             self.tokens.extend(sampled)
         if self.cursor >= len(self.tokens):

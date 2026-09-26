@@ -82,3 +82,40 @@ def test_draft_layer_zero_is_not_target_layer_zero():
     del consumers["model.layers.1.self_attn.attn"]
     with pytest.raises(ValueError, match="every target layer"):
         declare(geometry, capacity, consumers)
+
+
+def test_device_commit_clips_write_budget_without_changing_raw_sampler_progress():
+    from types import SimpleNamespace
+    from betterscale.models.qwen35.state_address import postprocess
+
+    geometry, capacity, consumers = fixture()
+    root = declare(geometry, capacity, consumers)
+    root.activate()
+    try:
+        root.remaining_outputs.tensor.copy_(torch.tensor([2, 0, 5]))
+        root.continuation.selection.tensor.fill_(3)
+        root.conv_selection.tensor.fill_(3)
+        ingress = SimpleNamespace(
+            seats=torch.arange(3),
+            drafts=torch.tensor([2, 2, 0]),
+            sampling=torch.tensor([1, 1, 0]),
+        )
+        runner = SimpleNamespace(
+            _live_state_root=root,
+            _live_ingress=ingress,
+            _live_verify_roles=torch.tensor([True, True, False]),
+            num_scheduled_tokens=SimpleNamespace(gpu=torch.tensor([3, 3, 16])),
+            num_accepted_tokens=SimpleNamespace(gpu=torch.zeros(3, dtype=torch.int32)),
+            _mtp_apc_done=SimpleNamespace(record=lambda: None),
+        )
+        output = torch.tensor([[10, 11, 12], [20, 21, 22], [30, -1, -1]])
+        postprocess(runner, output, None)
+        assert root.remaining_outputs.tensor.tolist() == [0, 0, 5]
+        assert root.continuation.selection.tensor.tolist() == [2, 3, 3]
+        assert root.conv_selection.tensor.tolist() == [2, 3, 1]
+        assert runner.num_accepted_tokens.gpu.tolist() == [3, 3, 1]
+        postprocess(runner, output, None)
+        assert root.continuation.selection.tensor.tolist() == [2, 3, 3]
+        assert root.conv_selection.tensor.tolist() == [2, 3, 1]
+    finally:
+        root.close()

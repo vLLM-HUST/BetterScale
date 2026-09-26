@@ -27,6 +27,16 @@ class BaselineStateRoot(QwenStateRoot):
                 domain=self.residents,
             ),
         )
+        self.register_state(
+            "remaining_outputs",
+            StateTensor(
+                role="resident-write-budget",
+                requirement="freeze current GDN State at the known generation limit",
+                block_shape=(),
+                storage_dtype=torch.int32,
+                domain=self.residents,
+            ),
+        )
         draft_names = set(draft_names)
         if len(draft_names) != 1 or not draft_names <= consumers.keys():
             raise ValueError("baseline requires exactly one identified draft FA leaf")
@@ -58,6 +68,9 @@ class BaselineStateRoot(QwenStateRoot):
                 for tensor in leaf.numerical_tensors():
                     tensor.zero_()
         self.conv_selection.tensor.fill_(1)
+        # Native dummy capture uses ordinary valid rows before any request lease.
+        # Real admission replaces this allowance before its first State writer.
+        self.remaining_outputs.tensor.fill_(1)
 
     def _rebind_live_state(self):
         raise RuntimeError("baseline State rebind requires retirement of runner graphs")
