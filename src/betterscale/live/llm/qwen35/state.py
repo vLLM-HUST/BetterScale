@@ -130,6 +130,20 @@ class Capacity:
             )
 
 
+def empty_cache(cache):
+    """Native FA declares an empty tensor; GDN declares an empty tuple/list.
+
+    Both are unallocated cache sentinels, not storage to adopt or overwrite.
+    """
+    return (
+        cache is None
+        or isinstance(cache, (tuple, list))
+        and len(cache) == 0
+        or isinstance(cache, torch.Tensor)
+        and cache.numel() == 0
+    )
+
+
 class NumericalState(LiveModule):
     """One numerical leaf owns declarations; an optional old leaf only borrows.
 
@@ -152,9 +166,7 @@ class NumericalState(LiveModule):
         if not isinstance(consumer, nn.Module):
             raise TypeError("numerical consumer must be an explicit torch module")
         cache = getattr(consumer, "kv_cache", None)
-        if cache is not None and not (
-            isinstance(cache, (tuple, list)) and len(cache) == 0
-        ):
+        if not empty_cache(cache):
             raise ValueError("cannot adopt or overwrite preallocated native KV")
         if getattr(consumer, "state_binding_abi", None) != self.binding_abi:
             raise ValueError("consumer has not declared this State addressing ABI")
@@ -171,9 +183,7 @@ class NumericalState(LiveModule):
         if self._consumer is None:
             return
         cache = getattr(self._consumer, "kv_cache", None)
-        if cache is not None and not (
-            isinstance(cache, (tuple, list)) and len(cache) == 0
-        ):
+        if not empty_cache(cache):
             raise RuntimeError("native consumer allocated KV before State handoff")
         value = self.numerical_tensors()
         # One publication after all values resolve. No allocation in this hook.

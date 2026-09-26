@@ -23,6 +23,14 @@ CAPTURE_SIZES = (
     4096,
 )
 SCHEDULER = "betterscale.models.qwen35.apc_boundary.BoundaryScheduler"
+STATE_SCHEDULER = "betterscale.models.qwen35.seat_scheduler.LiveStateScheduler"
+
+
+def using_live_state(config):
+    return (
+        getattr(config, "additional_config", {}).get("using_live_runtime", False)
+        is True
+    )
 
 
 def validate(config):
@@ -67,7 +75,9 @@ def validate(config):
             and 0 < m.max_model_len <= 262144
         ),
         "baseline asynchronous boundary scheduler": (
-            s.async_scheduling and s.scheduler_cls == SCHEDULER
+            s.async_scheduling
+            and s.scheduler_cls
+            == (STATE_SCHEDULER if using_live_state(config) else SCHEDULER)
         ),
         "native MTP2": spec is not None
         and spec.method == "mtp"
@@ -95,7 +105,7 @@ def validate(config):
             "Outside Qwen35 baseline qualification: "
             + "; ".join(name for name, passed in checks.items() if not passed)
         )
-    return "qwen35-baseline"
+    return "qwen35-live-state" if using_live_state(config) else "qwen35-baseline"
 
 
 def check(config):
@@ -123,12 +133,28 @@ def before_init(worker, config):
     from .integration import before_init
 
     before_init(worker, config)
+    if using_live_state(config):
+        from .state_backend import install
+
+        install()
 
 
 def after_init(worker):
     from .integration import after_init
 
     after_init(worker)
+    if using_live_state(worker.vllm_config):
+        from .state_address import install
+
+        install()
+
+
+def determine_available_memory(worker, native):
+    if not using_live_state(worker.vllm_config):
+        return native()
+    from .state_backend import determine_available_memory
+
+    return determine_available_memory(worker, native)
 
 
 def model_loaded(worker):

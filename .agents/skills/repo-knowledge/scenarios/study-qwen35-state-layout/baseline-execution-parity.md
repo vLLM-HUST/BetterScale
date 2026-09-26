@@ -8,6 +8,23 @@ not the reference for reimplementing individual numerical leaves. Reusing only
 NPUWorker initialization does not satisfy that requirement when the model,
 MTP protocol, sampler and scheduler are independently rewritten.
 
+## Current implementation scope — Fletcher, September26
+
+Use the baseline's per-seat GDN short history and MTP2 candidate selection/update
+protocol. One convolution window and three recurrent candidates per resident;
+CPU async queue depth must not multiply these declarations. **Historical/aligned
+checkpoints are out of scope for this cut.** Do not add terminal rollback banks
+or a checkpoint pool to guarantee every CPU-visible stop prefix is reusable.
+A retained hot seat may advertise only its actual represented frontier after
+all queued writers retire; incompatible earlier prefixes are misses.
+
+The rejected two-bank worktree is archived in the workspace audit capsule as
+`paused-two-bank-worktree.tar.gz`. Its arithmetic-address extension and bank
+copies have been removed from current source; baseline numerical leaves are
+again identical to committed namespace port5b976bd. Single-set CPU suite passes
+219 tests. Hardware functional acceptance is recorded below; a fresh matched
+timeline/performance comparison remains required.
+
 ## Authoritative baseline and substitution boundary
 
 The measured control is frozen in workspace
@@ -137,7 +154,7 @@ GDN host adapter at explicit QK8/V16 geometry; the device GDN binary is unchange
 apart from import namespaces. This is baseline-port functional acceptance, not
 a live-State or new performance result.
 
-Native integration findings, not an implemented/qualified State adapter:
+Native integration findings used by the State adapter:
 
 - Keep the regular-attention KV manager's allocation and preemption policy.
   Remove GDN from that **capacity** domain, not model execution. Worker-only GDN
@@ -159,3 +176,117 @@ Native integration findings, not an implemented/qualified State adapter:
   truncation with the raw accepted device frontier. Preserve async completion
   fences before reusing a departed seat, just as native deferred block freeing
   protects pages. Stop/abort with outstanding frames requires a separate gate.
+
+### Single-set State adapter and qualification
+
+Baseline namespace port is committed as `5b976bd`. The following working cut is
+separate: `state_backend` substitutes declarations/binding and removes GDN from
+the scheduler's page capacity; `state_address/state_slots` publish independent
+conv/candidate addresses without changing arithmetic; `seat_scheduler` subclasses
+the real AsyncScheduler and uses its existing deferred-free fences. It does not
+replace the queue, model, proposer or sampler. The root currently retains native
+graph capture, so this is **not yet final live graph-lifecycle integration**.
+
+The actual core's deferred-free feature is disabled for ordinary connector-free
+serving; merely finding its implementation did not prove baseline enabled it.
+The State adapter explicitly enables that existing fence for resident retirement.
+The CPU fixture `tests/native_qwen35_state_fixture.py` exercises its ownership
+hooks with the actual KV manager:257-token/3-page warm transfer, balanced native
+references, and delayed hot publication after a queued final writer. The fixture now also exercises active preemption, same-request-ID restart on a
+different seat while the old writer remains fenced, abort and balanced page
+reclamation. NPU evidence is separate, below.
+
+**Accepted semantic boundary:** raw model progress may extend past CPU EOS or
+length trimming under asynchronous scheduling. Retain the exact physical frontier,
+not an earlier visible prefix. Fletcher explicitly excluded historical checkpoints
+and terminal rollback from this cut. `Frontier.checkpoint()` names an exact CPU
+identity, not a saved historical numerical bank. The finish-order audit below
+explains why some visible request-end prefixes must miss.
+
+The State adapter's current repository CPU suite passes219 tests, including the
+pinned native page-manager fixture and eviction-before-new-page-allocation. Run
+`pytest tests`, not unbounded repository discovery: vendored upstream suites
+require separate dependency/accelerator environments and are not this contract.
+
+
+### Observed async terminal boundary; rejected two-bank proposal
+
+`20260926-baseline-finish3` has scheduler-process evidence:11 requests,
+68 schedule/output events, normal server exit and selected-device release.
+With23-token prompts and greedy limits1/2/3/4/5/8/16 (serial, then C4),5 requests
+have a raw output frame after the CPU terminal decision;6 finish inside an
+accepted group. This is length-stop evidence, not EOS/abort coverage.
+`finish1` failed before HTTP on tokenizer BatchEncoding serialization;
+`finish2` served HTTP but its Worker-only observer never reached the scheduler.
+Neither is finish-order evidence.
+
+The rejected two-bank proposal confused that distinction with a requirement to
+retain arbitrary terminal prefixes. `20260926-native-state1` was cancelled during
+startup, no requests ran, and selected0/1 were released IDLE. Its files are
+archived, its source changes removed. Its3.5615GiB fixed-State /1,970,176-token
+estimate is not current capacity or a required async penalty. Do not revive it
+from the old audit's `two-wave-capacity.json`.
+
+### Hardware functional observations — September26
+
+All capsules below are under workspace `runs/qwen35-state-lanes/`. They freeze
+the single-set adapter atop5b976bd with no changes to baseline numerical leaves.
+E16/R20,35B BF16/TP2/MTP2, native AsyncScheduler batch queue and32 mixed FULL
+graphs remain enabled. Native graph capture is deliberately retained; these
+results do not establish final live graph-lifecycle ownership or performance.
+
+- `20260926-native-state2`:24/24 exact retrievals, cold/repeated-cold through
+  262080 prompt tokens plus16 concurrent. Earlier prompt-only repeats correctly
+  miss: no historical checkpoints. State budget per rank26,038,239,232 bytes;
+  fixed resident State1,912,095,840; attention24,126,143,392;
+  16,720 physical128-token pages =2,140,160 token positions. No capacity search
+  and no resident-count × max-context allocation. Server/launcher exit0,
+  selected0/1 released IDLE.
+- `20260926-native-state-hot1`:29 requests. A8193-token prompt generates one
+  token, unrelated B uses a different empty seat, then A's actual continuation
+  hits8193 cached tokens and matches an independent cold oracle's output IDs.
+  Wrong MTP lookahead misses.24 unique-salt cold incarnations crossR20 and
+  produce identical results after overwrite/epoch clearing. Exit0 and selected
+  devices released. This is exact-frontier affinity, not arbitrary terminal
+  rollback or historical checkpoint support.
+- `20260926-native-state-pressure1`: all16 requests with32769-token prompts and
+  768 forced outputs return correct initial retrievals and requested lengths,
+  but **zero actual preemptions**, so the preemption gate fails. Admission and
+  natural completions keep active pages under the reduced401408-token pool.
+  Do not label a small-budget run as preemption coverage without actual events.
+- `20260926-native-state-pressure2`: same source/budget,4096 forced outputs.
+  PASS with3 real native preemptions. The scheduler-process observer verifies
+  each releases seat ownership and invalidates the old frontier/pending-hot
+  identity, including a final-writer fence beyond the processed step. All16
+  responses have correct initial retrieval and4096 outputs; clean server and
+  launcher exit0, selected0/1 released IDLE. Forced post-EOS text is not a
+  quality oracle or token-for-token numerical parity check.
+
+### Baseline does not keep two full candidate generations
+
+Pinned core `MambaBase.get_kv_cache_spec` sets speculative blocks to MTP depth2.
+`MambaManager.allocate_new_blocks` first allocates1 running +2 speculative rows,
+reuses the speculative rows when moving forward, and allocates at most one new
+row on an align-boundary transition. Its align sizing bound is2+2=4 rows, not
+2*(1+2)=6. Boundary overlap retains the old source until migration is safe;
+ordinary iterations within one logical block overwrite the same three candidate
+rows. The live numerical convolution is one extended window, not one full conv
+copy per candidate. Allocated hybrid blocks still contain their padded conv/SSM
+regions; do not confuse physical block bytes with meaningful numerical contents.
+
+CPU `native-gdn-retention.py` uses the actual pinned MambaManager/BlockPool with
+B2048/MTP2/align. An uncached single-request sequence observes3,3,3,4,4,4,4,3
+referenced non-null rows, with balanced final free. This is an allocator-level
+observation, not a recorded NPU State dump or a cached multi-request simulation.
+Separately, hashed aligned checkpoints can remain in the pool at refcount0 until
+eviction; there is no fixed count of all historical cached rows.
+
+`device_apc.wait_for_previous` orders the previous State postprocess before the
+next execution's preparation. CPU queue depth2 therefore does **not** imply two
+concurrent unordered GDN writers or require two State banks. Baseline APC retains
+aligned checkpoints, and does not promise a GDN snapshot at every CPU-visible
+terminal token. Reusing a hot seat's actual frontier and guaranteeing every
+visible terminal prefix are different contracts. The finish3 observation proves
+that distinction matters; it does not authorize increasing State capacity to
+satisfy the stronger contract. Fletcher resolved the scope above: keep one baseline candidate set, and do not
+guarantee arbitrary visible-terminal reuse this cut.
