@@ -36,11 +36,21 @@ async def main():
             return_dict=False,
         )
 
+    legacy = os.environ.get("CACHE_LEGACY_FIXTURE") == "1"
+    code = "cobalt-seven-42-alpha-nine-17-zulu-eight-63-bravo-five-29-delta-six-84"
     seed = prompt(
         "Remember the access code amber-7319. "
         + "An ordinary archive record. " * 24
         + " Reply with exactly amber-7319."
+        if legacy
+        else "Read these records. Find the access code.\nBEGIN_RECORDS\n"
+        + "The archive contains ordinary historical records. " * 128
+        + "\nThe access code is "
+        + code
+        + ".\nEND_RECORDS\n"
+        + "Reply with only the access code, without explanation."
     )
+    first_budget = 32 if legacy else 8
     args = AsyncEngineArgs(
         model=model,
         dtype="bfloat16",
@@ -71,22 +81,30 @@ async def main():
         generation_config="vllm",
     )
     engine = AsyncLLM.from_engine_args(args)
-    results = {"passed": False, "route": "native35B TP2 MTP2 AsyncScheduler"}
+    results = {
+        "passed": False,
+        "route": "native35B TP2 MTP2 AsyncScheduler",
+        "byte_audit": os.environ.get("CACHE_BYTE_AUDIT") == "1",
+    }
 
     async def control(**command):
         return await asyncio.wait_for(
             engine.engine_core.call_utility_async("state_cache", command), 90
         )
 
-    async def generate(name, tokens, count, salt):
+    async def generate(name, tokens, count, salt, *, force=True):
         output = None
         async for output in engine.generate(
             {"prompt_token_ids": tokens, "cache_salt": salt},
-            SamplingParams(temperature=0, max_tokens=count, ignore_eos=True),
+            SamplingParams(temperature=0, max_tokens=count, ignore_eos=force),
             request_id=name,
         ):
             pass
-        return dict(ids=output.outputs[0].token_ids, cached=output.num_cached_tokens)
+        return dict(
+            ids=output.outputs[0].token_ids,
+            cached=output.num_cached_tokens,
+            text=output.outputs[0].text,
+        )
 
     async def settled(salt=None):
         for _ in range(100):
@@ -115,14 +133,23 @@ async def main():
             )
         )
         await settled()
-        twin = await generate("A-twin", seed, 32, "A-twin")
-        a = await generate("A", seed, 32, "A")
+        twin = await generate("A-twin", seed, first_budget, "A-twin")
+        a = await generate("A", seed, first_budget, "A")
         assert twin["ids"] == a["ids"], (twin, a)
         _, source = await settled("A")
         b = asyncio.create_task(
-            generate("B", prompt("Count from one to one hundred."), 128, "B")
+            generate("B", prompt("Count from one to one hundred."), 1024, "B")
         )
-        await asyncio.sleep(0.01)
+        for _ in range(100):
+            busy = await control(kind="snapshot")
+            if any(
+                s["owner"] and s["owner"].split("-", 1)[0] == "B" for s in busy["seats"]
+            ):
+                break
+            assert not b.done(), "B finished before store was issued"
+            await asyncio.sleep(0.01)
+        else:
+            raise AssertionError("B did not enter native scheduling")
         operation = await control(kind="store", seat=source["seat"], key="A-v1")
         store = await control(kind="wait", operation=operation)
         assert store["ranks"] == [0, 1]
@@ -144,18 +171,37 @@ async def main():
             restored["cursor"] == source["cursor"]
             and restored["blocks"] != source["blocks"]
         )
-        continuation = (
-            seed
-            + a["ids"]
-            + tokenizer.encode(
+        if legacy:
+            delta = tokenizer.encode(
                 "\n"
                 + "Keep the archive in mind. " * 80
                 + " What is the original access code?"
             )
+        else:
+            template = tokenizer.apply_chat_template(
+                [
+                    {"role": "user", "content": "dummy"},
+                    {"role": "assistant", "content": "DELTA_MARKER"},
+                    {
+                        "role": "user",
+                        "content": "Please retain the earlier access record. " * 80
+                        + "Repeat the original access code exactly. Reply only with that code, no explanation.",
+                    },
+                ],
+                tokenize=False,
+                add_generation_prompt=True,
+                enable_thinking=False,
+            )
+            delta = tokenizer.encode(
+                template.split("DELTA_MARKER")[1], add_special_tokens=False
+            )
+        continuation = seed + a["ids"] + delta
+        limit = 32 if legacy else 128
+        hot = await generate("A-unmoved", continuation, limit, "A-twin", force=legacy)
+        warm = await generate("A-restored", continuation, limit, "A", force=legacy)
+        cold = await generate(
+            "A-cold", continuation, limit, "independent-cold", force=legacy
         )
-        hot = await generate("A-unmoved", continuation, 32, "A-twin")
-        warm = await generate("A-restored", continuation, 32, "A")
-        cold = await generate("A-cold", continuation, 32, "independent-cold")
         assert warm["cached"] == len(seed) + len(a["ids"]) - 1, (source, warm)
         results.update(
             source=source,
@@ -166,6 +212,7 @@ async def main():
             warm=warm,
             cold=cold,
             initial=initial,
+            fixture="forced-post-eos" if legacy else "chat-role-closure",
         )
         assert hot["cached"] == warm["cached"]
         assert hot["ids"] == warm["ids"], ("transport", hot, warm)
@@ -175,6 +222,8 @@ async def main():
             warm,
             cold,
         )
+        if not legacy:
+            assert warm["text"].strip() == code, warm
         operation = await control(kind="drop", key="A-v1")
         await control(kind="wait", operation=operation)
         final = await control(kind="snapshot")

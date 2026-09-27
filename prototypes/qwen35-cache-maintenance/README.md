@@ -81,3 +81,12 @@ The original TP1 research limits above are historical, not native qualification.
 Native FIFO/preemption policy remains unchanged: pending loads may head-of-line
 block waiting requests. No automatic eviction policy or performance claim.
 Device/receipt failure fails closed and may require whole-engine teardown.
+
+The native probe defaults to a valid multi-turn chat boundary and compares an
+unmoved hot twin, relocated hot continuation, and independent cold execution.
+`CACHE_BYTE_AUDIT=1` additionally reads all selected device views back to CPU
+before each rank receipt; this is a diagnostic barrier, **not** a performance
+configuration. `CACHE_LEGACY_FIXTURE=1` preserves the forced-post-EOS fixture:
+it exposed a warm/cold discrepancy also present without offload, not a transport
+failure. Do not remove that counterexample or generalize the normal-chat PASS
+into unrestricted post-EOS numerical equivalence.

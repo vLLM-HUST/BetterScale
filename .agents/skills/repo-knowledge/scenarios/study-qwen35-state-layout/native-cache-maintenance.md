@@ -4,6 +4,12 @@ Continuation of [the TP1 research prototype](cache-maintenance-prototype.md).
 Fletcher authorized native async integration first, then TP2. This is an explicit
 maintenance execution interface, not automatic eviction, host LRU or prefetch.
 
+**Latest qualification:** the bounded native35B TP2/MTP2/FULL async
+normal-chat prototype passes with and without byte audit (`candidate6`,
+`candidate8`). The earlier forced-post-EOS warm/cold counterexample remains
+unresolved and also reproduces without relocation; see the evidence below.
+No automatic cache policy or throughput gain is claimed.
+
 ## Ownership and execution
 
 `models/qwen35/cache_actions.py` is scheduler-owned: submit pins the resident and
@@ -70,7 +76,7 @@ captured the pre-Ascend MoE factory. `candidate3/` corrects the **probe bootstra
 by calling native `current_platform.pre_register_and_update()` before Worker
 imports, as the CLI does. No operator or donor-source workaround was added.
 
-## Current numerical gate: RED, not qualified
+## First numerical gate and diagnostic (historical RED)
 
 `candidate3/admission1/` on physical4/5 reached real requests through native
 async/FULL/MTP2. Both-rank store finished before B ended; C reused the source;
@@ -100,3 +106,54 @@ and retain selected leases, fresh30s admission and continuing owner guard.
 `candidate4`'s numerical/audit driver is ready but unexecuted. Native source has
 44 passing CPU tests; the next useful evidence is the three-way/byte witness,
 not another unmodified replay of the failed cold comparison.
+
+## Resumed window: transport separated from warm/cold continuation
+
+Fletcher reopened the hw3 window and authorized waiting through interference.
+`candidate5/` executed the diagnostic on4/5: both ranks'90 selected views matched
+host bytes after **both** store and load (118,673,460 bytes per rank). Unmoved hot
+and relocated hot produced the same32 IDs and185-token hit; both differed from
+cold. Thus the observed mismatch was not introduced by relocation. This does
+**not** diagnose the underlying warm/cold discrepancy or establish arbitrary
+post-EOS correctness. Preserve the failure via `CACHE_LEGACY_FIXTURE=1`.
+
+`candidate6/` uses the previously qualified style of input: a long access code,
+an8-token actual generated prefix (not forced beyond EOS), then the tokenizer's
+assistant-closure/new-user/assistant-opening sequence. Both-rank byte witnesses
+again passed. Unmoved hot, restored hot and independent cold produced identical
+30 IDs, including EOS, and the exact expected code. Source seat1/block2 moved
+to seat3/block4; cached cursor979 versus cold0. No-compute restore wakeup, rank
+quorum and final drop/drain passed; process exit0. This run enabled synchronous
+probe-only byte audit, so its timing is **not** async overlap evidence.
+
+The no-audit confirmation increases B's output budget to1024 and waits until B
+actually owns a native seat before issuing store. Native input_processor adds
+an8-character random suffix to external request IDs; the probe must recognize
+`B-...`, not exact `B`. `candidate7/` stopped on that overly strict probe assertion
+before cache submission; candidate8 corrects it, without numerical/source changes.
+
+
+`candidate8/` is the **no-audit native confirmation**, process exit0 on hw3 4/5:
+
+- Actual native async enabled, `step_with_batch_queue`, queue capacity2; normal
+  initialization and the complete FULL capture-size set remain enabled.
+- D2H quorum finished while the1024-output unrelated B was still running.
+  This demonstrates progress, not measured kernel/DMA overlap or throughput.
+- After C overwrote source seat1/block2, A restored into seat3/block4. Both rank
+  receipts retired before publication; no additional compute wave was needed.
+- Unmoved hot / restored hot / independent cold: all30 IDs identical, exact
+  expected access code,979 cached tokens on both hot routes and0 on cold.
+- Final host identities empty, pending operations empty, scheduler host charge0;
+  final drop acknowledged by both ranks. The copy worker adds no device-wide
+  synchronization and probe byte audit was disabled.
+- Post-cleanup process table had no workers on4/5. A fresh30s release window
+  kept both cards IDLE, HBM3420–3421MiB. Unrelated activity on7 was preserved.
+
+Production source is unchanged from `5c591b4`; only the qualification driver and
+notes changed during this resumed window. The original44 CPU tests still cover
+that exact implementation. Raw receipts and byte witnesses remain in the capsule;
+`qualification.json` records the final driver commit and artifact comparison.
+This qualifies explicit idle-resident actions on this native configuration, not
+active-request offload, automatic victim selection, arbitrary failure recovery,
+all possible token histories, or a performance claim. Cancellation and stale-rank
+failure gates remain CPU protocol evidence, not fault-injected TP2 device tests.

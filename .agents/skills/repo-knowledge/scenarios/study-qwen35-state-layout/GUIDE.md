@@ -239,3 +239,5 @@ separate gate.
 
 For native async completion wakeup, TP2 rank quorum and the explicit-action
 interface, read [native-cache-maintenance.md](native-cache-maintenance.md).
+It records native35B TP2 async normal-chat qualification, byte-exact relocation,
+and the retained forced-post-EOS warm/cold counterexample.
