@@ -478,3 +478,17 @@ only with explicit balance-disabled state, then pins/adapts its original base.
 Enabled balancing is rejected. `preflight04.py` exercises real platform patch
 loading before weights; the CPU prototype separately resolves the exact wrapper
 source. Empty-plugin import checks alone do not qualify serving import order.
+
+
+Fairness `model05` subsequently passed bounded real-weight TP2/MTP2/E16/R20
+validation on local0/1, using implementation5097dfb unchanged after Fletcher
+cleared the one external interruption as accidental. All22 HTTP checks passed
+(21 full retrievals plus one forced3-token warmup prefix); server/supervisor
+exit0 and devices released. Actual buffered steps57–61 show short first WAITING,
+then2268 short +1828 long on its second opportunity, followed by three waves of
+short3 +long4093. Long prompt143971; short28894 with26626 resident hits. These
+are current request identities, not reconstructed old C16 steps. Full evidence
+and launchers: workspace `runs/operator-response/20260927-prefill-fairness-local02/`;
+compact result: `prototypes/prefill-fairness/qualification.json`. This closes
+bounded real mixed scheduling/correctness, not a C16 throughput/P95 comparison
+or advanced starvation guarantee; Conv PR5 remains separate.

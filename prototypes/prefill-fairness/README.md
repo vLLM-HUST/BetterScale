@@ -168,14 +168,14 @@ long1318 and decode3 in the same wave; subsequent waves preserve decode service.
 This complements, rather than replaces, native-page/State and NPU qualification.
 
 
-## Current qualification and remaining gate
+## Qualification and retained failed attempts
 
 `qualification.json` records **24 passed CPU tests**, the full-native schedule
 fixture, and successful real Ascend platform-loading preflight. That preflight
 observes AsyncScheduler -> BalanceScheduler -> core Scheduler and resolves the
 source-pinned disabled forwarding path; unknown/enabled variants fail closed.
 
-The retained real-model attempts are not a passing serving result:
+The following earlier real-model attempts did not pass serving:
 - hw3 model01: selected-card physical activity appeared after admission without
   visible process rows; startup memory gate rejected before weights.
 - local model02: redundant controller FIA preload broke CANN environment
@@ -187,11 +187,31 @@ The retained real-model attempts are not a passing serving result:
   unknown; cleanup completed with server exit0 and both cards at idle baseline.
   Do not reinterpret the resulting cancellation stack as a scheduler failure.
 
-No real-request correctness, scheduler-step overlap, throughput or TTFT gate is
-claimed. The prepared bounded controller checks serial/C16 retrieval, exact hot
-continuation, and actual grants to that short request while a143971-token cold
-request remains prefilling. Resume only after clarifying the external stop and
-fresh shared-resource admission; do not automatically retry into another task.
-The final policy files match model04's frozen capsule (apart from its trace
-observer). Source adaptation, MTP-row indivisibility and startup traps are also
-preserved in the repository knowledge scenario.
+Fletcher explicitly authorized treating the one external SIGTERM as accidental
+and retrying under fresh admission. `model05` then **PASSed**, with no algorithm
+change: same final source as commit5097dfb, same frozen package04 and observer.
+Local0/1, Qwen3.5-35B-A3B BF16/TP2/MTP2, E16/R20, query4096, context262144.
+Twenty-two HTTP checks passed:2 serial and16 concurrent exact retrievals,
+1 three-token length-capped warmup/prefix check,2 overlap retrievals and1 flush
+retrieval. Real MTP observed43 draft steps/86 drafted/86 accepted tokens; no
+synthetic acceptance. This short functional count is not a workload calibration.
+
+The48-step buffered trace directly shows the policy rather than inferring it
+from HTTP latency. The long prompt is143971 tokens; the short continuation is
+28894 with26626 exact resident-hit tokens (not the old C16 request identity).
+
+| Actual scheduler step | Long grant | Short grant | Short state before step |
+|---:|---:|---:|---|
+|57|4096|0|WAITING, first observed in queue|
+|58|1828|2268|WAITING, admitted on second opportunity|
+|59|4093|3|RUNNING, prefill complete|
+|60|4093|3|RUNNING, MTP verification|
+|61|4093|3|RUNNING, MTP verification|
+
+Each wave uses4096 tokens. Short receives prefill and then decode service while
+long remains prefilling. `qualification.json` retains the input cursors, exact
+grants and scope; the full trace/HTTP/log/metrics and controller stay in the
+external capsule. Server and supervisor exit0, selected cards return to idle
+baseline and leases are released. No new throughput, TTFT/P95 or joint Conv
+benefit is claimed; Conv PR5 remains unmerged. Source adaptation, indivisible
+MTP rows and startup traps are preserved in repo knowledge.
