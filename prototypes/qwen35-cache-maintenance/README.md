@@ -90,3 +90,10 @@ configuration. `CACHE_LEGACY_FIXTURE=1` preserves the forced-post-EOS fixture:
 it exposed a warm/cold discrepancy also present without offload, not a transport
 failure. Do not remove that counterexample or generalize the normal-chat PASS
 into unrestricted post-EOS numerical equivalence.
+
+For a bounded timeline, copy `native_profile.py` beside the driver and set
+`CACHE_PROFILE=1 CACHE_BYTE_AUDIT=0` under the normal admitted launcher. Capture
+excludes initialization and uses B256 rather than the unprofiled B1024. Native
+rank-bound profile RPCs retain raw CANN files beneath `$CAPSULE/profiles` plus
+host control/receipt JSONL. See [the observed timeline and interpretation](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/native-cache-timeline.md):
+first-use D2H did not overlap model kernels despite asynchronous completion.

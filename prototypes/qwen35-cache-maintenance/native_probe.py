@@ -22,6 +22,12 @@ if os.environ.get("CACHE_BYTE_AUDIT") == "1":
     install()
 
 
+if os.environ.get("CACHE_PROFILE") == "1":
+    from native_profile import install, stamp
+
+    install()
+
+
 async def main():
     run = Path(os.environ["CAPSULE"])
     model = "/workspace/my-ascend-workspace/runs/qwen35-moe-mtp-256k/model"
@@ -80,6 +86,16 @@ async def main():
         limit_mm_per_prompt={"image": 0, "video": 0},
         generation_config="vllm",
     )
+    profiling = os.environ.get("CACHE_PROFILE") == "1"
+    if profiling:
+        from vllm.config import ProfilerConfig
+
+        args.profiler_config = ProfilerConfig(
+            profiler="torch",
+            torch_profiler_dir=str(run / "profiles"),
+            ignore_frontend=True,
+            torch_profiler_with_stack=False,
+        )
     engine = AsyncLLM.from_engine_args(args)
     results = {
         "passed": False,
@@ -88,9 +104,14 @@ async def main():
     }
 
     async def control(**command):
-        return await asyncio.wait_for(
+        if profiling:
+            stamp("control_begin", command=command)
+        value = await asyncio.wait_for(
             engine.engine_core.call_utility_async("state_cache", command), 90
         )
+        if profiling:
+            stamp("control_end", command=command)
+        return value
 
     async def generate(name, tokens, count, salt, *, force=True):
         output = None
@@ -137,8 +158,17 @@ async def main():
         a = await generate("A", seed, first_budget, "A")
         assert twin["ids"] == a["ids"], (twin, a)
         _, source = await settled("A")
+        if profiling:
+            stamp("profile_start_begin")
+            await engine.start_profile()
+            stamp("profile_start_end")
         b = asyncio.create_task(
-            generate("B", prompt("Count from one to one hundred."), 1024, "B")
+            generate(
+                "B",
+                prompt("Count from one to one hundred."),
+                256 if profiling else 1024,
+                "B",
+            )
         )
         for _ in range(100):
             busy = await control(kind="snapshot")
@@ -199,6 +229,10 @@ async def main():
         limit = 32 if legacy else 128
         hot = await generate("A-unmoved", continuation, limit, "A-twin", force=legacy)
         warm = await generate("A-restored", continuation, limit, "A", force=legacy)
+        if profiling:
+            stamp("profile_stop_begin")
+            await engine.stop_profile()
+            stamp("profile_stop_end")
         cold = await generate(
             "A-cold", continuation, limit, "independent-cold", force=legacy
         )
