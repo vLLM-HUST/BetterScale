@@ -33,8 +33,9 @@ class Request:
 
 
 class Scheduler:
-    def __init__(self, root, *, max_pending=256):
+    def __init__(self, root, *, max_pending=256, maintenance=None):
         self.root = root
+        self.maintenance = maintenance
         self.waiting = deque()
         self.active = {}
         self.keys = set()
@@ -53,7 +54,11 @@ class Scheduler:
 
     @property
     def busy(self):
-        return bool(self.waiting or self.active)
+        return bool(
+            self.waiting
+            or self.active
+            or (self.maintenance is not None and self.maintenance.busy)
+        )
 
     def submit(self, key, tokens, count, stops=(), cache_salt=None):
         if key in self.keys:
@@ -133,19 +138,30 @@ class Scheduler:
         """One completed wave; results own their copies before publication."""
         with self.root._live_lock:
             self.root._require_active("schedule on")
+            if self.maintenance is not None:
+                self.maintenance.reap()
             return self._tick()
 
     def _tick(self):
         table = self.root.residents_table
         if not self.active:
             self.pressure_drain = False
+        admissions = len(self.waiting)
         while (
-            self.waiting
+            admissions
+            and self.waiting
             and not self.pressure_drain
             and len(self.active) < table.capacity.execution_seats
+            and table.idle_indices
         ):
+            admissions -= 1
             request = self.waiting.popleft()
             prompt = request.tokens + request.output
+            if self.maintenance is not None and self.maintenance.blocks_prompt(
+                prompt, request.cache_salt
+            ):
+                self.waiting.append(request)
+                continue
             admission = table.acquire(prompt, request.cache_salt)
             request.lease = admission[0]
             if request.cached is None:
@@ -175,6 +191,12 @@ class Scheduler:
                 continue
             while isinstance(request.step, PageRequest):
                 page = request.step
+                if not table.can_reserve(page.lease, page.length) and any(
+                    r.io_owner is not None for r in table.seats
+                ):
+                    # Queued stores do not free pages. Let their receipts wake
+                    # admission; unrelated ready rows can still execute.
+                    break
                 while not table.can_reserve(page.lease, page.length):
                     # Newest request loses first; the oldest request can always
                     # progress alone. No active invocation remains at this point.
@@ -192,6 +214,8 @@ class Scheduler:
         groups = {}
         for request in self.active.values():
             step = request.step
+            if isinstance(step, PageRequest):
+                continue
             groups.setdefault((step.kind, len(step.tokens)), []).append((request, step))
         if groups:
             # Advancing every family together locks staggered arrivals into
@@ -231,5 +255,7 @@ class Scheduler:
         }
 
     def close(self):
+        if self.maintenance is not None:
+            self.maintenance.close()
         for key in tuple(self.keys):
             self.cancel(key)

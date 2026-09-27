@@ -231,3 +231,8 @@ capacities, per-rank payload estimates and token-pressure admission limits.
 For why heterogeneous pooling still wastes GDN space, read
 [padding-versus-pooling.md](padding-versus-pooling.md): padding arithmetic versus
 free-capacity fungibility, and the separate-domain condition for lane savings.
+
+For the authorized scheduler-issued offload/restore prototype and small-model
+hw3 qualification, read [cache-maintenance-prototype.md](cache-maintenance-prototype.md).
+It reuses the owned host State backend; native35B async integration remains a
+separate gate.

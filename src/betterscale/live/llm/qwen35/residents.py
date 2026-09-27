@@ -72,6 +72,7 @@ class Resident:
     incarnation: int = 0
     request: int | None = None
     touched: int = 0
+    io_owner: int | None = None
     cache_salt: str | None = None
 
 
@@ -87,6 +88,14 @@ class ResidentTable:
         self.clear_seat = clear_seat
         self.generation = object()
         self.sequence = 0
+
+    @property
+    def idle_indices(self):
+        return [
+            i
+            for i, r in enumerate(self.seats)
+            if r.request is None and r.io_owner is None
+        ]
 
     def _resident(self, lease):
         if lease.generation is not self.generation or not 0 <= lease.seat < len(
@@ -108,7 +117,7 @@ class ResidentTable:
         available = (
             len(resident.pages)
             + len(self.free_pages)
-            + sum(len(r.pages) for r in self.seats if r.request is None)
+            + sum(len(self.seats[i].pages) for i in self.idle_indices)
         )
         return pages <= available
 
@@ -120,7 +129,9 @@ class ResidentTable:
             >= self.capacity.execution_seats
         ):
             raise RuntimeError("execution capacity exhausted")
-        idle = [i for i, r in enumerate(self.seats) if r.request is None]
+        idle = self.idle_indices
+        if not idle:
+            raise RuntimeError("resident seats temporarily unavailable")
         matches = [
             i
             for i in idle
@@ -148,8 +159,8 @@ class ResidentTable:
 
     def evict(self, index):
         resident = self.seats[index]
-        if resident.request is not None:
-            raise RuntimeError("cannot evict a live request")
+        if resident.request is not None or resident.io_owner is not None:
+            raise RuntimeError("cannot evict a live request or I/O-owned seat")
         # Invalidate identity before numerical writes; a failed clear cannot hit.
         resident.tokens.clear()
         resident.cache_salt = None
@@ -166,7 +177,7 @@ class ResidentTable:
         needed = max(pages - len(resident.pages), 0)
         if needed > len(self.free_pages):
             victims = sorted(
-                (i for i, r in enumerate(self.seats) if r.request is None and r.pages),
+                (i for i in self.idle_indices if self.seats[i].pages),
                 key=lambda i: self.seats[i].touched,
             )
             if needed > len(self.free_pages) + sum(
