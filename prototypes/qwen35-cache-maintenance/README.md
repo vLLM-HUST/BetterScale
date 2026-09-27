@@ -106,3 +106,10 @@ preallocated disjoint pinned/device buffers, not the native serving engine.
 Seven randomized unprofiled rounds are separated from one Level1/MSTX capture
 of each condition. See the continuous-compute section of the timeline note
 above for observed overlap and the important local-interference limitation.
+
+`CACHE_AUTO_POLICY=1` runs the workload-driven policy scenario instead of manual
+maintenance commands, with4GiB host budget/rank and the default70% watermark.
+`native_policy_probe.py` checks device and host LRU turnover, automatic restore
+and missing-host recompute against the same chat oracle. See
+[automatic policy](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/cache-policy.md)
+for the opt-in, two-round/writer-fence rule and qualification boundary.

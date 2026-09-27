@@ -57,6 +57,7 @@ async def main():
         + "Reply with only the access code, without explanation."
     )
     first_budget = 32 if legacy else 8
+    automatic = os.environ.get("CACHE_AUTO_POLICY") == "1"
     args = AsyncEngineArgs(
         model=model,
         dtype="bfloat16",
@@ -75,7 +76,8 @@ async def main():
         additional_config={
             "enable_cpu_binding": False,
             "using_live_runtime": True,
-            "state_cache_host_bytes": 512 << 20,
+            "state_cache_host_bytes": (4 << 30) if automatic else (512 << 20),
+            "state_cache_policy": automatic,
         },
         speculative_config={"method": "mtp", "num_speculative_tokens": 2},
         compilation_config={
@@ -142,6 +144,14 @@ async def main():
         initial = await control(kind="snapshot")
         assert initial["native_async"] and initial["batch_queue_size"] > 1
         assert initial["step_fn"] == "step_with_batch_queue"
+        if automatic:
+            from native_policy_probe import exercise
+
+            results.update(
+                await exercise(control, generate, prompt, seed, tokenizer, code)
+            )
+            print("NATIVE_AUTO_POLICY_PASS", json.dumps(results), flush=True)
+            return
         # Fill the resident arena so the stored seat is the ONLY empty seat;
         # its physical GDN rows must then be reused by an unrelated request.
         await asyncio.gather(

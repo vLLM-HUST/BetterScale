@@ -60,6 +60,16 @@ class LiveStateScheduler(AsyncScheduler):
                 * len(group.layer_names),
             )
             install()
+        self.cache_policy = None
+        if self.vllm_config.additional_config.get("state_cache_policy", False):
+            from .cache_policy import CachePolicy
+
+            if self.cache_actions is None:
+                raise ValueError("automatic State policy requires a host byte budget")
+            self.cache_policy = CachePolicy(
+                self,
+                self.vllm_config.additional_config.get("state_cache_watermark", 0.7),
+            )
         manager = self.kv_cache_manager
         self._native_allocate = manager.allocate_slots
         manager.allocate_slots = self._allocate
@@ -99,7 +109,12 @@ class LiveStateScheduler(AsyncScheduler):
 
     def has_requests(self):
         cache = getattr(self, "cache_actions", None)
-        return super().has_requests() or bool(cache is not None and cache.outbox)
+        policy = getattr(self, "cache_policy", None)
+        return (
+            super().has_requests()
+            or bool(cache is not None and cache.outbox)
+            or bool(policy is not None and policy.needs_turn())
+        )
 
     def _waiting_for_resident(self, request):
         cache = getattr(self, "cache_actions", None)
@@ -163,7 +178,13 @@ class LiveStateScheduler(AsyncScheduler):
         return result
 
     def schedule(self, *args, **kwargs):
-        output = super().schedule(*args, **kwargs)
+        policy = getattr(self, "cache_policy", None)
+        if policy is None:
+            output = super().schedule(*args, **kwargs)
+        else:
+            with policy.runnable():
+                output = super().schedule(*args, **kwargs)
+            policy.after_schedule(output.num_scheduled_tokens)
         leases = {}
         for rid in output.num_scheduled_tokens:
             seat = self.residents.seats[self.residents.requests[rid]]

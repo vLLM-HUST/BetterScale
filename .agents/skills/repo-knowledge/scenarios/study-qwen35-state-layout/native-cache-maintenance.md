@@ -157,3 +157,7 @@ This qualifies explicit idle-resident actions on this native configuration, not
 active-request offload, automatic victim selection, arbitrary failure recovery,
 all possible token histories, or a performance claim. Cancellation and stale-rank
 failure gates remain CPU protocol evidence, not fault-injected TP2 device tests.
+
+For the subsequent authorized automatic watermark/backup/device-LRU/host-LRU
+work, enter [cache-policy.md](cache-policy.md). The explicit-action qualification
+above remains its own historical boundary, not evidence of automatic policy.

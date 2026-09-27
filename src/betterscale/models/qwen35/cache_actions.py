@@ -1,11 +1,12 @@
 """Scheduler-owned maintenance for native resident leases and pooled FA blocks.
 
-Explicit commands only; no automatic host cache policy. Every required rank
+Execution mechanism shared by explicit commands and automatic policy. Every rank
 must retire the same operation before any residency change becomes visible.
 """
 
 from dataclasses import dataclass, field
 from concurrent.futures import Future
+from collections import deque
 
 from .resident_leases import Offer
 
@@ -23,6 +24,7 @@ class Checkpoint:
 class Pending:
     command: dict
     checkpoint: Checkpoint
+    pinned_blocks: object | None = None
     cancelled: bool = False
     ranks: set[int] = field(default_factory=set)
     completion: Future = field(default_factory=Future)
@@ -45,7 +47,7 @@ class CacheActions:
         self.host = {}
         self.outbox = []
         self.sequence = 0
-        self.completed = []
+        self.completed = deque(maxlen=256)
         self.failed = None
 
     def _seat(self, index):
@@ -58,7 +60,7 @@ class CacheActions:
             raise ValueError("seat still has execution, writer-fence or I/O ownership")
         return seat
 
-    def _queue(self, kind, checkpoint, seat=None):
+    def _queue(self, kind, checkpoint, seat=None, *, blocks=None, retain=False):
         if self.failed or self.endpoint is None:
             raise RuntimeError("maintenance unavailable or failed")
         self.sequence += 1
@@ -68,7 +70,10 @@ class CacheActions:
             key=checkpoint.key,
             seat=seat.index if seat else None,
             epoch=seat.epoch if seat else None,
-            blocks=([b.block_id for b in seat.blocks.blocks[0]] if seat else []),
+            blocks=(
+                [b.block_id for b in (blocks or seat.blocks).blocks[0]] if seat else []
+            ),
+            retain=retain,
             block_size=self.scheduler.block_size,
             endpoint=self.endpoint,
             host_bytes=self.host_bytes,
@@ -96,6 +101,37 @@ class CacheActions:
         checkpoint = Checkpoint(key, seat.tokens, seat.cache_salt, count, size)
         return self._queue("store", checkpoint, seat)
 
+    def backup(self, index, key, tokens, salt, blocks):
+        """Keep device residency; caller supplies a drained exact frontier."""
+        seat = self.scheduler.residents.seats[index]
+        if seat.io_owner is not None or seat.fence > self.scheduler.processed_step_seq:
+            raise ValueError("backup seat has outstanding ownership")
+        if seat.owner is not None:
+            request = self.scheduler.requests[seat.owner]
+            if request.last_sched_seq > self.scheduler.processed_step_seq:
+                raise ValueError("backup writer has not retired")
+        if (
+            not tokens
+            or blocks is None
+            or key in self.host
+            or any(p.checkpoint.key == key for p in self.pending.values())
+        ):
+            raise ValueError("backup requires a new key and exact frontier")
+        count = len(blocks.blocks[0])
+        size = self.resident_bytes + count * self.block_bytes
+        if self.allocated_host_bytes + size > self.host_bytes:
+            raise ValueError("host State capacity exhausted before dispatch")
+        checkpoint = Checkpoint(key, tuple(tokens), salt, count, size)
+        number = self._queue("store", checkpoint, seat, blocks=blocks, retain=True)
+        for group in blocks.blocks:
+            self.scheduler.kv_cache_manager.block_pool.touch(group)
+        self.pending[number].pinned_blocks = blocks
+        return number
+
+    def touch(self, key):
+        # dict insertion order is the host LRU; pending transfers pin entries.
+        self.host[key] = self.host.pop(key)
+
     def load(self, key, index):
         if self.failed or self.endpoint is None:
             raise RuntimeError("maintenance unavailable or failed")
@@ -114,6 +150,7 @@ class CacheActions:
         blocks = manager.block_pool.get_new_blocks(checkpoint.block_count)
         seat.epoch += 1
         seat.blocks = manager.create_kv_cache_blocks((tuple(blocks),))
+        self.touch(key)
         return self._queue("load", checkpoint, seat)
 
     @property
@@ -136,7 +173,7 @@ class CacheActions:
 
     def blocks_prompt(self, request):
         return not request.skip_reading_prefix_cache and any(
-            p.command["kind"] == "load"
+            p.command["kind"] in ("load", "store")
             and not p.cancelled
             and p.checkpoint.salt == request.cache_salt
             and tuple(request.all_token_ids[: len(p.checkpoint.tokens)])
@@ -173,9 +210,12 @@ class CacheActions:
         if kind == "store":
             if not pending.cancelled:
                 self.host[checkpoint.key] = checkpoint
-                self.scheduler._release_resident_blocks(seat.blocks)
-                seat.tokens, seat.cache_salt, seat.blocks = (), None, None
-                seat.epoch += 1
+                if not command["retain"]:
+                    self.scheduler._release_resident_blocks(seat.blocks)
+                    seat.tokens, seat.cache_salt, seat.blocks = (), None, None
+                    seat.epoch += 1
+            if pending.pinned_blocks is not None:
+                self.scheduler._release_resident_blocks(pending.pinned_blocks)
             seat.io_owner = None
         elif kind == "load":
             if pending.cancelled:
@@ -214,9 +254,18 @@ class CacheActions:
     def snapshot(self):
         return dict(
             host=list(self.host),
+            host_entries=[
+                dict(
+                    key=cp.key,
+                    cache_salt=cp.salt,
+                    cursor=len(cp.tokens) - 1,
+                    byte_length=cp.byte_length,
+                )
+                for cp in self.host.values()
+            ],
             allocated_host_bytes=self.allocated_host_bytes,
             pending=list(self.pending),
-            completed=self.completed,
+            completed=list(self.completed),
             seats=[
                 dict(
                     seat=s.index,

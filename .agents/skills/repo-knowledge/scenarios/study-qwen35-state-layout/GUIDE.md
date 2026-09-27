@@ -245,3 +245,6 @@ and the retained forced-post-EOS warm/cold counterexample.
 For actual D2H/H2D timelines and the first-use non-overlap counterexample, read
 [native-cache-timeline.md](native-cache-timeline.md) before equating async
 completion with hidden transfer cost.
+
+For automatic two-round-idle backup, independent device/host LRU and async
+restoration, read [cache-policy.md](cache-policy.md).

@@ -56,3 +56,13 @@ observation:414.8011 output tokens/s/chip versus a fresh same-pair369.1728 contr
 See repository knowledge's`study-qwen35-state-layout/baseline-execution-parity.md`
 for original evidence and scope. Packaging/entry qualification is separate from
 that immutable timing result; do not relabel it as a newly measured release.
+
+Experimental automatic State caching: set `state_cache_policy: true` and a
+positive per-rank `state_cache_host_bytes` in `additional_config`, alongside
+`using_live_runtime`. `state_cache_watermark` defaults to0.7 (seat OR page
+usage). Backup is best effort after two unscheduled rounds AND writer retirement;
+it keeps device state hot. Device reclaim does not require a host backup. Host
+capacity uses LRU with asynchronous all-rank drop acknowledgement. Exact host
+hits restore asynchronously; absent copies recompute. In-flight I/O remains
+pinned and other ready requests may run. This is opt-in, not a released default
+or a measured throughput claim; see the repo-knowledge cache-policy scenario.
