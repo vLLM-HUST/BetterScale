@@ -423,3 +423,17 @@ executor logged unexpected worker exit then all workers exited gracefully;
 there was no serving-time error/OOM. No new benchmark point, formal window or
 PyPI release follows from this functional fix. Existing Frontier smoke points
 still describe their original unmodified capsule and KV budgets.
+
+### Chunked-prefill fairness: grants versus chunk boundaries (2026-09-27)
+
+Before exporting/replaying the Conv C16 tail, read
+`prototypes/prefill-fairness/README.md`. That old run has no scheduler-step
+sidecar (`MTP_PROFILE=0`); HTTP overlap is not an exact schedule. CPU execution
+of the donor running-grant AST confirms budget monopolization, plus an old
+Mamba-alignment trap: decode3 + long2048 leaves2045, which grants a waiting
+aligned prefill zero. Merely capping one request at2048 does not fix that case.
+The current resident-State `models/qwen35/seat_scheduler.py` still inherits
+native grants but uses a pure-attention pool, so that alignment gate is absent.
+Do not confuse it with the separate oldest-ready `live/llm/qwen35/scheduler.py`.
+The report owns the bounded CPU evidence and minimal future EngineCore trace
+fields; it is not a serving fix or reconstructed historical scheduler trace.
