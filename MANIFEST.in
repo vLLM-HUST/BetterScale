@@ -20,3 +20,5 @@ recursive-include src/betterscale/patches/qwen_fia *.cpp *.so
 
 recursive-include src/betterscale/models/qwen35 *.patch *.sh
 recursive-include src/betterscale/live/llm/qwen35 *.sh
+
+recursive-include src/betterscale/patches/qwen_fia/context_parallel *.hpp

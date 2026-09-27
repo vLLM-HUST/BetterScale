@@ -4,6 +4,10 @@ Use for this MoE port; do not reread the1250-line dense27B history as if it were
 current MoE support. Read `prototypes/qwen35-moe-serving/README.md` and current
 probe sources. This is qualified experimental work within the gates below, not a released capability.
 
+For quota-partitioned decode/verification FIA, enter
+[context-parallel-attention.md](context-parallel-attention.md) before porting
+the research scheduler or interpreting its leaf/model gates.
+
 ## Evidence and source boundary
 
 - Released source started at `c685a2b`, rejects `qwen3_5_moe_text` on CPU.
