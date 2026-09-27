@@ -419,3 +419,40 @@ executor logged unexpected worker exit then all workers exited gracefully;
 there was no serving-time error/OOM. No new benchmark point, formal window or
 PyPI release follows from this functional fix. Existing Frontier smoke points
 still describe their original unmodified capsule and KV budgets.
+
+## QKV/Conv integration boundary (2026-09-27, not yet E2E-qualified)
+
+Enter `prototypes/qkv-conv-fusion/README.md` before treating the operator-profile
+QKV+Conv win as serving savings. The realBF16 donor uses jointQKVZ, whereas the
+profiled native kernel produces onlyQKV. Gate-projection splitting and Conv
+history-pool bridging are real costs. The MTP pool has5 rows/slot, but prefill
+writes only its first3; verification owns accepted-token updates. Preserve
+negative sentinel slots, repeated cumulative lengths and FULL graph metadata
+updates. The frozenMoE `service_adapter` replaces `_forward_core`; changing only
+the package's old `execution.py` would patch dead code for this experiment.
+
+The bounded first serving-boundary leaf onhw3 passed12 changed-state/shape
+cases.2048/4096 retained5.7%/8.4% savings against jointQKVZ+nativeConv after
+including the bridges and separateZ;128/512 regressed and must retain the old
+route. This is one process/nine timing samples, not an E2E claim. Artifact and
+reproducer identities live in the prototype and `qkv-serving01` capsule.
+A Triton bool tensor load in this pinned compiler is i8: convert `!=0` before
+combining it into a `tl.load` mask. The first leaf compile rejected an i8 mask;
+do not diagnose that compiler type error as a native-kernel numerical failure.
+
+The first model startup exposed a compiler-boundary trap: a Python token-count
+branch in `forward` traced at4096 was generalized into the `(1,4096)` compiled
+backbone, so1536 later entered the fused-only callback. A dummy-model diagnostic
+confirmed actual1536x2048 input, not a weight-layout problem. Keep token dispatch
+inside the opaque custom operator, where capture/eager shapes are concrete.
+Its gate output must also agree with fake strides: return flattened contiguous
+`[M*heads,head_dim]` from both joint-QKVZ and separate-Z branches, rather than
+claiming that the joint projection's strided gate view is contiguous. The CPU
+`test_dispatch.py` checks eight token capacities and real/fake gate strides.
+
+With runtime dispatch fixed, `model04` / `service-v6` passed24 real-MTP
+retrieval/APC/concurrency requests through262080 input tokens, server/launcher
+exit0. Both ranks recorded30 GDN layers×2 selected capacities. The complete
+GDN leaf (`core01`) was bit-exact for output, Conv pool and recurrent state over
+six changed-metadata graph replays. These close numerical/integration gates,
+not the still-running C16 throughput comparison.
