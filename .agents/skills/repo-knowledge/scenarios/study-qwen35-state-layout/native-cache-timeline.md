@@ -74,3 +74,58 @@ Host operation spans are not CPU-busy measurements. No throughput, steady-state
 bandwidth, universal non-overlap, or unprofiled latency claim follows from this
 single first-valid capture. The earlier post-EOS numerical counterexample is
 unchanged and remains in the qualification note.
+
+## Continuous compute control (2026-09-27)
+
+Do not infer DMA serialization from the first-use trace above. Fletcher asked
+for preallocated copies while kernels actually keep running. Capsule:
+`runs/qwen35-state-lanes/20260927-continuous-state-dma/attempt1/`.
+Driver `prototypes/qwen35-cache-maintenance/continuous_dma_probe.py`, CPU-only
+packet exporter `continuous_dma_declare.py`. Source baseline d74317f; no runtime
+change. hw3 physical4, selected lease +30s admission/foreign-owner supervision,
+exit0 and baseline release. Torch2.10/torch-npu2.10post2; seven shuffled timing
+rounds and a separate Level1/MSTX profile, same pinned buffers throughout.
+
+This is a **single-device hardware control**, not a native serving/TP2 run.
+Actual observed TP2-per-rank grouped MLP shapes:192x2048 with256x2048x512,
+SwiGLU,192x256 with256x256x2048. Synthetic random BF16 weights, one row each
+for experts0..191. A captured64-block graph replayed4 times keeps computation
+queued for~108ms. Prefix/gate/body are queued before waiting for the gate and
+submitting DMA. No global synchronization/allocation inside the timed window.
+Both directions use separate host/device buffers,90 packets118,673,460B each,
+derived from actual State declarations (one resident plus16 kernel FA pages).
+CPU numerical oracle, eager/graph exact comparison and every transferred byte
+pass. Native/provider DB integrity and full exported JSON parse pass.
+
+Unprofiled seven-round medians, milliseconds:
+
+| Condition | Compute body | D2H event envelope | H2D event envelope |
+|---|---:|---:|---:|
+| compute only |107.738|—|—|
+| D2H only |—|5.823|—|
+| H2D only |—|—|5.417|
+| both DMA only |—|6.516|6.372|
+| compute + D2H |107.831|5.791|—|
+| compute + H2D |108.087|—|5.459|
+| compute + both |108.130|6.426|6.315|
+
+Raw profile: kernel duty~98.82%;~98.85–98.88% of copy busy time intersects
+actual kernels, and all copies fit within the compute envelope. In the both
+condition D2H and H2D overlap2.766ms. They are not serialized, but host submits
+all90 D2H calls before H2D, so their starts are staggered. This is not proof of
+sustained fully simultaneous bidirectional peak bandwidth.
+
+**Do not turn +0.36% whole-body time into zero local interference.** In the
+single profile sample, GMM kernels touching DMA are+1.6%(D2H),+4.9%(H2D),
++3.9%(both) versus matching kernel ordinals in compute-only. These local numbers
+are profiler-on observations, not statistically qualified penalties; the long
+body dilutes short-window effects. The defensible finding is real compute/DMA
+and directional overlap with modest observed whole-body cost in this setup,
+not universal noninterference or end-to-end cache speedup. Event envelopes also
+include submission gaps; never sum duplicated timeline projections.
+
+`analysis/` retains raw-provider DBs, TraceLoom ab8b513 full annotated timeline,
+small four-lane overview, plot and machine-readable summary. `analyze.py` and
+`deliver.py` replay analysis without touching NPU. Profile teardown warns about
+RECORD-state stop; all seven marked conditions have their expected771 kernels
+or90 copies/direction, complete end markers and validated exported evidence.

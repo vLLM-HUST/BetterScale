@@ -97,3 +97,12 @@ excludes initialization and uses B256 rather than the unprofiled B1024. Native
 rank-bound profile RPCs retain raw CANN files beneath `$CAPSULE/profiles` plus
 host control/receipt JSONL. See [the observed timeline and interpretation](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/native-cache-timeline.md):
 first-use D2H did not overlap model kernels despite asynchronous completion.
+
+`continuous_dma_declare.py MODEL_CONFIG OUTPUT_JSON` exports the exact90-packet
+TP2-per-rank State geometry without activation (CPU-only, BetterScale on
+PYTHONPATH). Put it at `$CAPSULE/packets.json`; run `continuous_dma_probe.py` only
+under normal selected-device admission. It uses native grouped MLP graphs and
+preallocated disjoint pinned/device buffers, not the native serving engine.
+Seven randomized unprofiled rounds are separated from one Level1/MSTX capture
+of each condition. See the continuous-compute section of the timeline note
+above for observed overlap and the important local-interference limitation.
