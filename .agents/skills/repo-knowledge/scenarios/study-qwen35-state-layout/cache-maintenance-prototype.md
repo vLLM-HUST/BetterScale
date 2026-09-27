@@ -96,3 +96,7 @@ idle engine wakeup; replace its immediate eviction/retry assumption without
 changing donor numerics, graphs or async execution. TP2 must join successful
 completion for the same operation on every required rank before host/device
 publication. Do not infer that from this TP1 run.
+
+For the subsequent native AsyncScheduler/EngineCore and TP2 expansion, read
+[native-cache-maintenance.md](native-cache-maintenance.md). The observations
+above remain evidence for the original research route only.

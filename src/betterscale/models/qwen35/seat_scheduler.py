@@ -18,6 +18,7 @@ class StateSchedule(SchedulerOutput):
     resident_leases: dict[str, tuple[int, int]] = field(default_factory=dict)
     generation_limits: dict[str, int] = field(default_factory=dict)
     sampling_requests: set[str] = field(default_factory=set)
+    cache_commands: list[dict] = field(default_factory=list)
 
 
 class LiveStateScheduler(AsyncScheduler):
@@ -39,6 +40,26 @@ class LiveStateScheduler(AsyncScheduler):
         self._pending_hot = {}
         self._offers = {}
         self._generation_limits = {}
+        self.cache_actions = None
+        budget = self.vllm_config.additional_config.get("state_cache_host_bytes", 0)
+        if budget:
+            from .cache_actions import CacheActions
+            from .cache_engine import install
+
+            if self.vllm_config.parallel_config.data_parallel_size != 1:
+                raise ValueError("cache prototype requires DP1")
+            from .state_backend import fixed_state_bytes
+
+            group = self.kv_cache_config.kv_cache_groups[0]
+            self.cache_actions = CacheActions(
+                self,
+                self.vllm_config.parallel_config.tensor_parallel_size,
+                budget,
+                resident_bytes=fixed_state_bytes(self.vllm_config) // 20 - 8,
+                block_bytes=group.kv_cache_spec.page_size_bytes
+                * len(group.layer_names),
+            )
+            install()
         manager = self.kv_cache_manager
         self._native_allocate = manager.allocate_slots
         manager.allocate_slots = self._allocate
@@ -76,7 +97,14 @@ class LiveStateScheduler(AsyncScheduler):
             return seat.blocks, seat.cursor
         return self.kv_cache_manager.empty_kv_cache_blocks, 0
 
+    def has_requests(self):
+        cache = getattr(self, "cache_actions", None)
+        return super().has_requests() or bool(cache is not None and cache.outbox)
+
     def _waiting_for_resident(self, request):
+        cache = getattr(self, "cache_actions", None)
+        if cache is not None and cache.blocks_prompt(request):
+            return True
         # A known length frontier is already frozen, but the queued frame can
         # still own its FA pages. Wait for that resident's native writer fence
         # instead of needlessly sending its continuation to a cold empty seat.
@@ -143,6 +171,9 @@ class LiveStateScheduler(AsyncScheduler):
         return StateSchedule(
             **{f.name: getattr(output, f.name) for f in fields(SchedulerOutput)},
             resident_leases=leases,
+            cache_commands=(
+                self.cache_actions.take_commands() if self.cache_actions else []
+            ),
             generation_limits={
                 rid: self._generation_limits.pop(rid)
                 for rid in leases
@@ -230,6 +261,9 @@ class LiveStateScheduler(AsyncScheduler):
             del self._pending_hot[key]
 
     def reset_prefix_cache(self, *args, **kwargs):
+        cache = getattr(self, "cache_actions", None)
+        if cache is not None and (cache.pending or cache.host):
+            raise RuntimeError("drop/drain host State before resetting prefix cache")
         self.residents.invalidate_hot()
         for key in self._pending_hot:
             frontier = self._frontiers.get(key)

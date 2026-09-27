@@ -1,7 +1,8 @@
 # Qwen3.5 scheduler cache-maintenance prototype
 
 Explicit experimental actions, not an automatic cache policy or a public serving
-option. The native `models/qwen35` Worker/AsyncScheduler path is unchanged.
+option. The original research route below is separate from the new optional
+native `models/qwen35` Worker/AsyncScheduler integration (see end).
 
 The small-model research `Scheduler(root, maintenance=cache)` owns completion
 publication. `cache.store(seat, HostStateKey(session, generation))` pins an idle
@@ -65,3 +66,18 @@ is not permission to initialize a device outside that protocol.
   `clear_seat`/generation do synchronize: this is **not** a proof of production
   overlap, tail latency or throughput. A transport failure may require root
   teardown; this prototype does not recover an unhealthy device in place.
+
+## Native async / TP2 expansion
+
+`native_probe.py` exercises the actual AsyncLLM/EngineCore batch queue, FULL
+graph and MTP2 on35B TP2. The optional production-source closure lives in
+`models/qwen35/cache_{actions,worker,engine}.py`, enabled only with
+`additional_config.state_cache_host_bytes` (per rank). Scheduler utility
+`state_cache` supplies explicit store/load/cancel/drop and deferred wait.
+Rank receipts wake the native scheduler even without computation.
+
+See [native integration evidence and boundaries](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/native-cache-maintenance.md).
+The original TP1 research limits above are historical, not native qualification.
+Native FIFO/preemption policy remains unchanged: pending loads may head-of-line
+block waiting requests. No automatic eviction policy or performance claim.
+Device/receipt failure fails closed and may require whole-engine teardown.

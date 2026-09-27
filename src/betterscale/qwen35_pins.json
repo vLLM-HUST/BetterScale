@@ -154,6 +154,11 @@
     {
       "path": "vllm_ascend/distributed/parallel_state.py",
       "sha256": "40199b8d1be13c6665a3a31c4b0b4cfbe1996d0e16a8a8da8d8a5aec6930f4be"
+    },
+    {
+      "distribution": "vllm",
+      "path": "vllm/v1/engine/core.py",
+      "sha256": "27b23827a86fd488f1f7cc9a2722fe76d284087ca7cfefef5a30c5e74f21bc71"
     }
   ],
   "experimental_source_patch": "models/qwen35/runtime.patch; exact isolated adaptation of the pinned donor"

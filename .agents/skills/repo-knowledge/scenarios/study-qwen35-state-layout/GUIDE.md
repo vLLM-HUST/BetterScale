@@ -236,3 +236,6 @@ For the authorized scheduler-issued offload/restore prototype and small-model
 hw3 qualification, read [cache-maintenance-prototype.md](cache-maintenance-prototype.md).
 It reuses the owned host State backend; native35B async integration remains a
 separate gate.
+
+For native async completion wakeup, TP2 rank quorum and the explicit-action
+interface, read [native-cache-maintenance.md](native-cache-maintenance.md).
