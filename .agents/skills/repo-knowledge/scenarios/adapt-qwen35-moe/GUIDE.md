@@ -437,3 +437,44 @@ native grants but uses a pure-attention pool, so that alignment gate is absent.
 Do not confuse it with the separate oldest-ready `live/llm/qwen35/scheduler.py`.
 The report owns the bounded CPU evidence and minimal future EngineCore trace
 fields; it is not a serving fix or reconstructed historical scheduler trace.
+
+The first fairness implementation is in `prefill_round_robin.py` plus a
+source-pinned class-local `fair_schedule.py` adapter, called by the existing
+resident-State scheduler. Keep waiting prefills in the same opportunity ring;
+rotating only RUNNING preserves the original admission starvation. Reserve
+actual ready decode demand before allocating the rest. Do not turn ring order
+into native running-list order: that would also change its preemption victims.
+A forecast grant is not an allocator reservation; a rejected allocation can
+strand one attempt's quota. The cursor must still advance, and persistent
+resource starvation/HBM residence belongs to follow-up issue6, not a promised
+property of the simple policy. Prototype evidence separates full-native CPU
+routing doubles from actual State/NPU acceptance.
+
+Waiting hot hits with one remaining token can be padded to MTP width by native
+admission. Treat that forecast as indivisible: granting only one/two tokens
+then capping a native padded three-token row would corrupt its draft accounting.
+The complete-native CPU fixture includes a waiting-order versus ring-order
+counterexample, not just a policy-helper test.
+
+Qualification launch trap: do not preload FIA in the controller before invoking
+`serve.sh`. That script sources CANN and then enables its own preload; local
+CANN9.0.1 temporarily removes its library paths during re-source, making `tr`/
+`grep`/`sed` fail on missing `libopapi.so` if FIA was already inherited. The
+local fairness `model02` failed before Python server startup for this reason;
+`run03.sh` removes only the redundant controller preload, not the serving preload.
+Capsule: workspace `runs/operator-response/20260927-prefill-fairness-local02/`.
+The earlier hw3 `prefill-fairness01/model01` failed on post-admission physical
+occupancy with no visible selected-card PIDs, not demonstrated ordinal mapping
+failure. Enter the workspace restarting-tenant observation before another retry;
+free-card admission and cooperative leases do not exclude invisible tenants.
+
+Load-order trap: CPU tests with `VLLM_PLUGINS=''` see the core Scheduler, while
+real Ascend platform patching can make AsyncScheduler inherit BalanceScheduler.
+Even with DP balance disabled, its method is a wrapper that forwards to the
+original base. Local `model03` loaded weights/captured32 graphs, then failed our
+method identity guard at scheduler construction. Do not relax the core pin or
+skip arbitrary wrappers: `fair_schedule.bind` accepts the exact wrapper source
+only with explicit balance-disabled state, then pins/adapts its original base.
+Enabled balancing is rejected. `preflight04.py` exercises real platform patch
+loading before weights; the CPU prototype separately resolves the exact wrapper
+source. Empty-plugin import checks alone do not qualify serving import order.

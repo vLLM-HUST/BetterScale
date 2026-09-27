@@ -73,3 +73,15 @@ This is one combination point, not a new paired comparison or a quality score.
 Default selection and packaging reuse its unchanged numerical/State/attention
 programs and exact kernel artifact; changing the entry default is not a new
 performance measurement. See `docs/evidence/qwen35-balanced-default.json`.
+
+## Prefill round-robin candidate (not the historical benchmark policy)
+
+The fairness branch reserves ready decode/MTP demand, then greedily distributes
+remaining tokens from a rotating prefill start. Eligible waiting requests share
+that ring; full execution seats, writer fences and native allocator failures are
+not bypassed. This changes grant policy, not numerical kernels or State lifetime.
+`fair_schedule.py` adapts only the class-local, source-pinned native schedule's
+three grant/skip seams; an unknown native method fails closed. No installed donor
+file or global native Scheduler is rewritten. See `prototypes/prefill-fairness`
+for tests and the qualification boundary. Earlier throughput numbers above do
+not measure this changed policy. Joint Conv integration remains pending.
