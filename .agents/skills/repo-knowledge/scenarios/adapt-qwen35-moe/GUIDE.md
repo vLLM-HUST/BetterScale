@@ -474,3 +474,11 @@ warning; never weaken the general audit or silently certify a reviewed score.
 The task capsule's `betterscale-runtime.sh` now selects the qualified candidate
 unconditionally; arm selection remains only in the diagnostic A/B launcher.
 This installs the experimental MoE default, not a public dense27B/PyPI release.
+
+For the C16 P95 regression, read the report's **P95 follow-up** before adding
+more warmup or blaming fusion latency. All fusion capacities executed before
+readiness, followed by175 workload warmups. A continuation that previously
+finished before143K cold prefill instead arrives just after it and waits almost
+the same24s; the cold request itself is slightly faster. This supports timing/
+contention amplification, not a proven global root cause. Join source, full
+conversation and turn identity; source/outer alone conflates child turns.
