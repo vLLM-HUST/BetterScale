@@ -3,7 +3,7 @@
 This is the BetterScale-main landing point for the split-capable,
 partial-outlined research implementation, not its full-only diagnostic controls.
 Source donor: `ascend-op-prof-single-decode` at `ea92f61`; numerical pipeline from
-installed CANN9.0.1 FIA. No production default is enabled by this contract.
+installed CANN9.0.1 FIA. The qualified Qwen35 entry now enables this path by default; other geometries remain native.
 
 ## First serving contract
 
@@ -53,7 +53,7 @@ All NPU work queues on hw3 as jingyuan with auto-selected per-card leases,
 30s fresh admission and continuing foreign-owner supervision. No local NPU,
 legacy-lock deletion, fixed-pair queueing or displacement of other tenants.
 
-## Build and explicit selection
+## Packaged default and source build
 
 From the pinned CANN9.0.1 environment (CPU-only compilation):
 
@@ -66,14 +66,16 @@ patches CANN in place. The kernel artifact is `libbs_fia_cp.so`; build completio
 alone is not a device qualification. Do not replace a library under a running
 process or reuse a build directory holding an active artifact.
 
-Before launching a qualified Qwen35 worker, set both:
+For an explicitly selected task-owned source build, these overrides remain available:
 
 ```sh
 export BETTERSCALE_CONTEXT_PARALLEL=1
 export BETTERSCALE_CP_LIBRARY=/path/to/new-build/libbs_fia_cp.so
 ```
 
-The default remains native. The main-tree wave adapter selects the existing
+Qwen35 admission supplies the bundled library and enables this by default.
+`BETTERSCALE_CONTEXT_PARALLEL=0` explicitly selects native attention for diagnostics.
+The main-tree wave adapter selects the existing
 verification capacity keys6/12/24/40/48, only for Q8/KV1 and17 request rows.
 The flag is fixed before capture; changing it does not rewrite a captured graph.
 Native/draft/single-request/prefill frames retain their original2528-byte metadata;
@@ -120,7 +122,8 @@ long-context rows. Keep those samples in the headline; the cause is not isolated
 
 This is useful E2E throughput evidence, not proof of universal tail improvement,
 repeatability or C16 extreme256K-skew performance (SWE reached about90–93K).
-Default remains native; explicit selection above enables the qualified candidate.
+This observation initially kept the feature opt-in; the subsequent combined
+qualification and Fletcher's September27 decision promote it to the Qwen35 default.
 The repo-knowledge `adapt-qwen35-moe/context-parallel-attention.md` and its
 colocated `context-parallel-ab.json` retain protocol, source identity and limits.
 
@@ -132,3 +135,8 @@ This exceeds historical resident-only414.80 by6.79%, but TTFT P95 worsened
 0.462→0.589s. The historical point was on a different host and no new control
 was run; it is combination evidence, not a paired incremental-speedup claim.
 See the same knowledge note and `resident-balanced-c16.json` for exact scope.
+
+Distribution assembly includes the exact qualified binary identified by
+`native.json`; `setup.py` rejects a missing or mismatched payload. The source
+builder remains a development tool, not an install-time compiler. A fresh build
+is not automatically qualified merely because compilation succeeded.

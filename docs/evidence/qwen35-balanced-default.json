@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "scope": "Default CLI configuration and clean installed payload; no new NPU or throughput measurement",
+  "command_matches_measured": "Model path and JSON serialization normalized; all serving options equal",
+  "native_artifacts": 5,
+  "changed_python_files": [
+    "__main__.py",
+    "models/qwen35/__init__.py",
+    "models/qwen35/launch.py",
+    "patches/qwen_fia/context_parallel/__init__.py"
+  ],
+  "unchanged": "All measured numerical/State/scheduler/publication/attention programs and exact native kernel",
+  "archives": [
+    "sdist",
+    "platform wheel"
+  ],
+  "publication": "No PyPI upload",
+  "measured_source": "283e06d9668b8bb3a09f92632b1a3576dc8a11e8",
+  "measured_capsule": "runs/attention-response/20260927-resident-balanced-c16",
+  "output_tokens_per_second_per_chip": 442.98055555555555,
+  "default_entry": "serve-qwen: auto Qwen35 -> LiveStateScheduler/resident E16/R20 + balanced attention",
+  "diagnostic_override": "BETTERSCALE_CONTEXT_PARALLEL=0 retains resident State and native attention",
+  "cpu_tests": {
+    "passed": 240,
+    "detail": "239 passed initially; one missing pinned donor fixture fetched and hash-verified, then the sole failed test passed"
+  },
+  "metadata_check": "Twine strict PASS",
+  "artifact_root": "runs/attention-response/20260927-balanced-default"
+}

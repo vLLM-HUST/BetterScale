@@ -1,7 +1,8 @@
 # Landing quota attention in Qwen35 serving
 
 Enter before changing pure decode/verification FIA scheduling or reusing the
-single-decode research kernel in a model graph. Current work is opt-in; see
+single-decode research kernel in a model graph. The integrated Qwen35 entry now
+defaults to resident State plus balanced attention; see
 `src/betterscale/patches/qwen_fia/context_parallel/README.md` for code-owned
 contract/build selection. Do not resume the closed same-instance AIV regression
 hunt merely because this note mentions its source.
@@ -174,3 +175,20 @@ launch/client commands, original requests, `result.json`, long gate and release
 receipts; colocated `resident-balanced-c16.json` retains compact metrics.
 Only one combination arm launched. Server/controller/admission exited0; no
 foreign-owner event. Selected0/1 were returned without disturbing other cards.
+
+## Default-entry consolidation
+
+Fletcher subsequently selected the qualified combination as the Qwen35 mainline
+default. `serve-qwen` now defaults to model-aware `--runtime auto`:35B MoE chooses
+the existing resident-State launcher; Qwen27 keeps its former route. The launcher
+and Qwen35 Worker admission default balanced attention on, resolve its packaged
+binary and verify `native.json`. Diagnostic `BETTERSCALE_CONTEXT_PARALLEL=0`
+keeps resident State but restores native attention. State policy, scheduler,
+publication/plan/producer/reducer programs and the measured binary are unchanged.
+Packaging requires five qualified native artifacts rather than four; never ship
+a source-only default that fails on a missing optional experiment path.
+
+The public configuration should identify one integrated mainline source revision,
+not present an acceptance-only commit as another required implementation. Preserve
+the original measured283e06d in detailed provenance: entry/default and payload
+packaging validation are not a new443-tokens/s/chip NPU measurement.

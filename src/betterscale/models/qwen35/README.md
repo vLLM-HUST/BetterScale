@@ -1,6 +1,6 @@
-# Qwen35 resident State serving
+# Qwen35 default serving: resident State + balanced attention
 
-This is the qualified State-only integration, not the earlier standalone live
+This is the qualified integrated serving route, not the earlier standalone live
 execution loop. Model loading, forward arithmetic, FULL capture, MTP2 and async
 EngineCore scheduling remain BetterScale's baseline. Owned `StateTensor`
 declarations, resident leases and shared regular-attention pages replace State
@@ -31,10 +31,20 @@ After obtaining selected-device leases and fresh idle-card admission:
 
 ```sh
 python -m betterscale serve-qwen /models/Qwen3.5-35B-A3B \
-  --runtime live --devices 0,1 --port 8000 \
+  --devices 0,1 --port 8000 \
   --qwen35-runtime-dir /path/to/new-qwen35-runtime \
   --cache-dir /path/to/task-cache --served-model-name qwen35-moe
 ```
+
+The default `--runtime auto` recognizes the Qwen35 MoE model configuration and
+selects resident State plus balanced target decode/verification attention.
+Explicit `--runtime live` remains compatible; Qwen27's default route is unchanged.
+No feature environment variables or external attention-library path are needed:
+the complete distribution includes the qualified `libbs_fia_cp.so` and verifies
+its digest before launch and again in the Worker. Missing or mismatched payload
+fails closed, never silently falls back. For a diagnostic native-attention control
+only, set `BETTERSCALE_CONTEXT_PARALLEL=0`; resident State stays enabled.
+Single-request capacity3, prefill/mixed and draft retain native attention.
 
 The launcher configures the real`betterscale.qwen35_worker.Worker`, native async
 scheduler subclass, FULL4096/MTP2 and required environment before device startup.
@@ -56,3 +66,10 @@ observation:414.8011 output tokens/s/chip versus a fresh same-pair369.1728 contr
 See repository knowledge's`study-qwen35-state-layout/baseline-execution-parity.md`
 for original evidence and scope. Packaging/entry qualification is separate from
 that immutable timing result; do not relabel it as a newly measured release.
+
+The integrated configuration passed the September27 C16/900s observation at
+442.98 output tokens/s/chip, decode P9062.91 tokens/s/user and TTFT P95588.66ms.
+This is one combination point, not a new paired comparison or a quality score.
+Default selection and packaging reuse its unchanged numerical/State/attention
+programs and exact kernel artifact; changing the entry default is not a new
+performance measurement. See `docs/evidence/qwen35-balanced-default.json`.

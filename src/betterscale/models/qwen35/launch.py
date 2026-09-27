@@ -34,6 +34,9 @@ def prepare(
 
     env = os.environ.copy()
     prepare_libraries(Path(__file__).parents[2], env)
+    from ...patches.qwen_fia.context_parallel import configure
+
+    configure(env)
     env.update(
         ASCEND_RT_VISIBLE_DEVICES=devices,
         PYTHON=sys.executable,

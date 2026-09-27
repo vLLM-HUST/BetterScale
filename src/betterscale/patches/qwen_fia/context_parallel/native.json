@@ -1,0 +1,7 @@
+{
+  "sha256": "e925f5e57132dd824e1269ca1482d44a03e7c535f07032fcca7916387773ea6d",
+  "platform": "CANN 9.0.1 / Ascend910B / aarch64",
+  "scope": "Qwen35 BF16 TP2 Q8/KV1/D256 paged128 causal target decode/verification Q1..3; original-order quota scheduling",
+  "qualification": "20260927-resident-balanced-c16; leaf device-length, hot-resident split and C16/900s gates",
+  "artifact": "libbs_fia_cp.so"
+}

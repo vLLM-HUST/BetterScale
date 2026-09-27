@@ -15,7 +15,7 @@ def prepare(
     port,
     cache_dir,
     *,
-    runtime="native",
+    runtime="auto",
     context_tokens=262144,
     resident_seats=20,
     token_pages=0,
@@ -26,6 +26,11 @@ def prepare(
     served_model_name="qwen35-moe",
 ):
     """Prepare a new process; never preload CANN into this interpreter."""
+    if runtime == "auto":
+        config_path = model / "config.json"
+        config = json.loads(config_path.read_text()) if config_path.is_file() else {}
+        text = config.get("text_config", config)
+        runtime = "live" if text.get("model_type") == "qwen3_5_moe_text" else "native"
     if runtime == "live":
         return prepare_live(
             model,
@@ -180,9 +185,9 @@ def main():
     qwen.add_argument("model", type=Path)
     qwen.add_argument(
         "--runtime",
-        choices=("native", "live"),
-        default="native",
-        help="native Qwen27 (default); live Qwen35 uses resident State with native execution",
+        choices=("auto", "native", "live"),
+        default="auto",
+        help="auto (default): Qwen35 resident State + balanced attention; Qwen27 native entry",
     )
     qwen.add_argument(
         "--devices",

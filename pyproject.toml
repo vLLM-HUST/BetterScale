@@ -18,7 +18,7 @@ dependencies = []
 where = ["src"]
 
 [tool.setuptools.package-data]
-"betterscale.patches.qwen_fia.context_parallel" = ["*.cpp", "*.hpp", "README.md"]
+"betterscale.patches.qwen_fia.context_parallel" = ["*.cpp", "*.hpp", "*.json", "*.so", "README.md"]
 "betterscale.patches.qwen_fia" = ["*.json", "*.cpp", "*.so", "README.md"]
 betterscale = ["pins.json", "qwen_pins.json", "qwen_mixed_pins.json", "live_qwen_pins.json", "qwen35_pins.json"]
 "*" = ["README.md"]

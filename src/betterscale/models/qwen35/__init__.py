@@ -127,6 +127,9 @@ def check(config):
     check_runtime("qwen35_pins.json")
     qwen_gdn.check_library()
     qwen_fia.check_library()
+    from ...patches.qwen_fia.context_parallel import configure
+
+    configure(os.environ)
 
 
 def before_init(worker, config):
