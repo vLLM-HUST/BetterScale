@@ -1,0 +1,25 @@
+{
+  "base_commit": "9bf964cb4b87c8cd0d6852c41a55b3c29711fa95",
+  "files": [
+    {
+      "path": "vllm_ascend/worker/model_runner_v1.py",
+      "before": "32955b3891fd237a56b41d6965a052c9182600346114a83816dfcc4ca4591040",
+      "after": "57222ade9ff9bfd6dfab3aac61eb1570a033cf2ccd0dd5a449269d3d8ad33f45"
+    },
+    {
+      "path": "vllm_ascend/ops/gdn.py",
+      "before": "8c349f68d37bede53ebe4771ac0ffd4396896f11473627446ab71f782a01eb71",
+      "after": "104b1e35aa8a991e0ceb1bc986646714f7a17d57fd7d0ef2ed2c20b053cbc15b"
+    },
+    {
+      "path": "vllm_ascend/spec_decode/llm_base_proposer.py",
+      "before": "2747f13941fc3743c4b1e985a5c0f12e27da2155d60c4cf04bcf32129bd8f54b",
+      "after": "5b6ff8fa3c46388edc4a2df59957baf2019a30f3703c9731e917d7fe4272f2cc"
+    },
+    {
+      "path": "vllm_ascend/ops/vocab_parallel_embedding.py",
+      "before": "47fe17f7042534f62dc3a19bc6147de9400a639c1e2eae9ebb74c8ab75eef343",
+      "after": "314a34c6ec92342892b5dc1414c152017effc0c66d63bd84ad93ece54bc3cae4"
+    }
+  ]
+}

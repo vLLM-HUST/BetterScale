@@ -197,22 +197,17 @@ BetterScale is open source under the [Apache License 2.0](LICENSE).
 See [third-party notices](THIRD_PARTY_NOTICES.md) for the upstream execution paths
 adapted by the patches. The pinned upstream repositories retain their own licenses.
 
-## Optional owned live runtime (development source)
+## Optional resident State runtime (development source)
 
-The source now includes a separate BetterScale-owned `QwenLiveLLMRoot` and
-LiveModule/StateTensor execution path:
+Qwen3.5-35B-A3B's `--runtime live` entry uses BetterScale-owned StateTensor lanes
+with the qualified native model, MTP2, asynchronous scheduler and FULL graphs.
+The source, launch configuration and complete pinned donor adaptation are packaged
+under `src/betterscale`; no experiment controller or external `livemodule` import
+is required. See the [deployment instructions](src/betterscale/models/qwen35/README.md).
 
-```bash
-python -m betterscale serve-qwen /models/Qwen3.5-35B-A3B \
-  --runtime live --devices 0,1
-```
-
-It owns initialization and graph capture as well as resident State, with no
-external `livemodule` dependency or native runner fallback. The35B-A3B BF16 TP2
-+ MTP2 installed entry passed bounded end-to-end correctness checks. Default
-native serving is unchanged. This is currently serialized, greedy-only,
-loopback HTTP with512-token default context,20 resident seats and a separate
-shared token-page budget—not a throughput replacement or C16/C32 qualification.
-See the [model entry](src/betterscale/live/llm/qwen35/README.md) and
-[evidence](docs/evidence/qwen35-live-e2e.json). Published PyPI0.5.1 predates this
-source addition; no new package release is implied.
+The qualified E16/R20 configuration retains262144 context and pooled regular-attention
+pages. C16/900s SWE measured414.80 output tokens/s/chip versus a fresh369.17 control;
+this is one observation, not a statistical or SWE answer-quality certification.
+Native graph capture remains in use. Arbitrary historical checkpoints and EOS/stop
+rollback are not implemented. The earlier standalone live root remains research
+code, not the35B serving entry. Published PyPI0.5.1 predates this integration.

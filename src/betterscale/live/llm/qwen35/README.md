@@ -1,3 +1,9 @@
+> Historical standalone execution research. The current35B `serve-qwen --runtime live`
+> command uses the native BetterScale model/MTP/async route with resident State;
+> see [`models/qwen35`](../../../models/qwen35/README.md). This module remains
+> available for explicit research and the small-model vertical, not the qualified
+>35B performance entry. The observations below retain their original scope.
+
 # Experimental Qwen35 live root
 
 Implementation is owned here, not imported from LiveInference or `prototypes`:

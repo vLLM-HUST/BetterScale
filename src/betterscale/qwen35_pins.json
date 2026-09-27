@@ -156,5 +156,5 @@
       "sha256": "40199b8d1be13c6665a3a31c4b0b4cfbe1996d0e16a8a8da8d8a5aec6930f4be"
     }
   ],
-  "experimental_source_patch": "device_apc_runner.patch; base commit retained, source explicitly differs"
+  "experimental_source_patch": "models/qwen35/runtime.patch; exact isolated adaptation of the pinned donor"
 }

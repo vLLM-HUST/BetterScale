@@ -21,6 +21,9 @@ def prepare(
     token_pages=0,
     execution_seats=16,
     distributed_port=29535,
+    qwen35_runtime_dir=None,
+    state_budget_bytes=26038239232,
+    served_model_name="qwen35-moe",
 ):
     """Prepare a new process; never preload CANN into this interpreter."""
     if runtime == "live":
@@ -34,6 +37,9 @@ def prepare(
             token_pages,
             distributed_port,
             execution_seats,
+            qwen35_runtime_dir,
+            state_budget_bytes,
+            served_model_name,
         )
     if runtime != "native":
         raise ValueError(f"unknown runtime: {runtime}")
@@ -86,6 +92,9 @@ def prepare_live(
     token_pages,
     distributed_port,
     execution_seats=16,
+    qwen35_runtime_dir=None,
+    state_budget_bytes=26038239232,
+    served_model_name="qwen35-moe",
 ):
     """Inert launch admission: no torch, donor, device or native artifact imports."""
     selected = devices.split(",")
@@ -120,6 +129,24 @@ def prepare_live(
         ("qwen3_5_moe_text", 40, 2048, 2),
     ):
         raise ValueError("live supports Qwen3.5-0.8B TP1 or 35B-A3B TP2 only")
+    if envelope[0] == "qwen3_5_moe_text":
+        if (execution_seats, resident_seats, token_pages) != (16, 20, 0):
+            raise ValueError(
+                "Qualified Qwen35 State requires E16/R20 and automatic shared pages"
+            )
+        from .models.qwen35.launch import prepare as prepare_qwen35
+
+        return prepare_qwen35(
+            model,
+            devices,
+            port,
+            cache_dir,
+            qwen35_runtime_dir,
+            context_tokens,
+            state_budget_bytes,
+            served_model_name,
+            distributed_port,
+        )
     env = os.environ.copy()
     prepare_libraries(Path(__file__).parent, env)
     env.update(
@@ -149,15 +176,13 @@ def prepare_live(
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
-    qwen = sub.add_parser(
-        "serve-qwen", help="qualified native Qwen27 or experimental live Qwen35"
-    )
+    qwen = sub.add_parser("serve-qwen", help="native Qwen27 or State-backed Qwen35")
     qwen.add_argument("model", type=Path)
     qwen.add_argument(
         "--runtime",
         choices=("native", "live"),
         default="native",
-        help="native (default); live owns Qwen35 State and full-model graphs",
+        help="native Qwen27 (default); live Qwen35 uses resident State with native execution",
     )
     qwen.add_argument(
         "--devices",
@@ -175,9 +200,21 @@ def main():
         "--live-token-pages",
         type=int,
         default=0,
-        help="shared pages; 0 fits remaining physical memory after execution calibration",
+        help="0 allocates shared attention pages from the remaining State budget",
     )
     qwen.add_argument("--live-distributed-port", type=int, default=29535)
+    qwen.add_argument(
+        "--qwen35-runtime-dir",
+        type=Path,
+        help="Isolated donor from betterscale.models.qwen35.runtime",
+    )
+    qwen.add_argument(
+        "--state-budget-bytes",
+        type=int,
+        default=26038239232,
+        help="Qwen35 total resident plus shared-attention State budget/rank",
+    )
+    qwen.add_argument("--served-model-name", default="qwen35-moe")
     args = parser.parse_args()
     if platform.system() != "Linux" or platform.machine() != "aarch64":
         parser.error(
@@ -199,6 +236,9 @@ def main():
             execution_seats=args.live_execution_seats,
             token_pages=args.live_token_pages,
             distributed_port=args.live_distributed_port,
+            qwen35_runtime_dir=args.qwen35_runtime_dir,
+            state_budget_bytes=args.state_budget_bytes,
+            served_model_name=args.served_model_name,
         )
     except (ValueError, OSError) as exc:
         parser.error(str(exc))

@@ -204,3 +204,11 @@ MTP and DSV4 paths are unchanged. Weights remain BF16/ND. This is an opaque leaf
 hook at `RowParallelLinear`, selected from owned wave metadata during capture,
 not a new Worker or a replay-time host loop. Small prefill is not guaranteed faster:
 the fusion setup cost can exceed its communication savings at small token counts.
+
+## Development source: Qwen3.5-35B-A3B resident State
+
+The current source's `serve-qwen --runtime live` route preserves native BetterScale
+model/MTP/async execution and replaces State ownership. It is not included in the
+published0.5.1 package. See `src/betterscale/models/qwen35/README.md` for the complete
+isolated donor preparation and packaged launcher. No experiment controller is a
+runtime dependency, and the preparation helper never edits a shared donor install.

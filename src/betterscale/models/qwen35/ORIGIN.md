@@ -11,8 +11,10 @@ This source migration is not, by itself, a serving qualification or permission
 to change model arithmetic. State binding and graph lifecycle are separate
 substitution seams; keep native model forward, MTP, sampling and async scheduling.
 
-The pinned runner has two calls into `device_apc`. Apply the bundled
-`runtime-imports.patch` to the frozen baseline runtime before use; the Qwen35
-source pins require that exact owned-namespace form. This changes imports only,
-not runner control flow. Do not publish top-level module aliases or retain a
-PYTHONPATH dependency on the experimental capsule.
+The full four-file adaptation from the pinned Ascend donor is bundled as
+`runtime.patch`, with exact input/output identities in`runtime.json`. The inert
+`python -m betterscale.models.qwen35.runtime` command stages it in a new isolated
+directory. It does not modify installed donor files or import accelerator modules.
+The Qwen35 source pins still check every qualified dependency. The older
+`runtime-imports.patch` records only the namespace migration and is not the complete
+runtime preparation recipe. See README.md for the current serving entry.

@@ -91,19 +91,41 @@ class QwenLauncher(unittest.TestCase):
                     "BETTERSCALE_FIA_LIBRARY",
                 )
             }
-            with patch.dict(os.environ, overrides):
+            with (
+                patch.dict(os.environ, overrides),
+                patch(
+                    "betterscale.models.qwen35.launch.validate", side_effect=lambda p: p
+                ),
+            ):
                 command, env = prepare(
-                    root, "0,1", 8000, root / "cache", runtime="live"
+                    root,
+                    "0,1",
+                    8000,
+                    root / "cache",
+                    runtime="live",
+                    qwen35_runtime_dir=root / "donor",
                 )
-            self.assertTrue(command[1].endswith("live/llm/qwen35/serve.sh"))
-            self.assertEqual(env["BETTERSCALE_LIVE_TP"], "2")
-            self.assertEqual(command[command.index("--context-tokens") + 1], "262144")
+            self.assertTrue(command[1].endswith("models/qwen35/serve.sh"))
+            self.assertEqual(env["BETTERSCALE_QWEN35_RUNTIME"], str(root / "donor"))
+            self.assertEqual(command[command.index("--max-model-len") + 1], "262144")
             self.assertEqual(env["BETTERSCALE_FIA_LIBRARY"], str(library))
-            with patch.dict(
-                os.environ, {"BETTERSCALE_GDN_LIBRARY": "/missing/native.so"}
+            with (
+                patch.dict(
+                    os.environ, {"BETTERSCALE_GDN_LIBRARY": "/missing/native.so"}
+                ),
+                patch(
+                    "betterscale.models.qwen35.launch.validate", side_effect=lambda p: p
+                ),
             ):
                 with self.assertRaises(FileNotFoundError):
-                    prepare(root, "0,1", 8000, root / "cache", runtime="live")
+                    prepare(
+                        root,
+                        "0,1",
+                        8000,
+                        root / "cache",
+                        runtime="live",
+                        qwen35_runtime_dir=root / "donor",
+                    )
             with self.assertRaisesRegex(ValueError, "supports"):
                 prepare(root, "0", 8000, root / "cache", runtime="live")
         with self.assertRaisesRegex(ValueError, "unknown runtime"):

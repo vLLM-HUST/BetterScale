@@ -1,7 +1,7 @@
 """Qwen35 baseline entry; install its capture policy before config finalization.
 
 This is an alias of the original BetterScale Worker, not a new execution loop.
-Select it explicitly until the State-backed route has completed qualification.
+The packaged State-backed launcher selects it before native graph initialization.
 """
 
 from vllm.config import CUDAGraphMode
