@@ -123,3 +123,12 @@ repeatability or C16 extreme256K-skew performance (SWE reached about90–93K).
 Default remains native; explicit selection above enables the qualified candidate.
 The repo-knowledge `adapt-qwen35-moe/context-parallel-attention.md` and its
 colocated `context-parallel-ab.json` retain protocol, source identity and limits.
+
+A subsequent single combined point enabled resident State via the packaged
+`serve-qwen --runtime live` configuration (E16/R20/LiveStateScheduler) together
+with the same attention flag/library. Both paths passed the hot-cursor/long-split
+gate; C16/900s measured442.98 tokens/s/chip, decode P9062.91, TPOT median17.39ms.
+This exceeds historical resident-only414.80 by6.79%, but TTFT P95 worsened
+0.462→0.589s. The historical point was on a different host and no new control
+was run; it is combination evidence, not a paired incremental-speedup claim.
+See the same knowledge note and `resident-balanced-c16.json` for exact scope.

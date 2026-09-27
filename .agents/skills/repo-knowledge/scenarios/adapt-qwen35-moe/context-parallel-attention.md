@@ -132,3 +132,45 @@ byte-identical; other Python ASTs differ only in docstrings, and tiling.hpp only
 adds its vendor license notice. Seven CPU planner/adapter tests, six FIA tests,
 and six unittest-discovered Qwen35 checks passed; this is not the full pytest
 suite. The leaf and model gates above cover the changed device path.
+
+## Resident State plus balanced attention: one combination point
+
+Fletcher then requested only the combined configuration, no new control/repeats.
+Source `283e06d`, hw3 physical0/1, same pinned SWE client/workload/seed and
+C16/900s protocol, natural MTP2, E16/R20, query4096,262144 maximum context.
+Unlike the AB above, select `using_live_runtime=true` and `LiveStateScheduler`
+**together with** `BETTERSCALE_CONTEXT_PARALLEL=1`. Both earlier resident commits
+`a8abd05` and `d1ca3ec` are ancestors of283e06d: the AB omitted activation, not
+source integration. Never treat latest main alone as proof every optional path
+is enabled. Total State+FA budget remains26,038,239,232 bytes/rank; this funds
+resident State1,912,095,920 bytes plus16,720 shared128-token pages, not24.25GiB
+of FA alone. Startup reports2,140,160 FA token positions.
+
+The independent gate first retains32769/261000-token prompts after three forced
+output tokens, then appends the actual generated IDs and a new-user delta.
+Both hot requests hit exactly32771/261002 cached tokens and retrieve the code;
+concurrent256-token forced continuations observe split producers in both ranks
+and both banks. Post-EOS text is not quality evidence. Repeating the original
+prompt is NOT this gate: resident-only State cannot roll back to arbitrary old
+prefixes. C2/60s qualification then the single C16/900s point both pass.
+
+- Output **442.9806 tokens/s/chip**, decode P90 **62.9063 tokens/s/user**.
+- TPOT median/P95/P99 **17.3895/22.8271/30.0165ms**;
+  TTFT P95/P99 **0.58866/0.81222s**.
+- 1280 in-window completions,16 drained, zero failed requests and sampled
+  preemptions; full-concurrency99.427%. Longest observed prompt106308 tokens.
+- Prompt-token cache fraction97.653%,956827 uncached tokens including drain;
+  sampled natural mean acceptance length2.90104 (sampling includes drain).
+
+Relative to historical resident/native-attention414.8011, throughput is6.79%
+higher and decode P90 is5.76% higher, **but TTFT P95 is27.35% worse** (0.46225s
+historical). Relative to earlier hw3 native-State/balanced391.3, throughput is
+13.21% higher. These are descriptive historical comparisons, not an isolated
+attention gain:414.8 ran on the local host, this point on hw3, without a new
+paired control. Do not infer statistical significance or additive gains.
+
+`runs/attention-response/20260927-resident-balanced-c16` owns frozen source,
+launch/client commands, original requests, `result.json`, long gate and release
+receipts; colocated `resident-balanced-c16.json` retains compact metrics.
+Only one combination arm launched. Server/controller/admission exited0; no
+foreign-owner event. Selected0/1 were returned without disturbing other cards.
