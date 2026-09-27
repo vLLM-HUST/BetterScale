@@ -1,0 +1,47 @@
+{
+  "source_commit": "9386e3b",
+  "status": "PASS",
+  "scope": "Clean isolated sdist-to-wheel installation, packaged runtime preparation and public Qwen35 State-only launcher; no prototype/controller imports in serving workers",
+  "cpu_tests": 231,
+  "archive_checks": "sdist and platform wheel include runtime patch/manifest/scripts and native payload; strict Twine PASS",
+  "runtime_reproduction": {
+    "python_files_equal_to_measured": 477,
+    "native_libraries_equal_to_measured": 7,
+    "reference_commit": "a8abd056a3ece455f683b212d6bd905da4058cbb"
+  },
+  "hardware": {
+    "model": "Qwen3.5-35B-A3B",
+    "precision": "BF16",
+    "tensor_parallel_size": 2,
+    "mtp_tokens": 2,
+    "execution_seats": 16,
+    "resident_seats": 20,
+    "context_tokens": 262144,
+    "state_budget_bytes_per_rank": 26038239232,
+    "requests": 48,
+    "delta_tokens": [
+      37,
+      254,
+      1822,
+      5406
+    ],
+    "checks": [
+      "all16 exact terminal frontier hits",
+      "hot/cold output token ID equality",
+      "original access-code retrieval",
+      "hot-to-chunked-prefill across4096"
+    ],
+    "server_exit_code": 0,
+    "launcher_exit_code": 0,
+    "selected_devices_released": [
+      0,
+      1
+    ]
+  },
+  "local_evidence": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260927-src-closure",
+  "limitations": [
+    "No new throughput claim; September26 benchmark retains a8abd05 identity",
+    "No PyPI release or shared runtime installation",
+    "Native graph capture retained; no historical checkpoint or EOS/stop rollback"
+  ]
+}

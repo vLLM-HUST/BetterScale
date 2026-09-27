@@ -25,6 +25,44 @@ behavior; the later negative-slot output correction is described below. The init
 219 tests; final write-budget source passes229. Functional and matched
 timeline/performance acceptance are recorded below.
 
+## Packaged entry and donor closure — September27
+
+Source9386e3b closes delivery of the qualified35B route. The old public
+`serve-qwen --runtime live` dispatch still selected the standalone executor even
+though State/numerical source already lived under`src/betterscale`; it now selects
+`models.qwen35.launch` and the original Worker/AsyncScheduler route. The small-model
+standalone research entry remains separate. See the packaged model README for the
+complete command; do not reuse an older standalone launch when validating State-only
+performance.
+
+Only four pinned Ascend files differ from pristine9bf964cb: runner APC ordering,
+GDN strided gates, proposer draft greedy selection, and vocabulary gather policy.
+`runtime.patch` contains the complete adaptation (not merely the older two-import
+`runtime-imports.patch`). The CPU-only`models.qwen35.runtime` helper copies a built
+installed donor into a new isolated directory, validates original/adapted identities,
+applies the exact patch when needed, then checks all pinned sources and required
+native payload presence. Unknown/mixed inputs and existing outputs are rejected;
+no shared runtime is mutated. The Worker still checks core source/version pins.
+
+The source delivery capsule`20260927-src-closure` reproduces all477 measured donor
+Python files byte-for-byte starting from the installed pristine donor.231 owned CPU
+tests pass. A fresh sdist-to-wheel build includes patch, manifest, scripts, State
+source and all four qualified native artifacts; strict Twine checks and a clean
+`--no-deps --target` install pass. Platform wheels place Python files under
+`.data/purelib`; archive checks must not assume root-level`betterscale/` members.
+Build's pip-isolated dependency fetch hit a certificate error; using its supported
+`--installer uv` succeeded without disabling TLS verification. No PyPI upload or
+shared installation change is authorized/implied. Actual installed-entry hardware
+acceptance passes48 requests at BF16/TP2/MTP2/E16/R20/262144 and the full24.25GiB
+State budget. All16 exact terminal hot hits, original-code retrievals and output-ID
+comparisons with independent cold continuations pass; new-user deltas include5406
+tokens across the4096 prefill budget. The public launcher invokes the actual Worker
+without experiment observer imports. Server/launcher exit0; selected0/1 released
+IDLE. Admission waited for foreign work instead of displacing it. Seven donor native
+libraries also match the measured runtime directly. Compact receipt:
+`docs/evidence/qwen35-resident-package.json`. This is delivery acceptance, separately
+from the immutablea8abd05 timing result.
+
 ## Current serving entry
 
 Use the real Worker alias`betterscale.qwen35_worker.Worker`, not the earlier
