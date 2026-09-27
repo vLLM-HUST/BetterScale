@@ -107,3 +107,6 @@ idle backups; still-owned but drained backup, abort during copy and runnable
 slot reservation have CPU protocol/refcount coverage, not a forced TP2 device
 fault/concurrency qualification. No claim of arbitrary token-history parity,
 persistent host cache across engine lifetimes, or transport-failure recovery.
+
+For the completed C16/C32 × D1/D2 matched pressure matrix, host-LRU turnover
+and the retained C32D2 tail-latency regression, read [cache-pressure.md](cache-pressure.md).
