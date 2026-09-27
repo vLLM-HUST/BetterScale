@@ -59,4 +59,7 @@ E2E gains. The complete GDN leaf subsequently passed six2K/4K graph-replay cases
 bit-exact output/Conv/recurrent state against the previous composition. The real
 35B TP2/MTP2 model passed24 retrieval/APC/concurrency checks through262080
 input tokens, exit0; both ranks recorded all30 layers at both selected capacities.
-C16 A/B is running; no E2E performance claim yet.
+The paired C16 smoke completed:116.244→118.382 output tokens/s (+1.84%),
+but P95 TTFT worsened17.60%. This was one arrival-limited pair, not a
+repeatability or saturated-capacity claim. See [C16.md](C16.md) for the complete
+comparison, preserved audit warnings and installed-default boundary.

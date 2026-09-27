@@ -420,7 +420,7 @@ there was no serving-time error/OOM. No new benchmark point, formal window or
 PyPI release follows from this functional fix. Existing Frontier smoke points
 still describe their original unmodified capsule and KV budgets.
 
-## QKV/Conv integration boundary (2026-09-27, not yet E2E-qualified)
+## QKV/Conv integration boundary (2026-09-27, qualified with bounded E2E evidence)
 
 Enter `prototypes/qkv-conv-fusion/README.md` before treating the operator-profile
 QKV+Conv win as serving savings. The realBF16 donor uses jointQKVZ, whereas the
@@ -455,4 +455,22 @@ retrieval/APC/concurrency requests through262080 input tokens, server/launcher
 exit0. Both ranks recorded30 GDN layers×2 selected capacities. The complete
 GDN leaf (`core01`) was bit-exact for output, Conv pool and recurrent state over
 six changed-metadata graph replays. These close numerical/integration gates,
-not the still-running C16 throughput comparison.
+not a throughput claim by themselves.
+
+The completed paired C16 smoke is preserved in
+`prototypes/qkv-conv-fusion/C16.md`, `c16.json` and `tail-review.json`:
+116.244→118.382 output tokens/s (+1.84%), mean TTFT−8.71%, but P95
+TTFT+17.60% worse. Both upstream runs were valid with zero request errors;
+both servers/admissions exited0 and released hw3 cards6/7. This is one
+arrival-limited pair (mean HTTP in-flight3.121/2.969), not saturated C16 or a
+repeatability claim. Source-request overlap is not identical input/queue state.
+
+The AgentX wrapper exits1 for `completed_needs_review` when the original
+spread cohort's first-request ramp exceeds the measured window. Inspect
+`run.json`, upstream validity and the exact replay finding before treating
+that exit as a serving failure or rerunning a costly baseline. Preserve the
+warning; never weaken the general audit or silently certify a reviewed score.
+`compare_c16.py` checks the unchanged protocol and records the limitation.
+The task capsule's `betterscale-runtime.sh` now selects the qualified candidate
+unconditionally; arm selection remains only in the diagnostic A/B launcher.
+This installs the experimental MoE default, not a public dense27B/PyPI release.

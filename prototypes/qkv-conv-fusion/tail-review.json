@@ -1,0 +1,106 @@
+{
+  "matched": 146,
+  "baseline_duplicates": 0,
+  "candidate_duplicates": 0,
+  "equal_input": 38,
+  "equal_cache": 144,
+  "candidate_top_ttft": [
+    {
+      "source": [
+        "0bc9c4f798d321286bf39f2543c0c4e4c059",
+        6
+      ],
+      "old_ttft_ms": 24929.137873,
+      "new_ttft_ms": 24687.224799,
+      "old_input": 11605,
+      "new_input": 11607,
+      "old_cache": 0,
+      "new_cache": 0
+    },
+    {
+      "source": [
+        "0a279af1bec84c6ab033bb03f5d8bfd6b08d",
+        8
+      ],
+      "old_ttft_ms": 24413.916572,
+      "new_ttft_ms": 24017.364503,
+      "old_input": 143970,
+      "new_input": 143971,
+      "old_cache": 0,
+      "new_cache": 0
+    },
+    {
+      "source": [
+        "0bcd99353218b9a386b1c4aec13d77abecdb",
+        5
+      ],
+      "old_ttft_ms": 1001.2718269999999,
+      "new_ttft_ms": 23463.392744,
+      "old_input": 29402,
+      "new_input": 29399,
+      "old_cache": 26624,
+      "new_cache": 26624
+    },
+    {
+      "source": [
+        "0b7f3ca692f15ae2651a310d9411d70794aa",
+        6
+      ],
+      "old_ttft_ms": 20807.549538,
+      "new_ttft_ms": 21052.935172999998,
+      "old_input": 62884,
+      "new_input": 62882,
+      "old_cache": 0,
+      "new_cache": 0
+    },
+    {
+      "source": [
+        "0bcd99353218b9a386b1c4aec13d77abecdb",
+        5
+      ],
+      "old_ttft_ms": 3895.6912989999996,
+      "new_ttft_ms": 17672.676057,
+      "old_input": 27665,
+      "new_input": 27662,
+      "old_cache": 0,
+      "new_cache": 0
+    },
+    {
+      "source": [
+        "0b7f3ca692f15ae2651a310d9411d70794aa",
+        39
+      ],
+      "old_ttft_ms": 16601.170293,
+      "new_ttft_ms": 17106.508938,
+      "old_input": 102130,
+      "new_input": 102128,
+      "old_cache": 0,
+      "new_cache": 0
+    },
+    {
+      "source": [
+        "07dd40536557a1d6440a923557c3129dc929",
+        9
+      ],
+      "old_ttft_ms": 9559.617382999999,
+      "new_ttft_ms": 15474.797056,
+      "old_input": 100537,
+      "new_input": 100537,
+      "old_cache": 0,
+      "new_cache": 0
+    },
+    {
+      "source": [
+        "07dd40536557a1d6440a923557c3129dc929",
+        9
+      ],
+      "old_ttft_ms": 1237.165065,
+      "new_ttft_ms": 13523.535328,
+      "old_input": 102602,
+      "new_input": 102602,
+      "old_cache": 100352,
+      "new_cache": 100352
+    }
+  ],
+  "note": "same trace request keys, not identical token/cache/queue inputs; no isolated kernel-latency attribution"
+}

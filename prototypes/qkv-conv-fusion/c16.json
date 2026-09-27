@@ -1,0 +1,65 @@
+{
+  "scope": "one same-host same-protocol A/B; descriptive replay, not saturated throughput or statistical significance",
+  "source_commit": "a1d543e",
+  "baseline": {
+    "artifact": "/root/my-ascend-workspace/agentx-bench/artifacts/20260927T141317Z-smoke-c16-91305824",
+    "server": "/root/my-ascend-workspace/runs/operator-response/20260927-qkv-serving01/baseline-c16-01",
+    "upstream_submission_valid": true,
+    "wrapper_status": "completed_needs_review",
+    "review_findings": [
+      "first_request_ramp_exceeds_measurement_window"
+    ],
+    "profiling_requests": 150,
+    "mean_http_inflight": 3.1209804407755533,
+    "source_trace_count": 7,
+    "first_request_spread_seconds": 61493.7,
+    "all_phase_acceptance_length": 2.6302620155383893,
+    "metrics": {
+      "output_tokens_s": 116.24442981206649,
+      "ttft_mean_ms": 2940.63128894,
+      "ttft_p50_ms": 1206.82439,
+      "ttft_p95_ms": 10882.490136349981,
+      "itl_mean_ms": 22.43993895972096,
+      "itl_p95_ms": 36.934623442284426,
+      "request_latency_mean_ms": 18869.529645939998,
+      "request_latency_p95_ms": 69549.60432034996,
+      "output_tokens_s_chip": 58.12221490603324
+    }
+  },
+  "candidate": {
+    "artifact": "/root/my-ascend-workspace/agentx-bench/artifacts/20260927T150555Z-smoke-c16-a95d1c28",
+    "server": "/root/my-ascend-workspace/runs/operator-response/20260927-qkv-serving01/candidate-c16-01",
+    "upstream_submission_valid": true,
+    "wrapper_status": "completed_needs_review",
+    "review_findings": [
+      "first_request_ramp_exceeds_measurement_window"
+    ],
+    "profiling_requests": 149,
+    "mean_http_inflight": 2.968919331762526,
+    "source_trace_count": 7,
+    "first_request_spread_seconds": 61493.7,
+    "all_phase_acceptance_length": 2.6275038943373046,
+    "metrics": {
+      "output_tokens_s": 118.38165297823981,
+      "ttft_mean_ms": 2684.5848191409395,
+      "ttft_p50_ms": 1090.560559,
+      "ttft_p95_ms": 12797.52683839999,
+      "itl_mean_ms": 21.33423868286661,
+      "itl_p95_ms": 34.88761903896183,
+      "request_latency_mean_ms": 18188.08885524161,
+      "request_latency_p95_ms": 68395.44907719998,
+      "output_tokens_s_chip": 59.19082648911991
+    }
+  },
+  "relative_change_pct": {
+    "output_tokens_s": 1.8385596364734136,
+    "ttft_mean_ms": -8.707193953967508,
+    "ttft_p50_ms": -9.63386487407667,
+    "ttft_p95_ms": 17.597412706613458,
+    "itl_mean_ms": -4.927376490814217,
+    "itl_p95_ms": -5.542237100430524,
+    "request_latency_mean_ms": -3.6113289704865936,
+    "request_latency_p95_ms": -1.6594706101185852,
+    "output_tokens_s_chip": 1.8385596364734136
+  }
+}
