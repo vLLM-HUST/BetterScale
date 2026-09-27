@@ -1,4 +1,4 @@
-# QKV/Conv serving integration (qualification in progress)
+# QKV/Conv serving integration (qualified prototype; pending integration)
 
 Target: the qualified Qwen3.5-35B-A3B BF16 TP2/MTP2,16-seat FULL4096
 `moe-request-sampling1` serving capsule. This is not the released dense27B
@@ -10,6 +10,19 @@ The installed native artifact is the `ascend-op-prof`4577d42 wheel:
 (The launch capsule records and verifies the actual transferred artifact.)
 No runtime compilation of this native kernel, shared-runtime overwrite or PyPI
 publication is part of the integration. Triton bridges use the pinned donor JIT.
+
+## Pending integration
+
+Keep this change in draft review; do not merge or enable it in the current
+product default until the chunked-prefill fairness investigation
+[#4](https://github.com/vLLM-HUST/BetterScale/issues/4) and joint acceptance
+are complete. The qualified capsule default is experimental, not a mainline
+rollout. The measured source started at0e20558; main has since advanced to the
+owned Qwen execution path (observed e63932f). Port the consumer integration to
+that current path and qualify it there before merging. Do not treat these
+historical donor callbacks or the retained native wheel as a complete public
+package delivery; the native source/build dependency must also be made usable
+by the final integration.
 
 ## Real boundary, not microbenchmark shorthand
 
