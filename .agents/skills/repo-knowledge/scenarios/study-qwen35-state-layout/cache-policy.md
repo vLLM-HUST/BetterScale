@@ -110,3 +110,7 @@ persistent host cache across engine lifetimes, or transport-failure recovery.
 
 For the completed C16/C32 × D1/D2 matched pressure matrix, host-LRU turnover
 and the retained C32D2 tail-latency regression, read [cache-pressure.md](cache-pressure.md).
+
+For the accepted incremental-backup / partial-page-eviction direction and its
+source-derived construction boundaries (not yet implemented), read
+[incremental-cache.md](incremental-cache.md).
