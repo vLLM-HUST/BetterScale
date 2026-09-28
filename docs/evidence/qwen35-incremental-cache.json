@@ -1,0 +1,129 @@
+{
+  "status": "PASS",
+  "scope": "Incremental State cache correctness and transferred bytes; no throughput claim",
+  "feature_flag": "state_cache_incremental",
+  "integration_main": "852c106",
+  "cpu_tests": {
+    "distinct_passed": 63,
+    "scope": "13 incremental + 40 cache/worker/lease + 10 prefill fairness; separate targeted invocations"
+  },
+  "explicit_partial_restore": {
+    "source": "39f18a3",
+    "devices": [
+      1,
+      6
+    ],
+    "audit": true,
+    "source_blocks": [
+      6,
+      5,
+      4
+    ],
+    "restored_blocks": [
+      6,
+      5,
+      12
+    ],
+    "cursor": 4283,
+    "store_bytes_per_rank": {
+      "1": 164810804,
+      "0": 164810804
+    },
+    "restore_bytes_per_rank": {
+      "1": 118673460,
+      "0": 118673460
+    },
+    "incremental_store_bytes_per_rank": {
+      "1": 118673460,
+      "0": 118673460
+    },
+    "incremental_host_bytes": 118673460,
+    "restored_pages": 1,
+    "equal_hot_restored_cold_tokens": true,
+    "audit_views_per_operation_per_rank": 90
+  },
+  "automatic_policy": {
+    "source": "ab099a6",
+    "devices": [
+      1,
+      2
+    ],
+    "audit": false,
+    "manual_cache_actions": false,
+    "loads": [
+      {
+        "operation": 52,
+        "kind": "load",
+        "cancelled": false,
+        "ranks": [
+          0,
+          1
+        ],
+        "transfer_bytes_per_rank": {
+          "0": 95604788,
+          "1": 95604788
+        },
+        "restored_pages": 0
+      }
+    ],
+    "final_host_bytes": 4272244560,
+    "host_budget_bytes": 4294967296,
+    "final_counts": {
+      "store": 85,
+      "load": 1,
+      "drop": 49
+    },
+    "cached_tokens": {
+      "hot": 4283,
+      "warm": 4283,
+      "cold": 0,
+      "recomputed": 0
+    },
+    "all_outputs_equal": true
+  },
+  "release": {
+    "candidate1": {
+      "0": {
+        "hbm_used_mb": 3425,
+        "hbm_total_mb": 65536,
+        "aicore_percent": 0
+      },
+      "1": {
+        "hbm_used_mb": 3428,
+        "hbm_total_mb": 65536,
+        "aicore_percent": 0
+      }
+    },
+    "candidate2": {
+      "1": {
+        "hbm_used_mb": 3428,
+        "hbm_total_mb": 65536,
+        "aicore_percent": 0
+      },
+      "6": {
+        "hbm_used_mb": 3423,
+        "hbm_total_mb": 65536,
+        "aicore_percent": 0
+      }
+    },
+    "candidate3": {
+      "1": {
+        "hbm_used_mb": 3428,
+        "hbm_total_mb": 65536,
+        "aicore_percent": 0
+      },
+      "2": {
+        "hbm_used_mb": 3419,
+        "hbm_total_mb": 65536,
+        "aicore_percent": 0
+      }
+    }
+  },
+  "limits": [
+    "Partial-overwrite NPU witness precedes the weak-free-page LRU fix; latest LRU passed the 100/20 real-pool CPU test and automatic NPU run (all three FA pages survived).",
+    "e9b439e adds CPU-tested storage retention and stream-drain failure handling; no fault-injected NPU run.",
+    "No C16/C32 throughput matrix or new timeline captured.",
+    "First capsule failed before model execution because the newly integrated balanced-attention native library was missing; candidate2/3 included the qualified artifact.",
+    "Both passing NPU runs reported one forced remaining-process cleanup and a shared-memory resource_tracker warning; selected devices were released, but teardown was not warning-free."
+  ]
+}

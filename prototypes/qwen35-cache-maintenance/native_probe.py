@@ -210,12 +210,16 @@ async def main():
         after = await control(kind="snapshot")
         assert after["model_steps"] == before["model_steps"]
         restored = after["seats"][destination]
-        assert (
-            restored["cursor"] == source["cursor"]
-            and restored["blocks"] != source["blocks"]
-        )
+        assert restored["cursor"] == source["cursor"]
+        if not incremental:
+            assert restored["blocks"] != source["blocks"]
         if incremental:
-            assert 0 < load["restored_pages"] < len(source["blocks"]), load
+            # Weak-page LRU prefers unused capacity, so C need not overwrite
+            # any FA page. Earlier unhashed-free ordering forced one hole;
+            # that byte-audited observation is preserved in candidate2.
+            assert 0 <= load["restored_pages"] < len(source["blocks"]), load
+            survived = len(set(source["blocks"]) & set(restored["blocks"]))
+            assert survived >= len(source["blocks"]) - load["restored_pages"]
             assert all(
                 value < next(iter(store["transfer_bytes_per_rank"].values()))
                 for value in load["transfer_bytes_per_rank"].values()

@@ -1,8 +1,9 @@
 # Incremental State backup and sparse device residency
 
 Enter before replacing whole-checkpoint transfers with incremental FA backup,
-partial device eviction and missing-page restore. This is a source-derived
-construction assessment, not an implemented or qualified feature.
+partial device eviction and missing-page restore. The assessment below is
+historical; the implementation and qualification receipt at the end supersedes
+its unimplemented status without widening the measured scope.
 
 ## Accepted direction (Fletcher, 2026-09-28)
 
@@ -103,3 +104,76 @@ The principal risk is version/reference correctness at the mutable tail and
 async reuse boundary, not copying fewer bytes. Kernel-page granularity versus
 native allocator-block granularity must stay explicit; starting at native blocks
 avoids silently expanding this into an allocator redesign.
+
+
+## Implementation and qualification (2026-09-28)
+
+Implemented on `codex/qwen35-incremental-cache`, integrating main `852c106`
+without replacing its prefill rotation. Enable `state_cache_incremental: true`
+alongside the existing host-cache options. Non-incremental behavior remains
+available. Runtime sources live in `src`, not the probe closure.
+
+`cache_pages.py` wraps the **instance-local** native pool allocation/free seams.
+Reallocation invalidates weak identities; write admission invalidates the mutable
+suffix. Cold valid pages append in LRU order behind genuinely unused/invalid
+free capacity, rather than taking native unhashed-free prepend priority. No
+native FA-only hash hit is enabled. On restore, free surviving placements are
+pinned before holes are allocated. This first cut deliberately does not alias
+active device placements, even sealed ones.
+
+`live/runtime/page_state.py` owns refcounted host objects and manifests. Each
+native-block object owns its allocation (no partially retained slab charged as
+one small page); one batch uses one DMA event, not one event per page. Each GDN
+snapshot stays private. Incremental cache actions are serialized, while other
+inference remains async. Failed enqueue drains its stream before unwinding;
+unknown DMA lifetime retains handles/storage and capacity until engine teardown.
+No device-wide synchronization is added to normal cache operations.
+
+**CPU:** 63 distinct tests passed across incremental ownership/bytes/failure
+lifetime (13), existing cache/actions/worker/resident gates (40), and main prefill
+rotation compatibility/planning (10). These include the real native pool's
+100-page / 20-overwrite / 20-restore witness, mutable suffix invalidation through
+`LiveStateScheduler._allocate`, host unique-byte accounting, delayed TP receipt,
+abort, LRU order and uncertain-DMA storage retention.
+
+**Native explicit byte witness**, `candidate2`, source `39f18a3`, hw3 1/6:
+35B BF16 TP2/MTP2/FULL/native async, balanced attention, 6GiB State/rank and
+512MiB host/rank. A's4283-token exact checkpoint had three native FA blocks:
+`[6,5,4]`; after overwrite it restored as `[6,5,12]`. Only one FA block was
+transferred. Per rank, full backup164,810,804 bytes versus partial restore
+118,673,460 bytes. Advancing A then backing up again added/transferred only
+118,673,460 bytes (new GDN plus tail); the two sealed FA blocks were reused.
+Both ranks checked all90 selected State views bytewise after store/load/store,
+including the pages *not* copied during restore. All matched. Unmoved hot,
+restored hot and independent cold returned the same30 IDs and expected code.
+This audit deliberately synchronizes and is not an overlap/performance result.
+
+**Native automatic policy**, `candidate3`, source `ab099a6`, hw3 1/2:
+same model/execution, 4GiB host/rank, audit disabled, no manual cache actions.
+20 automatic backups initially kept20 seats hot. A was evicted from the seat
+arena but its three FA blocks survived in the weak LRU. On return the automatic
+load transferred only95,604,788 bytes of GDN/continuation per rank: **zero FA
+blocks**. Hot/restored hits4283 tokens; cold and post-host-eviction re-entry hit0.
+All four outputs were identical. Final observed operations85 stores /1 load /
+49 drops; host4,272,244,560 bytes/rank below4GiB, pending0.
+
+The explicit partial-overwrite witness predates the weak-free-page LRU change;
+the latest LRU has the real-pool CPU partial-overwrite gate and the automatic
+NPU all-pages-survived gate. The current explicit probe also permits zero holes:
+C must overwrite the GDN seat, but unused FA capacity should now protect A's
+pages. Do not force a needless overwrite merely to recreate an older witness.
+`e9b439e` subsequently tightens uncertain-DMA retention/draining, covered by CPU
+fault tests; there is no fault-injected NPU qualification.
+
+Both passing supervisors exited0 and selected cards returned to idle baseline.
+Both native shutdowns force-killed one remaining owned process and warned about
+one shared-memory object; preserve those warnings. `candidate1` failed before
+model execution because the source capsule omitted main's newly required
+balanced-attention library. Later capsules include the exact `native.json`
+qualified binary; no admission or artifact guard was relaxed.
+
+Compact tracked receipt: `docs/evidence/qwen35-incremental-cache.json`.
+Full local/remote evidence: `runs/qwen35-state-lanes/20260928-incremental-cache/`.
+CPU logs: sibling `20260928-incremental-cache-cpu` remotely, copied into the
+local evidence folder. This establishes functionality and actual byte savings,
+not C16/C32 throughput, tail latency, or a new timeline/overlap measurement.
