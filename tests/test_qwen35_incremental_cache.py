@@ -321,3 +321,56 @@ def test_partial_enqueue_drains_before_unwind_or_quarantines(monkeypatch):
     with pytest.raises(RuntimeError, match="drain failed"):
         backend._copy_lanes(lanes, payloads, to_host=True, stream=stream)
     assert backend.quarantined == [(lanes, payloads, stream)]
+
+
+def test_policy_serializes_returning_host_hits_without_blocking_cold_work():
+    from vllm.v1.core.sched.request_queue import FCFSRequestQueue
+    from betterscale.models.qwen35.cache_policy import CachePolicy
+
+    class Request(S):
+        __hash__ = object.__hash__
+        __eq__ = object.__eq__
+
+    s, c, pool = setup(8)
+    seat = s.residents.seats[0]
+    pool.free_blocks(seat.blocks.blocks[0][4:])
+    seat.blocks = s.kv_cache_manager.create_kv_cache_blocks((seat.blocks.blocks[0][:4],))
+    seat.tokens = tuple(range(513))
+    done(c, c.store(0, "A"))
+    seat = s.residents.seats[0]
+    seat.tokens = tuple(range(1000, 1129))
+    seat.blocks = s.kv_cache_manager.create_kv_cache_blocks(
+        (tuple(pool.get_new_blocks(1)),)
+    )
+    done(c, c.store(0, "B"))
+    a = Request(all_token_ids=list(range(514)), cache_salt=None,
+          skip_reading_prefix_cache=False)
+    b = Request(all_token_ids=list(range(1000, 1130)), cache_salt=None,
+          skip_reading_prefix_cache=False)
+    cold = Request(all_token_ids=[9999], cache_salt=None,
+             skip_reading_prefix_cache=False)
+    s.waiting = FCFSRequestQueue([a, b, cold])
+    s.skipped_waiting = FCFSRequestQueue()
+    s.running = []
+    s.max_num_running_reqs = 16
+    policy = CachePolicy(s)
+    with policy.runnable():
+        assert list(s.waiting) == [cold]
+        assert len(c.pending) == 1
+    assert list(s.waiting) == [a, b, cold]
+    n = next(iter(c.pending))
+    c.receive(receipt(c, n, 0))
+    with policy.runnable():
+        assert list(s.waiting) == [cold]
+        assert len(c.pending) == 1
+    c.receive(receipt(c, n, 1))
+    with policy.runnable():
+        assert list(s.waiting) == [a, cold]
+        assert len(c.pending) == 1
+    done(c, next(iter(c.pending)))
+    assert {id(r) for r in s.waiting} == {id(a), id(b), id(cold)}
+    assert s.residents.offer(a.all_token_ids, None, 7).warm
+    assert s.residents.offer(b.all_token_ids, None, 7).warm
+    with policy.runnable():
+        assert {id(r) for r in s.waiting} == {id(a), id(b), id(cold)}
+        assert not c.pending

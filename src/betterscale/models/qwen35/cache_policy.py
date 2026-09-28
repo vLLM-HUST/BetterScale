@@ -142,14 +142,20 @@ class CachePolicy:
             s.kv_cache_manager.block_pool.get_num_free_blocks() + owned
             >= checkpoint.block_count
         ):
+            if cache.pages is not None and cache.pending:
+                return True  # wait for the single incremental transaction slot
             cache.load(checkpoint.key, seat.index)
 
     @contextmanager
     def runnable(self):
         """Exclude I/O-pinned owners and restore waiters, not other ready work."""
         s = self.scheduler
-        for request in list(s.waiting):
-            self.restore(request)
+        deferred = {
+            id(request)
+            for queue in (s.waiting, s.skipped_waiting)
+            for request in list(queue)
+            if self.restore(request)
+        }
         running = list(s.running)
         held = [
             r
@@ -158,7 +164,7 @@ class CachePolicy:
             is not None
         ]
         queues = [
-            (q, [r for r in q if self.cache.blocks_prompt(r)])
+            (q, [r for r in q if id(r) in deferred or self.cache.blocks_prompt(r)])
             for q in (s.waiting, s.skipped_waiting)
         ]
         s.running[:] = [r for r in running if r not in held]
