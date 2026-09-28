@@ -1,0 +1,37 @@
+{
+  "source_commit": "96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c",
+  "status": "PASS",
+  "scope": "Qwen35 BF16 TP2 native async MTP2 FULL E36/R36 with balanced target verification attention; no throughput claim",
+  "capsule": "runs/qwen35-state-lanes/20260928-configurable-seats-gate2",
+  "requests": 144,
+  "distinct_hot_cold_pairs": 36,
+  "exact_output_token_equal": true,
+  "unique_secret_retrievals": 36,
+  "observed_peak_seat_owners": 36,
+  "rank_budgets": [
+    {
+      "total_bytes": 26038239232,
+      "resident_bytes": 3441772656,
+      "attention_bytes": 22596466576,
+      "resident_seats": 36,
+      "execution_seats": 36,
+      "token_pages": 15664,
+      "page_tokens": 128
+    },
+    {
+      "total_bytes": 26038239232,
+      "resident_bytes": 3441772656,
+      "attention_bytes": 22596466576,
+      "resident_seats": 36,
+      "execution_seats": 36,
+      "token_pages": 15664,
+      "page_tokens": 128
+    }
+  ],
+  "server_exit": 0,
+  "admission_exit": 0,
+  "teardown_warning": "one shared_memory resource_tracker warning after requested shutdown",
+  "native_host_contract": "host row guard33->37, request workspace23,069,696B unchanged; numerical GDN and FIA kernel artifacts unchanged",
+  "cpu_tests": 58,
+  "cp_planner_cpu_scope": "randomized1..96 live requests, not96-row device qualification"
+}

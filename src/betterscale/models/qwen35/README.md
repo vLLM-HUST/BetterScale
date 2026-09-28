@@ -52,8 +52,18 @@ It does not claim or acquire accelerator ownership itself. The default total Sta
 budget is26,038,239,232 bytes/rank, E16/R20 and262144 context. Change the total via
 `--state-budget-bytes`, not resident-count × context pages. The resident declaration
 is1,912,095,920 bytes/rank; remaining bytes fund shared FA pages. The default admits
-16,720 physical128-token pages. Explicit page counts or other seat counts are rejected
-by this qualified entry. No CPU KV offload or connector is enabled.
+16,720 physical128-token pages. Explicit page counts remain rejected. `--execution-seats` controls native
+`max_num_seqs`; `--resident-seats` independently controls retained State rows.
+The current configurable envelope is1..36 execution rows, with at least as many
+resident seats. For C16 retain E16/R20; the C32 system trial uses E36/R36, not
+E16/R20 and not40 resident seats. Changing rotation depth does not automatically
+multiply seats. Direct vLLM entry uses `--max-num-seqs` and
+`additional_config.state_resident_seats` (default execution+4). The same values
+reach allocation, host-byte accounting, metadata, MTP addressing and capture keys.
+E36/R36 native TP2/FULL/async passes144 requests, including36 distinct-key hot
+continuations and their exact-token independent cold oracles; see
+`docs/evidence/qwen35-configurable-seats.json`. It retains2,004,992 shared FA tokens
+at the default total budget. This correctness gate is not a new performance claim. No CPU KV offload or connector is enabled.
 
 One convolution window and three recurrent candidates serve each resident. A known
 output-length budget prevents queued later frames from overwriting terminal State;

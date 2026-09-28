@@ -222,5 +222,6 @@ not speculative prefetch. Both full and incremental modes have occupied-running
 and paused-streaming capacity tests. Combined policy/incremental/prefill suites
 pass38 tests. Fresh all-six paired900s acceptance uses the sibling
 `20260928-incremental-pressure-demand/` capsule, rather than mixing these
-behavior changes into an earlier performance comparison. Results remain pending
-until the pressure receipt is completed.
+behavior changes into an earlier performance comparison. All six diagnostic windows completed valid with zero failed requests. See
+[cache-pressure.md](cache-pressure.md) for the small measured gains and Fletcher's
+correction: offered-C32 constrained toE16 is not system-wide C32 acceptance.

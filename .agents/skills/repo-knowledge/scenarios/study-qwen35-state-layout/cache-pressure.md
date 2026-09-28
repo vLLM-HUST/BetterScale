@@ -50,3 +50,53 @@ All eight server exit codes and campaign exit are0; selected cards return to bas
 The abandoned hw180 attempt failed before model execution because a telemetry Scheduler subclass violated the strict canonical scheduler-class admission. The corrected harness leaves that admission intact and wraps scalar observation through the native `vllm.general_plugins` lifecycle. Never weaken source/configuration gates just to observe a run.
 
 Fletcher redirected the campaign to the qualified hw3 environment while the hw180 CPU source build continued. Its queued automatic NPU qualification was explicitly cancelled. These pressure results do not qualify or complete that separate rebuild.
+
+## September28: distinguish system capacity from forced seat pressure
+
+Fletcher's system-acceptance correction: C16 gets20 resident seats; C32 gets36,
+not40, and must not be artificially limited to16 execution slots. Rotation depth
+increases the working set, not the seat allocation. The new system protocol uses
+E16/R20 for C16D1/D2 and E36/R36 for C32D1, retaining the same total State budget;
+only the resident declaration is subtracted before allocating the shared FA pool.
+This protocol is separate from the historical E16/R20 offered-load experiment.
+
+The remembered356.1928/355.6917 tokens/s/chip points are September24 native
+C32D1 runs with32 execution slots (TP2/TP2 and TP2/EP2 respectively), not the
+September27 offloading control. In comparison, September28 full-cache E16/R20
+produced283.3439 with mean sampled waiting15.05 vs4.39, TTFT P9549.82s vs3.24s,
+and prompt cache59.31% vs78.09%. Per-request decode P90 was58.91 vs37.67, and
+FA usage peaked35.73% vs81.22%. This is evidence of queueing/recomputation, NOT
+a slower-kernel conclusion or exhausted FA pool. Host/source/scheduler also
+differ; these are not matched causal arms. Artifact:
+`runs/qwen35-state-lanes/20260928-incremental-pressure-demand/historical-c32-comparison.json`.
+
+The completed matched16389d9 E16/R20 diagnostic has all six official windows
+valid, zero failures: full→incremental C16D1 442.8272→441.2172 (-0.36%);
+C16D2 315.2989→320.1983 (+1.55%); offered-C32D1 283.3439→294.4378 (+3.92%).
+These pressure gains are small, not the predeclared10% material improvement.
+All observed load admissions obey the native execution-capacity gate. Do not
+relabel these as the pending width-matched system acceptance or publish them
+as such. Scalar transfer accounting, official request records and paired source
+identity remain in that capsule's `comparison.json`.
+
+Capacity plumbing candidate13fa810 removes the E16/R20 constants from State
+allocation/accounting, native request metadata, GDN row-publication kernels, MTP
+draft padding, graph keys and the public launch path. Balanced attention had a
+second hidden admission condition: exactly17 physical rows and a16-live-row
+planner check. Its producer/merge scratch bound depends on24 hardware groups,
+not a16-request bound; the CPU quota/encoding/scaled-length oracle now exercises
+up to96 live requests. This does NOT establish96-request NPU qualification.
+The model serving envelope remains bounded at36 execution rows; explicit E36/R36
+correctness and width-matched benchmarks use `20260928-configurable-seats-gate/`
+and `20260928-width-matched-cache/`. Gate1 failed closed before service startup because the native GDN host shim
+still rejected more than33 padded rows. Its dynamically aligned request arrays
+need no extra workspace at37 rows. Rebuilt only that host shim with a37-row
+contract (`96cd03a`); raw numerical GDN/FIA artifacts stay unchanged. Gate2
+passes144 HTTP requests:36-row saturation,36 distinct-key first turns,36 hot
+continuations (added inputs through >4096) and36 independent cold oracles.
+All paired output token IDs and retrievals agree; sampled seat owners reaches36.
+Both ranks declare3,441,772,656 resident bytes and15,664 shared128-token pages
+(2,004,992 tokens), with the same24.25GiB total State budget. Server/admission
+exit0, selected local0/1 released; one shared-memory teardown warning remains.
+Receipt: `docs/evidence/qwen35-configurable-seats.json`. The new paired900s system
+campaign is still separate and pending; do not infer its throughput from the gate.
