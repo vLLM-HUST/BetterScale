@@ -16,7 +16,18 @@ class _CopyBackend(TorchHostStateBackend):
     def _copy_lanes(self, lanes, payloads, *, to_host, stream):
         # PageStateStore supplies the stream scope, completion event and error
         # drain for the entire batch. Individual handles are not exposed.
-        self._enqueue_copies(lanes, payloads, to_host=to_host)
+        try:
+            self._enqueue_copies(lanes, payloads, to_host=to_host)
+        except BaseException:
+            # Drain before the base offload/restore unwinds its local payload.
+            # An uncertain drain keeps that exact storage alive until teardown.
+            if lanes[0][1].tensor.device.type != "cpu":
+                try:
+                    stream.synchronize()
+                except BaseException:
+                    self.quarantined.append((lanes, payloads, stream))
+                    raise
+            raise
 
 
 class PageTransfer:
@@ -37,6 +48,7 @@ class PageTransfer:
             for handle in self.handles:
                 handle.result()
             self.store.pending.remove(self.key)
+            del self.store.transfers[self.key]
             self.finished = True
         return self.key
 
@@ -47,6 +59,7 @@ class PageStateStore:
         self.manifests = {}
         self.references = {}
         self.pending = set()
+        self.transfers = {}
         self.lock = RLock()
         self.quarantined = []
 
@@ -147,6 +160,8 @@ class PageStateStore:
                 if device is not None:
                     stream.synchronize()
                 raise
-            return PageTransfer(
+            transfer = PageTransfer(
                 self, key, handles, event, sum(h.byte_length for h in handles)
             )
+            self.transfers[key] = transfer
+            return transfer

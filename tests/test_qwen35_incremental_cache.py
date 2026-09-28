@@ -272,3 +272,52 @@ def test_weak_cached_pages_use_lru_not_native_unhashed_free_prepend():
         b.block_id for b in original[:2]
     ]
     assert set(c.pages.by_key) == set(keys[2:])
+
+
+def test_uncertain_completion_retains_payload_and_reserved_capacity():
+    domain = object()
+    st = state(torch.arange(4).reshape(2, 2), domain)
+    store = PageStateStore(memory_budget_bytes=32)
+    transfer = store.transfer(
+        "A", [("x", st)], {"a": select(domain, 0)}, store=True, stream=None
+    )
+
+    def failed_wait():
+        raise RuntimeError("unknown DMA lifetime")
+
+    transfer.event = S(synchronize=failed_wait)
+    with pytest.raises(RuntimeError, match="unknown DMA"):
+        transfer.result()
+    assert store.transfers["A"] is transfer
+    assert store.backend._reserved_bytes == 16
+    assert store.pending == {"A"}
+    with pytest.raises(ValueError, match="pending DMA"):
+        store.release("A")
+
+
+def test_partial_enqueue_drains_before_unwind_or_quarantines(monkeypatch):
+    from betterscale.live.runtime.page_state import _CopyBackend
+
+    backend = _CopyBackend(memory_budget_bytes=32)
+    calls = []
+
+    def fail_enqueue(*args, **kwargs):
+        calls.append("enqueue")
+        raise RuntimeError("partial enqueue")
+
+    monkeypatch.setattr(backend, "_enqueue_copies", fail_enqueue)
+    lanes = (("fa", S(tensor=S(device=S(type="npu"))), (0,)),)
+    payloads = {"fa": object()}
+    stream = S(synchronize=lambda: calls.append("drain"))
+    with pytest.raises(RuntimeError, match="partial enqueue"):
+        backend._copy_lanes(lanes, payloads, to_host=True, stream=stream)
+    assert calls == ["enqueue", "drain"]
+    assert not backend.quarantined
+
+    def failed_drain():
+        raise RuntimeError("drain failed")
+
+    stream.synchronize = failed_drain
+    with pytest.raises(RuntimeError, match="drain failed"):
+        backend._copy_lanes(lanes, payloads, to_host=True, stream=stream)
+    assert backend.quarantined == [(lanes, payloads, stream)]
