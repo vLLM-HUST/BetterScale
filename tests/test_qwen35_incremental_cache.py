@@ -377,3 +377,38 @@ def test_policy_serializes_returning_host_hits_without_blocking_cold_work(increm
     with policy.runnable():
         assert {id(r) for r in s.waiting} == {id(a), id(b), id(cold)}
         assert not c.pending
+
+
+@pytest.mark.parametrize("incremental", [False, True])
+@pytest.mark.parametrize("streaming", [False, True])
+def test_automatic_restore_waits_for_native_execution_capacity(incremental, streaming):
+    from vllm.v1.core.sched.request_queue import FCFSRequestQueue
+    from betterscale.models.qwen35.cache_policy import CachePolicy
+
+    class Request(S):
+        __hash__ = object.__hash__
+        __eq__ = object.__eq__
+
+    s, c, _ = setup(4)
+    if not incremental:
+        c.pages = None
+    done(c, c.store(0, "A"))
+    a = Request(request_id="a", all_token_ids=list(range(514)),
+                cache_salt=None, skip_reading_prefix_cache=False)
+    busy = Request(request_id="busy")
+    s.residents.requests["busy"] = 2
+    s.residents.seats[2].owner = "busy"
+    s.running = [] if streaming else [busy]
+    s.num_waiting_for_streaming_input = int(streaming)
+    s.max_num_running_reqs = 1
+    s.waiting = FCFSRequestQueue([a])
+    s.skipped_waiting = FCFSRequestQueue()
+    policy = CachePolicy(s)
+    with policy.runnable():
+        assert not c.pending
+        assert list(s.waiting) == [a]
+    s.running = []
+    s.num_waiting_for_streaming_input = 0
+    with policy.runnable():
+        assert len(c.pending) == 1
+        assert not s.waiting

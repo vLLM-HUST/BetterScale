@@ -152,11 +152,19 @@ class CachePolicy:
     def runnable(self):
         """Exclude I/O-pinned owners and restore waiters, not other ready work."""
         s = self.scheduler
+        # Match native admission: queued prompts cannot use an execution slot
+        # while running/paused-streaming requests own the full capacity. Loading
+        # them anyway churns spare seats and starves useful background backups.
+        slots = (
+            s.max_num_running_reqs
+            - len(s.running)
+            - getattr(s, "num_waiting_for_streaming_input", 0)
+        )
         deferred = {
             id(request)
             for queue in (s.waiting, s.skipped_waiting)
             for request in list(queue)
-            if self.restore(request)
+            if slots > 0 and self.restore(request)
         }
         running = list(s.running)
         held = [
