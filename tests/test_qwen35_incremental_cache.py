@@ -323,7 +323,8 @@ def test_partial_enqueue_drains_before_unwind_or_quarantines(monkeypatch):
     assert backend.quarantined == [(lanes, payloads, stream)]
 
 
-def test_policy_serializes_returning_host_hits_without_blocking_cold_work():
+@pytest.mark.parametrize("incremental", [False, True])
+def test_policy_serializes_returning_host_hits_without_blocking_cold_work(incremental):
     from vllm.v1.core.sched.request_queue import FCFSRequestQueue
     from betterscale.models.qwen35.cache_policy import CachePolicy
 
@@ -332,6 +333,8 @@ def test_policy_serializes_returning_host_hits_without_blocking_cold_work():
         __eq__ = object.__eq__
 
     s, c, pool = setup(8)
+    if not incremental:
+        c.pages = None
     seat = s.residents.seats[0]
     pool.free_blocks(seat.blocks.blocks[0][4:])
     seat.blocks = s.kv_cache_manager.create_kv_cache_blocks((seat.blocks.blocks[0][:4],))

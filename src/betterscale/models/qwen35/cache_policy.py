@@ -142,8 +142,10 @@ class CachePolicy:
             s.kv_cache_manager.block_pool.get_num_free_blocks() + owned
             >= checkpoint.block_count
         ):
-            if cache.pages is not None and cache.pending:
-                return True  # wait for the single incremental transaction slot
+            if cache.pending:
+                # One automatic transaction: parallel restores can consume every
+                # spare seat, then evict a completed restore before it executes.
+                return True
             cache.load(checkpoint.key, seat.index)
 
     @contextmanager
