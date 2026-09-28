@@ -99,4 +99,34 @@ Both ranks declare3,441,772,656 resident bytes and15,664 shared128-token pages
 (2,004,992 tokens), with the same24.25GiB total State budget. Server/admission
 exit0, selected local0/1 released; one shared-memory teardown warning remains.
 Receipt: `docs/evidence/qwen35-configurable-seats.json`. The new paired900s system
-campaign is still separate and pending; do not infer its throughput from the gate.
+campaign is separate from this correctness gate; its completed observations follow.
+
+
+### Width-matched system result, source96cd03a
+
+All six900s official windows passed, zero failed requests. Same-source matched
+full→incremental pairs: C16D1 E16/R20 **442.6372→437.5694** tokens/s/chip
+(-1.14%); C16D2 E16/R20 **313.1272→315.3294** (+0.70%); C32D1 E36/R36
+**613.8800→613.5333** (-0.06%). TTFT P95 respectively0.571→0.520s,
+3.158→3.319s,0.729→0.713s. C16D1 passes the5% nonregression gate; neither
+pressure arm reaches the predeclared10% material incremental-throughput gain.
+C16D2 tail latency worsens5.10%; retain this counterexample.
+
+C16D1 ran locally; C16D2/C32D1 ran concurrently on hw3, same physical pair
+within each full/incremental comparison. Total State24.25GiB/rank, host8GiB,
+watermark0.7, native async/FULL/MTP2/balanced attention. Rank budgets match the
+above capacity receipts. No native running preemptions; peak sampled FA usage
+84.56%. Both C16D1/C32D1 modes observe zero host restores. Thus the new C32
+record does not demonstrate incremental restore speedup: relaxed execution
+width and wider balanced attention change the historical system comparison.
+Do not assign the entire historical improvement to a single cause.
+
+Incremental C16D2 observes615 loads, only32 transferred FA blocks. D2H per rank
+225,443,812,148 of328,307,020,596 logical bytes; H2D59,535,142,124 of
+191,326,465,260 logical bytes. Savings are real, throughput gain is not material.
+These scalar counters include qualification/drain. All sampled load admissions
+respect execution capacity. All server/admission exits0 and selected devices
+released. Five servers warn about shared-memory cleanup; four output handlers
+log EngineDeadError only after requested shutdown. Compact receipt:
+`docs/evidence/qwen35-width-matched-cache.json`; raw local capsule and remote
+same relative path: `runs/qwen35-state-lanes/20260928-width-matched-cache/`.

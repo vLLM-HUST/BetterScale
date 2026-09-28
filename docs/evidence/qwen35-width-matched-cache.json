@@ -1,0 +1,358 @@
+{
+  "status": "COMPLETE_VALID",
+  "source_commit": "96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c",
+  "capsule": "20260928-width-matched-cache",
+  "configuration": {
+    "source_commit": "96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c",
+    "client_commit": "8bb99ebac120f8907623fc1b5a04946894424d31",
+    "duration_seconds": 900,
+    "qualification_seconds": 60,
+    "seed": 20260924,
+    "pairs": [
+      [
+        16,
+        1
+      ],
+      [
+        16,
+        2
+      ],
+      [
+        32,
+        1
+      ]
+    ],
+    "comparison": "same source/native async/FULL/balanced attention, C16 E16/R20 and C32 E36/R36, total State26038239232B/rank, host8GiB/rank; only incremental flag changes within each pair",
+    "order": {
+      "c16d1": [
+        "full",
+        "incremental"
+      ],
+      "c16d2": [
+        "incremental",
+        "full"
+      ],
+      "c32d1": [
+        "full",
+        "incremental"
+      ]
+    },
+    "acceptance": "all official valid, no request failures; C16D1 throughput >=95% full control; report pressure gains (>=10% considered material), TTFT and bandwidth, even if goals missed",
+    "selection": "one predeclared valid window per arm; no selecting favorable repetitions",
+    "publication": "not yet authorized",
+    "amendment": "Fletcher corrected acceptance scope: system-wide relaxed execution; C16 gets20 resident seats, C32 gets36 total seats, not40. E16/R20 offered-C32 results are diagnostic only. Qualification E36/R36 cold/hot gate must pass before launch.",
+    "additional_acceptance": "load_without_execution_slot must remain zero; report invalid earlier controls separately, never as improvements",
+    "qualification_gate": "20260928-configurable-seats-gate2"
+  },
+  "results": [
+    {
+      "group": "g0-c16-d1",
+      "arm": "full",
+      "C": 16,
+      "D": 1,
+      "host": "local",
+      "devices": [
+        0,
+        1
+      ],
+      "source_commit": "96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c",
+      "valid": true,
+      "failed": 0,
+      "tokens_per_second_per_chip": 442.63722222222225,
+      "ttft_p95": 0.5709558192989789,
+      "decode_tps_p90": 62.74426927363197,
+      "completions": 1279,
+      "drained": 16,
+      "max_prompt": 106308,
+      "full_concurrency_fraction": 0.9942363879149262,
+      "continuation_requests": 1254,
+      "continuation_hits": 1254,
+      "continuation_ttft_p95": 0.5459394079865887,
+      "prompt_cache_fraction": 0.9764970809989377,
+      "uncached_prompt_tokens": 958273,
+      "slot_return_coverage": 1.0,
+      "preemptions": 0.0,
+      "cache_counters": {
+        "device_evictions": 23,
+        "schedule_steps": 20203,
+        "scheduled_request_steps": 283406,
+        "store": 341,
+        "store_logical_bytes": 173712299332,
+        "store_bytes_rank1": 173712299332,
+        "store_bytes_rank0": 173712299332,
+        "drop": 330,
+        "drop_logical_bytes": 165670839048
+      },
+      "peak_host_bytes": 8582030040,
+      "peak_page_usage": 0.5296934865900382,
+      "peak_pending": 1,
+      "scope": "throughput is official900s; request/cache fractions include drain; telemetry is sampled deployment lifetime including qualification"
+    },
+    {
+      "group": "g0-c16-d1",
+      "arm": "incremental",
+      "C": 16,
+      "D": 1,
+      "host": "local",
+      "devices": [
+        0,
+        1
+      ],
+      "source_commit": "96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c",
+      "valid": true,
+      "failed": 0,
+      "tokens_per_second_per_chip": 437.56944444444446,
+      "ttft_p95": 0.5201857427076899,
+      "decode_tps_p90": 62.628078846813324,
+      "completions": 1264,
+      "drained": 16,
+      "max_prompt": 106308,
+      "full_concurrency_fraction": 0.9943002927528384,
+      "continuation_requests": 1239,
+      "continuation_hits": 1239,
+      "continuation_ttft_p95": 0.5024226977955547,
+      "prompt_cache_fraction": 0.9761030885561852,
+      "uncached_prompt_tokens": 947834,
+      "slot_return_coverage": 1.0,
+      "preemptions": 0.0,
+      "cache_counters": {
+        "device_evictions": 25,
+        "schedule_steps": 22102,
+        "scheduled_request_steps": 289007,
+        "store": 353,
+        "store_logical_bytes": 181941639092,
+        "store_bytes_rank1": 70196991924,
+        "store_bytes_rank0": 70196991924,
+        "drop": 342,
+        "drop_logical_bytes": 173669492088
+      },
+      "peak_host_bytes": 8588932268,
+      "peak_page_usage": 0.5229885057471264,
+      "peak_pending": 1,
+      "scope": "throughput is official900s; request/cache fractions include drain; telemetry is sampled deployment lifetime including qualification"
+    },
+    {
+      "group": "g1-c16-d2",
+      "arm": "full",
+      "C": 16,
+      "D": 2,
+      "host": "hw3",
+      "devices": [
+        2,
+        3
+      ],
+      "source_commit": "96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c",
+      "valid": true,
+      "failed": 0,
+      "tokens_per_second_per_chip": 313.1272222222222,
+      "ttft_p95": 3.1579954201355576,
+      "decode_tps_p90": 63.16932636878321,
+      "completions": 1009,
+      "drained": 16,
+      "max_prompt": 59142,
+      "full_concurrency_fraction": 0.9953151430582835,
+      "continuation_requests": 975,
+      "continuation_hits": 758,
+      "continuation_ttft_p95": 3.1697829562006516,
+      "prompt_cache_fraction": 0.7270099337602668,
+      "uncached_prompt_tokens": 5398458,
+      "slot_return_coverage": 1.0,
+      "preemptions": 0.0,
+      "cache_counters": {
+        "device_evictions": 858,
+        "schedule_steps": 16338,
+        "scheduled_request_steps": 207520,
+        "store": 957,
+        "store_logical_bytes": 325663871588,
+        "store_bytes_rank1": 325663871588,
+        "store_bytes_rank0": 325663871588,
+        "load_admissions": 607,
+        "load_without_execution_slot": 0,
+        "load": 607,
+        "load_logical_bytes": 190723107660,
+        "load_bytes_rank1": 190723107660,
+        "load_bytes_rank0": 190723107660,
+        "restored_fa_blocks": 5752,
+        "drop": 941,
+        "drop_logical_bytes": 317421211428
+      },
+      "peak_host_bytes": 8588932268,
+      "peak_page_usage": 0.3601532567049809,
+      "peak_pending": 1,
+      "scope": "throughput is official900s; request/cache fractions include drain; telemetry is sampled deployment lifetime including qualification"
+    },
+    {
+      "group": "g1-c16-d2",
+      "arm": "incremental",
+      "C": 16,
+      "D": 2,
+      "host": "hw3",
+      "devices": [
+        2,
+        3
+      ],
+      "source_commit": "96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c",
+      "valid": true,
+      "failed": 0,
+      "tokens_per_second_per_chip": 315.32944444444445,
+      "ttft_p95": 3.319003376935143,
+      "decode_tps_p90": 64.30587253573826,
+      "completions": 1012,
+      "drained": 16,
+      "max_prompt": 59142,
+      "full_concurrency_fraction": 0.9953112339611269,
+      "continuation_requests": 978,
+      "continuation_hits": 770,
+      "continuation_ttft_p95": 3.3832647406379683,
+      "prompt_cache_fraction": 0.7347933671349391,
+      "uncached_prompt_tokens": 5268783,
+      "slot_return_coverage": 1.0,
+      "preemptions": 0.0,
+      "cache_counters": {
+        "device_evictions": 855,
+        "schedule_steps": 17097,
+        "scheduled_request_steps": 208586,
+        "store": 961,
+        "store_logical_bytes": 328307020596,
+        "store_bytes_rank1": 225443812148,
+        "store_bytes_rank0": 225443812148,
+        "load_admissions": 615,
+        "load_without_execution_slot": 0,
+        "load": 615,
+        "load_logical_bytes": 191326465260,
+        "load_bytes_rank1": 59535142124,
+        "load_bytes_rank0": 59535142124,
+        "restored_fa_blocks": 32,
+        "drop": 941,
+        "drop_logical_bytes": 319474323236
+      },
+      "peak_host_bytes": 8589174296,
+      "peak_page_usage": 0.34099616858237547,
+      "peak_pending": 1,
+      "scope": "throughput is official900s; request/cache fractions include drain; telemetry is sampled deployment lifetime including qualification"
+    },
+    {
+      "group": "g2-c32-d1",
+      "arm": "full",
+      "C": 32,
+      "D": 1,
+      "host": "hw3",
+      "devices": [
+        0,
+        1
+      ],
+      "source_commit": "96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c",
+      "valid": true,
+      "failed": 0,
+      "tokens_per_second_per_chip": 613.88,
+      "ttft_p95": 0.7291832276852801,
+      "decode_tps_p90": 44.006734854001266,
+      "completions": 1804,
+      "drained": 32,
+      "max_prompt": 80104,
+      "full_concurrency_fraction": 0.9886594044396447,
+      "continuation_requests": 1769,
+      "continuation_hits": 1769,
+      "continuation_ttft_p95": 0.6980793647468088,
+      "prompt_cache_fraction": 0.9699063676526867,
+      "uncached_prompt_tokens": 1434019,
+      "slot_return_coverage": 1.0,
+      "preemptions": 0.0,
+      "cache_counters": {
+        "device_evictions": 33,
+        "schedule_steps": 14839,
+        "scheduled_request_steps": 395161,
+        "store": 750,
+        "store_logical_bytes": 356024973400,
+        "store_bytes_rank0": 356024973400,
+        "store_bytes_rank1": 356024973400,
+        "drop": 737,
+        "drop_logical_bytes": 347446273460
+      },
+      "peak_host_bytes": 8589174296,
+      "peak_page_usage": 0.8445807770961145,
+      "peak_pending": 1,
+      "scope": "throughput is official900s; request/cache fractions include drain; telemetry is sampled deployment lifetime including qualification"
+    },
+    {
+      "group": "g2-c32-d1",
+      "arm": "incremental",
+      "C": 32,
+      "D": 1,
+      "host": "hw3",
+      "devices": [
+        0,
+        1
+      ],
+      "source_commit": "96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c",
+      "valid": true,
+      "failed": 0,
+      "tokens_per_second_per_chip": 613.5333333333333,
+      "ttft_p95": 0.713132227025926,
+      "decode_tps_p90": 43.77191069818056,
+      "completions": 1803,
+      "drained": 32,
+      "max_prompt": 80104,
+      "full_concurrency_fraction": 0.988323459669482,
+      "continuation_requests": 1768,
+      "continuation_hits": 1768,
+      "continuation_ttft_p95": 0.680556660040747,
+      "prompt_cache_fraction": 0.969936215443791,
+      "uncached_prompt_tokens": 1433103,
+      "slot_return_coverage": 1.0,
+      "preemptions": 0.0,
+      "cache_counters": {
+        "device_evictions": 35,
+        "schedule_steps": 16317,
+        "scheduled_request_steps": 398329,
+        "store": 776,
+        "store_logical_bytes": 336987626912,
+        "store_bytes_rank0": 183119584672,
+        "store_bytes_rank1": 183119584672,
+        "drop": 762,
+        "drop_logical_bytes": 328636283592
+      },
+      "peak_host_bytes": 8589658352,
+      "peak_page_usage": 0.84560327198364,
+      "peak_pending": 1,
+      "scope": "throughput is official900s; request/cache fractions include drain; telemetry is sampled deployment lifetime including qualification"
+    }
+  ],
+  "comparison": [
+    {
+      "group": "g0-c16-d1",
+      "throughput_ratio": 0.9885509452812499,
+      "ttft_p95_ratio": 0.9110788000135902,
+      "uncached_prompt_ratio": 0.9891064446144262
+    },
+    {
+      "group": "g1-c16-d2",
+      "throughput_ratio": 1.0070329951084847,
+      "ttft_p95_ratio": 1.050984227454223,
+      "uncached_prompt_ratio": 0.9759792518530291
+    },
+    {
+      "group": "g2-c32-d1",
+      "throughput_ratio": 0.9994352859407919,
+      "ttft_p95_ratio": 0.9779876990447156,
+      "uncached_prompt_ratio": 0.9993612357995256
+    }
+  ],
+  "validation": {
+    "six_official_windows_valid": true,
+    "failed_requests": 0,
+    "all_server_and_admission_exits_zero": true,
+    "selected_devices_released": true,
+    "paired_rank_budgets_equal": true
+  },
+  "acceptance": {
+    "c16d1_no_material_regression": true,
+    "incremental_pressure_gain_at_least_ten_percent": false
+  },
+  "limitations": [
+    "One unpooled window per configuration, not repeatability evidence",
+    "Historical capacity/source changes are not isolated incremental-copy effects",
+    "Cache counters span deployment lifetime including qualification/drain",
+    "Five resource_tracker warnings and four post-shutdown EngineDeadError logs"
+  ]
+}
