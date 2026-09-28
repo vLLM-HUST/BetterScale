@@ -33,8 +33,9 @@ class LiveStateScheduler(AsyncScheduler):
             raise ValueError(
                 "live State requires a pure attention page pool, no connector"
             )
-        if self.max_num_running_reqs != 16:
-            raise ValueError("live State currently admits E16/R20")
+        from .capacity import seat_counts
+
+        _, resident_seats = seat_counts(self.vllm_config)
         # Reuse the native deferred-free fence, including abort/preemption. A
         # resident cannot be advertised hot while a queued wave can advance it.
         if getattr(self, "_balance_enabled", False):
@@ -49,7 +50,7 @@ class LiveStateScheduler(AsyncScheduler):
             )
         self.defer_block_free = True
         self.residents = ResidentLeases(
-            20, release_blocks=self._release_resident_blocks
+            resident_seats, release_blocks=self._release_resident_blocks
         )
         self._frontiers = {}
         self._pending_hot = {}
@@ -70,7 +71,7 @@ class LiveStateScheduler(AsyncScheduler):
                 self,
                 self.vllm_config.parallel_config.tensor_parallel_size,
                 budget,
-                resident_bytes=fixed_state_bytes(self.vllm_config) // 20 - 8,
+                resident_bytes=fixed_state_bytes(self.vllm_config) // resident_seats - 8,
                 block_bytes=group.kv_cache_spec.page_size_bytes
                 * len(group.layer_names),
                 incremental=self.vllm_config.additional_config.get(

@@ -24,7 +24,12 @@ def forward_core(self, mixed_qkv, b, a, core_attn_out):
 
 
 def before_init(worker, config):
-    from .service_metadata import MTPFrame, SPEC_CAPACITIES
+    from functools import partial
+    from .service_metadata import MTPFrame
+    from .count_policy import spec_capacities
+
+    requests = config.scheduler_config.max_num_seqs
+    decode_capacities = spec_capacities(requests)
     from betterscale.patches.qwen_gdn import publication, graphs
     from vllm_ascend.ops.gdn_attn_builder import (
         AscendGDNAttentionMetadataBuilder as Builder,
@@ -38,7 +43,7 @@ def before_init(worker, config):
     import dataclasses
 
     graphs.descriptor = lambda result: (
-        dataclasses.replace(result, num_reqs=16)
+        dataclasses.replace(result, num_reqs=min(requests, result.num_tokens))
         if result.num_tokens in PREFILLS
         else result
     )
@@ -51,7 +56,7 @@ def before_init(worker, config):
     from .mamba_abi import install as install_mamba_abi
 
     install_mamba_abi()
-    publication.Frame = MTPFrame
+    publication.Frame = partial(MTPFrame, requests=requests)
     _GDN_PATCH_TARGET._forward_core = forward_core
     from .small_fish_runtime import install as install_small_fish
 
@@ -63,7 +68,7 @@ def before_init(worker, config):
         computed = runner.input_batch.num_computed_tokens_cpu_tensor[:num_reqs]
         prompts = runner.input_batch.num_prompt_tokens_cpu_tensor[:num_reqs]
         verify = bool((computed >= prompts).all()) and max(scheduled) <= WIDTH
-        choices = SPEC_CAPACITIES if verify else graphs.PREFILLS
+        choices = decode_capacities if verify else graphs.PREFILLS
         return next((n for n in choices if n >= num_tokens), num_tokens)
 
     def attention(runner, tokens):
@@ -92,7 +97,7 @@ def before_init(worker, config):
             getattr(self, "_mtp_dummy", False)
             and self._owned_publication[0].metas[self._owned_publication[1]].decode
         ):
-            lengths = capture_lengths(lengths)
+            lengths = capture_lengths(lengths, requests=requests)
         frame, key, table = self._owned_publication
         meta, roles = frame.fill_mtp(
             key,
@@ -150,9 +155,10 @@ def model_loaded(worker):
 
 
 def after_init(worker):
-    qwen_fia.install(heads=8, kvheads=1, requests=17, tokens=4096)
+    requests = worker.vllm_config.scheduler_config.max_num_seqs
+    qwen_fia.install(heads=8, kvheads=1, requests=requests + 1, tokens=4096)
     from .draft_fia import install as install_draft_fia
     from .device_metadata import install as install_device_metadata
 
-    install_draft_fia()
+    install_draft_fia(requests=requests)
     install_device_metadata()

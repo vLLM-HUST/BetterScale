@@ -15,19 +15,19 @@ from .mixed_core import MixedCore
 from .host_metadata import HostMetadata
 from betterscale.patches.qwen_gdn.publication import Frame
 
-from .count_policy import WIDTH, SPEC_CAPACITIES
+from .count_policy import WIDTH, spec_capacities
 
 
 class Core(MixedCore):
-    def __init__(self, tokens, device):
+    def __init__(self, tokens, device, *, requests=16):
         # The first service experiment deliberately uses the mixed core for all
         # capacities. Pure verification takes the small branch below; no chunk
         # work is recorded into its graph.
-        super().__init__(tokens, device)
+        super().__init__(tokens, device, requests=requests)
         self.tokens = tokens
-        self.decode = tokens in SPEC_CAPACITIES
+        self.decode = tokens in spec_capacities(requests)
         self.mtp = True
-        self.verify_ids = torch.zeros(17, dtype=torch.int64, device=device)
+        self.verify_ids = torch.zeros(requests + 1, dtype=torch.int64, device=device)
         self.accepted_source = None
         self.live = 0
         self.verify_count = 0
@@ -69,11 +69,11 @@ class Core(MixedCore):
 
 
 class MTPFrame(Frame):
-    def __init__(self, tokens, groups, device, stream):
+    def __init__(self, tokens, groups, device, stream, *, requests=16):
         self.stream = stream
         self.uploaded, self.consumed = torch.npu.Event(), torch.npu.Event()
         self.has_upload = self.has_consumer = False
-        self.metas = {key: Core(tokens, device) for key in groups}
+        self.metas = {key: Core(tokens, device, requests=requests) for key in groups}
         fields, offset = [], 0
         for core in self.metas.values():
             host = copy.copy(core)
@@ -126,7 +126,7 @@ class MTPFrame(Frame):
     def fill_mtp(self, key, m, lengths, table, builder, accepted, drafts):
         meta = self.metas[key]
         n = len(lengths)
-        assert 0 < n <= 16 and sum(lengths) <= meta.tokens
+        assert 0 < n <= meta.requests and sum(lengths) <= meta.tokens
         seq = m.seq_lens_cpu if m.seq_lens_cpu is not None else m._seq_lens_cpu
         if seq is None:
             raise ValueError("MTP requires the pinned runner corrected CPU lengths")

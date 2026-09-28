@@ -12,6 +12,7 @@ import numpy as np
 class HostMetadata:
     def __init__(self, core):
         self.capacity, self.width, self.decode = core.capacity, core.width, core.decode
+        self.requests = core.requests
         for owner, names in (
             (
                 core,
@@ -51,7 +52,7 @@ class HostMetadata:
 
     def prepare(self, lengths, roles, slots, initial):
         n = len(lengths)
-        assert 0 < n <= 16 and sum(lengths) <= self.capacity
+        assert 0 < n <= self.requests and sum(lengths) <= self.capacity
         assert len(roles) == len(slots) == len(initial) == n
         assert all(x > 0 for x in lengths)
         assert all(x <= self.width for x, role in zip(lengths, roles) if role)
@@ -99,7 +100,7 @@ class HostMetadata:
                 )
                 cursor += length
         for size, dest in self.indices.items():
-            dest[:, 0] = 16  # permanent empty sentinel row
+            dest[:, 0] = self.requests  # permanent empty sentinel row
             dest[:, 1] = 0
             cursor = 0
             for packed, i in enumerate(pre):

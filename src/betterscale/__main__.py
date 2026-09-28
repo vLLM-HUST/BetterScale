@@ -135,9 +135,9 @@ def prepare_live(
     ):
         raise ValueError("live supports Qwen3.5-0.8B TP1 or 35B-A3B TP2 only")
     if envelope[0] == "qwen3_5_moe_text":
-        if (execution_seats, resident_seats, token_pages) != (16, 20, 0):
+        if execution_seats > 36 or token_pages != 0:
             raise ValueError(
-                "Qualified Qwen35 State requires E16/R20 and automatic shared pages"
+                "Qwen35 State requires execution<=36 and automatic shared pages"
             )
         from .models.qwen35.launch import prepare as prepare_qwen35
 
@@ -151,6 +151,8 @@ def prepare_live(
             state_budget_bytes,
             served_model_name,
             distributed_port,
+            execution_seats,
+            resident_seats,
         )
     env = os.environ.copy()
     prepare_libraries(Path(__file__).parent, env)

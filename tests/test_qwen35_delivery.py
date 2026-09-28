@@ -69,7 +69,7 @@ class Delivery(unittest.TestCase):
                     runtime.prepare(source, root / "invalid")
                 self.assertFalse((root / "invalid").exists())
 
-    def test_live35_rejects_legacy_capacity_and_missing_runtime(self):
+    def test_live35_rejects_out_of_range_capacity_and_missing_runtime(self):
         with tempfile.TemporaryDirectory() as tmp:
             model = Path(tmp)
             (model / "config.json").write_text(
@@ -84,11 +84,10 @@ class Delivery(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "qwen35-runtime-dir"):
                 prepare(model, "0,1", 8000, model / "cache", runtime="live")
             for kwargs in [
-                dict(resident_seats=40),
-                dict(execution_seats=8),
+                dict(execution_seats=37, resident_seats=40),
                 dict(token_pages=20),
             ]:
-                with self.assertRaisesRegex(ValueError, "E16/R20"):
+                with self.assertRaisesRegex(ValueError, "execution<=36"):
                     prepare(
                         model, "0,1", 8000, model / "cache", runtime="live", **kwargs
                     )
@@ -117,6 +116,12 @@ class BalancedDefault(unittest.TestCase):
             ):
                 argv, env = prepare(root, "0,1", 8000, root / "cache",
                                     qwen35_runtime_dir=root / "donor")
+                wide, _ = prepare(root, "0,1", 8000, root / "cache",
+                                  qwen35_runtime_dir=root / "donor",
+                                  execution_seats=36, resident_seats=36)
+                self.assertEqual(wide[wide.index("--max-num-seqs")+1], "36")
+                self.assertEqual(json.loads(wide[wide.index("--additional-config")+1])["state_resident_seats"], 36)
+                self.assertIn(108, json.loads(wide[wide.index("--compilation-config")+1])["cudagraph_capture_sizes"])
                 self.assertNotIn("BETTERSCALE_CONTEXT_PARALLEL", os.environ)
             self.assertEqual(env["BETTERSCALE_CONTEXT_PARALLEL"], "1")
             self.assertEqual(env["BETTERSCALE_CP_LIBRARY"], str(library))

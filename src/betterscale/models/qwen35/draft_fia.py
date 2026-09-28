@@ -11,23 +11,23 @@ from functools import wraps
 import torch
 
 
-def compact_padding(metadata):
+def compact_padding(metadata, requests=16):
     # Native merged draft pads its one-token phase to the *token* capacity,
-    # potentially2048 rows although this service admits only16 real requests.
+    # potentially2048 rows despite a much smaller execution envelope.
     # Zero-KV padding rows can share one ignored tail query; never fold live rows.
-    if len(metadata.actual_seq_lengths_q) <= 17:
+    if len(metadata.actual_seq_lengths_q) <= requests + 1:
         return metadata
-    if any(metadata.seq_lens_list[16:]):
+    if any(metadata.seq_lens_list[requests:]):
         raise ValueError(
-            "Draft padding compaction encountered a live seventeenth request"
+            "Draft padding compaction encountered a live row outside the execution envelope"
         )
     result = copy.copy(metadata)
-    result.actual_seq_lengths_q = metadata.actual_seq_lengths_q[:16] + [
+    result.actual_seq_lengths_q = metadata.actual_seq_lengths_q[:requests] + [
         metadata.actual_seq_lengths_q[-1]
     ]
-    result.seq_lens_list = metadata.seq_lens_list[:16] + [0]
-    result.seq_lens = metadata.seq_lens[:16]
-    result._mtp_device_seq_lens = metadata._mtp_device_seq_lens[:16]
+    result.seq_lens_list = metadata.seq_lens_list[:requests] + [0]
+    result.seq_lens = metadata.seq_lens[:requests]
+    result._mtp_device_seq_lens = metadata._mtp_device_seq_lens[:requests]
     return result
 
 
@@ -41,7 +41,7 @@ def bind_device_lengths(metadata, common):
     return metadata
 
 
-def install():
+def install(*, requests=16):
     from vllm.config import CUDAGraphMode
     from vllm.forward_context import get_forward_context
     from vllm_ascend.attention.attention_v1 import (
@@ -117,7 +117,7 @@ def install():
                 )
                 cpu = runner.input_batch.block_table[gid].get_cpu_tensor()
                 key = kw["num_input_tokens"], runner._owned_bank, step
-                plan_metadata = compact_padding(m)
+                plan_metadata = compact_padding(m, requests)
                 entry = dict(
                     key=key,
                     metadata=plan_metadata,
@@ -204,7 +204,7 @@ def install():
                 entry["cpu"].shape[1],
                 query.device,
                 owner.proposer.runner._owned_ingress,
-                requests=17,
+                requests=requests + 1,
             )
             frame.prepare(planner, entry["metadata"], entry["cpu"], entry["num_reqs"])
             owner.frames[entry["key"]] = frame

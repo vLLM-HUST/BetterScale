@@ -72,14 +72,14 @@ class PlanTest(unittest.TestCase):
     def test_tile_and_capacity_boundaries(self):
         rng = random.Random(173)
         for _ in range(100):
-            b = rng.randint(1,16)
+            b = rng.randint(1,96)
             lengths = [rng.choice((3,127,128,129,511,512,513,1023,1024,1025,32768,262144)) for _ in range(b)]
             self.verify(lengths, [rng.randint(1,3) for _ in range(b)])
 
     def test_device_length_scaling_and_padding_abi(self):
         rng = random.Random(731)
         for _ in range(100):
-            b = rng.randint(2,16)
+            b = rng.randint(2,96)
             upper = [rng.choice((513,32768,262144)) for _ in range(b)]
             qs = [rng.randint(1,3) for _ in range(b)]
             plan = self.verify(upper, qs)
@@ -137,7 +137,7 @@ class PlanTest(unittest.TestCase):
                 with self.assertRaises(ValueError):cp.schedule([tokens]*n,q)
 
     def test_reject_wrong_geometry_and_non_verification(self):
-        for lengths, queries in (([0],[1]),([2],[3]),([262145],[3]),([1024],[4]),([1024]*17,[3]*17)):
+        for lengths, queries in (([0],[1]),([2],[3]),([262145],[3]),([1024],[4]),([1024]*2,[3])):
             with self.assertRaises(ValueError):cp.schedule(lengths, queries)
         plan = cp.schedule([1024,2048], [3,3])
         raw = native(2);struct.pack_into('<I',raw,4,128)

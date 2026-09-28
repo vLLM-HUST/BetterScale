@@ -22,8 +22,9 @@ def publish(
     NP,
     NV,
     DECODE: tl.constexpr,
+    ROWS: tl.constexpr,
 ):
-    row = tl.arange(0, 16)
+    row = tl.arange(0, ROWS)
     candidate = tl.arange(0, 4)
     if not DECODE:
         seq = tl.load(SEQ + row, row < N, other=0)

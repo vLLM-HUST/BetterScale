@@ -22,6 +22,14 @@ CAPTURE_SIZES = (
     2048,
     4096,
 )
+
+
+def capture_sizes(requests=16):
+    from .count_policy import spec_capacities
+
+    return tuple(sorted(set(CAPTURE_SIZES) | set(spec_capacities(requests))))
+
+
 SCHEDULER = "betterscale.models.qwen35.apc_boundary.BoundaryScheduler"
 STATE_SCHEDULER = "betterscale.models.qwen35.seat_scheduler.LiveStateScheduler"
 
@@ -37,6 +45,10 @@ def validate(config):
     p, s, m = config.parallel_config, config.scheduler_config, config.model_config
     hf = m.hf_text_config
     spec = config.speculative_config
+    if using_live_state(config):
+        from .capacity import seat_counts
+
+        seat_counts(config)
     checks = {
         "35B-A3B BF16 text geometry": (
             hf.model_type == "qwen3_5_moe_text"
@@ -69,8 +81,8 @@ def validate(config):
             p.prefill_context_parallel_size,
         )
         == (2, 1, 1, False, 1, 1),
-        "C16/query4096/context<=262144": (
-            s.max_num_seqs == 16
+        "execution<=36/query4096/context<=262144": (
+            (1 <= s.max_num_seqs <= 36 if using_live_state(config) else s.max_num_seqs == 16)
             and s.max_num_batched_tokens == 4096
             and 0 < m.max_model_len <= 262144
         ),
@@ -86,7 +98,7 @@ def validate(config):
         "qualified mixed FULL keys": (
             str(config.compilation_config.cudagraph_mode) == "FULL"
             and set(config.compilation_config.cudagraph_capture_sizes)
-            == set(CAPTURE_SIZES)
+            == set(capture_sizes(s.max_num_seqs))
         ),
         "APC align without connectors or LoRA": (
             config.cache_config.enable_prefix_caching

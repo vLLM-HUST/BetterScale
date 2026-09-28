@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import sys
 
-from . import CAPTURE_SIZES, STATE_SCHEDULER
+from . import capture_sizes, STATE_SCHEDULER
 from .runtime import validate
 
 
@@ -19,6 +19,8 @@ def prepare(
     state_budget_bytes,
     served_model_name,
     distributed_port,
+    execution_seats=16,
+    resident_seats=20,
 ):
     if runtime_dir is None:
         raise ValueError(
@@ -67,7 +69,7 @@ def prepare(
         "--max-model-len",
         str(context_tokens),
         "--max-num-seqs",
-        "16",
+        str(execution_seats),
         "--max-num-batched-tokens",
         "4096",
         "--gpu-memory-utilization",
@@ -82,14 +84,15 @@ def prepare(
         "--shutdown-timeout",
         "60",
         "--additional-config",
-        '{"enable_cpu_binding":false,"using_live_runtime":true}',
+        json.dumps(dict(enable_cpu_binding=False, using_live_runtime=True,
+                        state_resident_seats=resident_seats)),
         "--limit-mm-per-prompt",
         '{"image":0,"video":0}',
         "--compilation-config",
         json.dumps(
             dict(
                 cudagraph_mode="FULL",
-                cudagraph_capture_sizes=CAPTURE_SIZES,
+                cudagraph_capture_sizes=capture_sizes(execution_seats),
                 max_cudagraph_capture_size=4096,
             )
         ),

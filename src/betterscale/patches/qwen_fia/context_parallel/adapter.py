@@ -12,7 +12,7 @@ import struct
 
 from .plan import encode, schedule
 
-CAPACITIES = (6, 12, 24, 40, 48)  # capacity3 / single-request graph stays native
+CAPACITIES = (6, 12, 24, 40, 48, 80, 96, 108)  # capacity3 / single-request graph stays native
 _LIBRARY = None
 
 
@@ -31,7 +31,7 @@ def capture_metadata(metadata, tokens):
     queries = [hi-lo for lo,hi in zip([0]+ends,ends)]
     live = len(lengths) - int(lengths[-1] == 0)
     queries = [min(q,3) for q in queries[:live]]
-    if not 1 <= live <= 16 or any(q <= 0 for q in queries):
+    if live < 1 or any(q <= 0 for q in queries):
         raise ValueError('Unqualified disposable capture metadata')
     result = copy.copy(metadata)
     result.actual_seq_lengths_q = list(accumulate(queries))

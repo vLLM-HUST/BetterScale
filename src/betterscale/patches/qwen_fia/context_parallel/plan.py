@@ -18,8 +18,8 @@ SYSTEM_BYTES = 16 << 20
 
 
 def schedule(lengths, queries, divisor=18, startup=4):
-    if not 1 <= len(lengths) == len(queries) <= 16:
-        raise ValueError('Expected1..16 real requests; padding is not live work')
+    if not lengths or len(lengths) != len(queries):
+        raise ValueError('Expected matching nonempty live request rows')
     if any(type(q) is not int or not 1 <= q <= MAX_QUERY for q in queries):
         raise ValueError('Only Q1..3 decode/verification is admitted')
     if any(type(n) is not int or not q <= n <= 262144 for n, q in zip(lengths, queries)):

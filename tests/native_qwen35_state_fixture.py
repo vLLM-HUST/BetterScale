@@ -35,6 +35,8 @@ s._frontiers = {}
 s._pending_hot = {}
 s._offers = {}
 s._generation_limits = {}
+s.cache_actions = None
+s.cache_policy = None
 s._native_allocate = manager.allocate_slots
 
 

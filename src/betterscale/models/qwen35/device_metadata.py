@@ -59,10 +59,10 @@ def install():
 
     original_core = Core.__init__
 
-    def core_init(core, tokens, device):
-        original_core(core, tokens, device)
+    def core_init(core, tokens, device, *, requests=16):
+        original_core(core, tokens, device, requests=requests)
         # MTPFrame includes this field automatically in its banked pinned slab.
-        core.prefill_ids = torch.zeros(17, dtype=torch.int64, device=device)
+        core.prefill_ids = torch.zeros(requests + 1, dtype=torch.int64, device=device)
 
     Core.__init__ = core_init
     original_fill, original_publish = MTPFrame.fill_mtp, MTPFrame.publish

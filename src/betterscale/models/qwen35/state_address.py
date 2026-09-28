@@ -54,11 +54,12 @@ def wait_for_previous(runner, schedule):
 
 def initialize(runner):
     state = runner._live_ingress = SimpleNamespace()
+    requests = runner.vllm_config.scheduler_config.max_num_seqs
     for name in ("seats", "drafts", "sampling"):
-        host = torch.zeros(16, dtype=torch.int64, pin_memory=True)
+        host = torch.zeros(requests, dtype=torch.int64, pin_memory=True)
         setattr(state, "h_" + name, host)
-        setattr(state, name, torch.zeros(16, dtype=torch.int64, device=runner.device))
-    state.h_seats.copy_(torch.arange(16))
+        setattr(state, name, torch.zeros(requests, dtype=torch.int64, device=runner.device))
+    state.h_seats.copy_(torch.arange(requests))
     state.seats.copy_(state.h_seats)
     state.history = torch.arange(3, device=runner.device)
     runner._live_previous_verify = set()
@@ -130,6 +131,7 @@ def publish_slots(meta):
         len(pre),
         meta.live if meta.decode else len(ver),
         DECODE=meta.decode,
+        ROWS=1 << (meta.requests - 1).bit_length(),
         num_warps=4,
     )
     runner._live_verify_roles = meta.verify_roles
@@ -175,9 +177,9 @@ def install():
     device_metadata.publish_slots = publish_slots
     original_core, original_fill = Core.__init__, MTPFrame.fill_mtp
 
-    def core_init(core, tokens, device):
-        original_core(core, tokens, device)
-        core.verify_roles = torch.zeros(17, dtype=torch.bool, device=device)
+    def core_init(core, tokens, device, *, requests=16):
+        original_core(core, tokens, device, requests=requests)
+        core.verify_roles = torch.zeros(requests + 1, dtype=torch.bool, device=device)
 
     def fill(frame, key, m, lengths, table, builder, accepted, drafts):
         meta, roles = original_fill(

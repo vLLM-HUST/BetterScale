@@ -12,6 +12,7 @@ from betterscale.live.llm.qwen35.state import (
 )
 from betterscale.live.llm.qwen35.root import state_budget_bytes
 from .state_binding import BaselineStateRoot
+from .capacity import seat_counts
 
 
 def geometry(config):
@@ -23,7 +24,7 @@ def geometry(config):
 
 def fixed_state_bytes(config):
     g = geometry(config)
-    c = Capacity(16, 20, token_pages=1, prefill_tokens=4096)
+    c = Capacity(*seat_counts(config), token_pages=1, prefill_tokens=4096)
     attention_layers = g.layer_types.count("full_attention") + g.draft_layers
     page_bytes = (
         attention_layers * c.page_tokens * g.kv_heads * g.attention_head_dim * 4
@@ -97,8 +98,7 @@ def install():
                 "FA scheduler page must consist of whole128-token kernel pages"
             )
         capacity = Capacity(
-            16,
-            20,
+            *seat_counts(runner.vllm_config),
             token_pages=config.num_blocks * (logical_block // 128),
             prefill_tokens=4096,
         )
