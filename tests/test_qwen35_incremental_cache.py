@@ -200,3 +200,43 @@ def test_host_capacity_refusal_is_before_any_manifest_or_copy():
         )
     assert not store.manifests and not store.pending
     assert store.committed_bytes == 0
+
+
+def test_overlapping_incremental_actions_refuse_before_changing_device_ownership():
+    s, c, pool = setup(4)
+    n = c.store(0, "A")
+    with pytest.raises(ValueError, match="in flight"):
+        c.store(1, "B")
+    assert s.residents.seats[0].io_owner == n
+    assert pool.get_num_free_blocks() == 0
+    done(c, n)
+    n = c.load("A", 1)
+    with pytest.raises(ValueError, match="pending operation"):
+        c.load("A", 2)
+    assert s.residents.seats[2].blocks is None
+    done(c, n)
+
+
+def test_device_write_invalidates_only_the_mutable_suffix():
+    s, c, pool = setup(4)
+    seat = s.residents.seats[0]
+    done(c, c.backup(0, "A", seat.tokens, None, seat.blocks))
+    keys = c.host["A"].pages
+    c.pages.invalidate(seat.blocks.blocks[0][3:])
+    assert keys[:3] == tuple(c.pages.by_key)
+    assert keys[3] not in c.pages.by_key
+    assert pool.get_num_free_blocks() == 0  # invalidation is metadata, not free
+    assert c.allocated_host_bytes == 64 + 4 * 128
+
+
+def test_page_transfer_result_is_idempotent():
+    domain = object()
+    st = state(torch.arange(4).reshape(2, 2), domain)
+    store = PageStateStore(memory_budget_bytes=32)
+    handle = store.transfer(
+        "A", [("x", st)], {"a": select(domain, 0)}, store=True, stream=None
+    )
+    assert handle.result() == handle.result() == "A"
+    assert store.committed_bytes == 16
+    store.release("A")
+    assert store.committed_bytes == 0

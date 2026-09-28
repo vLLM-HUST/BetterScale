@@ -95,3 +95,23 @@ three grant/skip seams; an unknown native method fails closed. No installed dono
 file or global native Scheduler is rewritten. See `prototypes/prefill-fairness`
 for tests and the qualification boundary. Earlier throughput numbers above do
 not measure this changed policy. Joint Conv integration remains pending.
+
+### Incremental State cache candidate
+
+With the experimental host cache enabled, `state_cache_incremental: true` opts
+into shared host FA pages and on-demand missing-page restoration. No predictive
+prefetch is performed. GDN/continuation stays an exact private snapshot; sealed
+prefix FA blocks are shared between host checkpoints, and each mutable boundary
+block gets a fresh version. Native allocator blocks, not token fragments, are
+the transfer unit. Epoch metadata remains destination-owned.
+
+Device residency is a weak index over the existing native pool: releasing an
+idle seat makes its blocks reclaimable, but only actual reallocation or a write
+invalidates their identities. Restores pin surviving free blocks before allocating
+holes. This cut does not share writable device pages across active requests and
+serializes incremental maintenance transactions; unrelated inference remains
+asynchronous. Host capacity counts unique payloads, including pending stores and
+drops until TP quorum. The existing non-incremental mode remains available.
+
+This is a correctness candidate, not a measured performance improvement. See
+repo knowledge `study-qwen35-state-layout/incremental-cache.md` for qualification.

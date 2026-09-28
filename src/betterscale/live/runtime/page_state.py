@@ -32,6 +32,8 @@ class PageTransfer:
         if self.event is not None:
             self.event.synchronize()
         with self.store.lock:
+            if self.finished:
+                return self.key
             for handle in self.handles:
                 handle.result()
             self.store.pending.remove(self.key)
