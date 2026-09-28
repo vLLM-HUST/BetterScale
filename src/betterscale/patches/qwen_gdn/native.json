@@ -5,7 +5,8 @@
   "owned_init": true,
   "state_layout": "KV",
   "cold_fill_dma_fence": true,
-  "host_sha256": "6ae4f0879e2d9a5b83755e9dac28f5e56fbdbe6cb8c86988386624d58232d9cc",
+  "host_sha256": "0e57aea8f73e81e752d3b3eef336c353429eb50a982435a90b338ae9cf8bbc5c",
   "host_workspace": "framework-allocator-capture-pool",
-  "host_rpath": "origin-relative torch and torch_npu libraries"
+  "host_rpath": "origin-relative torch and torch_npu libraries",
+  "host_request_rows": 37
 }

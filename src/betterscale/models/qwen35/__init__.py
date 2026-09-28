@@ -82,7 +82,11 @@ def validate(config):
         )
         == (2, 1, 1, False, 1, 1),
         "execution<=36/query4096/context<=262144": (
-            (1 <= s.max_num_seqs <= 36 if using_live_state(config) else s.max_num_seqs == 16)
+            (
+                1 <= s.max_num_seqs <= 36
+                if using_live_state(config)
+                else s.max_num_seqs == 16
+            )
             and s.max_num_batched_tokens == 4096
             and 0 < m.max_model_len <= 262144
         ),

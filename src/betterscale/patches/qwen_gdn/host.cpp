@@ -32,8 +32,10 @@ void initialize(const std::string& path) {
   library_path = path;
 }
 
+// Up to36 live requests plus the permanent empty metadata row. The two
+// request-index arrays are dynamically sized and512-byte aligned below.
 int64_t workspace_size(int64_t cores, int64_t requests) {
-  TORCH_CHECK(cores == 24 && requests > 0 && requests <= 33,
+  TORCH_CHECK(cores == 24 && requests > 0 && requests <= 37,
               "Outside qualified GDN workspace contract");
   auto align = [](int64_t n) { return (n + 511) / 512 * 512; };
   // Same reserved system prefix and user offsets as the immutable H/O tiling.
@@ -60,7 +62,7 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> pool_forward(
   const auto requests = cu.numel() - 1;
   const auto key_heads = q.size(1);
   const auto value_heads = w.size(1);
-  TORCH_CHECK(tokens > 0 && tokens <= 4096 && requests > 0 && requests <= 33,
+  TORCH_CHECK(tokens > 0 && tokens <= 4096 && requests > 0 && requests <= 37,
               "Outside owned mixed GDN capacity");
   TORCH_CHECK((key_heads == 8 && (value_heads == 16 || value_heads == 24)) ||
               (key_heads == 16 && value_heads == 16), "Outside owned GDN head geometry");

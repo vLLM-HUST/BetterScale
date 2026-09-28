@@ -84,8 +84,13 @@ def prepare(
         "--shutdown-timeout",
         "60",
         "--additional-config",
-        json.dumps(dict(enable_cpu_binding=False, using_live_runtime=True,
-                        state_resident_seats=resident_seats)),
+        json.dumps(
+            dict(
+                enable_cpu_binding=False,
+                using_live_runtime=True,
+                state_resident_seats=resident_seats,
+            )
+        ),
         "--limit-mm-per-prompt",
         '{"image":0,"video":0}',
         "--compilation-config",
