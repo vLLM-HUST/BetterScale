@@ -177,3 +177,50 @@ Full local/remote evidence: `runs/qwen35-state-lanes/20260928-incremental-cache/
 CPU logs: sibling `20260928-incremental-cache-cpu` remotely, copied into the
 local evidence folder. This establishes functionality and actual byte savings,
 not C16/C32 throughput, tail latency, or a new timeline/overlap measurement.
+
+### Automatic restore admission under offered concurrency
+
+The first pressure campaign froze `62a225d`: incremental restore contenders
+wait for the single transaction, without admitting their matching prompts cold;
+unrelated ready work remains runnable. The same policy initially still allowed
+multiple full-checkpoint restores. Its C32D1 control on hw3 was **invalid**:
+five turn1 requests timed out at900s. Scalar observation showed~10,000 loads of
+only seven retained checkpoints, not a throughput improvement to rank.
+
+A bounded CPU witness on the frozen source proves the mechanism: with three
+spare seats and four host-hit waiters, full-mode preparation fills all three
+seats with loads. After one load reaches rank quorum, the next preparation
+recognizes its warm request but then gives that same seat to another load
+before native scheduling can claim it. Incremental single-flight preserves
+the first warm offer in the same witness. This is a preparation/ownership
+counterexample, not evidence that all full-mode runs always fail.
+
+`fc29815` serializes **all automatic** cache transactions, including full mode.
+Manual diagnostic actions retain their separate guards. Both modes have the
+CPU returning-host-hit/late-rank/unrelated-cold-work regression test; the two
+policy/incremental suites pass27 tests. The correction does not change the
+incremental branch's behavior from62a225d. The pressure campaign replaces the
+invalid control with equally single-flight controls instead of attributing
+livelock removal to FA byte savings. Capsule roots:
+`runs/qwen35-state-lanes/20260928-incremental-pressure/` (counterexample and
+`restore_churn_cpu.py`), sibling `20260928-incremental-pressure-single-flight/`
+(amended protocol). NPU performance results are not established by this note.
+
+
+Single-flight is not by itself demand admission. A second CPU witness on
+`fc29815` has one occupied native execution slot, zero free execution slots,
+and nevertheless observes a new host load into a spare resident seat. The
+C32 scalar trace likewise retains only nine host checkpoints while repeatedly
+loading them with16 execution owners. Such premature loads can churn spare
+seats and occupy the maintenance lane needed for useful backups.
+
+`16389d9` gates automatic restore preparation on native execution capacity:
+`max_num_running_reqs - len(running) - num_waiting_for_streaming_input > 0`.
+I/O exclusion and round-robin preparation remain in their established order;
+background backup still runs under its separate two-round-idle policy. This is
+not speculative prefetch. Both full and incremental modes have occupied-running
+and paused-streaming capacity tests. Combined policy/incremental/prefill suites
+pass38 tests. Fresh all-six paired900s acceptance uses the sibling
+`20260928-incremental-pressure-demand/` capsule, rather than mixing these
+behavior changes into an earlier performance comparison. Results remain pending
+until the pressure receipt is completed.
