@@ -40,6 +40,22 @@ class PageResidency:
             return blocks
 
         pool.get_new_blocks = reuse
+        release = pool.free_blocks
+
+        def free(blocks):
+            blocks = tuple(blocks)
+            release(blocks)
+            # Native unhashed frees prepend. Our FA index intentionally does
+            # not publish native hash hits, but valid cold pages still deserve
+            # LRU retention behind genuinely unused/invalid free capacity.
+            retained = [
+                b for b in blocks if b.ref_cnt == 0 and b.block_id in self.by_slot
+            ]
+            for block in retained:
+                pool.free_block_queue.remove(block)
+            pool.free_block_queue.append_n(retained)
+
+        pool.free_blocks = free
 
     def invalidate(self, blocks):
         for block in blocks:

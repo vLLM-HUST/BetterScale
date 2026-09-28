@@ -240,3 +240,35 @@ def test_page_transfer_result_is_idempotent():
     assert store.committed_bytes == 16
     store.release("A")
     assert store.committed_bytes == 0
+
+
+def test_native_allocation_hook_invalidates_write_suffix_before_dispatch():
+    from betterscale.models.qwen35.seat_scheduler import LiveStateScheduler
+
+    s, c, pool = setup(4)
+    seat = s.residents.seats[0]
+    done(c, c.backup(0, "A", seat.tokens, None, seat.blocks))
+    keys = c.host["A"].pages
+    s.residents.requests["running"] = 0
+    seat.owner = "running"
+    s.kv_cache_manager.get_blocks = lambda rid: seat.blocks
+    s._native_allocate = lambda *args, **kwargs: seat.blocks
+    req = S(request_id="running", num_computed_tokens=385)
+    assert LiveStateScheduler._allocate(s, req, 3) is seat.blocks
+    assert set(c.pages.by_key) == set(keys[:3])
+    assert pool.get_num_free_blocks() == 0
+
+
+def test_weak_cached_pages_use_lru_not_native_unhashed_free_prepend():
+    s, c, pool = setup(4)
+    seat = s.residents.seats[0]
+    original = seat.blocks.blocks[0]
+    keys = page_keys(seat.tokens, None, 128, 4, "A")
+    c.pages.remember(keys, original)
+    # Two cold objects retire in order; later retirement cannot jump ahead.
+    pool.free_blocks(original[:2])
+    pool.free_blocks(original[2:])
+    assert [b.block_id for b in pool.get_new_blocks(2)] == [
+        b.block_id for b in original[:2]
+    ]
+    assert set(c.pages.by_key) == set(keys[2:])
