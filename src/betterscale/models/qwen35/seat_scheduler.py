@@ -73,6 +73,9 @@ class LiveStateScheduler(AsyncScheduler):
                 resident_bytes=fixed_state_bytes(self.vllm_config) // 20 - 8,
                 block_bytes=group.kv_cache_spec.page_size_bytes
                 * len(group.layer_names),
+                incremental=self.vllm_config.additional_config.get(
+                    "state_cache_incremental", False
+                ),
             )
             install()
         self.cache_policy = None
@@ -180,6 +183,17 @@ class LiveStateScheduler(AsyncScheduler):
             result = self._native_allocate(request, *args, **kwargs)
         if result is None:
             return None
+        cache = self.cache_actions
+        if cache is not None and cache.pages is not None:
+            computed = request.num_computed_tokens
+            if new and offer.warm:
+                computed = max(computed, self.residents.seats[offer.seat].cursor)
+            # Draft/target writes can touch the boundary block; older sealed
+            # blocks remain valid. Invalidate before any native frame is queued.
+            first = max(0, computed - 1) // self.block_size
+            cache.pages.invalidate(
+                self.kv_cache_manager.get_blocks(rid).blocks[0][first:]
+            )
         if new:
             seat = self.residents.claim(rid, offer, self.processed_step_seq)
             cursor = seat.cursor if offer.warm else 0
@@ -303,6 +317,8 @@ class LiveStateScheduler(AsyncScheduler):
         if cache is not None and (cache.pending or cache.host):
             raise RuntimeError("drop/drain host State before resetting prefix cache")
         self.residents.invalidate_hot()
+        if cache is not None and cache.pages is not None:
+            cache.pages.clear()
         for key in self._pending_hot:
             frontier = self._frontiers.get(key)
             if frontier is not None:

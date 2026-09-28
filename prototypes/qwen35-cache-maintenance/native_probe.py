@@ -42,6 +42,7 @@ async def main():
             return_dict=False,
         )
 
+    incremental = os.environ.get("CACHE_INCREMENTAL") == "1"
     legacy = os.environ.get("CACHE_LEGACY_FIXTURE") == "1"
     code = "cobalt-seven-42-alpha-nine-17-zulu-eight-63-bravo-five-29-delta-six-84"
     seed = prompt(
@@ -50,7 +51,8 @@ async def main():
         + " Reply with exactly amber-7319."
         if legacy
         else "Read these records. Find the access code.\nBEGIN_RECORDS\n"
-        + "The archive contains ordinary historical records. " * 128
+        + "The archive contains ordinary historical records. "
+        * (600 if incremental else 128)
         + "\nThe access code is "
         + code
         + ".\nEND_RECORDS\n"
@@ -78,6 +80,7 @@ async def main():
             "using_live_runtime": True,
             "state_cache_host_bytes": (4 << 30) if automatic else (512 << 20),
             "state_cache_policy": automatic,
+            "state_cache_incremental": incremental,
         },
         speculative_config={"method": "mtp", "num_speculative_tokens": 2},
         compilation_config={
@@ -211,6 +214,12 @@ async def main():
             restored["cursor"] == source["cursor"]
             and restored["blocks"] != source["blocks"]
         )
+        if incremental:
+            assert 0 < load["restored_pages"] < len(source["blocks"]), load
+            assert all(
+                value < next(iter(store["transfer_bytes_per_rank"].values()))
+                for value in load["transfer_bytes_per_rank"].values()
+            ), (store, load)
         if legacy:
             delta = tokenizer.encode(
                 "\n"
@@ -268,6 +277,31 @@ async def main():
         )
         if not legacy:
             assert warm["text"].strip() == code, warm
+        if incremental:
+            # A has advanced; shared sealed pages must not be copied/charged again.
+            _, advanced = await settled("A")
+            before_backup = await control(kind="snapshot")
+            operation = await control(kind="store", seat=advanced["seat"], key="A-v2")
+            incremental_store = await control(kind="wait", operation=operation)
+            after_backup = await control(kind="snapshot")
+            assert all(
+                value < next(iter(store["transfer_bytes_per_rank"].values()))
+                for value in incremental_store["transfer_bytes_per_rank"].values()
+            )
+            delta_bytes = (
+                after_backup["allocated_host_bytes"]
+                - before_backup["allocated_host_bytes"]
+            )
+            assert delta_bytes == next(
+                iter(incremental_store["transfer_bytes_per_rank"].values())
+            )
+            results.update(
+                incremental=True,
+                incremental_store=incremental_store,
+                incremental_host_bytes=delta_bytes,
+            )
+            operation = await control(kind="drop", key="A-v2")
+            await control(kind="wait", operation=operation)
         operation = await control(kind="drop", key="A-v1")
         await control(kind="wait", operation=operation)
         final = await control(kind="snapshot")

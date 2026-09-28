@@ -4,14 +4,17 @@ from contextlib import nullcontext
 from queue import Queue
 from types import SimpleNamespace as S
 
+import pytest
 import torch
 
 from betterscale.models.qwen35 import cache_worker
 from betterscale.live.runtime.host_state import TorchHostStateBackend
 
 
+@pytest.mark.parametrize("incremental", [False, True])
 def test_native_restore_lowers_pages_and_preserves_new_epoch_and_verify_role(
     monkeypatch,
+    incremental,
 ):
     import vllm.distributed
 
@@ -83,6 +86,8 @@ def test_native_restore_lowers_pages_and_preserves_new_epoch_and_verify_role(
     command = dict(
         operation=1, kind="store", seat=0, epoch=3, key="A", blocks=[1], block_size=2048
     )
+    if incremental:
+        command.update(pages=["tail:A:0"], missing=[0])
     try:
         worker.submit(command)
         assert receipts.get(timeout=3)[1] is None
@@ -102,5 +107,7 @@ def test_native_restore_lowers_pages_and_preserves_new_epoch_and_verify_role(
         worker.submit(dict(command, operation=3, kind="drop", seat=None, epoch=None))
         assert receipts.get(timeout=3)[1] is None and not worker.verify
         assert worker.backend.committed_bytes == 0
+        if incremental:
+            assert worker.page_backend.committed_bytes == 0
     finally:
         worker.waiters.shutdown(wait=True)

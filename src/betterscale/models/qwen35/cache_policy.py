@@ -76,10 +76,7 @@ class CachePolicy:
             ):
                 self.saved[seat.index] = identity
                 continue
-            size = (
-                self.cache.resident_bytes
-                + len(blocks.blocks[0]) * self.cache.block_bytes
-            )
+            size = self.cache.backup_size(tokens, salt, len(blocks.blocks[0]))
             if size <= self.cache.host_bytes:
                 candidates.append((seat, frontier, identity, size))
         return sorted(

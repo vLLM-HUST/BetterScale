@@ -9,6 +9,7 @@ from concurrent.futures import Future
 from collections import deque
 
 from .resident_leases import Offer
+from .cache_pages import PageResidency, page_keys
 
 
 @dataclass(frozen=True)
@@ -18,6 +19,7 @@ class Checkpoint:
     salt: str | None
     block_count: int
     byte_length: int
+    pages: tuple[str, ...] = ()
 
 
 @dataclass
@@ -27,11 +29,21 @@ class Pending:
     pinned_blocks: object | None = None
     cancelled: bool = False
     ranks: set[int] = field(default_factory=set)
+    transfer_bytes: dict[int, int] = field(default_factory=dict)
     completion: Future = field(default_factory=Future)
 
 
 class CacheActions:
-    def __init__(self, scheduler, ranks, host_bytes, *, resident_bytes, block_bytes):
+    def __init__(
+        self,
+        scheduler,
+        ranks,
+        host_bytes,
+        *,
+        resident_bytes,
+        block_bytes,
+        incremental=False,
+    ):
         if ranks not in (1, 2) or host_bytes <= 0:
             raise ValueError(
                 "cache maintenance requires TP1/TP2 and positive host budget"
@@ -49,8 +61,15 @@ class CacheActions:
         self.sequence = 0
         self.completed = deque(maxlen=256)
         self.failed = None
+        self.pages = (
+            PageResidency(scheduler.kv_cache_manager.block_pool)
+            if incremental
+            else None
+        )
 
     def _seat(self, index):
+        if self.pages is not None and self.pending:
+            raise ValueError("incremental cache transaction is still in flight")
         seat = self.scheduler.residents.seats[index]
         if (
             seat.owner is not None
@@ -63,6 +82,10 @@ class CacheActions:
     def _queue(self, kind, checkpoint, seat=None, *, blocks=None, retain=False):
         if self.failed or self.endpoint is None:
             raise RuntimeError("maintenance unavailable or failed")
+        if self.pages is not None and self.pending:
+            # The initial page-object protocol has one bounded transaction;
+            # sharing cannot borrow a producer/drop still awaiting rank quorum.
+            raise ValueError("incremental cache transaction is still in flight")
         self.sequence += 1
         command = dict(
             operation=self.sequence,
@@ -78,6 +101,8 @@ class CacheActions:
             endpoint=self.endpoint,
             host_bytes=self.host_bytes,
         )
+        if checkpoint.pages:
+            command["pages"] = list(checkpoint.pages)
         if seat:
             seat.io_owner = self.sequence
         self.pending[self.sequence] = Pending(command, checkpoint)
@@ -95,10 +120,9 @@ class CacheActions:
         if not seat.tokens or seat.blocks is None:
             raise ValueError("store requires a published exact resident frontier")
         count = len(seat.blocks.blocks[0])
-        size = self.resident_bytes + count * self.block_bytes
-        if self.allocated_host_bytes + size > self.host_bytes:
-            raise ValueError("host State capacity exhausted before dispatch")
-        checkpoint = Checkpoint(key, seat.tokens, seat.cache_salt, count, size)
+        checkpoint = self._checkpoint(key, seat.tokens, seat.cache_salt, count)
+        if self.pages is not None:
+            self.pages.remember(checkpoint.pages, seat.blocks.blocks[0])
         return self._queue("store", checkpoint, seat)
 
     def backup(self, index, key, tokens, salt, blocks):
@@ -118,10 +142,9 @@ class CacheActions:
         ):
             raise ValueError("backup requires a new key and exact frontier")
         count = len(blocks.blocks[0])
-        size = self.resident_bytes + count * self.block_bytes
-        if self.allocated_host_bytes + size > self.host_bytes:
-            raise ValueError("host State capacity exhausted before dispatch")
-        checkpoint = Checkpoint(key, tuple(tokens), salt, count, size)
+        checkpoint = self._checkpoint(key, tokens, salt, count)
+        if self.pages is not None:
+            self.pages.remember(checkpoint.pages, blocks.blocks[0])
         number = self._queue("store", checkpoint, seat, blocks=blocks, retain=True)
         for group in blocks.blocks:
             self.scheduler.kv_cache_manager.block_pool.touch(group)
@@ -147,11 +170,67 @@ class CacheActions:
         self.scheduler.residents.discard_victim(
             Offer(index, seat.epoch, False), self.scheduler.processed_step_seq
         )
-        blocks = manager.block_pool.get_new_blocks(checkpoint.block_count)
+        hits = self.pages.acquire(checkpoint.pages) if self.pages is not None else {}
+        missing = [i for i in range(checkpoint.block_count) if i not in hits]
+        fresh = iter(manager.block_pool.get_new_blocks(len(missing)))
+        blocks = tuple(
+            hits[i] if i in hits else next(fresh) for i in range(checkpoint.block_count)
+        )
         seat.epoch += 1
-        seat.blocks = manager.create_kv_cache_blocks((tuple(blocks),))
+        seat.blocks = manager.create_kv_cache_blocks((blocks,))
         self.touch(key)
-        return self._queue("load", checkpoint, seat)
+        number = self._queue("load", checkpoint, seat)
+        if checkpoint.pages:
+            self.pending[number].command["missing"] = missing
+        return number
+
+    def backup_size(self, tokens, salt, count):
+        if self.pages is None:
+            return self.resident_bytes + count * self.block_bytes
+        keys = page_keys(
+            tokens, salt, self.scheduler.block_size, count, f"auto:{self.sequence + 1}"
+        )
+        held = {k for cp in self.host.values() for k in cp.pages}
+        held.update(k for p in self.pending.values() for k in p.checkpoint.pages)
+        return self.resident_bytes + len(set(keys) - held) * self.block_bytes
+
+    def _checkpoint(self, key, tokens, salt, count):
+        if self.pages is not None and self.pending:
+            raise ValueError("incremental cache transaction is still in flight")
+        if (
+            count
+            != (len(tokens) - 2 + self.scheduler.block_size)
+            // self.scheduler.block_size
+        ):
+            raise ValueError("checkpoint pages do not cover its exact frontier")
+        pages = (
+            page_keys(tokens, salt, self.scheduler.block_size, count, key)
+            if self.pages is not None
+            else ()
+        )
+        checkpoint = Checkpoint(
+            key,
+            tuple(tokens),
+            salt,
+            count,
+            self.resident_bytes + count * self.block_bytes,
+            pages,
+        )
+        held = {cp.key: cp for cp in self.host.values()}
+        held.update((p.checkpoint.key, p.checkpoint) for p in self.pending.values())
+        held[key] = checkpoint
+        if self._host_bytes(held.values()) > self.host_bytes:
+            raise ValueError("host State capacity exhausted before dispatch")
+        return checkpoint
+
+    def _host_bytes(self, checkpoints):
+        checkpoints = list(checkpoints)
+        if self.pages is None:
+            return sum(cp.byte_length for cp in checkpoints)
+        return (
+            len(checkpoints) * self.resident_bytes
+            + len({key for cp in checkpoints for key in cp.pages}) * self.block_bytes
+        )
 
     @property
     def allocated_host_bytes(self):
@@ -159,7 +238,7 @@ class CacheActions:
         for pending in self.pending.values():
             if pending.command["kind"] in ("store", "drop"):
                 held[pending.checkpoint.key] = pending.checkpoint
-        return sum(checkpoint.byte_length for checkpoint in held.values())
+        return self._host_bytes(held.values())
 
     def cancel(self, operation):
         if self.pending[operation].command["kind"] == "drop":
@@ -196,6 +275,8 @@ class CacheActions:
             self.failed = receipt.get("error") or "stale cache completion"
             raise RuntimeError(self.failed)  # no release on unknown DMA lifetime
         pending.ranks.add(rank)
+        if "transfer_bytes" in receipt:
+            pending.transfer_bytes[rank] = receipt["transfer_bytes"]
         if pending.ranks != self.ranks:
             return
         seat = (
@@ -218,6 +299,8 @@ class CacheActions:
                 self.scheduler._release_resident_blocks(pending.pinned_blocks)
             seat.io_owner = None
         elif kind == "load":
+            if self.pages is not None:
+                self.pages.remember(checkpoint.pages, seat.blocks.blocks[0])
             if pending.cancelled:
                 self.scheduler._release_resident_blocks(seat.blocks)
                 seat.tokens, seat.cache_salt, seat.blocks = (), None, None
@@ -235,6 +318,10 @@ class CacheActions:
                 kind=kind,
                 cancelled=pending.cancelled,
                 ranks=sorted(pending.ranks),
+                transfer_bytes_per_rank=dict(pending.transfer_bytes),
+                restored_pages=len(command.get("missing", command["blocks"]))
+                if kind == "load"
+                else 0,
             )
         )
         pending.completion.set_result(self.completed[-1])

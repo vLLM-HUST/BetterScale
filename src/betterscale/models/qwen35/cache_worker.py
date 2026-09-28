@@ -8,6 +8,7 @@ import socket
 
 import torch
 
+from betterscale.live.runtime.page_state import PageStateStore
 from betterscale.live.runtime.host_state import (
     HostStateDomainSelection,
     HostStateKey,
@@ -23,6 +24,7 @@ class CacheWorker:
         self.runner = runner
         self.rank = get_tensor_model_parallel_rank()
         self.backend = TorchHostStateBackend(memory_budget_bytes=host_bytes)
+        self.page_backend = None
         self.streams = {
             kind: torch.npu.Stream(device=runner.device) for kind in ("store", "load")
         }
@@ -41,8 +43,13 @@ class CacheWorker:
         root = self.runner._live_state_root
         kind, seat, epoch = (command[k] for k in ("kind", "seat", "epoch"))
         key = HostStateKey(command["key"], 1)
+        incremental = "pages" in command
+        if incremental and self.page_backend is None:
+            self.page_backend = PageStateStore(
+                memory_budget_bytes=self.backend.memory_budget_bytes
+            )
         if kind == "drop":
-            self.backend.release(key)
+            (self.page_backend if incremental else self.backend).release(key)
             self.verify.pop(key, None)
             self._send(command)
             return
@@ -77,13 +84,40 @@ class CacheWorker:
             # This write precedes the restore completion event on the same stream.
             with torch.npu.stream(stream):
                 root.continuation.resident_epoch.tensor[seat] = epoch
-        method = self.backend.offload if kind == "store" else self.backend.restore
-        transfer = method(self.states, key, selection, stream=stream)
+        if incremental:
+            objects = {
+                "resident:" + command["key"]: HostStateSelection(
+                    (HostStateDomainSelection(root.residents, (seat,)),)
+                ),
+            }
+            selected = (
+                range(len(command["blocks"])) if kind == "store" else command["missing"]
+            )
+            for i in selected:
+                first = command["blocks"][i] * span
+                objects[command["pages"][i]] = HostStateSelection(
+                    (
+                        HostStateDomainSelection(
+                            root.pages, tuple(range(first, first + span))
+                        ),
+                    )
+                )
+            transfer = self.page_backend.transfer(
+                key,
+                self.states,
+                objects,
+                store=kind == "store",
+                stream=stream,
+            )
+        else:
+            method = self.backend.offload if kind == "store" else self.backend.restore
+            transfer = method(self.states, key, selection, stream=stream)
 
         def finish(producer=producer):
             try:
                 torch.npu.set_device(self.runner.device)
                 transfer.result()
+                command["_transfer_bytes"] = transfer.byte_length
                 if kind == "store":
                     self.verify[key] = was_verify
                 else:
@@ -102,6 +136,8 @@ class CacheWorker:
     def _send(self, command, error=None):
         receipt = {key: command[key] for key in ("operation", "seat", "epoch")}
         receipt.update(rank=self.rank, error=error)
+        if "_transfer_bytes" in command:
+            receipt["transfer_bytes"] = command["_transfer_bytes"]
         with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as channel:
             channel.settimeout(30)
             channel.sendto(json.dumps(receipt).encode(), command["endpoint"])
