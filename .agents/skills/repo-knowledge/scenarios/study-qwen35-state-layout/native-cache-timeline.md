@@ -129,3 +129,44 @@ small four-lane overview, plot and machine-readable summary. `analyze.py` and
 `deliver.py` replay analysis without touching NPU. Profile teardown warns about
 RECORD-state stop; all seven marked conditions have their expected771 kernels
 or90 copies/direction, complete end markers and validated exported evidence.
+
+
+## Aligned bidirectional bandwidth control (2026-09-28)
+
+Fletcher asked whether demand H2D and background D2H should compete. Do not
+infer direction independence from compute/DMA overlap. The follow-up capsule
+`runs/qwen35-state-lanes/20260928-bidirectional-dma/` retains `probe.py`,
+`packets.json`, protocol, all63 unprofiled trials, summary and admission/release.
+Local910B2 physical2, same Torch2.10/torch-npu2.10post2/CANN9.0.1, shared host.
+Other cards carried serving startup/foreign work; this is not isolated-host peak
+bandwidth or a TP2 end-to-end scheduling result.
+
+The same90 State packets (118,673,460B) repeat8 times per direction, using
+independent preallocated buffers. Both DMA streams wait on ONE device event
+behind >=200ms of queued grouped-MLP prefix. Every measured trial verifies that
+ALL copies were submitted before gate release. Prefix work is excluded from
+timings; compute-background trials queue another~207ms body after that gate.
+Nine shuffled rounds; no profiler. CPU numerical oracle, graph/eager equality
+and every transferred byte pass; supervisor exit0. Direction-start skew median
+~0.14us, and almost the entire shorter DMA event interval overlaps the other.
+This removes the historical D2H-first host-submission stagger.
+
+Median GB/s, decimal payload/event-duration:
+
+| Background | D2H alone | H2D alone | D2H with H2D | H2D with D2H |
+|---|---:|---:|---:|---:|
+| No timed compute |17.609|21.869|14.337|14.244|
+| Continuous GMM |17.684|21.172|13.799|13.786|
+
+With compute, standalone D2H53.687ms and H2D44.842ms become68.799/68.866ms
+together: demand-load duration+53.6%, while combined makespan is shorter than
+serializing both (~98.5ms). Compute body207.142ms alone versus208.380ms with
+both (+0.60%) is diluted over the longer body, not a zero-interference claim.
+These packet-stream rates include packet/event scheduling, not PCIe line rate.
+
+**Inference:** simultaneous directions can improve aggregate throughput yet
+hurt a latency-critical restore. This supports investigating demand-load
+priority if parallel directions are enabled; it does not identify the contended
+hardware resource or select an optimal scheduling policy. Current incremental
+cache transactions remain globally single-flight; no new direction-priority
+policy was introduced from this control.
