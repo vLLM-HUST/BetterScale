@@ -1,0 +1,163 @@
+{
+  "protocol": "One resident State E16/R20 + balanced decode attention point, hw3 TP2 C16/900s/query4096/262144; total24.25GiB/rank; natural MTP2 SWE29136f1 seed20260924",
+  "historical_comparisons": {
+    "native_State_native_attention": {
+      "output_tokens_per_second_per_chip": {
+        "historical": 369.81444444444446,
+        "combined": 442.98055555555555,
+        "change_percent": 19.78454660445328
+      },
+      "decode_tokens_per_second_p90": {
+        "historical": 56.075922990415805,
+        "combined": 62.906279664144115,
+        "change_percent": 12.18055149069186
+      },
+      "ttft_seconds_p95": {
+        "historical": 0.9162897998874541,
+        "combined": 0.5886589169880608,
+        "change_percent": -35.75625123619574
+      }
+    },
+    "native_State_balanced_attention": {
+      "output_tokens_per_second_per_chip": {
+        "historical": 391.3,
+        "combined": 442.98055555555555,
+        "change_percent": 13.20739983530681
+      },
+      "decode_tokens_per_second_p90": {
+        "historical": 59.75264243525484,
+        "combined": 62.906279664144115,
+        "change_percent": 5.277820528701138
+      },
+      "ttft_seconds_p95": {
+        "historical": 0.9367491705866989,
+        "combined": 0.5886589169880608,
+        "change_percent": -37.159387435659475
+      }
+    },
+    "resident_State_native_attention_historical": {
+      "output_tokens_per_second_per_chip": {
+        "historical": 414.8011111111111,
+        "combined": 442.98055555555555,
+        "change_percent": 6.793483356146601
+      },
+      "decode_tokens_per_second_p90": {
+        "historical": 59.479201450303414,
+        "combined": 62.906279664144115,
+        "change_percent": 5.761809389294048
+      },
+      "ttft_seconds_p95": {
+        "historical": 0.4622505394654579,
+        "combined": 0.5886589169880608,
+        "change_percent": 27.34629096783323
+      }
+    }
+  },
+  "limits": [
+    "No new control or repetitions by user request; not an isolated attention speedup estimate",
+    "Resident414.8 reference ran on the local host; current combination runs on hw3",
+    "Fixed-time closed-loop runs reach different workload prefixes",
+    "Post-EOS long gate continuation is execution stress, not semantic quality"
+  ],
+  "source_commit": "283e06d9668b8bb3a09f92632b1a3576dc8a11e8",
+  "artifact_root": "runs/attention-response/20260927-resident-balanced-c16",
+  "tails": {
+    "requests": 1280,
+    "tpot_ms_p50": 17.389456515240028,
+    "tpot_ms_p95": 22.827096292141675,
+    "tpot_ms_p99": 30.016469674407794,
+    "ttft_s_p99": 0.8122166538162864
+  },
+  "cache": {
+    "scope": "All requests including drain",
+    "cached_requests": 1255,
+    "requests": 1296,
+    "prompt_tokens": 40768216,
+    "cached_tokens": 39811389,
+    "uncached_tokens": 956827,
+    "prompt_cache_fraction": 0.9765300743108307
+  },
+  "mtp": {
+    "seconds": 933.9585928916931,
+    "deltas": {
+      "spec_decode_num_drafts_total": 280348.0,
+      "spec_decode_num_draft_tokens_total": 560696.0,
+      "spec_decode_num_accepted_tokens_total": 532953.0,
+      "num_preemptions_total": 0.0
+    },
+    "mean_acceptance_length": 2.9010408492302426,
+    "scope": "First/last5s load samples; includes drain, not exact900s credit window"
+  },
+  "summary": {
+    "valid": true,
+    "requests_completed_in_window": 1280,
+    "requests_drained": 16,
+    "failed_requests": 0,
+    "max_prompt_tokens_observed": 106308,
+    "full_concurrency_fraction": 0.9942702629302705
+  },
+  "functional_gate": {
+    "status": "PASS",
+    "scope": "CPU HTTP client: retain two long resident prefixes, then overlap hot continuations.\n\nOnly the initial retrieved code is semantic evidence after forcing beyond EOS.\nThe post-EOS continuation is scheduling stress, not answer quality.\n",
+    "requests": [
+      {
+        "index": 0,
+        "stress": false,
+        "seconds": 35.22229043400148,
+        "usage": {
+          "prompt_tokens": 32769,
+          "total_tokens": 32772,
+          "completion_tokens": 3,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "multimodal_tokens": null
+          }
+        }
+      },
+      {
+        "index": 1,
+        "stress": false,
+        "seconds": 36.29619974002708,
+        "usage": {
+          "prompt_tokens": 261000,
+          "total_tokens": 261003,
+          "completion_tokens": 3,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "multimodal_tokens": null
+          }
+        }
+      },
+      {
+        "index": 0,
+        "stress": true,
+        "seconds": 4.7439981869538315,
+        "usage": {
+          "prompt_tokens": 32802,
+          "total_tokens": 33058,
+          "completion_tokens": 256,
+          "prompt_tokens_details": {
+            "cached_tokens": 32771,
+            "multimodal_tokens": null
+          }
+        }
+      },
+      {
+        "index": 1,
+        "stress": true,
+        "seconds": 6.27550618496025,
+        "usage": {
+          "prompt_tokens": 261033,
+          "total_tokens": 261289,
+          "completion_tokens": 256,
+          "prompt_tokens_details": {
+            "cached_tokens": 261002,
+            "multimodal_tokens": null
+          }
+        }
+      }
+    ]
+  },
+  "server_exit": 0,
+  "launcher_exit": 0
+}

@@ -1,6 +1,7 @@
 """Native asynchronous scheduling with resident-State admission/lifetime hooks.
 
-The inherited scheduler still chooses requests, query budgets and preemption.
+The native scheduler retains allocation, preemption and async publication.
+A bounded round-robin policy assigns prefill grants after reserving decode.
 This adapter supplies exact hot checkpoints and leaves token pages in its pool.
 """
 
@@ -11,6 +12,8 @@ from vllm.v1.core.sched.output import SchedulerOutput
 from vllm.v1.request import RequestStatus
 
 from .resident_leases import Frontier, ResidentLeases
+from .prefill_round_robin import PrefillRoundRobin, prepare
+from .fair_schedule import bind
 
 
 @dataclass
@@ -22,6 +25,8 @@ class StateSchedule(SchedulerOutput):
 
 
 class LiveStateScheduler(AsyncScheduler):
+    _fair_native_schedule = None
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.kv_cache_config.has_mamba_layers or self.connector is not None:
@@ -32,6 +37,16 @@ class LiveStateScheduler(AsyncScheduler):
             raise ValueError("live State currently admits E16/R20")
         # Reuse the native deferred-free fence, including abort/preemption. A
         # resident cannot be advertised hot while a queued wave can advance it.
+        if getattr(self, "_balance_enabled", False):
+            raise ValueError(
+                "Prefill round robin requires Ascend balance scheduling disabled"
+            )
+        self._prefill_round_robin = PrefillRoundRobin()
+        if type(self)._fair_native_schedule is None:
+            type(self)._fair_native_schedule = bind(
+                AsyncScheduler.schedule,
+                balance_enabled=getattr(self, "_balance_enabled", False),
+            )
         self.defer_block_free = True
         self.residents = ResidentLeases(
             20, release_blocks=self._release_resident_blocks
@@ -180,10 +195,12 @@ class LiveStateScheduler(AsyncScheduler):
     def schedule(self, *args, **kwargs):
         policy = getattr(self, "cache_policy", None)
         if policy is None:
-            output = super().schedule(*args, **kwargs)
+            prepare(self)
+            output = self._fair_native_schedule(*args, **kwargs)
         else:
             with policy.runnable():
-                output = super().schedule(*args, **kwargs)
+                prepare(self)
+                output = self._fair_native_schedule(*args, **kwargs)
             policy.after_schedule(output.num_scheduled_tokens)
         leases = {}
         for rid in output.num_scheduled_tokens:

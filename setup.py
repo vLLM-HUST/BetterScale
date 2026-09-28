@@ -16,6 +16,7 @@ def check_native():
         ("qwen_gdn", "libbs_gdn.so", "sha256"),
         ("qwen_gdn", "libbs_gdn_host.so", "host_sha256"),
         ("qwen_fia", "libbs_fia.so", "sha256"),
+        ("qwen_fia/context_parallel", "libbs_fia_cp.so", "sha256"),
     )
     for patch, filename, key in artifacts:
         library = root / patch / filename

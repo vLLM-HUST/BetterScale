@@ -1,0 +1,90 @@
+{
+  "uncapped": {
+    "first_short_grant": 36,
+    "first_step": {
+      "step": 1,
+      "long_computed_before": 0,
+      "grants": {
+        "long": 4096
+      },
+      "remaining": 0,
+      "waiting_budget_eligible": false,
+      "short_raw_grant": 0,
+      "short_aligned_grant": 0
+    }
+  },
+  "cap_2048": {
+    "first_short_grant": 1,
+    "first_step": {
+      "step": 1,
+      "long_computed_before": 0,
+      "grants": {
+        "long": 2048
+      },
+      "remaining": 2048,
+      "waiting_budget_eligible": true,
+      "short_raw_grant": 2048,
+      "short_aligned_grant": 2048
+    }
+  },
+  "uncapped_decode": {
+    "first_short_grant": 71,
+    "first_step": {
+      "step": 1,
+      "long_computed_before": 0,
+      "grants": {
+        "decode": 3,
+        "long": 2048
+      },
+      "remaining": 2045,
+      "waiting_budget_eligible": true,
+      "short_raw_grant": 2045,
+      "short_aligned_grant": 0
+    }
+  },
+  "cap_2048_decode": {
+    "first_short_grant": 71,
+    "first_step": {
+      "step": 1,
+      "long_computed_before": 0,
+      "grants": {
+        "decode": 3,
+        "long": 2048
+      },
+      "remaining": 2045,
+      "waiting_budget_eligible": true,
+      "short_raw_grant": 2045,
+      "short_aligned_grant": 0
+    }
+  },
+  "noalign_uncapped_decode": {
+    "first_short_grant": 36,
+    "first_step": {
+      "step": 1,
+      "long_computed_before": 0,
+      "grants": {
+        "decode": 3,
+        "long": 4093
+      },
+      "remaining": 0,
+      "waiting_budget_eligible": false,
+      "short_raw_grant": 0,
+      "short_aligned_grant": 0
+    }
+  },
+  "noalign_cap_2048_decode": {
+    "first_short_grant": 1,
+    "first_step": {
+      "step": 1,
+      "long_computed_before": 0,
+      "grants": {
+        "decode": 3,
+        "long": 2048
+      },
+      "remaining": 2045,
+      "waiting_budget_eligible": true,
+      "short_raw_grant": 2045,
+      "short_aligned_grant": 2045
+    }
+  }
+}

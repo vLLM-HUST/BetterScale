@@ -197,17 +197,20 @@ BetterScale is open source under the [Apache License 2.0](LICENSE).
 See [third-party notices](THIRD_PARTY_NOTICES.md) for the upstream execution paths
 adapted by the patches. The pinned upstream repositories retain their own licenses.
 
-## Optional resident State runtime (development source)
+## Qwen35 default: resident State + balanced decode attention (development source)
 
-Qwen3.5-35B-A3B's `--runtime live` entry uses BetterScale-owned StateTensor lanes
-with the qualified native model, MTP2, asynchronous scheduler and FULL graphs.
+Qwen3.5-35B-A3B's default `serve-qwen` entry uses BetterScale-owned StateTensor lanes
+with balanced decode attention, the qualified native model, MTP2, asynchronous
+scheduler and FULL graphs. `--runtime auto` selects this route from model config;
+Qwen27 is unchanged.
 The source, launch configuration and complete pinned donor adaptation are packaged
 under `src/betterscale`; no experiment controller or external `livemodule` import
 is required. See the [deployment instructions](src/betterscale/models/qwen35/README.md).
 
 The qualified E16/R20 configuration retains262144 context and pooled regular-attention
-pages. C16/900s SWE measured414.80 output tokens/s/chip versus a fresh369.17 control;
-this is one observation, not a statistical or SWE answer-quality certification.
+pages. The combined C16/900s SWE point measured442.98 output tokens/s/chip,
+P90 decode62.91 tokens/s/user and TTFT P95588.66ms. This is one observation,
+not a paired incremental-speedup or SWE answer-quality certification.
 Native graph capture remains in use. Arbitrary historical checkpoints and EOS/stop
 rollback are not implemented. The earlier standalone live root remains research
 code, not the35B serving entry. Published PyPI0.5.1 predates this integration.

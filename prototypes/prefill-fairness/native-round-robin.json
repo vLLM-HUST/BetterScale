@@ -1,0 +1,92 @@
+{
+  "scope": "Execute complete pinned donor schedule + three grant seams on CPU doubles.\n\nReal schedule source; fake request/KV/encoder/output and completion updates.\nThis checks routing and token accounting, not device numerics or allocator fit.\n",
+  "baseline": [
+    {
+      "step": 1,
+      "grants": {
+        "decode": 3,
+        "long": 4093
+      },
+      "waiting": [
+        "short"
+      ]
+    },
+    {
+      "step": 2,
+      "grants": {
+        "decode": 3,
+        "long": 4093
+      },
+      "waiting": [
+        "short"
+      ]
+    },
+    {
+      "step": 3,
+      "grants": {
+        "decode": 3,
+        "long": 4093
+      },
+      "waiting": [
+        "short"
+      ]
+    },
+    {
+      "step": 4,
+      "grants": {
+        "decode": 3,
+        "long": 4093
+      },
+      "waiting": [
+        "short"
+      ]
+    }
+  ],
+  "round_robin": [
+    {
+      "step": 1,
+      "grants": {
+        "decode": 3,
+        "long": 4093
+      },
+      "waiting": [
+        "short"
+      ]
+    },
+    {
+      "step": 2,
+      "grants": {
+        "decode": 3,
+        "long": 1318,
+        "short": 2775
+      },
+      "waiting": []
+    },
+    {
+      "step": 3,
+      "grants": {
+        "decode": 3,
+        "long": 4090,
+        "short": 3
+      },
+      "waiting": []
+    },
+    {
+      "step": 4,
+      "grants": {
+        "decode": 3,
+        "long": 4090,
+        "short": 3
+      },
+      "waiting": []
+    }
+  ],
+  "padded_waiting": {
+    "grants": {
+      "decode": 3,
+      "bulk": 4092
+    },
+    "unused": 1
+  },
+  "ascend_disabled_wrapper": "source-pinned forwarding resolved"
+}

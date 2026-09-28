@@ -1,0 +1,202 @@
+{
+  "status": "PASS_BOUNDED_REAL_MODEL_AND_SCHEDULER_STEPS",
+  "issue": "https://github.com/vLLM-HUST/BetterScale/issues/6",
+  "base_commit": "eee35fd",
+  "cpu": {
+    "pytest_passed": 24,
+    "native_schedule_fixture": "native-round-robin.json",
+    "covers": [
+      "rotating start and waiting admission",
+      "decode reservation",
+      "blocked membership and full execution seats",
+      "indivisible MTP waiting row",
+      "native page/State lifetime hooks",
+      "worker and delivery composition",
+      "unknown source and enabled balance rejection"
+    ]
+  },
+  "real_platform_preflight": {
+    "status": "PASS",
+    "observed_mro": [
+      "AsyncScheduler",
+      "Ascend BalanceScheduler",
+      "core Scheduler"
+    ],
+    "bound": "source-pinned core schedule through disabled source-pinned wrapper"
+  },
+  "source_matches_model04_capsule_excluding_trace_observer": {
+    "seat_scheduler.py": true,
+    "prefill_round_robin.py": true,
+    "fair_schedule.py": true
+  },
+  "capsules": {
+    "initial_hw3": "runs/operator-response/20260927-prefill-fairness01",
+    "local": "runs/operator-response/20260927-prefill-fairness-local02"
+  },
+  "limitations": [
+    "One bounded functional/step-trace run; no new C16 throughput or P95 TTFT comparison",
+    "Hot continuation input28894/cached26626 is not the historical C16 request identity",
+    "Resource-starved admission/HBM occupancy policy remains issue #6",
+    "Conv PR #5 remains separate and unmerged"
+  ],
+  "previous_interruption": {
+    "host": "local",
+    "physical_devices": [
+      0,
+      1
+    ],
+    "model": "Qwen3.5-35B-A3B",
+    "tp": 2,
+    "mtp": 2,
+    "max_sequences": 16,
+    "token_budget": 4096,
+    "context": 262144,
+    "status": "EXTERNALLY_INTERRUPTED_BEFORE_REQUESTS",
+    "requests_completed": 0,
+    "signal": "SIGTERM to admission supervisor at approximately 2026-09-27T17:36:00Z",
+    "sender": "unknown; not attributed",
+    "server_exit_code": 0,
+    "selected_devices_released": true
+  },
+  "implementation_commit": "5097dfb",
+  "serving": {
+    "capsule": "runs/operator-response/20260927-prefill-fairness-local02/model05",
+    "host": "local",
+    "physical_devices": [
+      0,
+      1
+    ],
+    "model": "Qwen3.5-35B-A3B",
+    "tp": 2,
+    "mtp": 2,
+    "max_sequences": 16,
+    "token_budget": 4096,
+    "context": 262144,
+    "status": "PASS",
+    "requests_completed": 22,
+    "checks": {
+      "serial_retrieval": 2,
+      "concurrent_retrieval": 16,
+      "length_capped_hot_warmup": 1,
+      "long_and_hot_overlap_retrieval": 2,
+      "trace_flush_retrieval": 1
+    },
+    "trace_steps": 48,
+    "overlap_steps": [
+      58,
+      59,
+      60,
+      61
+    ],
+    "mtp_observed": {
+      "draft_steps": 43,
+      "draft_tokens": 86,
+      "accepted_tokens": 86,
+      "synthetic_acceptance": false
+    },
+    "server_exit_code": 0,
+    "admission_exit_code": 0,
+    "selected_devices_released": true
+  },
+  "observed_steps": [
+    {
+      "step": 57,
+      "total": 4096,
+      "before": {
+        "fair-long": {
+          "status": "RUNNING",
+          "prompt": 143971,
+          "computed": 16384
+        },
+        "fair-hot": {
+          "status": "WAITING",
+          "prompt": 28894,
+          "computed": 0
+        }
+      },
+      "grants": {
+        "fair-long": 4096
+      }
+    },
+    {
+      "step": 58,
+      "total": 4096,
+      "before": {
+        "fair-long": {
+          "status": "RUNNING",
+          "prompt": 143971,
+          "computed": 20480
+        },
+        "fair-hot": {
+          "status": "WAITING",
+          "prompt": 28894,
+          "computed": 0
+        }
+      },
+      "grants": {
+        "fair-long": 1828,
+        "fair-hot": 2268
+      }
+    },
+    {
+      "step": 59,
+      "total": 4096,
+      "before": {
+        "fair-long": {
+          "status": "RUNNING",
+          "prompt": 143971,
+          "computed": 22308
+        },
+        "fair-hot": {
+          "status": "RUNNING",
+          "prompt": 28894,
+          "computed": 28894
+        }
+      },
+      "grants": {
+        "fair-long": 4093,
+        "fair-hot": 3
+      }
+    },
+    {
+      "step": 60,
+      "total": 4096,
+      "before": {
+        "fair-long": {
+          "status": "RUNNING",
+          "prompt": 143971,
+          "computed": 26401
+        },
+        "fair-hot": {
+          "status": "RUNNING",
+          "prompt": 28894,
+          "computed": 28897
+        }
+      },
+      "grants": {
+        "fair-long": 4093,
+        "fair-hot": 3
+      }
+    },
+    {
+      "step": 61,
+      "total": 4096,
+      "before": {
+        "fair-long": {
+          "status": "RUNNING",
+          "prompt": 143971,
+          "computed": 30494
+        },
+        "fair-hot": {
+          "status": "RUNNING",
+          "prompt": 28894,
+          "computed": 28900
+        }
+      },
+      "grants": {
+        "fair-long": 4093,
+        "fair-hot": 3
+      }
+    }
+  ]
+}

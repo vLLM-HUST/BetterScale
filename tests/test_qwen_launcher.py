@@ -92,7 +92,7 @@ class QwenLauncher(unittest.TestCase):
                 )
             }
             with (
-                patch.dict(os.environ, overrides),
+                patch.dict(os.environ, {**overrides, "BETTERSCALE_CONTEXT_PARALLEL": "0"}),
                 patch(
                     "betterscale.models.qwen35.launch.validate", side_effect=lambda p: p
                 ),

@@ -63,3 +63,12 @@ The separately selected `betterscale.live.arch.ascend.graph` backend and its
 CPU protocol tests are also transferred from LiveInference
 `05ac15419c0e73650e687ceb9daffeb7874865f0`, Apache-2.0, with import paths relocated.
 This adds a Python torch-npu graph specialization, not any donor native binaries.
+
+The opt-in quota attention builder in
+`src/betterscale/patches/qwen_fia/context_parallel` materializes and modifies
+installed CANN9.0.1 fused-infer-attention source (Huawei Technologies Co., Ltd.,
+2025), retaining its CANN Open Software License Agreement2.0 per-file notices.
+The tiling declaration mirrors that vendor ABI. Generated vendor source and the
+separately built `libbs_fia_cp.so` remain Ascend-only CANN2.0 components; see
+`licenses/CANN-2.0.txt`. The scheduler, publication adapter and build orchestration
+are BetterScale code. This feature does not replace the installed CANN runtime.

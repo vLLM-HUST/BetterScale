@@ -211,3 +211,31 @@ class WorkspaceContract(unittest.TestCase):
         self.assertEqual(released, [5])
         self.assertEqual(frame.workspace, 1)
         self.assertEqual(frame.plan, 3)
+
+
+class ContextParallelFrame(unittest.TestCase):
+    def test_opt_in_slab_preserves_native_and_draft_offsets(self):
+        import torch
+        from betterscale.patches.qwen_fia.wave import Frame
+
+        allocate = torch.empty
+        def cpu_empty(*args, **kwargs):
+            kwargs.pop('pin_memory', None)
+            kwargs['device'] = 'cpu'
+            return allocate(*args, **kwargs)
+        stream = SimpleNamespace(wait_stream=lambda other: None)
+        with (
+            patch('betterscale.patches.qwen_fia.wave.torch.empty', side_effect=cpu_empty),
+            patch('betterscale.patches.qwen_fia.wave.torch.npu',
+                  SimpleNamespace(Event=lambda: object(), current_stream=lambda: stream), create=True),
+        ):
+            for enabled, size in ((False, 2528), (True, 4096)):
+                frame = Frame(48, 2048, 'cpu', stream, requests=17, context_parallel=enabled)
+                self.assertEqual(frame.context_parallel, enabled)
+                self.assertEqual(frame.h_tiling.numel(), size)
+                for slab, q, kv, table in ((frame.host,frame.h_q,frame.h_kv,frame.h_table),
+                                           (frame.device,frame.q,frame.kv,frame.table)):
+                    self.assertEqual(q.data_ptr()-slab.data_ptr(), size)
+                    self.assertEqual(kv.data_ptr()-slab.data_ptr(), size+17*8)
+                    self.assertEqual(table.data_ptr()-slab.data_ptr(), size+17*16)
+                self.assertEqual(frame.table.shape, (17,2048))

@@ -6,6 +6,7 @@ the framework pool; frames own only persistent metadata and its reuse fences.
 
 import ctypes
 import torch
+from .context_parallel import adapter as cp
 
 
 class Planner:
@@ -96,25 +97,28 @@ class Planner:
         except BaseException:
             self.lib.plan_release(plan)
             raise
+        cp.prepare(frame, m)
         self.calls += 1
 
 
 class Frame:
-    def __init__(self, tokens, columns, device, stream, *, requests=9):
+    def __init__(self, tokens, columns, device, stream, *, requests=9, context_parallel=False):
         self.tokens = tokens
         self.columns = columns
         self.requests = requests
         self.stream = stream
-        size = 2528 + requests * 16 + requests * columns * 4
+        self.context_parallel = context_parallel
+        tiling_bytes = 4096 if context_parallel else 2528
+        size = tiling_bytes + requests * 16 + requests * columns * 4
         self.host = torch.empty(size, dtype=torch.uint8, pin_memory=True)
         self.device = torch.empty(size, dtype=torch.uint8, device=device)
 
         def views(t):
             return (
-                t[:2528],
-                t[2528 : 2528 + requests * 8].view(torch.int64),
-                t[2528 + requests * 8 : 2528 + requests * 16].view(torch.int64),
-                t[2528 + requests * 16 :].view(torch.int32).view(requests, columns),
+                t[:tiling_bytes],
+                t[tiling_bytes : tiling_bytes + requests * 8].view(torch.int64),
+                t[tiling_bytes + requests * 8 : tiling_bytes + requests * 16].view(torch.int64),
+                t[tiling_bytes + requests * 16 :].view(torch.int32).view(requests, columns),
             )
 
         self.h_tiling, self.h_q, self.h_kv, self.h_table = views(self.host)
@@ -195,8 +199,13 @@ def install(library, *, heads=12, kvheads=2, requests=9, tokens=2048):
                 self.device,
                 self._owned_ingress,
                 requests=requests,
+                context_parallel=(heads, kvheads, requests) == (8, 1, 17) and cp.enabled(tokens),
             )
         frame = self._fia_frames[key]
+        if frame.context_parallel and getattr(self, "_owned_capture_bank", None) is not None:
+            if self.input_batch.num_reqs:
+                raise RuntimeError("Context-parallel capture requires an empty startup pool")
+            m = cp.capture_metadata(m, tokens)
         planner = self._fia_planner
         if planner.fixtures is not None and not ctx.capturing:
             frame.prepare(
@@ -251,12 +260,14 @@ def install(library, *, heads=12, kvheads=2, requests=9, tokens=2048):
             planner.fixtures = (q, key, value, torch.empty_like(q), self.scale)
             frame.prepare(
                 planner,
-                m,
+                active["metadata"],
                 active["cpu"],
                 min(len(m.actual_seq_lengths_q), active["cpu"].shape[0]),
             )
         if self.scale != planner.fixtures[-1] or key.shape != planner.fixtures[1].shape:
             raise ValueError("Wave FIA layers must share scale and KV geometry")
+        if frame.context_parallel:
+            return cp.launch(frame, query, key, value, m.attn_mask, output)
         plan = planner.check(planner.lib.plan_clone(frame.plan))
         try:
             # Invocation-local allocator workspace; ACLGraph pool owns capture reuse.
