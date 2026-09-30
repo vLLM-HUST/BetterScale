@@ -1,7 +1,9 @@
 """EP partition, build identity and device-client submission order contracts."""
 import ast,json,os,subprocess,sys,tempfile,unittest
+from importlib.machinery import ModuleSpec
 from pathlib import Path
-from types import SimpleNamespace as S
+from types import ModuleType, SimpleNamespace as S
+from unittest.mock import patch
 from betterscale.patches.expert_service.build import emit
 from betterscale.patches.expert_service.config import ServiceConfig
 
@@ -54,18 +56,24 @@ for n in (2,4):
         tree=ast.parse(path.read_text());cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=='PersistentRemote')
         call=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=='__call__')
         scope=dict(torch=torch,H=4,K=2);exec(compile(ast.Module(body=[call],type_ignores=[]),str(path),'exec'),scope)
-        for count in (1,2,4):
-            trace=[];banks={}
-            for owner in range(count):banks[owner]=S(config=torch.zeros(16,dtype=torch.int64),x=torch.empty(3,4),id_storage=torch.empty(6,dtype=torch.int64),probs=torch.empty(6),output=torch.zeros(3,4))
-            def launch(fn,config,*args):trace.append((fn,next(o for o,b in banks.items() if b.config is config)))
-            obj=S(placement=S(targets=lambda _:tuple(range(count))),rows=3,python_submissions=0,route_plan_min_rows=0,
-                  bank=lambda owner,n:banks[owner],kernels=S(call=launch),pack='pack',publish='publish',collect='collect',retire='retire',promote='promote',shared_callback=lambda *args:trace.append(('shared',None)))
-            scope['__call__'](obj,40,torch.ones(5,4),torch.zeros(5,2,dtype=torch.int64),torch.ones(5,2))
-            expected=[]
-            for frame in range(2):
-                expected += [(fn,o) for o in range(count) for fn in ('pack','publish')]
-                if frame==0:expected += [('shared',None)]
-                expected += [('collect',0)]+[('retire',o) for o in range(count)]
-            self.assertEqual(trace,expected)
+        fake_vllm=ModuleType('vllm');fake_vllm.__path__=[]
+        fake_vllm.__spec__=ModuleSpec('vllm',loader=None,is_package=True)
+        fake_forward=ModuleType('vllm.forward_context')
+        fake_forward.get_forward_context=lambda:None
+        fake_forward.is_forward_context_available=lambda:False
+        with patch.dict('sys.modules',{'vllm':fake_vllm,'vllm.forward_context':fake_forward}):
+            for count in (1,2,4):
+                trace=[];banks={}
+                for owner in range(count):banks[owner]=S(config=torch.zeros(16,dtype=torch.int64),x=torch.empty(3,4),id_storage=torch.empty(6,dtype=torch.int64),probs=torch.empty(6),output=torch.zeros(3,4))
+                def launch(fn,config,*args):trace.append((fn,next(o for o,b in banks.items() if b.config is config)))
+                obj=S(placement=S(targets=lambda _:tuple(range(count))),rows=3,python_submissions=0,route_plan_min_rows=0,
+                      bank=lambda owner,n:banks[owner],kernels=S(call=launch),pack='pack',publish='publish',collect='collect',retire='retire',promote='promote',shared_callback=lambda *args:trace.append(('shared',None)))
+                scope['__call__'](obj,40,torch.ones(5,4),torch.zeros(5,2,dtype=torch.int64),torch.ones(5,2))
+                expected=[]
+                for frame in range(2):
+                    expected += [(fn,o) for o in range(count) for fn in ('pack','publish')]
+                    if frame==0:expected += [('shared',None)]
+                    expected += [('collect',0)]+[('retire',o) for o in range(count)]
+                self.assertEqual(trace,expected)
 
 if __name__=='__main__':unittest.main()

@@ -38,7 +38,8 @@ class Deployment:
         if (len(self.devices) != args.sources+args.owners or len(set(self.devices)) != len(self.devices)
                 or any(not d.isdigit() or int(d) not in range(8) for d in self.devices)):
             raise ValueError('devices must name exactly one distinct physical NPU per role')
-        if not 1 <= args.max_seqs <= 32 or args.mtp_tokens not in (0,2):
+        if (not 1 <= args.max_seqs <= 32 or args.mtp_tokens not in (0,2)
+                or not 1 <= args.max_model_len <= 262144):
             raise ValueError('requires <=32 requests and MTP0 or MTP2')
         if not 1 <= args.port_base <= 65536-args.sources or not 0 < args.kv_gib <= 48:
             raise ValueError('invalid loopback ports or KV budget')
@@ -59,6 +60,7 @@ class Deployment:
         self.receipt = dict(status='STARTED', commands=[], model=str(args.model),
             sources=args.sources, owners=args.owners, mtp_tokens=args.mtp_tokens, placement=self.service.placement, return_mode=self.service.return_mode,
             sampling_policy='real' if self.synthetic_length is None else 'benchmark-only synthetic',
+            max_model_len=args.max_model_len,
             synthetic_acceptance_length=self.synthetic_length,
             package_root=str(Path(__file__).parents[2]), devices=self.devices)
 
@@ -117,7 +119,7 @@ class Deployment:
                 command=[sys.executable,'-m','vllm.entrypoints.cli.main','serve',str(a.model),
                     '--host','127.0.0.1','--port',str(port),'--served-model-name','qwen35',
                     '--worker-cls','betterscale.worker.Worker','--tensor-parallel-size','1',
-                    '--dtype','bfloat16','--max-model-len','262144','--max-num-seqs',str(a.max_seqs),
+                    '--dtype','bfloat16','--max-model-len',str(a.max_model_len),'--max-num-seqs',str(a.max_seqs),
                     '--max-num-batched-tokens','4096','--kv-cache-memory-bytes',str(int(a.kv_gib*1024**3)),
                     '--enable-prefix-caching','--mamba-cache-mode','align','--async-scheduling',
                     '--limit-mm-per-prompt','{"image":0,"video":0}',
@@ -203,6 +205,8 @@ def add_arguments(parser):
     parser.add_argument('--owners',type=int,required=True)
     parser.add_argument('--port-base',type=int,default=32510)
     parser.add_argument('--max-seqs',type=int,default=16)
+    parser.add_argument('--max-model-len',type=int,default=262144,
+                        help='explicit short-smoke override; the serving default remains 262144')
     parser.add_argument('--kv-gib',type=float,default=32)
     parser.add_argument('--mtp-tokens',type=int,choices=(0,2),default=2)
     parser.add_argument('--qualification')

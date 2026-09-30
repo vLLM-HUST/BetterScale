@@ -1,5 +1,9 @@
 # Persistent routed-expert execution closure (under integration)
 
+For the separate nonpersistent host-scheduled EP-wave design accepted on
+2026-09-30, read [WAVE_PROTOCOL.md](WAVE_PROTOCOL.md). Its executable CPU
+contracts do not switch this existing serving entry or qualify a native backend.
+
 This module is the source owner for the qualified Qwen35 BF16 persistent
 client/server program. It must not import prototypes, reach into a task run
 folder, or generate code by reading an unrelated experiment tree.

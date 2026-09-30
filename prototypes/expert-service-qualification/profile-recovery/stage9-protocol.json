@@ -1,0 +1,72 @@
+{
+  "stage": "Stage9 matched-protocol short system comparison",
+  "created_utc": "2026-09-30",
+  "measurement_status": "prepared",
+  "protocol": {
+    "name": "SWE Prefix Reuse",
+    "client_revision": "8bb99ebac120f8907623fc1b5a04946894424d31",
+    "workload": "/root/my-ascend-workspace/runs/qwen35-state-lanes/20260928-width-matched-cache/workload.json",
+    "workload_sha256": "8044561ffa1bb430bea8f778ef814d96649321e1a92654b95f64263b996d5e85",
+    "tokenizer_fingerprint": "3f9ca78537850303ee04bfa6640c020be89723c62f37121c0f27a4c0babc53e0",
+    "concurrency": 16,
+    "session_rotation_depth": 1,
+    "duration_seconds": 60,
+    "seed": 20260924,
+    "server_max_context": 262144,
+    "warmup": false,
+    "semantics": [
+      "C sequential lanes",
+      "fresh salt for each session play and sticky salt within the play",
+      "incremental token-ID prompts plus actual generated token IDs",
+      "fixed per-turn output budgets",
+      "no text-retokenization fallback",
+      "measurement throughput excludes drain tokens",
+      "invalid protocol runs suppress headline values"
+    ],
+    "decode_p90": "request-level P90 of (output_tokens-1)/(last_token_time-first_token_time), not 1/P90(TPOT)",
+    "scope": "60-second cold short smoke; not a complete long-context serving result"
+  },
+  "common_runtime": {
+    "model": "/workspace/models/Qwen3.5-35B-A3B",
+    "precision": "BF16",
+    "mtp_tokens": 2,
+    "vllm_commit": "752a3a504485790a2e8491cacbb35c137339ad34",
+    "vllm_ascend_commit": "9bf964cb4b87c8cd0d6852c41a55b3c29711fa95",
+    "max_num_batched_tokens": 4096,
+    "prefix_caching": true,
+    "mamba_cache_mode": "align",
+    "async_scheduling": true
+  },
+  "a2e2": {
+    "betterscale_revision": "archive/ae-final@d0ebe3a0ed5 plus isolated a2e2-revival worktree changes",
+    "devices": [0, 1, 2, 3],
+    "roles": "attention sources 0,1; expert owners 2,3",
+    "global_client_concurrency": 16,
+    "attention_max_num_seqs_each": 16,
+    "capacity_note": "16 per A is only a capacity ceiling; the client limits both A endpoints together to C16. The unmodified session-affinity router determines and records actual distribution.",
+    "kv_cache_gib_each_attention": 32,
+    "max_model_len": 262144,
+    "graph_mode": "FULL_DECODE_ONLY",
+    "capture_sizes": [3, 6, 12, 24, 48],
+    "placement": "layer",
+    "return_mode": "push",
+    "routing": "unmodified official lane/session workload through cache-salt sticky round-robin relay"
+  },
+  "tp2": {
+    "source_revision": "96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c",
+    "devices": [0, 1],
+    "tensor_parallel_size": 2,
+    "max_num_seqs": 16,
+    "kv_cache_bytes_each_rank": 26038239232,
+    "max_model_len": 262144,
+    "graph_mode": "FULL",
+    "scheduler": "LiveStateScheduler",
+    "state_cache_policy": "full, resident seats 20, host 8 GiB/rank"
+  },
+  "comparison_class": "same official workload/protocol and common base runtime, but best-supported system configurations; not a same-implementation A/B because graph mode and scheduler/state-cache differ",
+  "acceptance": {
+    "valid_protocol_required": true,
+    "no_precision_or_quality_relaxation": true,
+    "report": ["total output tokens/s", "tokens/s/chip", "TTFT percentiles", "decode-speed P90", "failures", "actual router allocation", "turn and prompt coverage", "drain", "MTP counters", "expert receipts"]
+  }
+}

@@ -22,7 +22,7 @@ class Child:
 class Group(unittest.TestCase):
     def make(self,root,**overrides):
         args=S(output=Path(root)/'run',model='/model',build='/build',devices='0,1,2,3',
-            sources=2,owners=2,max_seqs=16,mtp_tokens=2,port_base=32510,kv_gib=32,
+            sources=2,owners=2,max_seqs=16,max_model_len=262144,mtp_tokens=2,port_base=32510,kv_gib=32,
             lifetime=2400,qualification=None)
         vars(args).update(overrides)
         with patch.dict(os.environ,{'BETTERSCALE_EXPERT_EXTERNAL_WATCHDOG':'1'}),patch.object(ServiceConfig,'check_build'):
@@ -88,6 +88,25 @@ class Group(unittest.TestCase):
                 else:
                     config=json.loads(command[command.index('--additional-config')+1])
                     self.assertEqual(config['betterscale_experts']['return_mode'],'push')
+
+    def test_short_smoke_model_length_is_explicitly_forwarded(self):
+        with tempfile.TemporaryDirectory() as root:
+            group=self.make(root,max_model_len=32768)
+            commands=[]
+            group.launch=lambda role,command,device:commands.append((role,command))
+            group.wait=lambda predicate:None
+            group.rpc=lambda port,method:{}
+            group.start()
+            attention=[command for role,command in commands if role.startswith('attention')]
+            self.assertEqual(len(attention),2)
+            for command in attention:
+                self.assertEqual(command[command.index('--max-model-len')+1],'32768')
+            self.assertEqual(group.receipt['max_model_len'],32768)
+
+    def test_historical_model_length_default_is_unchanged(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.assertEqual(self.make(root).args.max_model_len,262144)
+            with self.assertRaises(ValueError):self.make(root,max_model_len=262145)
 
     def test_one_owner_full_model_is_rejected_before_launch(self):
         with self.assertRaises(ValueError):ServiceConfig('/control','/build',1,7,0,1).validate()

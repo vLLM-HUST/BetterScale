@@ -25,7 +25,7 @@ betterscale = ["pins.json", "qwen_pins.json", "qwen_mixed_pins.json", "expert_pi
 "betterscale.patches.hc_workspace" = ["*.json", "*.so", "*.patch", "*.txt", "README.md"]
 
 "betterscale.patches.benchmark_mtp" = ["*.json", "README.md"]
-"betterscale.patches.expert_service" = ["*.json", "*.sh", "native/*.cpp", "native/*.hpp", "README.md"]
+"betterscale.patches.expert_service" = ["*.json", "*.sh", "native/*.cpp", "native/*.hpp", "README.md", "WAVE_PROTOCOL.md"]
 
 [project.urls]
 Homepage = "https://vllm-hust.sage.org.ai/betterscale.html"

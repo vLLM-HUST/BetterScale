@@ -39,3 +39,31 @@ class LeafPlacement(unittest.TestCase):
             with patch.object(sys,'argv',argv),patch.object(module.subprocess,'Popen',launch):module.main()
             self.assertEqual(calls,[('owner',0,'5'),('owner',1,'6'),('client',0,'4'),('client',1,'4')])
             self.assertTrue((out/'PASS').exists())
+
+    def test_batch_supervisor_propagates_push_to_every_role(self):
+        import importlib.util,json
+        from unittest.mock import patch
+        from types import SimpleNamespace as S
+        spec=importlib.util.spec_from_file_location('batch_leaf_fixture',ROOT/'batch_leaf.py')
+        module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as tmp:
+            out=Path(tmp)/'run';calls=[]
+            def launch(cmd,**kwargs):
+                role=cmd[cmd.index('--role')+1]
+                source=int(cmd[cmd.index('--source')+1])
+                mode=cmd[cmd.index('--return-mode')+1]
+                calls.append((role,source,kwargs['env']['ASCEND_RT_VISIBLE_DEVICES'],mode))
+                if role=='owner':
+                    (out/'control/e0.sock').touch()
+                    (out/'owner.json').write_text(json.dumps(dict(
+                        return_mode=mode,completed={'0':2,'1':2},
+                        completed_counts=[2,2,0,0,0,0,0],waves=4,sources_per_wave=1)))
+                else:
+                    (out/f'client{source}.json').write_text(json.dumps(dict(
+                        burst_timings=[],receipt=dict(peer_generations={'0':2},return_mode=mode))))
+                return S(poll=lambda:0,wait=lambda **kw:0,returncode=0)
+            argv=[str(ROOT/'batch_leaf.py'),'/unused/model','--build','/unused/build',
+                  '--output',str(out),'--return-mode','push','--devices','4,5,6']
+            with patch.object(sys,'argv',argv),patch.object(module.subprocess,'Popen',launch):module.main()
+            self.assertEqual(calls,[('owner',0,'6','push'),('client',0,'4','push'),('client',1,'5','push')])
+            self.assertEqual(json.loads((out/'result.json').read_text())['return_mode'],'push')

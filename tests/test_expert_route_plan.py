@@ -1,7 +1,8 @@
 """CPU-only admission/emission guards for the native route-plan wire extension."""
 import ast
+from importlib.machinery import ModuleSpec
 import json
-from types import SimpleNamespace as S
+from types import ModuleType, SimpleNamespace as S
 from unittest.mock import patch
 from pathlib import Path
 import tempfile
@@ -47,7 +48,16 @@ class RoutePlan(unittest.TestCase):
               route_plan_min_rows=2,bank=lambda owner,n:bank,kernels=S(call=launch),
               pack='pack',publish='publish',collect='collect',retire='retire',promote='promote',shared_callback=None)
         ids=torch.arange(14).reshape(7,2)
-        with patch.dict('sys.modules',{'torch_npu':S(npu_moe_init_routing_v2=plan)}):
+        # Keep this AST-level CPU test from importing the real vLLM/Ascend stack.
+        fake_npu=ModuleType('torch_npu');fake_npu.__spec__=ModuleSpec('torch_npu',loader=None)
+        fake_npu.npu_moe_init_routing_v2=plan
+        fake_vllm=ModuleType('vllm');fake_vllm.__path__=[]
+        fake_vllm.__spec__=ModuleSpec('vllm',loader=None,is_package=True)
+        fake_forward=ModuleType('vllm.forward_context')
+        fake_forward.get_forward_context=lambda:None
+        fake_forward.is_forward_context_available=lambda:False
+        with patch.dict('sys.modules',{'torch_npu':fake_npu,'vllm':fake_vllm,
+                                       'vllm.forward_context':fake_forward}):
             scope['__call__'](obj,40,torch.ones(7,4),ids,torch.ones(7,2))
         self.assertEqual([name for name,_ in trace],
                          ['plan','pack','publish','collect','retire']*2+['pack','publish','collect','retire'])

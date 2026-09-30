@@ -1,5 +1,5 @@
 """Public Worker lifecycle adapter for target and draft routed-expert service."""
-import json,os,re
+import hashlib,json,os,re
 from pathlib import Path
 import torch
 from .model_geometry import GEOMETRY as G
@@ -32,7 +32,7 @@ def load_model(self, native):
     self.native_remote=MatrixRemote(Path(os.environ['BETTERSCALE_EXPERT_NATIVE_CONTROL']),
         Placement(os.environ['BETTERSCALE_EXPERT_NATIVE_PLACEMENT'],int(os.environ['BETTERSCALE_EXPERT_NATIVE_OWNERS'])),
         int(os.environ['BETTERSCALE_EXPERT_NATIVE_SOURCE']))
-    self.native_remote.phase='native-prefill' if graph else 'native-eager';self.native_shadows={}
+    self.native_remote.phase='native-prefill' if graph else 'native-eager';self.native_shadows={};self.native_shadow_failures=[]
     models=list(model_domains(self));weights={}
     if graph:self.model_runner.use_aclgraph=True
     self.native_retain=os.environ.get('BETTERSCALE_EXPERT_NATIVE_RETAIN_WEIGHTS','1')=='1'
@@ -101,8 +101,26 @@ def load_model(self, native):
             else:
                 expected=original(method,frame).routed_out
             actual=output.float();expected=expected.float()
-            assert torch.isfinite(actual).all() and torch.isfinite(expected).all()
+            actual_finite=bool(torch.isfinite(actual).all());expected_finite=bool(torch.isfinite(expected).all())
             relative=float(torch.linalg.vector_norm(actual-expected)/torch.linalg.vector_norm(expected).clamp_min(1e-12))
+            if not actual_finite or not expected_finite or relative>.02:
+                ids=frame.topk_ids.detach().cpu().contiguous()
+                probs=frame.topk_weights.detach().float().cpu().contiguous()
+                try:generations=owner.native_remote.receipt()['peer_generations']
+                except Exception as error:generations={'diagnostic_error':repr(error)}
+                diagnostic=dict(layer=layer,rows=int(output.shape[0]),owners=owner.native_remote.placement.targets(layer),
+                    source=owner.native_remote.source,peer_generations=generations,return_mode=owner.native_remote.return_mode,
+                    hidden_shape=list(frame.hidden_states.shape),hidden_dtype=str(frame.hidden_states.dtype),
+                    topk_shape=list(frame.topk_ids.shape),topk_ids_sha256=hashlib.sha256(ids.numpy().tobytes()).hexdigest(),
+                    topk_probs_sha256=hashlib.sha256(probs.numpy().tobytes()).hexdigest(),
+                    topk_ids_min=int(ids.min()),topk_ids_max=int(ids.max()),
+                    topk_prob_row_sum_min=float(probs.sum(1).min()),topk_prob_row_sum_max=float(probs.sum(1).max()),
+                    actual_norm=float(torch.linalg.vector_norm(actual)),expected_norm=float(torch.linalg.vector_norm(expected)),
+                    difference_norm=float(torch.linalg.vector_norm(actual-expected)),relative_l2=relative,
+                    actual_nonfinite=int((~torch.isfinite(actual)).sum()),expected_nonfinite=int((~torch.isfinite(expected)).sum()))
+                owner.native_shadow_failures.append(diagnostic)
+                print('native routed shadow diagnostic '+json.dumps(diagnostic,sort_keys=True),flush=True)
+            assert actual_finite and expected_finite
             assert relative<=.02,('native routed shadow',layer,relative)
             owner.native_shadows[layer]=dict(rows=output.shape[0],relative_l2=relative)
         # Conservative completion, not a claim of preserved GMM2/shared overlap.
@@ -115,7 +133,8 @@ def load_model(self, native):
 def expert_receipt(self):
     if self.native_retain:assert set(self.native_shadows)==set(G.layers),self.native_shadows.keys()
     return dict(peer_generations=(self.native_remote.receipt()['peer_generations'] if hasattr(self.native_remote,'receipt') else {o:p['generation'] for o,p in self.native_remote.peers.items()}),
-                native_shadows=self.native_shadows,native_expert_weights_retained=self.native_retain and G.name!='qwen35',
+                native_shadows=self.native_shadows,native_shadow_failures=self.native_shadow_failures,
+                native_expert_weights_retained=self.native_retain and G.name!='qwen35',
                 native_layer_shadow_enabled=self.native_retain,
                 native_weight_release=self.native_release,
                 calls=self.native_remote.calls,scope='native routed-only boundary',

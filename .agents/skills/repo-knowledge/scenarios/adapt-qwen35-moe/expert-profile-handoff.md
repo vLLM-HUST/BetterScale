@@ -42,3 +42,41 @@ command stream is non-preemptive despite two-slot movement/compute overlap.
 The subsequent MOD batching migration is recorded in
 [expert-implementation-lineage.md](expert-implementation-lineage.md); the installed5
 profile and cap1 audit remain immutable historical evidence.
+
+## A2E2 revival continuation (2026-09-30)
+
+For the revived four-card branch `codex/a2e2-revival-20260930`, enter
+`prototypes/expert-service-qualification/A2E2-REVIVAL.md` **before** replaying
+this older A4/A6 history. Workspace `runs/a2e2-revival/` has the current receipts.
+Stage9 C16/D1/60s cold SWE gave352.8 total tok/s versus715.2333 for TP2, but
+FDO/state-cache versus FULL/LiveState differences prevent architecture-only
+attribution. Keep cold start and the fixed window.
+
+Stage11 recovered dynamic capture after repeated Stage10 harness failures.
+Use its `capsule/run_a2e2_profile.py`, `fixed_profile.py` and acknowledged
+`msprof_helpers.py` lifecycle, not the broken Stage10 launch chain. Set
+`PROFILING_MODE=dynamic` before worker imports, verify that exact nonsecret
+assignment, use validated same-namespace worker PIDs and bound AF_UNIX paths.
+A model-free negative/positive probe established exit255 without early dynamic
+versus successful attach with it. Do not spend another model load guessing PIDs.
+
+Two native attention DBs (`p4/profile/costs.json`) observed collect~46% of compute
+kernel union, median485–497µs, under a fixed16×128-token diagnostic. All roles
+exit0, exact generation drain, selected-card30s idle release. These are NOT SWE
+scores, network-only time, an expert-kernel timeline or exact graph membership.
+Persistent experts predate attach. Publish→collect local gaps~36–37µs only show
+an overlap opportunity, not actual remote compute overlap. The next discriminator
+is owner queue versus service in a controlled two-source leaf, not blind cap2
+promotion; existing cap2 receipts prove coalescing but not stable latency gain.
+
+### New host-scheduled EP-wave protocol (2026-09-30)
+
+Fletcher chose to stop refining the persistent server: independent host loops,
+EP ownership across all layers, round-robin primary, same-layer decode-only
+passengers, singleton prefill/mixed, maximum-prefill-width token cap. Read
+`src/betterscale/patches/expert_service/WAVE_PROTOCOL.md` and its two executable
+modules before further scheduler work. Two-slot push/pull lifetimes and finite
+UP→GATE→DOWN / gate-before-next-PULL dependencies have15 CPU contracts, including
+NumPy EP2/EP4 changing-route matrix oracles. Long-PULL prefill bubbles are accepted;
+do not resurrect priority scheduling. Native Backend/IPC and real-weight NPU
+acceptance remain unimplemented; the old serving entry has NOT switched.

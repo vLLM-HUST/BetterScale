@@ -33,3 +33,8 @@ and inquiry, not individual assets, lifecycle state, or chronology.
 - **Adapt Qwen3.5-35B-A3B BF16/MTP/native256K:** read
   [adapt-qwen35-moe](scenarios/adapt-qwen35-moe/GUIDE.md) for the experimental
   versus released source boundary, changed geometry and current qualification.
+
+- **Continue separated Attention–Expert / A2E2 research:** read
+  [expert-profile-handoff](scenarios/adapt-qwen35-moe/expert-profile-handoff.md),
+  then its A2E2 revival entry for the current work board and qualified capture
+  contract rather than replaying historical A4/A6 recipes.

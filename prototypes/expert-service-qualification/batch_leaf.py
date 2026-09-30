@@ -19,10 +19,10 @@ def worker(a):
     # source/ABI still contains41 physical layer IDs and the unchanged runtime.
     abi=json.loads((Path(a.build)/'abi.json').read_text())
     assert abi['placement']=='layer' and abi['layer_count']==41
-    assert abi['sources_per_wave'] in (1,7) and abi['combined_return']
+    assert abi['sources_per_wave'] in (1,2,7) and abi['combined_return']
     os.environ.update(BETTERSCALE_EXPERT_DRAFT_LAYERS='1',BETTERSCALE_EXPERT_MODEL=a.model,
         BETTERSCALE_EXPERT_PERSISTENT_BUILD=a.build,BETTERSCALE_EXPERT_FINE_PACK='0',
-        BETTERSCALE_EXPERT_RETURN_MODE='pull',BETTERSCALE_EXPERT_GRAPH_BATCH='4')
+        BETTERSCALE_EXPERT_RETURN_MODE=a.return_mode,BETTERSCALE_EXPERT_GRAPH_BATCH='4')
     import torch,torch_npu
     assert torch.npu.device_count()==1
     torch.npu.set_device(0)
@@ -36,10 +36,10 @@ def worker(a):
     from betterscale.patches.expert_service.checkpoint import Checkpoint,plain_experts
     torch.manual_seed(20260924+a.source)
     cp=Checkpoint();remote=PersistentRemote(a.output/'control',placement,a.source)
-    results=[]
+    results=[];burst_timings=[]
     for layer in (0,40):
         weights=cp.experts(layer)
-        for rows in (3,127,4096):
+        for rows in a.rows:
             x=torch.zeros(rows,2048,dtype=torch.bfloat16,device='npu')
             ids=torch.zeros(rows,8,dtype=torch.int64,device='npu')
             probs=torch.full((rows,8),.125,device='npu')
@@ -67,8 +67,19 @@ def worker(a):
             stem=f'{layer}-{rows}'
             (a.output/f'{stem}-ready{a.source}').touch()
             wait_for(a.output/f'{stem}-ready{1-a.source}')
-            for _ in range(32):graph.replay()
+            start_path=a.output/f'{stem}-start'
+            if a.source==0:
+                target_ns=time.monotonic_ns()+200_000_000
+                start_path.write_text(str(target_ns))
+            else:
+                wait_for(start_path);target_ns=int(start_path.read_text())
+            while time.monotonic_ns()<target_ns:time.sleep(.0005)
+            actual_start_ns=time.monotonic_ns()
+            for _ in range(a.replays):graph.replay()
             torch.npu.synchronize()
+            end_ns=time.monotonic_ns()
+            burst_timings.append(dict(layer=layer,rows=rows,replays=a.replays,target_ns=target_ns,
+                actual_start_ns=actual_start_ns,end_ns=end_ns,elapsed_seconds=(end_ns-actual_start_ns)/1e9))
             error=float(torch.linalg.vector_norm(actual.float()-expected.float())/torch.linalg.vector_norm(expected.float()).clamp_min(1e-12))
             assert torch.isfinite(actual).all() and error<=.02,error
             del graph
@@ -77,22 +88,30 @@ def worker(a):
     # The owner drains all registered sources; clients must close concurrently.
     (a.output/f'close-ready{a.source}').touch();wait_for(a.output/f'close-ready{1-a.source}')
     remote.close()
-    (a.output/f'client{a.source}.json').write_text(json.dumps(dict(status='PASS',cases=results,receipt=receipt),indent=2))
+    (a.output/f'client{a.source}.json').write_text(json.dumps(dict(status='PASS',cases=results,
+        burst_timings=burst_timings,receipt=receipt),indent=2))
 
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('model');p.add_argument('--build',required=True);p.add_argument('--output',type=Path,required=True)
     p.add_argument('--devices',required=True,help='physical client0,client1,owner')
+    p.add_argument('--return-mode',choices=('pull','push'),default='pull')
+    p.add_argument('--rows',default='3,127,4096')
+    p.add_argument('--replays',type=int,default=32)
     p.add_argument('--role',choices=('client','owner'));p.add_argument('--source',type=int,default=0)
     a=p.parse_args();devices=[int(x) for x in a.devices.split(',')]
+    try:a.rows=tuple(int(x) for x in a.rows.split(','))
+    except ValueError:p.error('rows must be comma-separated integers')
+    if not a.rows or any(not 1<=x<=4096 for x in a.rows) or not 1<=a.replays<=32:p.error('rows/replays outside bounded leaf range')
     if len(devices)!=3 or len(set(devices))!=3 or not set(devices)<=set(range(8)):p.error('three distinct physical devices required')
     if a.role:return worker(a)
     a.output.mkdir(exist_ok=False);(a.output/'control').mkdir(mode=0o700)
     children=[]
     def launch(role,source,device):
         cmd=[sys.executable,__file__,a.model,'--build',a.build,'--output',str(a.output),
-             '--devices',a.devices,'--role',role,'--source',str(source)]
+             '--devices',a.devices,'--return-mode',a.return_mode,'--rows',','.join(map(str,a.rows)),
+             '--replays',str(a.replays),'--role',role,'--source',str(source)]
         with (a.output/f'{role}{source}.log').open('x') as log:
             child=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT,
                                    env=dict(os.environ,ASCEND_RT_VISIBLE_DEVICES=str(device)))
@@ -112,15 +131,27 @@ def main():
             time.sleep(1)
         assert all(c.returncode==0 for c in children),'worker failed'
         receipt=json.loads((a.output/'owner.json').read_text())
+        clients=[]
         for i in range(2):
             client=json.loads((a.output/f'client{i}.json').read_text())
+            clients.append(client)
             assert receipt['completed'][str(i)]==client['receipt']['peer_generations']['0']
+            assert client['receipt']['return_mode']==a.return_mode
+        assert receipt['return_mode']==a.return_mode
         frames=sum(receipt['completed_counts']);waves=receipt['waves']
         assert waves<=frames<=2*waves,(frames,waves)
         cap=receipt['sources_per_wave']
         assert (frames==waves if cap==1 else frames>waves),(cap,frames,waves)
-        result=dict(status='PASS',cap=cap,source_frames=frames,server_waves=waves,
+        timings=[]
+        for left,right in zip(*(c['burst_timings'] for c in clients)):
+            assert (left['layer'],left['rows'],left['replays'],left['target_ns'])==(right['layer'],right['rows'],right['replays'],right['target_ns'])
+            target=left['target_ns'];starts=[left['actual_start_ns'],right['actual_start_ns']];ends=[left['end_ns'],right['end_ns']]
+            timings.append(dict(layer=left['layer'],rows=left['rows'],replays=left['replays'],
+                pair_makespan_seconds=(max(ends)-target)/1e9,start_skew_us=(max(starts)-min(starts))/1e3,
+                client_elapsed_seconds=[left['elapsed_seconds'],right['elapsed_seconds']]))
+        result=dict(status='PASS',return_mode=a.return_mode,cap=cap,source_frames=frames,server_waves=waves,
                     two_source_waves=frames-waves,devices=devices,scope='two-layer real-weight FULL graph leaf; no throughput claim')
+        result['burst_timings']=timings
         (a.output/'result.json').write_text(json.dumps(result,indent=2))
         print(json.dumps(result),flush=True)
     finally:
