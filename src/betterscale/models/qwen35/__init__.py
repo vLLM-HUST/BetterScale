@@ -22,6 +22,7 @@ CAPTURE_SIZES = (
     2048,
     4096,
 )
+UNIFIED_CAPTURE_SIZES = (3, 6, 12, 24, 48)
 SCHEDULER = "betterscale.models.qwen35.apc_boundary.BoundaryScheduler"
 STATE_SCHEDULER = "betterscale.models.qwen35.seat_scheduler.LiveStateScheduler"
 
@@ -34,6 +35,8 @@ def using_live_state(config):
 
 
 def validate(config):
+    import os
+
     p, s, m = config.parallel_config, config.scheduler_config, config.model_config
     hf = m.hf_text_config
     spec = config.speculative_config
@@ -83,10 +86,19 @@ def validate(config):
         and spec.method == "mtp"
         and spec.num_speculative_tokens == 2
         and not spec.enforce_eager,
-        "qualified mixed FULL keys": (
-            str(config.compilation_config.cudagraph_mode) == "FULL"
+        "qualified graph contract": (
+            str(config.compilation_config.cudagraph_mode)
+            == (
+                "FULL_AND_PIECEWISE"
+                if os.environ.get("BETTERSCALE_QWEN35_CONTRACT") == "unified"
+                else "FULL"
+            )
             and set(config.compilation_config.cudagraph_capture_sizes)
-            == set(CAPTURE_SIZES)
+            == set(
+                UNIFIED_CAPTURE_SIZES
+                if os.environ.get("BETTERSCALE_QWEN35_CONTRACT") == "unified"
+                else CAPTURE_SIZES
+            )
         ),
         "APC align without connectors or LoRA": (
             config.cache_config.enable_prefix_caching
@@ -121,10 +133,10 @@ def check(config):
         raise ValueError(
             "Qwen35 baseline requires its qualified MTP/layout/small-fish flags"
         )
-    from ..qwen import check_runtime
+    from ..qwen import check_runtime_profiles
     from ...patches import qwen_gdn, qwen_fia
 
-    check_runtime("qwen35_pins.json")
+    check_runtime_profiles("qwen35_pins.json", "qwen35_unified_pins.json")
     qwen_gdn.check_library()
     qwen_fia.check_library()
     from ...patches.qwen_fia.context_parallel import configure

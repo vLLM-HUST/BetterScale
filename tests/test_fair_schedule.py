@@ -1,6 +1,9 @@
 import unittest
+import ast
+import inspect
+import textwrap
 from unittest.mock import patch
-from betterscale.models.qwen35.fair_schedule import bind
+from betterscale.models.qwen35.fair_schedule import UNIFIED_SCHEDULE_SHA256, bind
 
 
 class Compatibility(unittest.TestCase):
@@ -36,6 +39,40 @@ class Compatibility(unittest.TestCase):
             for enabled in (None, True):
                 with self.assertRaisesRegex(ValueError, "balance scheduling disabled"):
                     bind(native, balance_enabled=enabled)
+
+    def test_unified_schedule_has_both_exact_grant_seams(self):
+        def schedule(self):
+            while self.running:
+                request = self.running[0]
+                num_new_tokens = 1
+                if self.need_mamba_block_aligned_split:
+                    pass
+            if not preempted_reqs:
+                while waiting:
+                    request = request_queue.peek_request()
+                    request_id = request.request_id
+                    if self._is_blocked_waiting_status(request.status):
+                        pass
+                    num_new_tokens = 1
+                    if self.need_mamba_block_aligned_split:
+                        pass
+
+        source = textwrap.dedent(inspect.getsource(schedule)).strip()
+        with patch(
+            "betterscale.models.qwen35.fair_schedule.inspect.getsource",
+            return_value=source,
+        ), patch(
+            "betterscale.models.qwen35.fair_schedule.hashlib.sha256"
+        ) as digest:
+            digest.return_value.hexdigest.return_value = UNIFIED_SCHEDULE_SHA256
+            transformed = bind(schedule)
+
+        transformed_source = ast.unparse(ast.parse(source))
+        self.assertNotIn("_prefill_round_robin.limit", transformed_source)
+        instructions = list(__import__("dis").get_instructions(transformed))
+        self.assertEqual(
+            sum(i.argval == "_prefill_round_robin" for i in instructions), 3
+        )
 
 
 if __name__ == "__main__":

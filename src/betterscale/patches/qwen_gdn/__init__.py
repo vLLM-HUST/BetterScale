@@ -14,7 +14,12 @@ def check_library():
             "BETTERSCALE_GDN_LIBRARY", str(Path(__file__).with_name("libbs_gdn.so"))
         )
     )
-    contract = json.loads(Path(__file__).with_name("native.json").read_text())
+    contract_name = (
+        "native-unified.json"
+        if os.environ.get("BETTERSCALE_QWEN35_CONTRACT") == "unified"
+        else "native.json"
+    )
+    contract = json.loads(Path(__file__).with_name(contract_name).read_text())
     if (
         not path.is_file()
         or hashlib.sha256(path.read_bytes()).hexdigest() != contract["sha256"]

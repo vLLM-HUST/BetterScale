@@ -80,8 +80,13 @@ class Planner:
                 f"FIA plan {plan}: cap={frame.tokens}, q={offsets}, kv={lengths}"
             )
         try:
-            if self.lib.plan_is_fd(plan) != 0 or self.lib.plan_blocks(plan) != 24:
-                raise RuntimeError("Unqualified Qwen256 FIA variant/grid")
+            is_fd = self.lib.plan_is_fd(plan)
+            blocks = self.lib.plan_blocks(plan)
+            if is_fd != 0 or blocks != 24:
+                raise RuntimeError(
+                    "Unqualified Qwen256 FIA variant/grid: "
+                    f"is_fd={is_fd}, blocks={blocks}"
+                )
             if self.lib.plan_metadata(plan, frame.h_tiling.data_ptr(), 2528) != 2528:
                 raise RuntimeError("Unqualified FIA tiling layout")
             workspace = self.lib.plan_workspace(plan)

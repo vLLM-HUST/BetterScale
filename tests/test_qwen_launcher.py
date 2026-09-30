@@ -96,6 +96,10 @@ class QwenLauncher(unittest.TestCase):
                 patch(
                     "betterscale.models.qwen35.launch.validate", side_effect=lambda p: p
                 ),
+                patch(
+                    "betterscale.models.qwen35.launch.matching_profile",
+                    return_value={"pins_name": "qwen35_pins.json"},
+                ),
             ):
                 command, env = prepare(
                     root,
@@ -115,6 +119,10 @@ class QwenLauncher(unittest.TestCase):
                 ),
                 patch(
                     "betterscale.models.qwen35.launch.validate", side_effect=lambda p: p
+                ),
+                patch(
+                    "betterscale.models.qwen35.launch.matching_profile",
+                    return_value={"pins_name": "qwen35_pins.json"},
                 ),
             ):
                 with self.assertRaises(FileNotFoundError):

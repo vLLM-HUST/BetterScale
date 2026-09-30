@@ -5,8 +5,8 @@ import os
 from pathlib import Path
 import sys
 
-from . import CAPTURE_SIZES, STATE_SCHEDULER
-from .runtime import validate
+from . import CAPTURE_SIZES, STATE_SCHEDULER, UNIFIED_CAPTURE_SIZES
+from .runtime import matching_profile, validate
 
 
 def prepare(
@@ -26,6 +26,8 @@ def prepare(
             "python -m betterscale.models.qwen35.runtime --source DONOR --output RUNTIME"
         )
     runtime_dir = validate(Path(runtime_dir).resolve())
+    profile = matching_profile(runtime_dir)
+    unified = profile["pins_name"] == "qwen35_unified_pins.json"
     if state_budget_bytes <= 0:
         raise ValueError(
             "State budget must be positive (resident State plus shared FA pages)"
@@ -42,8 +44,14 @@ def prepare(
         PYTHON=sys.executable,
         VLLM_CACHE_ROOT=str(cache_dir.resolve()),
         BETTERSCALE_QWEN35_RUNTIME=str(runtime_dir),
+        BETTERSCALE_QWEN35_CONTRACT="unified" if unified else "legacy",
         HCCL_IF_BASE_PORT=str(distributed_port),
     )
+    if unified:
+        # The fixed-host checkout carries a development distribution label.
+        # Select the matching Ascend 0.25.1 API branches explicitly, as the
+        # unified Native launch does, while source hashes remain authoritative.
+        env["VLLM_VERSION"] = "0.25.1"
     command = [
         "bash",
         str(Path(__file__).with_name("serve.sh")),
@@ -88,9 +96,11 @@ def prepare(
         "--compilation-config",
         json.dumps(
             dict(
-                cudagraph_mode="FULL",
-                cudagraph_capture_sizes=CAPTURE_SIZES,
-                max_cudagraph_capture_size=4096,
+                cudagraph_mode=("FULL_AND_PIECEWISE" if unified else "FULL"),
+                cudagraph_capture_sizes=(
+                    UNIFIED_CAPTURE_SIZES if unified else CAPTURE_SIZES
+                ),
+                max_cudagraph_capture_size=(48 if unified else 4096),
             )
         ),
         "--speculative-config",

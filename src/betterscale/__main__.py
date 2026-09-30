@@ -253,7 +253,13 @@ def main():
         ("BETTERSCALE_GDN_HOST_LIBRARY", "qwen_gdn", "host_sha256"),
         ("BETTERSCALE_FIA_LIBRARY", "qwen_fia", "sha256"),
     ):
-        expected = json.loads((root / patch / "native.json").read_text())[key]
+        contract = (
+            "native-unified.json"
+            if patch == "qwen_gdn"
+            and env.get("BETTERSCALE_QWEN35_CONTRACT") == "unified"
+            else "native.json"
+        )
+        expected = json.loads((root / patch / contract).read_text())[key]
         if hashlib.sha256(Path(env[variable]).read_bytes()).hexdigest() != expected:
             parser.error(f"Unqualified native artifact: {variable}")
     os.execvpe(command[0], command, env)
