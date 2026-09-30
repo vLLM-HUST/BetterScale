@@ -1,11 +1,11 @@
 {
-  "base_commit": "9bf964cb4b87c8cd0d6852c41a55b3c29711fa95",
-  "pins": "qwen35_pins.json",
+  "base_commit": "03766ac696fde5ab1980d80ca0b8543d3580c989",
+  "pins": "qwen35_unified_pins.json",
   "files": [
     {
       "path": "vllm_ascend/worker/model_runner_v1.py",
-      "before": "32955b3891fd237a56b41d6965a052c9182600346114a83816dfcc4ca4591040",
-      "after": "57222ade9ff9bfd6dfab3aac61eb1570a033cf2ccd0dd5a449269d3d8ad33f45"
+      "before": "2c188ee04a4eb1c3b4f3bff9d5f3c4e4c69dddc4e0ed39137b09675420765463",
+      "after": "b0b1c3f6c08888f0cb74081851df0babce9dd42241a840de77736ce82bcfc9a1"
     },
     {
       "path": "vllm_ascend/ops/gdn.py",

@@ -11,10 +11,12 @@ This source migration is not, by itself, a serving qualification or permission
 to change model arithmetic. State binding and graph lifecycle are separate
 substitution seams; keep native model forward, MTP, sampling and async scheduling.
 
-The full four-file adaptation from the pinned Ascend donor is bundled as
-`runtime.patch`, with exact input/output identities in`runtime.json`. The inert
+The full four-file adaptations from the pinned legacy and unified Ascend donors
+are bundled as `runtime.patch` and `runtime-unified.patch`, with exact
+input/output identities in their matching JSON contracts. The inert
 `python -m betterscale.models.qwen35.runtime` command stages it in a new isolated
 directory. It does not modify installed donor files or import accelerator modules.
-The Qwen35 source pins still check every qualified dependency. The older
+Exactly one complete profile must match, and the corresponding Qwen35 source
+pins still check every qualified dependency. The older
 `runtime-imports.patch` records only the namespace migration and is not the complete
 runtime preparation recipe. See README.md for the current serving entry.

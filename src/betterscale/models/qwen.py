@@ -30,6 +30,21 @@ def check_runtime(pins_name="qwen_pins.json"):
             raise RuntimeError(f"Unqualified Qwen donor source: {item['path']}")
 
 
+def check_runtime_profiles(*pins_names):
+    """Accept one complete source profile without permitting mixed identities."""
+    failures = []
+    for pins_name in pins_names:
+        try:
+            check_runtime(pins_name)
+        except RuntimeError as error:
+            failures.append(f"{pins_name}: {error}")
+        else:
+            return pins_name
+    raise RuntimeError(
+        "No qualified Qwen donor profile matched:\n" + "\n".join(failures)
+    )
+
+
 def validate_config(config, *, mixed=False):
     p, s, m = config.parallel_config, config.scheduler_config, config.model_config
     hf = getattr(m.hf_config, "text_config", m.hf_config)

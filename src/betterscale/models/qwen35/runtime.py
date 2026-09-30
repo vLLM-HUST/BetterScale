@@ -12,14 +12,54 @@ import tempfile
 ROOT = Path(__file__).parent
 
 
+def profiles():
+    """Return every complete donor contract shipped with this source."""
+    result = []
+    for contract_path in sorted(ROOT.glob("runtime*.json")):
+        contract = json.loads(contract_path.read_text())
+        patch_path = contract_path.with_suffix(".patch")
+        if not patch_path.is_file():
+            raise ValueError(f"Missing Qwen35 runtime patch: {patch_path.name}")
+        result.append(
+            dict(
+                contract=contract,
+                contract_path=contract_path,
+                patch_path=patch_path,
+                pins_name=contract.get("pins", "qwen35_pins.json"),
+            )
+        )
+    if not result:
+        raise ValueError("No Qwen35 runtime contracts are packaged")
+    return result
+
+
+def matching_profile(directory):
+    """Identify one fully patched donor profile from exact source identities."""
+    matches = []
+    for profile in profiles():
+        pins_path = ROOT.parents[1] / profile["pins_name"]
+        pins = json.loads(pins_path.read_text())
+        items = [
+            item
+            for item in pins["source_files"]
+            if item["path"].startswith("vllm_ascend/")
+        ]
+        if items and all(
+            (directory / item["path"]).is_file()
+            and digest(directory / item["path"]) == item["sha256"]
+            for item in items
+        ):
+            matches.append(profile)
+    if len(matches) != 1:
+        raise ValueError(
+            "Unqualified Qwen35 runtime: expected exactly one complete donor profile"
+        )
+    return matches[0]
+
+
 def validate(directory):
-    """Check every pinned Ascend source before making this directory importable."""
-    pins = json.loads((ROOT.parents[1] / "qwen35_pins.json").read_text())
-    for item in pins["source_files"]:
-        if item["path"].startswith("vllm_ascend/"):
-            path = directory / item["path"]
-            if not path.is_file() or digest(path) != item["sha256"]:
-                raise ValueError(f"Unqualified Qwen35 runtime: {item['path']}")
+    """Check one complete pinned Ascend profile before making it importable."""
+    matching_profile(directory)
     package = directory / "vllm_ascend"
     required = [
         package / "libvllm_ascend_kernels.so",
@@ -46,18 +86,30 @@ def prepare(source, output):
         raise FileExistsError(f"Refusing to replace runtime: {output}")
     if output.resolve().is_relative_to(source):
         raise ValueError("Runtime output must be outside the source directory")
-    contract = json.loads((ROOT / "runtime.json").read_text())
-    states = []
-    for item in contract["files"]:
-        path = source / item["path"]
-        actual = digest(path)
-        if actual not in (item["before"], item["after"]):
-            raise ValueError(f"Unqualified donor input: {item['path']}")
-        states.append(actual == item["after"])
-    if any(states) and not all(states):
-        raise ValueError(
-            "Mixed original/adapted donor source; use one complete runtime"
-        )
+    candidates = []
+    mixed = False
+    for profile in profiles():
+        states = []
+        for item in profile["contract"]["files"]:
+            path = source / item["path"]
+            if not path.is_file():
+                break
+            actual = digest(path)
+            if actual not in (item["before"], item["after"]):
+                break
+            states.append(actual == item["after"])
+        else:
+            if any(states) and not all(states):
+                mixed = True
+            else:
+                candidates.append((profile, all(states)))
+    if len(candidates) != 1:
+        if mixed:
+            raise ValueError(
+                "Mixed original/adapted donor source; use one complete runtime"
+            )
+        raise ValueError("Unqualified donor input: no complete runtime profile")
+    profile, already_adapted = candidates[0]
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix=".qwen35-runtime-", dir=output.parent
@@ -68,7 +120,7 @@ def prepare(source, output):
             staged / "vllm_ascend",
             ignore=shutil.ignore_patterns("__pycache__", "*.pyc"),
         )
-        if not all(states):
+        if not already_adapted:
             subprocess.run(
                 [
                     "patch",
@@ -77,7 +129,7 @@ def prepare(source, output):
                     "--fuzz=0",
                     "-p1",
                     "-i",
-                    str(ROOT / "runtime.patch"),
+                    str(profile["patch_path"]),
                 ],
                 cwd=staged,
                 check=True,

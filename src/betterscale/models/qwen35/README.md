@@ -19,13 +19,16 @@ python -m betterscale.models.qwen35.runtime \
 ```
 
 The source directory must contain the built`vllm_ascend/` package, including its
-native libraries and custom-op vendor. A source-only checkout is rejected. The helper accepts either pristine
-commit9bf964cb4b87c8cd0d6852c41a55b3c29711fa95 or the exact qualified adaptation.
-It copies the package, applies the bundled four-file patch if needed, then verifies
-all pinned Ascend source files. Unknown or mixed inputs fail closed. It never
-replaces an existing output or edits the shared installation. The system`patch`
-executable is needed for pristine input. Core commit752a3a504485790a2e8491cacbb35c137339ad34
-and runtime versions are independently checked by the Worker.
+native libraries and custom-op vendor. A source-only checkout is rejected. The
+helper accepts either pristine commit9bf964cb4b87c8cd0d6852c41a55b3c29711fa95,
+pristine unified commit03766ac696fde5ab1980d80ca0b8543d3580c989, or one exact
+qualified adaptation. It selects one complete profile, applies that profile's
+bundled four-file patch if needed, then verifies all pinned Ascend source files.
+Mixed-profile inputs fail closed. It never replaces an existing output or edits
+the shared installation. The system`patch` executable is needed for pristine
+input. Core commit752a3a504485790a2e8491cacbb35c137339ad34 or unified commit
+d0f22d2bda562156e4dbf433ce645e1769b4f804, and matching runtime versions, are
+independently checked by the Worker.
 
 After obtaining selected-device leases and fresh idle-card admission:
 
@@ -47,7 +50,9 @@ only, set `BETTERSCALE_CONTEXT_PARALLEL=0`; resident State stays enabled.
 Single-request capacity3, prefill/mixed and draft retain native attention.
 
 The launcher configures the real`betterscale.qwen35_worker.Worker`, native async
-scheduler subclass, FULL4096/MTP2 and required environment before device startup.
+scheduler subclass, MTP2 and required environment before device startup. The
+legacy profile retains FULL4096. The unified profile retains its native
+FULL_AND_PIECEWISE contract with capture sizes3/6/12/24/48.
 It does not claim or acquire accelerator ownership itself. The default total State
 budget is26,038,239,232 bytes/rank, E16/R20 and262144 context. Change the total via
 `--state-budget-bytes`, not resident-count × context pages. The resident declaration
@@ -85,3 +90,18 @@ three grant/skip seams; an unknown native method fails closed. No installed dono
 file or global native Scheduler is rewritten. See `prototypes/prefill-fairness`
 for tests and the qualification boundary. Earlier throughput numbers above do
 not measure this changed policy. Joint Conv integration remains pending.
+
+## Unified-profile qualification status
+
+The unified profile reaches a healthy API server with the exact BF16, TP2,
+262144-context, E16,4096-token batching, APC, async scheduling, align-mode Mamba,
+MTP2, FULL_AND_PIECEWISE and26,038,239,232-byte/rank contract. No unified
+throughput result is qualified yet.
+
+The first live prefill selects native eager MTP because its token count exceeds
+the unified FULL capture sizes. BetterScale's device-authoritative MTP lengths
+currently require its owned FIA path, whose native boundary admits only the
+qualified non-FD24-block graph variant. Diagnostic execution reached FD variants
+with3 and6 blocks on the two ranks and failed closed. Those variants must not be
+enabled by removing the gate: the native planner/launcher needs a separately
+reviewed eager contract, binary qualification and numerical evidence first.

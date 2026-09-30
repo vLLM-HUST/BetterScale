@@ -1,0 +1,12 @@
+{
+  "sha256": "1c522f04a701d3423798b4b7f157737ef41956be25cf46842b6ba33c7ec41bea",
+  "source": "qwen35-unified-runtime-port",
+  "soc": "Ascend910B2",
+  "owned_init": true,
+  "state_layout": "KV",
+  "cold_fill_dma_fence": true,
+  "host_sha256": "96c7361dbb11ad437af671917695fc0a4e7b72849682e9d3828ac6ee11cd5cba",
+  "host_platform": "CANN 9.1.0 / torch-npu 2.10.0.post4 / aarch64",
+  "host_workspace": "framework-allocator-capture-pool",
+  "host_rpath": "origin-relative torch and torch_npu libraries"
+}

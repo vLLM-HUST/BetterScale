@@ -29,6 +29,7 @@ class Delivery(unittest.TestCase):
                 native.parent.mkdir(parents=True, exist_ok=True)
                 native.touch()
             before, after = b"value = 1\n", b"value = 2\n"
+            unified_before, unified_after = b"value = 3\n", b"value = 4\n"
             digest = lambda data: hashlib.sha256(data).hexdigest()
             file.write_bytes(before)
             (resources / "runtime.patch").write_text(
@@ -57,6 +58,36 @@ class Delivery(unittest.TestCase):
                     )
                 )
             )
+            (resources / "runtime-unified.patch").write_text(
+                "--- a/vllm_ascend/leaf.py\n+++ b/vllm_ascend/leaf.py\n"
+                "@@ -1 +1 @@\n-value = 3\n+value = 4\n"
+            )
+            (resources / "runtime-unified.json").write_text(
+                json.dumps(
+                    dict(
+                        pins="qwen35_unified_pins.json",
+                        files=[
+                            dict(
+                                path="vllm_ascend/leaf.py",
+                                before=digest(unified_before),
+                                after=digest(unified_after),
+                            )
+                        ],
+                    )
+                )
+            )
+            (resources.parents[1] / "qwen35_unified_pins.json").write_text(
+                json.dumps(
+                    dict(
+                        source_files=[
+                            dict(
+                                path="vllm_ascend/leaf.py",
+                                sha256=digest(unified_after),
+                            )
+                        ]
+                    )
+                )
+            )
             with patch.object(runtime, "ROOT", resources):
                 output = runtime.prepare(source, root / "runtime")
                 self.assertEqual(file.read_bytes(), before)
@@ -64,6 +95,13 @@ class Delivery(unittest.TestCase):
                 with self.assertRaises(FileExistsError):
                     runtime.prepare(source, output)
                 runtime.prepare(output, root / "already-qualified")
+                file.write_bytes(unified_before)
+                unified = runtime.prepare(source, root / "unified-runtime")
+                self.assertEqual(file.read_bytes(), unified_before)
+                self.assertEqual(
+                    (unified / "vllm_ascend/leaf.py").read_bytes(),
+                    unified_after,
+                )
                 file.write_text("unqualified\n")
                 with self.assertRaisesRegex(ValueError, "Unqualified donor input"):
                     runtime.prepare(source, root / "invalid")
@@ -114,6 +152,10 @@ class BalancedDefault(unittest.TestCase):
                 patch.dict(os.environ, overrides, clear=True),
                 patch.object(cp, "__file__", str(root / "__init__.py")),
                 patch("betterscale.models.qwen35.launch.validate", side_effect=lambda p: p),
+                patch(
+                    "betterscale.models.qwen35.launch.matching_profile",
+                    return_value={"pins_name": "qwen35_pins.json"},
+                ),
             ):
                 argv, env = prepare(root, "0,1", 8000, root / "cache",
                                     qwen35_runtime_dir=root / "donor")
@@ -125,6 +167,39 @@ class BalancedDefault(unittest.TestCase):
             self.assertTrue(json.loads(argv[argv.index("--additional-config")+1])["using_live_runtime"])
             self.assertEqual(argv[argv.index("--kv-cache-memory-bytes")+1], "26038239232")
             self.assertEqual(argv[argv.index("--worker-cls")+1], "betterscale.qwen35_worker.Worker")
+            graph = json.loads(argv[argv.index("--compilation-config") + 1])
+            self.assertEqual(graph["cudagraph_mode"], "FULL")
+            self.assertEqual(env["BETTERSCALE_QWEN35_CONTRACT"], "legacy")
+
+            with (
+                patch.dict(os.environ, overrides, clear=True),
+                patch.object(cp, "__file__", str(root / "__init__.py")),
+                patch(
+                    "betterscale.models.qwen35.launch.validate",
+                    side_effect=lambda p: p,
+                ),
+                patch(
+                    "betterscale.models.qwen35.launch.matching_profile",
+                    return_value={"pins_name": "qwen35_unified_pins.json"},
+                ),
+            ):
+                unified_argv, unified_env = prepare(
+                    root,
+                    "0,1",
+                    8000,
+                    root / "cache",
+                    qwen35_runtime_dir=root / "donor",
+                )
+            unified_graph = json.loads(
+                unified_argv[unified_argv.index("--compilation-config") + 1]
+            )
+            self.assertEqual(unified_graph["cudagraph_mode"], "FULL_AND_PIECEWISE")
+            self.assertEqual(unified_graph["cudagraph_capture_sizes"], [3, 6, 12, 24, 48])
+            self.assertEqual(unified_graph["max_cudagraph_capture_size"], 48)
+            self.assertEqual(
+                unified_env["BETTERSCALE_QWEN35_CONTRACT"], "unified"
+            )
+            self.assertEqual(unified_env["VLLM_VERSION"], "0.25.1")
             with patch.object(cp, "__file__", str(root / "__init__.py")):
                 library.write_bytes(b"wrong artifact")
                 with self.assertRaisesRegex(ValueError, "qualified balanced"):

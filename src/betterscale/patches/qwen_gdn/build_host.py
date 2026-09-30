@@ -1,6 +1,7 @@
 """Build only the framework host adapter against the unchanged pinned runtime."""
 
 import argparse
+import os
 from pathlib import Path
 import subprocess
 import sysconfig
@@ -14,6 +15,14 @@ a = p.parse_args()
 a.output.parent.mkdir(parents=True, exist_ok=True)
 t = Path(torch.__file__).parent
 n = Path(torch_npu.__file__).parent
+cann = Path(os.environ.get("ASCEND_HOME_PATH", "/usr/local/Ascend/ascend-toolkit/latest"))
+cann_includes = [
+    path
+    for path in (cann / "include", cann / "aarch64-linux/include")
+    if (path / "acl/acl_base_rt.h").is_file()
+]
+if not cann_includes:
+    raise FileNotFoundError(f"Cannot find ACL headers below {cann}")
 command = [
     "c++",
     "-std=c++17",
@@ -24,6 +33,7 @@ command = [
     f"-I{t / 'include'}",
     f"-I{t / 'include/torch/csrc/api/include'}",
     f"-I{n / 'include'}",
+    *(f"-I{path}" for path in cann_includes),
     f"-I{sysconfig.get_path('include')}",
     str(a.source.resolve()),
     f"-L{t / 'lib'}",

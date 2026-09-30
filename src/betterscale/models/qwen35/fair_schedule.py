@@ -14,6 +14,13 @@ import textwrap
 # heuristic search over arbitrary versions.
 SCHEDULE_SHA256 = "c98b1752aa6169277ca908124bebc02522bbc5379428540c61d23998ed2a93ae"
 
+# vLLM d0f22d2bda562156e4dbf433ce645e1769b4f804. The two grant
+# checkpoints below are unchanged; this revision adds batch eligibility,
+# policy-owned preemption and output-budget reservation around them.
+UNIFIED_SCHEDULE_SHA256 = (
+    "7ea768815d37ff027859027f91db74b7db05a60ca6e42e47628b4a2763069d48"
+)
+
 BALANCE_SCHEDULE_SHA256 = (
     "4e3c20f5fa6f0aac027328b3d58e78720f68dc40fb74f551c4d058cc8bd4127f"
 )
@@ -30,7 +37,7 @@ def bind(native, *, balance_enabled=None):
         # This pinned wrapper's disabled branch is exactly super().schedule(...).
         # Its imported Scheduler is the original base, not the patched module name.
         return bind(native.__globals__["Scheduler"].schedule)
-    if identity != SCHEDULE_SHA256:
+    if identity not in (SCHEDULE_SHA256, UNIFIED_SCHEDULE_SHA256):
         raise ValueError(
             "Unqualified native Scheduler.schedule for prefill round robin"
         )
