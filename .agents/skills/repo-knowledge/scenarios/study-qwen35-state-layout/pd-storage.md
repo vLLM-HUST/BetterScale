@@ -93,3 +93,35 @@ no compute overlap or model qualification is established by those timings.
 Today's new hw180 machine is explicitly assigned entirely by Fletcher, without
 the former host's lease service. This dated authority does not waive future
 shared-host admission. Preserve installed runtimes and qualified donor pins.
+
+### MTP discard is a cache-validity problem, not just an omitted payload
+
+Observed at pinned core752a3a504 and Ascend9bf964cb (both submodules now checked
+out exactly, no shared runtime changed):
+- vllm/model_executor/models/qwen3_5_mtp.py constructs an independent
+  full_attention decoder layer and consumes normalized target hidden states
+  concatenated with token embeddings.
+- vllm_ascend/spec_decode/llm_base_proposer.py: propose -> set_inputs_first_pass
+  consumes target hidden states and common attention metadata; the draft pass
+  copies common seq_lens and slot_mapping into its own metadata banks.
+- Owned apc_boundary.install_draft_boundary corrects the lookahead token at a
+  prefill boundary; it does not create absent draft-prefix KV.
+
+Inference: dropping MTP storage remains sound as a design choice, but resuming
+with absent prefix KV and unchanged full-context draft lengths is unsafe. Need
+an explicit invalid/cold draft state. A target-only fallback is the correctness
+reference; a separately bounded suffix-only draft context is a candidate that
+requires address/mask/position qualification and acceptance-rate measurement.
+Neither path exists in the currently qualified MTP2-only serving entry. Target
+KV alone does not contain the historical hidden-state inputs needed to recreate
+identical full-prefix draft KV cheaply. Do not claim warm draft equivalence.
+
+### Model gate environment is not yet restored
+
+Current container has CANN9.1.0, torch_npu2.10.0.post4 and differently pinned
+installed donors. Qualified BetterScale needs CANN9.0.1 / torch_npu post2 plus
+its explicit vLLM/Ascend source and native payload pins. Source submodules alone
+are not a built runtime. Fletcher was asked for a prior image/artifact location;
+component probes can proceed, but do not bypass validation to label a model run
+as baseline-compatible. P-only/no-MTP and Qwen35 DP/EP are new qualification
+surfaces even after the old environment is restored.
