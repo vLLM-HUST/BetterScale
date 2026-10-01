@@ -2,7 +2,7 @@
 
 ## Resume here: accepted decisions and next PD work
 
-Fletcher confirmed on2026-10-01 that the accumulated experience should prevent
+Fletcher confirmed on 2026-10-01 that the accumulated experience should prevent
 reopening the same numerical inquiry. The chronological evidence below includes
 historical failures and earlier blocking judgments; **this section and the
 [accepted envelope](#accepted-numerical-envelope-and-non-strict-hccl-assessment)
@@ -20,10 +20,11 @@ take precedence over those old judgments.**
 - Reopen numerical work only for new evidence: changed arithmetic/runtime,
   materially different geometry, transfer/State identity failure, departure
   from the measured envelope or representative task-quality regression.
-- Resume PD from native AsyncLLM/DPLB targeted-owner coordination. Blocking
-  streamed handoffs pass; next qualify retired asynchronous export with native
-  peer activation, exact-byte oracle, explicit hot eviction and another request.
-  Use strict for that isolation arm without changing production defaults.
+- Native AsyncLLM/DPLB targeted-owner coordination, retired async export,
+  hot eviction during export and worker-direct streamed Store ingress now pass
+  the P2/D6 matrix. See the current ingress evidence below. Preserve import
+  quarantine until both TP workers drain; never release on an unknown RPC outcome.
+  Strict remains an isolation control, not a production default.
 - hw86 is the active host; hw180 is retired and must not be required. Dedicated
   task artifacts live under /workspace/betterscale-pd-runtime, implementation in
   /workspace/BetterScale. Runtime/release pins are unchanged.
@@ -662,7 +663,55 @@ acks, lost-RPC quarantine, explicit abort, clean retry and copy/drain failures.
 RPC connection loss itself remains a CPU fault-injection qualification; the NPU
 fault is after-enqueue copy failure. No process-death/HA claim is implied.
 
-The receiver still stages complete dense bytes through the controller/Core RPC
-and performs full H2D. This is the next data-path gap; source incremental D2H
-does not mean receiver incremental H2D or a production Store connector. Large
-capsules remain outside Git under the runtime root.
+At that checkpoint the receiver still staged complete dense bytes through the
+controller/Core RPC. The worker-direct ingress below supersedes that data path;
+full H2D remains necessary for a fresh GPU resident. Large capsules stay outside Git.
+
+
+### Worker-direct Store ingress (2026-10-01)
+
+The opt-in native actor path now passes only the immutable dense chunk descriptor
+through Core RPC. Each TP worker reads its 20 local head planes directly from
+Mooncake into two registered 20 MiB pinned slots, then scatters H2D into its
+reserved native pages. A slot cannot be refilled before its prior H2D event.
+Chunk boundaries may cross physical pages; Store history remains incremental.
+GDN/conv remain complete turn-end checkpoints through RPC; MTP is not transferred.
+
+Import owns the Store client, registrations, pinned buffers, stream and page
+reservation through the final drain acknowledgement. Cleanup failures retain
+these resources for explicit retry; missing drain acknowledgements quarantine
+the seat/pages. Manifest validation is not a lease on dense objects: eviction
+between planning and read must fail without publishing a partial resident.
+
+The real CPU Store SDK check validates multi-pointer get_into_ranges reads from
+one registered buffer. The affected CPU suite passes 64 tests, including plan
+validation, missing objects, stale tickets and cleanup failure/retry.
+Hardware evidence: hw86-native-stream-ingress, target-only Qwen35 BF16,
+P TP2 + D DP3/TP2/EP6, owned FIA, strict HCCL, native AsyncLLM, async retired
+export, streamed ingress, transfer oracle and post-enqueue failure injection.
+It passes 12 handoffs, 24 export shard byte oracles, 24 receiver byte oracles,
+three exact 16-token comparisons and drain-before-release/no-failed-publication/
+clean-retry assertions. Source capsule: hw86-native-stream-ingress-source.
+
+The matrix exports 98,877,440 dense bytes and imports 390,103,040: **receiver H2D
+is full-history for each fresh resident**, not incremental H2D. This is correct
+for the tested eviction policy, not a promise of optimal reuse. Whole handoffs
+span 3.568–8.079 s with diagnostics and fault injection; these are not PCIe
+bandwidth measurements. No device compute/DMA overlap or saturation claim.
+
+Remaining production boundaries: one-host DRAM placement, SQLite prototype
+coordination, per-import client setup, GDN/conv RPC staging, and HTTP/scheduler
+integration. Do not claim physical per-side single-copy LRU placement, HA or
+representative workload performance from this matrix. The actor remains
+fail-fast on ordinary unexpected utility exceptions; the injected retry is a
+bounded Core recovery probe, not general service recovery.
+
+The separate hw86-native-stream-ingress-plain arm (same source capsule, no byte
+oracle or injected failure) also passes all 12 handoffs and three token comparisons.
+Receiver pipeline intervals are 0.041–0.157 s; complete handoffs are 3.515–8.073 s.
+These intervals include per-import setup and are not an isolated PCIe benchmark.
+The oracle therefore is not required to make this bounded matrix pass. A Python
+resource-tracker shutdown warning reports four shared-memory objects; after exit,
+/dev/shm is empty and all eight NPUs and task Store processes are released.
+Next measure whole-handoff phase costs before choosing an optimization: receiver
+copy time alone does not explain multi-second checkpoint/RPC/control latency.

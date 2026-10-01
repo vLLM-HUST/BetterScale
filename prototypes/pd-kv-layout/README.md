@@ -757,3 +757,23 @@ does not qualify every production workload.
 See the scenario's [evidence and reproduction envelope](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/pd-storage.md#cold-request-numerical-repeatability-investigation-hw86-2026-10-01).
 The numerical_entry/trace helpers are opt-in diagnostics; do not make the
 fixed-seat eviction or Python-forward instrumentation a serving default.
+
+
+### Worker-direct streamed ingress
+
+On the qualified hw86 task runtime, use a fresh output path:
+
+```bash
+HCCL_DETERMINISTIC=strict BETTERSCALE_MODEL_PATH=/workspace/models/Qwen3.5-35B-A3B bash prototypes/pd-kv-layout/run_pd_model_probe.sh /path/to/fresh-output --native-async --async-export --stream-import --verify-transfer --import-failure-probe
+```
+
+--stream-import bypasses controller/Core RPC for dense payloads: workers read
+immutable Store chunks into a two-slot pinned ring and scatter H2D into reserved
+native pages. Target GDN/conv still travel through RPC. Both workers must drain
+before publication or page release; unknown completion quarantines the import.
+The exact-transfer oracle plus rank1 post-enqueue failure/retry matrix passes
+12 handoffs and 48 shard byte oracles. See the repo knowledge ingress evidence
+for the accepted envelope. Remove the two diagnostic flags for the plain arm.
+Fresh/evicted GPU residents still need full-history H2D; incremental Store
+publication does not imply incremental receiver H2D. This remains a single-host
+prototype, not a production placement/HA or bandwidth qualification.

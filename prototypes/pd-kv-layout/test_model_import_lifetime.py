@@ -107,3 +107,15 @@ def test_failure_probe_retries_without_publishing_failed_copy():
     assert len(c.scheduler.kv_cache_manager.block_pool.live)==3
     assert sum(bool(s.tokens) for s in c.scheduler.residents.seats)==1
 
+
+def test_cleanup_failure_preserves_worker_resources_until_drain_retry(monkeypatch):
+    from model_import_lifetime import drain
+    monkeypatch.setattr(torch,'npu',NS(synchronize=Mock()),raising=False)
+    monkeypatch.setitem(sys.modules,'vllm.distributed',NS(get_tensor_model_parallel_rank=lambda:0))
+    cleanup=Mock(side_effect=[RuntimeError('unregister incomplete'),None])
+    worker=NS(_pd_import_ticket='ticket',_pd_import_cleanup=cleanup)
+    assert not drain(worker,header())['drained']
+    assert worker._pd_import_cleanup is cleanup
+    assert drain(worker,header())['drained']
+    assert worker._pd_import_cleanup is None
+

@@ -45,6 +45,9 @@ def drain(worker, header):
         return dict(result,error='Unknown worker import ticket')
     try:
         torch.npu.synchronize()
+        cleanup=getattr(worker,'_pd_import_cleanup',None)
+        if cleanup is not None:
+            cleanup();worker._pd_import_cleanup=None
         result['drained']=True
     except BaseException:
         result['error']=traceback.format_exc()

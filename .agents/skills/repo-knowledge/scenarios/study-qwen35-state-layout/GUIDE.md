@@ -1,5 +1,9 @@
 # Study native Qwen3.5 state layout
 
+For current **P2/D6 PD development**, first follow the **Resume here** section in
+[pd-storage.md](pd-storage.md). It records accepted numerical boundaries and the
+active transfer/lifetime frontier; older failure gates below are historical.
+
 Enter when reasoning about Qwen35 hybrid physical state, group ownership,
 logical versus kernel blocks, or CPU connector registration and restoration.
 The original native-layout observations remain source/CPU research, not a

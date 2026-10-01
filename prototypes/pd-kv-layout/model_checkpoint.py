@@ -223,11 +223,14 @@ def _import_worker(worker,header,shards):
     from betterscale.live.llm.qwen35.state import GDNState
     runner,root,rank=worker_root(worker,header,source=False)
     shard=shards[rank];seat=header['seat'];cursor=header['cursor'];block=header['block_size']
-    if shard['rank']!=rank or shard['draft_valid'] is not False or set(shard['layers'])!=set(root.target):
+    streamed=header.get('dense_store') is not None
+    expected_layers={n for n,l in root.target.items() if not streamed or isinstance(l,GDNState)}
+    if shard['rank']!=rank or shard['draft_valid'] is not False or set(shard['layers'])!=expected_layers:
         raise ValueError('Incomplete rank target checkpoint')
     # Validate every shape/type before touching the destination. A failed rank
     # still cannot expose a partially installed resident through Core publication.
     for name,leaf in root.target.items():
+        if streamed and not isinstance(leaf,GDNState):continue
         data=shard['layers'][name]
         expected=({'conv':((3,4096),torch.bfloat16),'recurrent':((16,128,128),torch.float32)}
                   if isinstance(leaf,GDNState) else {k:((cursor,1,256),torch.bfloat16) for k in ('key','value')})
@@ -236,9 +239,18 @@ def _import_worker(worker,header,shards):
             t=data[k]
             if not isinstance(t,torch.Tensor) or t.device.type!='cpu' or tuple(t.shape)!=shape or t.dtype!=dtype:
                 raise ValueError(f'Wrong checkpoint tensor geometry: {name}/{k}: {type(t).__name__} {getattr(t, "shape", None)} {getattr(t, "dtype", None)}, expected {shape}/{dtype}')
+    if streamed:
+        from model_stream_import import validate_chunks
+        streams={f'{name}/{kind}/head{r}' for name,leaf in root.target.items()
+                 if not isinstance(leaf,GDNState) for kind in ('key','value') for r in (0,1)}
+        plan=header['dense_store']
+        if set(plan['streams'])!=streams or len(plan['streams'])!=len(streams):
+            raise ValueError('Invalid imported head streams')
+        validate_chunks(plan['chunks'],cursor,streams)
     root.clear_state_blocks((seat,),domain=root.residents)
     indices=torch.tensor(header['blocks'],dtype=torch.int64,device=runner.device)
     for name,leaf in root.target.items():
+        if streamed and not isinstance(leaf,GDNState):continue
         data=shard['layers'][name]
         if isinstance(leaf,GDNState):
             leaf.conv.tensor[seat,:3].copy_(data['conv']);leaf.recurrent.tensor[seat*3].copy_(data['recurrent'])
@@ -248,10 +260,14 @@ def _import_worker(worker,header,shards):
                 padded=torch.zeros(len(header['blocks'])*block,1,256,dtype=torch.bfloat16)
                 padded[:cursor].copy_(data[kind])
                 tensor.view(-1,block,1,256).index_copy_(0,indices,padded.view(-1,block,1,256).to(runner.device))
+    dense_receipt=None
+    if streamed:
+        from model_stream_import import import_dense
+        dense_receipt=import_dense(worker,runner,root,rank,header)
     root.continuation.selection.tensor[seat]=1;root.conv_selection.tensor[seat]=1
     root.continuation.resident_epoch.tensor[seat]=header['epoch'];root.remaining_outputs.tensor[seat]=0
     runner._live_resident_epochs[seat]=header['epoch'];runner._live_previous_verify.discard(seat)
-    return dict(rank=rank,seat=seat,epoch=header['epoch'],cursor=cursor,draft_valid=False)
+    return dict(rank=rank,seat=seat,epoch=header['epoch'],cursor=cursor,draft_valid=False,dense_import=dense_receipt)
 
 
 def install_worker():
