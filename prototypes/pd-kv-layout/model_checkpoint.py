@@ -77,30 +77,41 @@ def drop(core,salt):
 
 
 def restore(core,payload,salt):
+    from model_import_lifetime import validate_acks,release
     scheduler=idle(core);header=payload['header'];tokens=header['tokens'];cursor=header['cursor']
+    if getattr(core,'_pd_import',None) is not None:
+        raise RuntimeError('A quarantined import must drain before another import')
     if (header.get('dense_start',0)!=0 or header['identity']!=IDENTITY or cursor!=len(tokens)-1 or not 0<cursor<=8192
             or header['block_size']!=scheduler.block_size or len(payload['shards'])!=2
             or any(type(t) is not int or t<0 for t in tokens)):
         raise ValueError('Incompatible target checkpoint')
+    shards=wire_decode(payload['shards'])
     offer=scheduler.residents.offer(tokens,salt,scheduler.processed_step_seq,allow_hit=False)
     if offer is None:raise RuntimeError('No quiescent destination resident')
     offer=scheduler.residents.discard_victim(offer,scheduler.processed_step_seq)
     owner='pd-import-'+uuid.uuid4().hex
     seat=scheduler.residents.claim(owner,offer,scheduler.processed_step_seq)
-    pool=scheduler.kv_cache_manager.block_pool;blocks=[]
+    pool=scheduler.kv_cache_manager.block_pool
+    job=dict(owner=owner,seat=seat,blocks=[],header=None)
+    dispatched=False;drained=False
     try:
-        blocks=pool.get_new_blocks(math.ceil(cursor/scheduler.block_size))
-        destination=dict(header,seat=seat.index,epoch=seat.epoch,blocks=[b.block_id for b in blocks])
-        responses=core.model_executor.collective_rpc('pd_import_target',args=(destination,wire_decode(payload['shards'])))
-        if len(responses)!=2 or any(r['epoch']!=seat.epoch or r['seat']!=seat.index for r in responses):
-            raise RuntimeError('Incomplete target import acknowledgements')
-        wrapped=scheduler.kv_cache_manager.create_kv_cache_blocks((blocks,))
+        job['blocks']=pool.get_new_blocks(math.ceil(cursor/scheduler.block_size))
+        destination=dict(header,seat=seat.index,epoch=seat.epoch,
+                         blocks=[b.block_id for b in job['blocks']],transfer_id=uuid.uuid4().hex)
+        job['header']=destination;core._pd_import=job
+        dispatched=True
+        responses=core.model_executor.collective_rpc('pd_import_target',args=(destination,shards))
+        validate_acks(responses,destination);drained=True
+        errors=[r['error'] for r in responses if r.get('error')]
+        if errors:raise RuntimeError('Target import failed after drain: '+str(errors))
+        wrapped=scheduler.kv_cache_manager.create_kv_cache_blocks((job['blocks'],))
         scheduler.residents.retire(owner,fence=scheduler.processed_step_seq,tokens=tokens,cache_salt=salt,blocks=wrapped)
+        core._pd_import=None
         return dict(seat=seat.index,epoch=seat.epoch,cursor=cursor,blocks=destination['blocks'],workers=responses)
     except BaseException:
-        if blocks:pool.free_blocks(reversed(blocks))
-        if owner in scheduler.residents.requests:scheduler.residents.retire(owner,fence=scheduler.processed_step_seq)
-        seat.epoch+=1
+        if not dispatched or drained:release(core,job)
+        # Otherwise keep both seat and native pages quarantined. Explicit abort
+        # can retry a lost drain acknowledgement; never infer completion from RPC.
         raise
 
 
@@ -143,6 +154,9 @@ def install_core():
         EngineCoreProc._process_engine_step=step
     EngineCore.pd_drop_target=drop
     EngineCore.pd_import_target=restore
+    from model_import_lifetime import abort,failure_probe
+    EngineCore.pd_abort_import=abort
+    EngineCore.pd_import_failure_probe=failure_probe
     from model_async_export import finish,wait
     EngineCore.pd_finish_export=finish
     EngineCore.pd_wait_export=wait
@@ -200,6 +214,11 @@ def export_worker(worker,header):
 
 
 def import_worker(worker,header,shards):
+    from model_import_lifetime import install
+    return install(worker,header,shards,_import_worker)
+
+
+def _import_worker(worker,header,shards):
     import torch
     from betterscale.live.llm.qwen35.state import GDNState
     runner,root,rank=worker_root(worker,header,source=False)
@@ -232,7 +251,6 @@ def import_worker(worker,header,shards):
     root.continuation.selection.tensor[seat]=1;root.conv_selection.tensor[seat]=1
     root.continuation.resident_epoch.tensor[seat]=header['epoch'];root.remaining_outputs.tensor[seat]=0
     runner._live_resident_epochs[seat]=header['epoch'];runner._live_previous_verify.discard(seat)
-    torch.npu.synchronize()
     return dict(rank=rank,seat=seat,epoch=header['epoch'],cursor=cursor,draft_valid=False)
 
 
@@ -240,6 +258,8 @@ def install_worker():
     from vllm_ascend.worker.worker import NPUWorker
     NPUWorker.pd_export_target=export_worker
     NPUWorker.pd_import_target=import_worker
+    from model_import_lifetime import drain
+    NPUWorker.pd_abort_import=drain
     from model_async_export import begin_worker,finish_worker,wait_worker
     NPUWorker.pd_begin_export=begin_worker
     NPUWorker.pd_finish_export=finish_worker

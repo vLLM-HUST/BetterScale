@@ -73,7 +73,8 @@ def worker(role,connection,output):
 
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--incremental',action='store_true');p.add_argument('--streamed',action='store_true');p.add_argument('--async-export',action='store_true');p.add_argument('--serialize-export',action='store_true');p.add_argument('--verify-transfer',action='store_true');p.add_argument('--native-async',action='store_true');p.add_argument('--logprobs',action='store_true');p.add_argument('--cold-controls',type=int,choices=range(4),default=0);a=p.parse_args();a.async_export=a.async_export or a.serialize_export;a.streamed=a.streamed or a.async_export;a.incremental=a.incremental or a.streamed;a.output.mkdir(parents=True,exist_ok=False)
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--incremental',action='store_true');p.add_argument('--streamed',action='store_true');p.add_argument('--async-export',action='store_true');p.add_argument('--serialize-export',action='store_true');p.add_argument('--verify-transfer',action='store_true');p.add_argument('--native-async',action='store_true');p.add_argument('--import-failure-probe',action='store_true');p.add_argument('--logprobs',action='store_true');p.add_argument('--cold-controls',type=int,choices=range(4),default=0);a=p.parse_args();a.async_export=a.async_export or a.serialize_export;a.streamed=a.streamed or a.async_export;a.incremental=a.incremental or a.streamed;a.output.mkdir(parents=True,exist_ok=False)
+ if a.import_failure_probe and not a.native_async:raise ValueError('Import failure probe requires native async actor')
  from dram_store_fixture import dram_store
  from model_store import publish,publish_streamed,load
  from model_checkpoint import IDENTITY
@@ -137,7 +138,9 @@ def main():
     if not a.async_export:assert call(source,'drop',salt=salt),'Expected source resident retirement'
     del payload
     restored=load(dest_objects,key,IDENTITY,streams)
-    installed=call(dest,'import',payload=restored,salt=salt)
+    inject=a.import_failure_probe and not receipts
+    installed=call(dest,'import-failure-probe' if inject else 'import',payload=restored,salt=salt)
+    if inject:(a.output/'import-failure-recovery.json').write_text(json.dumps(installed['failure_probe'],indent=2))
     row=dict(source=source,destination=dest,cursor=len(tokens)-1,seconds=time.monotonic()-start,
       seat=installed['seat'],draft_state_transferred=False,dense_start=dense_start,dense_bytes=dense_bytes,host_activity_interval=activity,stream_pipeline=[{k:v for k,v in s.items() if k not in ('chunks','streams')} for s in stream_receipts])
     receipts.append(row);print('PD_HANDOFF',json.dumps(row),flush=True)

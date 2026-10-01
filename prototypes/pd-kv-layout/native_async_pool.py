@@ -9,7 +9,7 @@ import traceback
 import uuid
 
 METHODS = frozenset(('pd_export_retired', 'pd_wait_export', 'pd_finish_export',
-                     'pd_drop_target', 'pd_import_target', 'pd_probe_retired'))
+                     'pd_drop_target', 'pd_import_target', 'pd_probe_retired', 'pd_abort_import', 'pd_import_failure_probe'))
 
 async def owner_utility(client, owner, method, *args):
     if type(owner) is not int or not 0 <= owner < len(client.core_engines):
@@ -85,6 +85,8 @@ async def run(role, connection, output):
                 result = await utility('pd_drop_target', args['salt'])
             elif op == 'import':
                 result = await utility('pd_import_target', args['payload'], args['salt'])
+            elif op == 'import-failure-probe':
+                result = await utility('pd_import_failure_probe', args['payload'], args['salt'])
             elif op == 'observe':
                 result = await utility('pd_probe_retired', args['salt'])
             elif op == 'append':

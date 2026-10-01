@@ -24,7 +24,7 @@ def core():
  def rpc(name,args):
   h=args[0]
   if name=='pd_export_target':return [{'rank':0},{'rank':1}]
-  return [dict(rank=r,seat=h['seat'],epoch=h['epoch']) for r in range(2)]
+  return [dict(rank=r,seat=h['seat'],epoch=h['epoch'],transfer_id=h['transfer_id'],drained=True) for r in range(2)]
  return NS(scheduler=scheduler,batch_queue=[],model_executor=NS(collective_rpc=Mock(side_effect=rpc)))
 
 def payload():return dict(header=dict(identity=IDENTITY,tokens=list(range(4098)),cursor=4097,block_size=2048),shards=[{},{}])
@@ -38,12 +38,12 @@ class CheckpointTest(unittest.TestCase):
  def test_no_publication_without_all_worker_acks(self):
   c=core();c.model_executor.collective_rpc.side_effect=lambda *a,**kw:[]
   with self.assertRaises(RuntimeError):restore(c,payload(),'s')
-  self.assertFalse(c.scheduler.residents.requests);self.assertFalse(c.scheduler.kv_cache_manager.block_pool.live)
+  self.assertTrue(c.scheduler.residents.requests);self.assertTrue(c.scheduler.kv_cache_manager.block_pool.live)
   self.assertTrue(all(not s.tokens and not s.blocks for s in c.scheduler.residents.seats))
- def test_worker_failure_releases_allocations(self):
+ def test_unknown_worker_completion_quarantines_allocations(self):
   c=core();c.model_executor.collective_rpc.side_effect=IOError('copy failed')
   with self.assertRaises(IOError):restore(c,payload(),'s')
-  self.assertFalse(c.scheduler.kv_cache_manager.block_pool.live);self.assertFalse(c.scheduler.residents.requests)
+  self.assertTrue(c.scheduler.kv_cache_manager.block_pool.live);self.assertTrue(c.scheduler.residents.requests)
  def test_reject_active_or_wrong_frontier_before_reserving(self):
   c=core();c.batch_queue=[object()]
   with self.assertRaises(RuntimeError):restore(c,payload(),'s')

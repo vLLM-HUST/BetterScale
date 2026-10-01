@@ -633,3 +633,36 @@ accuracy mandate. Non-strict end-to-end quality and strict's performance cost
 have not been measured in a representative workload.
 CPU assessment receipt: runtime root hccl-rounding-assessment.json, copied into
 the local migration backup. No NPU rerun or runtime change was needed.
+
+
+### Native async export and import failure ownership (2026-10-01)
+
+`hw86-native-async-export-oracle` passes12 handoffs/24 exact-byte TP shard
+oracles/allthree16-token comparisons through native AsyncLLM/DPLB. Source hot
+residents are evicted while their exported native pages stay pinned; another
+request runs before export finish.15/24 host transfer-job intervals intersect the
+host request intervals. This is host overlap evidence, not measured device
+compute/DMA overlap or PCIe saturation. Strict HCCL isolates the transport gate;
+it is not a new production default.
+
+Source inspection exposed an independent destination-lifetime defect: restore
+freed its pages on any RPC error without proof that worker H2D had drained.
+The prototype now binds imports to a unique ticket, validates rank/seat/epoch
+and both worker drain acknowledgements, and quarantines the resident/native pages
+if completion is unknown. An explicit matching abort can drain and release;
+a second import cannot bypass that quarantine. A reported copy failure with both
+drain acks releases safely but never publishes the failed resident. Worker copy
+exceptions return as data after the device fence rather than bypassing it.
+
+`hw86-native-import-recovery` injects a rank1 failure after actual H2D enqueue,
+confirms drain-before-release and no failed publication, then retries successfully
+and completes the entire12-handoff/24-byte-oracle native async matrix (exit0).
+The affected CPU suite passes55 tests, including missing/duplicate/stale/not-drained
+acks, lost-RPC quarantine, explicit abort, clean retry and copy/drain failures.
+RPC connection loss itself remains a CPU fault-injection qualification; the NPU
+fault is after-enqueue copy failure. No process-death/HA claim is implied.
+
+The receiver still stages complete dense bytes through the controller/Core RPC
+and performs full H2D. This is the next data-path gap; source incremental D2H
+does not mean receiver incremental H2D or a production Store connector. Large
+capsules remain outside Git under the runtime root.
