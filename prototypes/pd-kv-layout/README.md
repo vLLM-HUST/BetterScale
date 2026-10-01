@@ -289,3 +289,19 @@ Use the isolated owned donor and repository source on PYTHONPATH,
 MTP_GDN_LAYOUT_FUSION=1, BETTERSCALE_GDN_SMALL_COPIES=1, and explicit rebuilt
 BETTERSCALE_GDN_LIBRARY / BETTERSCALE_GDN_HOST_LIBRARY. Hardware admission still
 belongs to the caller. Product native/version pins have not yet been promoted.
+
+## Six-rank same-host D transport
+
+`ep6_transport_probe.py` passed on physical cards2..7: three TP2 groups perform
+exact reductions; pinned core expert mapping assigns256 experts as
+43/43/43/43/42/42 with exactly one owner each. Eight unequal-split HCCL all-to-all
+dispatch/combine roundtrips preserve exact rank/expert identities. Receipt:
+`/workspace/betterscale-pd-runtime/ep6-transport.json`. This is communication and
+core mapping evidence, NOT qualification of Ascend fused-MoE, DP3 scheduling,
+model EP6 or PD serving. Each initialized process group is explicitly retired.
+
+The isolated venv inherits torch but has no `bin/torchrun`; use its Python with
+`-m torch.distributed.run --nnodes 1 --nproc-per-node 6 --master-addr 127.0.0.1
+--master-port 29661`. Expose exactly six
+authorized devices. The probe is bounded by120s HCCL watchdog and an outer
+240s process timeout; it does not scan ports or hosts.

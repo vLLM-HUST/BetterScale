@@ -291,3 +291,8 @@ capacity3 target route and selected MTP phases, and explicitly initializes large
 draft padding. Both new integration leaf probes pass; see CP README. Full model
 continuation is still pending. Current branch source requires the rebuilt
 `plan_discard_latest` host ABI; release manifests remain deliberately unchanged.
+
+P2+D6 topology progress: real NPU cards2..7 passed TP2-group reductions and8
+unequal-split EP6 HCCL dispatch/combine roundtrips using the pinned core's exact
+43/43/43/43/42/42 expert map. This settles the basic six-rank transport/mapping
+question, not fused-MoE or model integration. See PD prototype README/receipt.
