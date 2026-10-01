@@ -98,9 +98,43 @@ def restore(core,payload,salt):
         raise
 
 
+
+def export_retired(core,tokens,salt):
+    """Return a native utility Future when async output precedes State retirement."""
+    from concurrent.futures import Future
+    try:idle(core)
+    except RuntimeError:
+        if getattr(core,'_pd_pending_export',None) is not None:
+            raise RuntimeError('One pending checkpoint export per engine')
+        future=Future();core._pd_pending_export=(future,tokens,salt)
+        return future
+    return export(core,tokens,salt)
+
+
+def service_export(core):
+    pending=getattr(core,'_pd_pending_export',None)
+    if pending is None:return
+    try:idle(core)
+    except RuntimeError:return
+    core._pd_pending_export=None
+    future,tokens,salt=pending
+    try:future.set_result(export(core,tokens,salt))
+    except BaseException as exc:future.set_exception(exc)
+
+
 def install_core():
     from vllm.v1.engine.core import EngineCore
     EngineCore.pd_export_target=export
+    EngineCore.pd_export_retired=export_retired
+    from vllm.v1.engine.core import EngineCoreProc
+    original=EngineCoreProc._process_engine_step
+    if not getattr(original,'_pd_retirement_service',False):
+        def step(core,*args,**kwargs):
+            result=original(core,*args,**kwargs)
+            service_export(core)
+            return result
+        step._pd_retirement_service=True
+        EngineCoreProc._process_engine_step=step
     EngineCore.pd_drop_target=drop
     EngineCore.pd_import_target=restore
 

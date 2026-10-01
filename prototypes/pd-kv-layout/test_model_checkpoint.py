@@ -68,3 +68,20 @@ def test_explicit_wire_bytes_roundtrip():
     encoded['layers'][0]['shape']=[100]
     import pytest
     with pytest.raises(ValueError,match='Malformed'):wire_decode(encoded)
+
+
+def test_deferred_export_waits_for_real_retirement(monkeypatch):
+    from types import SimpleNamespace
+    import model_checkpoint as checkpoint
+    core=SimpleNamespace(batch_queue=[object()],scheduler=SimpleNamespace(has_requests=lambda:False,_pending_hot=[]))
+    monkeypatch.setattr(checkpoint,'export',lambda c,t,s:dict(tokens=t,salt=s))
+    future=checkpoint.export_retired(core,[1,2],'s')
+    assert not future.done()
+    checkpoint.service_export(core);assert not future.done()
+    import pytest
+    with pytest.raises(RuntimeError,match='One pending'):checkpoint.export_retired(core,[1,2],'s')
+    core.batch_queue=[];core.scheduler._pending_hot=[object()]
+    checkpoint.service_export(core);assert not future.done()
+    core.scheduler._pending_hot=[];checkpoint.service_export(core)
+    assert future.result()=={'tokens':[1,2],'salt':'s'}
+    assert core._pd_pending_export is None

@@ -7,6 +7,8 @@ CPU_ENV=Path('/workspace/pd-kv-layout-results/store-cpu-venv')
 @contextmanager
 def dram_store(output,port=55381):
     original_int=signal.getsignal(signal.SIGINT)
+    if not callable(original_int) and original_int not in (signal.SIG_DFL,signal.SIG_IGN):
+        original_int=signal.default_int_handler # native C handler has no Python handle
     # This isolated directory contains only the CPU Mooncake wheel and pip.
     # Do not accidentally import the container's older NPU Store wheel.
     site=CPU_ENV/'lib/python3.12/site-packages';sys.path.insert(0,str(site))

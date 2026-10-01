@@ -44,7 +44,7 @@ def worker(role,connection,output):
     r=model.generate([inp],SamplingParams(temperature=0,max_tokens=n,ignore_eos=True),use_tqdm=False)[0]
     result=dict(prompt_token_ids=r.prompt_token_ids,token_ids=list(r.outputs[0].token_ids),text=r.outputs[0].text,cached=r.num_cached_tokens)
    elif op=='wake':result=core.call_utility('pd_start_wave')
-   elif op=='export':result=core.call_utility('pd_export_target',args['tokens'],args['salt'])
+   elif op=='export':result=core.call_utility('pd_export_retired',args['tokens'],args['salt'])
    elif op=='drop':result=core.call_utility('pd_drop_target',args['salt'])
    elif op=='import':result=core.call_utility('pd_import_target',args['payload'],args['salt'])
    elif op=='append':result=args['tokens']+model.get_tokenizer().encode(args['text'],add_special_tokens=False)

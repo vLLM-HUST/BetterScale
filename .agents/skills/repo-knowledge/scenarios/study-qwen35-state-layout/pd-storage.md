@@ -335,3 +335,12 @@ For production, prefer existing native async DP coordination: DPAsyncMPClient
 sends FIRST_REQ, DPLBAsyncMPClient accepts request.data_parallel_rank, and the
 completion frontend reads X-data-parallel-rank. This is a frontend/coordinator
 integration boundary, not evidence against the qualified EP6 numerical route.
+
+Actual-model P2/D6 Store handoff is now PASS:
+`/workspace/betterscale-pd-runtime/p2d6-model-store-4/complete.json`. Three fixed
+owners each complete P→D→P→D→P; second-turn16-token D continuation equals cold,
+with warm frontiers4440/280/60 and cold0. Native utility Futures bridge response
+arrival to actual State retirement before export. Twelve synchronous handoffs,
+1.41–4.63s including full CPU snapshot/RPC/Store, are correctness evidence only.
+NPU→CPU incremental export, compute overlap, production async frontend attachment,
+cache eviction/recovery, and removal of startup-only draft memory remain open.

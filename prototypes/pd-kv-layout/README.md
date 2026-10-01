@@ -523,3 +523,23 @@ NPUs were verified free. Attempt2 failed only the occupied-port preflight before
 NPU launch. The fixture now records its master PID and reinstalls Python SIGINT
 unwinding after client initialization, with master cleanup in a finally block.
 Retain `logs/p2d6-model-store*.log`; corrected model attempt3 is pending.
+
+**Actual P2/D6 result:** `p2d6-model-store-4/complete.json` PASSES all three fixed
+D owners. Each real-model session completes P→D→P→D→P via Mooncake DRAM (12
+handoffs total), appends a second user question, and matches16 restored D tokens
+exactly against cold recomputation. Warm frontiers4440/280/60 are fully cached;
+all cold controls hit0. MTP is never transferred. Process exit0, all8 NPUs free,
+and no task master left listening. Whole synchronous handoffs range1.41–4.63s;
+these include complete snapshot export, Python RPC/serialization and Store, not
+just PCIe or layout conversion. Dense Store objects append incrementally, but
+NPU→CPU is still full-snapshot and no compute overlap is claimed.
+
+Attempt3 already passed the long D0 conversation, then D1 correctly rejected an
+export while async terminal work still owned State. `pd_export_retired` now uses
+native utility Futures: service the pending export only after the normal engine
+step drains requests, queued work and pending-hot fences. It never sleeps for an
+assumed fence delay or weakens the idle guard. A CPU test checks both batch-queue
+and pending-hot barriers. The fourth run above qualifies that path end to end.
+A native C SIGINT handler can make signal.getsignal return None; the fixture uses
+Python's default interrupt handler as the restorable fallback rather than trying
+to register None. Attempt3's cleanup did terminate its master despite that error.
