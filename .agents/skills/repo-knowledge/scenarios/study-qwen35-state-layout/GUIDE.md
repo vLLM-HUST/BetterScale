@@ -231,3 +231,6 @@ capacities, per-rank payload estimates and token-pressure admission limits.
 For why heterogeneous pooling still wastes GDN space, read
 [padding-versus-pooling.md](padding-versus-pooling.md): padding arithmetic versus
 free-capacity fungibility, and the separate-domain condition for lane savings.
+
+For PD ownership, head-major cache storage and the source-only Mooncake fit study,
+read [pd-storage.md](pd-storage.md).

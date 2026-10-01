@@ -1,0 +1,29 @@
+{
+  "scope": "real DRAM Store TCP plus NPU0 pinned staging; same-host",
+  "disk_offload": false,
+  "checks": [
+    "two-head multi-buffer put",
+    "cross-client full-object exact bytes",
+    "independent-process full/ranged reads and clean exit",
+    "two-range head scatter and guard bytes",
+    "partial-token interval and untouched suffix",
+    "lease expiry permits normal deletion",
+    "remove test-owned object"
+  ],
+  "master_exit": 0,
+  "normal_remove_result": -706,
+  "session_checks": [
+    "P0->D0: exact 129-token snapshot",
+    "D0->P0: exact 145-token snapshot",
+    "P0->D0: exact 257-token snapshot",
+    "evicted dependency fails closed"
+  ],
+  "npu_staging": {
+    "chunks": 8,
+    "chunk_bytes": 2621440,
+    "ring_slots": 2,
+    "exact": true,
+    "publish_ms": 91.04642830789089,
+    "scope": "NPU0 pinned staging + same-host DRAM Store; no model/compute overlap"
+  }
+}
