@@ -17,7 +17,7 @@ def dram_store(output,port=55381):
     assert Path(mooncake.store.__file__).resolve().is_relative_to(site)
     reservations=[]
     try:
-        for number in (port,port+1,port+2,port+3,port+4):
+        for number in (port,port+1,port+2,port+3,port+4,*range(port+20,port+28)):
             s=socket.socket();reservations.append(s);s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1);s.bind(('127.0.0.1',number))
     finally:
         for s in reservations:s.close()

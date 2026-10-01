@@ -563,3 +563,41 @@ changes must not be attributed solely to reduced PCIe bytes. The pipeline remain
 quiescent and synchronous at the RPC boundary, and receiver H2D remains full.
 No compute overlap, async page-reference lifetime, DRAM eviction policy, native
 async frontend, or production recovery qualification is implied.
+
+### Model-page D2H → DRAM double buffering
+
+`pd_model_probe.py --streamed` passes the complete same P2/D6 matrix at
+`/workspace/betterscale-pd-runtime/p2d6-model-streamed/complete.json`:12 handoffs,
+three exact warm/cold second D continuations,98,877,440 incremental dense bytes.
+Exit0, all8 NPUs free, task Store master gone. Each TP worker directly stores its
+20 head-major planes through two20MiB pinned slots. D2H events gate Store reads;
+acknowledged Store futures gate slot reuse, with gathered device tensors retained
+until completion. All jobs and the copy stream drain before unregister/close,
+including failure. Dense bytes no longer pass through Core/controller RPC.
+
+Core still executes a synchronous **retired idle** export: its existing page
+ownership lasts until both workers finish. This is transfer-stage pipelining,
+not overlap with model execution or qualification of active-page lifetime.
+The long initial P export enqueued both later chunks while an earlier Store
+future was pending on each TP rank; that is software concurrency evidence, not
+hardware profiling. Producer timing includes per-call Store setup, not teardown.
+Whole handoffs2.55–4.16s include full GDN/conv CPU/RPC and full receiver H2D; no
+latency improvement or physical network throughput is claimed. Same-host CPU
+Store may use memcpy. Per-call clients are intentionally not yet amortized.
+
+`model_stream_probe.py` first qualified NPU0 synthetic model-page geometry,
+permuted physical IDs, four chunks/two slots and a partial-tail increment against
+exact Store bytes (`model-stream-oracle/complete.json`). The internal
+`Turn.append_acknowledged` seam accepts only producer-acknowledged, unique keys
+under the current session/epoch namespace. Both TP layouts/frontiers/stream sets
+are checked before the existing final manifest CAS. Acknowledgement does not
+prevent later eviction: restore still checks every dependency and fails closed.
+CPU tests cover missing acknowledgement, mismatched spans, foreign keys, duplicate
+keys, revoked epochs and dependency loss. Checkpoint/Store/session suite:27 pass.
+
+Next lifetime boundary: do not simply release the idle RPC and leave the same
+copy jobs running. Pin native block-pool references before any asynchronous
+export, preserve immutable token intervals (not just Tensor object lifetimes),
+and release pins only after both workers' DMA/Store completion, including abort.
+GDN/conv must remain a selected, matching retired frontier. Production still
+needs native async frontend integration, eviction/recovery and draft validity.

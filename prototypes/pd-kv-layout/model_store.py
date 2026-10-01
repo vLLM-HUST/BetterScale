@@ -91,3 +91,54 @@ def load(objects,key,identity,streams):
         return payload
     except (KeyError,ValueError,TypeError,msgspec.DecodeError) as exc:
         raise CacheMiss('Invalid target model snapshot') from exc
+
+
+def publish_streamed(directory,objects,lease,payload,next_owner):
+    """Join TP2's acknowledged chunks; publish only after both retired workers."""
+    h=payload['header'];shards=payload['shards'];start=h['dense_start'];cursor=h['cursor']
+    prefix=h['stream_store']['prefix']
+    if (h['identity']!=IDENTITY or h['block_size']!=2048 or type(start) is not int
+            or not 0<=start<=cursor<=8192 or len(h['tokens'])!=cursor+1
+            or len(shards)!=2 or [s['rank'] for s in shards]!=[0,1]):
+        raise ValueError('Invalid streamed model header')
+    gdn={};conv={};streams=[];by_rank=[]
+    for shard in shards:
+        rank=shard['rank'];ack=shard['dense_store'];gdn[rank]={};conv[rank]={}
+        if shard['draft_valid'] is not False or ack['acknowledged'] is not True:
+            raise ValueError('Unacknowledged target stream')
+        for name,data in shard['layers'].items():
+            if set(data)!={'recurrent','conv'}:raise ValueError('Unexpected streamed checkpoint plane')
+            tensor(data['recurrent'],(16,128,128),'float32');tensor(data['conv'],(3,4096),'bfloat16')
+            gdn[rank][name]=data['recurrent'];conv[rank][name]=data['conv']
+        local=ack['streams'];fa={}
+        for name in local:
+            layer,kind,head=name.rsplit('/',2)
+            if head!=f'head{rank}' or kind not in ('key','value') or layer in gdn[rank]:
+                raise ValueError('Invalid streamed head layout')
+            fa.setdefault(layer,set()).add(kind)
+        if (len(gdn[rank])!=30 or len(local)!=20 or len(set(local))!=20 or len(fa)!=10
+                or any(k!={'key','value'} for k in fa.values())
+                or ack['dense_bytes']!=(cursor-start)*20*TOKEN_BYTES):
+            raise ValueError('Incomplete streamed target geometry')
+        frontier=start
+        for chunk in ack['chunks']:
+            stop=chunk['stop']
+            if (chunk['start']!=frontier or type(stop) is not int or not frontier<stop<=min(frontier+2048,cursor)
+                    or set(chunk['keys'])!=set(local)
+                    or any(key!=f'{prefix}/dense/{frontier}/{name}' for name,key in chunk['keys'].items())):
+                raise ValueError('Invalid acknowledged dense span')
+            frontier=stop
+        if frontier!=cursor:raise ValueError('Incomplete acknowledged frontier')
+        streams.extend(local);by_rank.append(ack['chunks'])
+    if (set(gdn[0])!=set(gdn[1])
+            or {s.rsplit('/',1)[0] for s in streams[:20]}!={s.rsplit('/',1)[0] for s in streams[20:]}
+            or [(c['start'],c['stop']) for c in by_rank[0]]!=[(c['start'],c['stop']) for c in by_rank[1]]):
+        raise ValueError('Mismatched streamed TP layouts')
+    turn=Turn(directory,objects,lease,tuple(sorted(streams)),TOKEN_BYTES)
+    try:
+        if turn.cursor!=start:raise ValueError('Stream does not start at committed frontier')
+        for a,b in zip(*by_rank):
+            turn.append_acknowledged(a['stop'],dict(a['keys'],**b['keys']),prefix=prefix)
+        checkpoint=dict(gdn=msgspec.msgpack.encode(gdn),conv=msgspec.msgpack.encode(conv))
+        return turn.finish(h['tokens'][:-1],checkpoint,next_owner,writer_retired=True,pending_token=h['tokens'][-1])
+    finally:turn.close()

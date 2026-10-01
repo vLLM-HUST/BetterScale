@@ -3,7 +3,7 @@
 Quiescent session turns, one controller/SQLite directory, no overlap or production
 availability claim. D attention owners are fixed per session; MTP never transfers.
 """
-import argparse,json,multiprocessing as mp,os,time,traceback
+import argparse,json,multiprocessing as mp,os,time,traceback,uuid
 from pathlib import Path
 ROOT=Path('/workspace/betterscale-pd-runtime')
 MODEL='/data/shared_models/modelscope_cache/Qwen/Qwen3.5-35B-A3B'
@@ -44,7 +44,7 @@ def worker(role,connection,output):
     r=model.generate([inp],SamplingParams(temperature=0,max_tokens=n,ignore_eos=True),use_tqdm=False)[0]
     result=dict(prompt_token_ids=r.prompt_token_ids,token_ids=list(r.outputs[0].token_ids),text=r.outputs[0].text,cached=r.num_cached_tokens)
    elif op=='wake':result=core.call_utility('pd_start_wave')
-   elif op=='export':result=core.call_utility('pd_export_retired',args['tokens'],args['salt'],args.get('dense_start',0))
+   elif op=='export':result=core.call_utility('pd_export_retired',args['tokens'],args['salt'],args.get('dense_start',0),args.get('stream_store'))
    elif op=='drop':result=core.call_utility('pd_drop_target',args['salt'])
    elif op=='import':result=core.call_utility('pd_import_target',args['payload'],args['salt'])
    elif op=='append':result=args['tokens']+model.get_tokenizer().encode(args['text'],add_special_tokens=False)
@@ -61,9 +61,9 @@ def worker(role,connection,output):
 
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--incremental',action='store_true');a=p.parse_args();a.output.mkdir(parents=True,exist_ok=False)
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--incremental',action='store_true');p.add_argument('--streamed',action='store_true');a=p.parse_args();a.incremental=a.incremental or a.streamed;a.output.mkdir(parents=True,exist_ok=False)
  from dram_store_fixture import dram_store
- from model_store import publish,load
+ from model_store import publish,publish_streamed,load
  from model_checkpoint import IDENTITY
  from session import Directory,Objects
  ctx=mp.get_context('spawn');children={};pipes={};stage='startup';receipts=[]
@@ -98,17 +98,20 @@ def main():
    def handoff(source,dest,tokens,salt,lease):
     start=time.monotonic();source_objects=objects['P' if source=='P' else 'D'];dest_objects=objects['P' if dest=='P' else 'D']
     dense_start=json.loads(source_objects.get(lease.base))['cursor'] if a.incremental and lease.base is not None else 0
-    payload=call(source,'export',tokens=tokens,salt=salt,dense_start=dense_start)
-    dense_bytes=sum(len(data[k]['data']) for shard in payload['shards'] for data in shard['layers'].values() if set(data)=={'key','value'} for k in ('key','value'))
+    port=55421 if source=='P' else 55423+2*int(source[1:])
+    stream_store=dict(prefix=f'pd/{lease.session}/{lease.epoch}/{uuid.uuid4().hex}',ports=[port,port+1]) if a.streamed else None
+    payload=call(source,'export',tokens=tokens,salt=salt,dense_start=dense_start,stream_store=stream_store)
+    stream_receipts=[s['dense_store'] for s in payload['shards']] if a.streamed else []
+    dense_bytes=sum(s['dense_bytes'] for s in stream_receipts) if a.streamed else sum(len(data[k]['data']) for shard in payload['shards'] for data in shard['layers'].values() if set(data)=={'key','value'} for k in ('key','value'))
     assert dense_bytes==(len(tokens)-1-dense_start)*20480
-    key=publish(directory,source_objects,lease,payload,dest)
+    key=(publish_streamed if a.streamed else publish)(directory,source_objects,lease,payload,dest)
     streams=tuple(json.loads(source_objects.get(key))['streams'])
     assert call(source,'drop',salt=salt),'Expected source resident retirement'
     del payload
     restored=load(dest_objects,key,IDENTITY,streams)
     installed=call(dest,'import',payload=restored,salt=salt)
     row=dict(source=source,destination=dest,cursor=len(tokens)-1,seconds=time.monotonic()-start,
-      seat=installed['seat'],draft_state_transferred=False,dense_start=dense_start,dense_bytes=dense_bytes)
+      seat=installed['seat'],draft_state_transferred=False,dense_start=dense_start,dense_bytes=dense_bytes,stream_pipeline=[{k:v for k,v in s.items() if k not in ('chunks','streams')} for s in stream_receipts])
     receipts.append(row);print('PD_HANDOFF',json.dumps(row),flush=True)
    for rank,repeats in enumerate((220,12,1)):
     owner=f'D{rank}';sid=f'pd-session-{rank}';salt=sid;directory.create(sid,IDENTITY,'P')
@@ -132,7 +135,7 @@ def main():
     (a.output/(sid+'-receipt.json')).write_text(json.dumps(row,indent=2))
     assert row['equal'] and row['cached']==row['cursor'] and cold['cached']==0,row
     stage=sid+' final checkpoint';handoff(owner,'P',tokens+warm['token_ids'],salt,lease)
-   (a.output/'complete.json').write_text(json.dumps(dict(status='passed',incremental_d2h=a.incremental,scope='P2 D6 actual-model DRAM P-D-P-D-P target-only handoff, three fixed attention owners; no DMA overlap/production HA claim',handoffs=receipts),indent=2))
+   (a.output/'complete.json').write_text(json.dumps(dict(status='passed',incremental_d2h=a.incremental,streamed_d2h_store=a.streamed,scope='P2 D6 actual-model DRAM P-D-P-D-P target-only handoff, three fixed attention owners; no compute overlap/production HA claim',handoffs=receipts),indent=2))
  except BaseException:
   (a.output/'failure.json').write_text(json.dumps(dict(stage=stage,error=traceback.format_exc(),handoffs=receipts),indent=2));raise
  finally:

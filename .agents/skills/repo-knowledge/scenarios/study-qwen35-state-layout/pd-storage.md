@@ -351,3 +351,12 @@ NPU; Store reconstructs full history before import. Across12 handoffs dense byte
 are98,877,440 rather than390,103,040 full-snapshot bytes; selected GDN/conv remains
 a full turn-end checkpoint. This is still quiescent RPC export, not compute
 fallback/overlap or async page-lifetime qualification. Receiver H2D is full.
+
+Model-page two-slot D2H→Store streaming now passes the same P2/D6 matrix:
+`p2d6-model-streamed/complete.json`,12 handoffs and all three exact continuations.
+Dense bytes bypass model/Core RPC; each TP rank uses two20MiB pinned slots with
+D2H-event-before-Store and Store-ack-before-reuse fences. Core remains blocked in
+the retired idle export, so this proves transfer-stage pipelining, **not compute
+overlap**. Whole2.55–4.16s handoffs still include GDN/conv RPC and full receiver
+H2D. The next async boundary needs native page refcounts (block_pool.touch /
+free_blocks), not merely retained tensor objects; see the prototype README.

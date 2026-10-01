@@ -48,7 +48,7 @@ def idle(core):
     return scheduler
 
 
-def export(core,tokens,salt,dense_start=0):
+def export(core,tokens,salt,dense_start=0,stream_store=None):
     scheduler=idle(core)
     candidates=[s for s in scheduler.residents.seats if s.owner is None and s.tokens==tuple(tokens)
                 and s.cache_salt==salt and s.fence<=scheduler.processed_step_seq]
@@ -58,6 +58,7 @@ def export(core,tokens,salt,dense_start=0):
         raise ValueError('Invalid dense export interval')
     header=dict(identity=IDENTITY,tokens=list(tokens),cursor=seat.cursor,seat=seat.index,epoch=seat.epoch,
                 dense_start=dense_start,block_size=scheduler.block_size,blocks=[b.block_id for b in seat.blocks.blocks[0]])
+    if stream_store is not None:header['stream_store']=stream_store
     shards=core.model_executor.collective_rpc('pd_export_target',args=(header,))
     if len(shards)!=2:raise RuntimeError('TP2 export requires two worker acknowledgements')
     return dict(header=header,shards=wire_encode(shards))
@@ -101,16 +102,16 @@ def restore(core,payload,salt):
 
 
 
-def export_retired(core,tokens,salt,dense_start=0):
+def export_retired(core,tokens,salt,dense_start=0,stream_store=None):
     """Return a native utility Future when async output precedes State retirement."""
     from concurrent.futures import Future
     try:idle(core)
     except RuntimeError:
         if getattr(core,'_pd_pending_export',None) is not None:
             raise RuntimeError('One pending checkpoint export per engine')
-        future=Future();core._pd_pending_export=(future,tokens,salt,dense_start)
+        future=Future();core._pd_pending_export=(future,tokens,salt,dense_start,stream_store)
         return future
-    return export(core,tokens,salt,dense_start)
+    return export(core,tokens,salt,dense_start,stream_store)
 
 
 def service_export(core):
@@ -119,8 +120,8 @@ def service_export(core):
     try:idle(core)
     except RuntimeError:return
     core._pd_pending_export=None
-    future,tokens,salt,dense_start=pending
-    try:future.set_result(export(core,tokens,salt,dense_start))
+    future,tokens,salt,dense_start,stream_store=pending
+    try:future.set_result(export(core,tokens,salt,dense_start,stream_store))
     except BaseException as exc:future.set_exception(exc)
 
 
@@ -180,11 +181,16 @@ def export_worker(worker,header):
             layers[name]=dict(conv=leaf.conv.tensor[seat,conv_selected-1:conv_selected+2].cpu().clone(),
                               recurrent=leaf.recurrent.tensor[seat*3+selected-1].cpu().clone())
         else:
+            if header.get('stream_store') is not None:continue
             layers[name]={}
             for kind in ('key','value'):
                 tensor=getattr(leaf,kind).tensor
                 layers[name][kind]=dense_span(tensor,indices,block,cursor,header.get('dense_start',0)).cpu().clone()
-    return dict(rank=rank,layers=layers,draft_valid=False)
+    result=dict(rank=rank,layers=layers,draft_valid=False)
+    if header.get('stream_store') is not None:
+        from model_stream_export import export_dense
+        result['dense_store']=export_dense(runner,root,rank,header)
+    return result
 
 
 def import_worker(worker,header,shards):

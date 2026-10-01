@@ -206,6 +206,29 @@ class Turn:
         self.chunks.append({"start": self.cursor, "stop": stop, "keys": keys})
         self.cursor = stop
 
+    def append_acknowledged(self, stop, keys, *, prefix):
+        """Adopt trusted worker Store acknowledgements, never uncompleted puts.
+
+        This is an internal prototype seam, not proof that a remote object cannot
+        subsequently be evicted. Restore still validates every dependency.
+        """
+        if self.closed or self.failed:
+            raise Conflict("turn no longer writable")
+        expected = f"pd/{self.lease.session}/{self.lease.epoch}/"
+        if (not isinstance(prefix, str) or not prefix.startswith(expected)
+                or not prefix[len(expected):] or '/' in prefix[len(expected):]
+                or type(stop) is not int or stop <= self.cursor
+                or set(keys) != set(self.streams)
+                or (stop-self.cursor)*self.token_bytes*len(keys) > self.max_pending_bytes):
+            raise ValueError("invalid acknowledged increment")
+        old = {key for chunk in self.chunks for key in chunk['keys'].values()}
+        values = list(keys.values())
+        if (any(not isinstance(key, str) or not key.startswith(prefix+'/dense/') for key in values)
+                or len(set(values)) != len(values) or old.intersection(values)):
+            raise ValueError("invalid immutable chunk keys")
+        self.chunks.append(dict(start=self.cursor, stop=stop, keys=dict(keys)))
+        self.cursor = stop
+
     def finish(self, tokens, checkpoint, next_owner, *, writer_retired, pending_token=None):
         if self.closed or self.failed or not writer_retired:
             raise Conflict("cannot publish before final writer retirement")

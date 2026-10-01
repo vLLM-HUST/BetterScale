@@ -226,3 +226,21 @@ def test_bad_checkpoint_cannot_be_retried_after_partial_write(setup):
             writer.finish([1], CHECKPOINT, "D0", writer_retired=True)
     finally:
         writer.close()
+
+
+def test_acknowledged_external_chunks_keep_namespace_and_epoch_fences(setup):
+    directory,store=setup
+    writer=turn(directory,store,'P0');prefix=writer.prefix
+    keys={name:f'{prefix}/dense/0/{i}' for i,name in enumerate(STREAMS)}
+    try:
+        for name,data in payload(0,2).items():assert store.put(keys[name],data)==0
+        with pytest.raises(ValueError):writer.append_acknowledged(2,keys,prefix='pd/other/1/x')
+        aliases=dict.fromkeys(STREAMS,next(iter(keys.values())))
+        with pytest.raises(ValueError):writer.append_acknowledged(2,aliases,prefix=prefix)
+        writer.append_acknowledged(2,keys,prefix=prefix)
+        with pytest.raises(ValueError):writer.append_acknowledged(4,keys,prefix=prefix)
+        assert writer.cursor==2
+        directory.revoke(writer.lease)
+        with pytest.raises(Conflict,match='stale writer'):complete(writer,[1,2],'D0')
+        assert directory.current('session') is None
+    finally:writer.close()

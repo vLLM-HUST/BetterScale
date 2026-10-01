@@ -74,7 +74,7 @@ def test_deferred_export_waits_for_real_retirement(monkeypatch):
     from types import SimpleNamespace
     import model_checkpoint as checkpoint
     core=SimpleNamespace(batch_queue=[object()],scheduler=SimpleNamespace(has_requests=lambda:False,_pending_hot=[]))
-    monkeypatch.setattr(checkpoint,'export',lambda c,t,s,start=0:dict(tokens=t,salt=s))
+    monkeypatch.setattr(checkpoint,'export',lambda c,t,s,start=0,stream_store=None:dict(tokens=t,salt=s))
     future=checkpoint.export_retired(core,[1,2],'s')
     assert not future.done()
     checkpoint.service_export(core);assert not future.done()
