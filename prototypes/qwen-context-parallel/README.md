@@ -36,3 +36,37 @@ exact zero padding in BOTH candidate banks (including initial execution).
 It does not relax live-row tolerance. This separates two distinct contracts.
 Subsequent extreme-case replay had a real live-row mismatch; CANN9.1 candidate
 is not qualified merely by fixing the padding reference.
+
+### CANN9.1 investigation boundary, 2026-10-01
+
+Fletcher chose to fork the native-reference issue investigation and keep the PD
+mainline on owned FIA. Do not continue the native bug hunt in the PD task.
+Use `--reference cpu` for the independent full correctness gate: every valid
+row is compared to FP32 CPU causal attention, including long contexts, with
+reference caching only for identical immutable KV / query-sign / length inputs.
+Padding remains exact zero, both banks and all guard checks remain enabled.
+
+Evidence lives at /workspace/betterscale-pd-runtime on hw180:
+- fia-cp-oracle/failure.json: extreme replay5, request11 CPU max error
+  candidate0.000586 vs native0.156696; other short rows were close. This localizes
+  the wrong reference value, NOT its root cause.
+- native-fia-reference.json and native-fia-reference-dynamic.json:
+  standalone native-only control passed16 repeats each with/without zero-KV
+  padding, both fixed and varying lengths.
+- native-fia-with-planner.json: native plus two metadata-only planner calls also
+  passed. No owned CP kernel runs in these controls. Therefore a generic
+  standalone CANN bug is NOT yet established; the full mixed harness interaction
+  remains relevant. The frozen failure output and original logs are retained.
+
+`native_reference_probe.py` is the bounded control for that fork, not a model
+qualification test. Keep it dormant in PD work unless new evidence requires it.
+
+Independent CPU gate (`fia-cp-cpu-oracle-2`) passed edges, c16-short,
+nonuniform, moderate and extreme, including all16 replays per case. long16
+passed both initial banks at256K, then failed replay0 (KV3) on1/98304 live
+elements: absolute error0.00321957, at the unchanged rtol0.02/atol0.003
+criterion. Padding stayed zero. This is a strict gate failure, not yet a
+diagnosed owned-kernel defect; native-reference tolerances are not automatically
+a complete FP32 mathematical error budget. Do not mark this candidate qualified
+or update native artifact pins from these partial results. PD recurrence and
+checkpoint work can proceed independently.

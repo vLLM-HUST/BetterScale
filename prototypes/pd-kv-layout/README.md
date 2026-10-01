@@ -234,3 +234,22 @@ harness's scrubbed loader environment. Removing LD_LIBRARY_PATH from the NPU
 parent failed at import before allocation; restoring existing loader paths
 resolved it, without changing system libraries. All 51 CPU protocol/layout/
 State-binding tests pass together. Direct Ascend transport remains untested.
+
+## Owned GDN host-checkpoint continuation, CANN9.1
+
+`gdn_resume_probe.py` passed24 captured waves on NPU0 using the exact owned
+qk8/value16/d128 TP2 recurrence and an independent FP32 CPU recurrence. Three
+active rows cycle accepted candidates1..3, plus a retired row. At wave12, after
+writer completion, the selected1MiB target recurrent State goes through CPU,
+restores byte-exactly into a different candidate-slot group and continues with
+selector1. All candidate states, outputs, untouched slots and zero retired-row
+output are checked each wave. The CPU reference does not adopt device State
+after restore. This validates one-layer recurrence/host export/resume, NOT
+conv history, Store transport, full-model correctness or inter-rank execution.
+
+Run in the isolated pinned-core venv with one authorized idle device exposed:
+`ASCEND_RT_VISIBLE_DEVICES=0 TASK_QUEUE_ENABLE=0 TORCH_DEVICE_BACKEND_AUTOLOAD=0
+VLLM_PLUGINS='' python gdn_resume_probe.py --output /new/receipt`.
+The new-container receipt is
+`/workspace/betterscale-pd-runtime/gdn-resume/complete.json`; all NPUs were idle
+after normal exit.

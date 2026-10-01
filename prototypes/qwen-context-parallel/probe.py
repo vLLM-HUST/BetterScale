@@ -14,6 +14,7 @@ p.add_argument('--source',type=Path,required=True)
 p.add_argument('--kernel',type=Path,required=True)
 p.add_argument('--native',type=Path,required=True)
 p.add_argument('--device-lengths',action='store_true')
+p.add_argument('--reference', choices=('native','cpu'), default='native')
 p.add_argument('--case', help='Bounded diagnostic subset; omission runs the complete gate')
 a=p.parse_args();a.output.mkdir(exist_ok=False)
 sys.path.insert(0,str(a.source));from plan import schedule,encode
@@ -39,7 +40,7 @@ if a.case:
     if not cases: raise ValueError('unknown diagnostic case')
 (a.output/'protocol.json').write_text(json.dumps(dict(device=int(os.environ['ASCEND_RT_VISIBLE_DEVICES']),cases=cases,
     kernel_sha256=hashlib.sha256(a.kernel.read_bytes()).hexdigest(),native_sha256=hashlib.sha256(a.native.read_bytes()).hexdigest(),
-    scope='Two captured banks; device-only length changes and zero-KV padding' if a.device_lengths else 'Exact host lengths; two captured banks',torch=torch.__version__,torch_npu=torch_npu.__version__),indent=2)+'\n')
+    reference=a.reference,scope='Two captured banks; device-only length changes and zero-KV padding' if a.device_lengths else 'Exact host lengths; two captured banks',torch=torch.__version__,torch_npu=torch_npu.__version__),indent=2)+'\n')
 receipts=[]
 def compare(actual, expected, phase, bank, lengths):
     live=sum(live_qs)
@@ -48,7 +49,8 @@ def compare(actual, expected, phase, bank, lengths):
     # compare only real rows to it and check BOTH banks' padding independently.
     native_padding.append(expected[live:].float().abs().max().item() if len(expected)>live else 0.0)
     try:
-        torch.testing.assert_close(actual[:live],expected[:live],rtol=.02,atol=.003)
+        assert actual.dtype == torch.bfloat16
+        torch.testing.assert_close(actual[:live].float(),expected[:live].float(),rtol=.02,atol=.003)
         if len(actual)>live:
             torch.testing.assert_close(actual[live:],torch.zeros_like(actual[live:]),rtol=0,atol=0)
     except AssertionError:
@@ -92,6 +94,28 @@ for name,qs,upper in cases:
     def native(lengths):
         return torch_npu.npu_fused_infer_attention_score(q,k,v,block_table=table,atten_mask=mask,input_layout='TND',block_size=128,
             actual_seq_lengths=qends,actual_seq_lengths_kv=lengths,num_heads=8,num_key_value_heads=1,scale=256**-.5,sparse_mode=3,next_tokens=0)[0]
+    cpu_query=q.cpu().float() if a.reference=='cpu' else None
+    cpu_references={}
+    def reference(lengths, sign=1):
+        if a.reference=='native':
+            return native(lengths)
+        key=(tuple(lengths),sign)
+        if key not in cpu_references:
+            expected=torch.zeros(q.shape,dtype=torch.float32)
+            start=0; page=0
+            for qn,kvn,npages in zip(qs,lengths,pages):
+                if kvn:
+                    qq=(cpu_query[start:start+qn]*sign).transpose(0,1)
+                    # Bound transfer to actual valid prefix, not the host upper envelope.
+                    used_pages=(kvn+127)//128
+                    kk=k[page:page+used_pages].cpu().float().reshape(-1,256)[:kvn]
+                    vv=v[page:page+used_pages].cpu().float().reshape(-1,256)[:kvn]
+                    scores=(qq@kk.T)*256**-.5
+                    allowed=torch.arange(kvn)[None,:]<=kvn-qn+torch.arange(qn)[:,None]
+                    expected[start:start+qn]=(scores.masked_fill(~allowed,-torch.inf).softmax(-1)@vv).transpose(0,1)
+                start+=qn;page+=npages
+            cpu_references[key]=expected.npu()
+        return cpu_references[key]
     banks=[]
     for bank in range(2):
         workspace=torch.full((128*1024**2+8192,),165,dtype=torch.uint8,device='npu')
@@ -107,7 +131,7 @@ for name,qs,upper in cases:
         ptrs=(u*10)(*[x.data_ptr() for x in (q,k,v,mask,table,out,ql,kl,workspace[4096:-4096],meta)])
         def call(ptrs=ptrs):kernel.lane_launch(torch.npu.current_stream().npu_stream,ptrs)
         call();torch.npu.synchronize()
-        compare(out,native(upper),'initial',bank,upper)
+        compare(out,reference(upper),'initial',bank,upper)
         graph=torch.npu.NPUGraph()
         with torch.npu.graph(graph):call()
         banks.append(dict(workspace=workspace,output=output,out=out,kl=kl,meta=meta,raw=raw.raw,ptrs=ptrs,graph=graph))
@@ -116,7 +140,7 @@ for name,qs,upper in cases:
         lengths=(live_upper if step%2 else [max(qn,min(n,(3,511,512,513)[step//2])) for qn,n in zip(live_qs,live_upper)])
         if a.device_lengths:lengths=lengths+[0]
         q.mul_(-1)
-        ref=native(lengths)
+        ref=reference(lengths,-1 if step%2==0 else 1)
         for bank,b in enumerate(banks):
             plan=schedule(live_upper,live_qs) if a.device_lengths else schedule(lengths,qs);states.append(plan['split_nodes'])
             b['kl'].copy_(torch.tensor(lengths,dtype=torch.int64))
@@ -140,8 +164,9 @@ for name,qs,upper in cases:
                 torch.testing.assert_close(banks[0]['out'][start:start+qn].cpu().float(),expected,rtol=.02,atol=.003)
                 start+=qn;page+=npages
     for actual,expected in zip((k,v,table),original):torch.testing.assert_close(actual,expected,rtol=0,atol=0)
-    receipts.append(dict(case=name,max_error=max(errors),split_states=states,graphs=2,replays=16,guards=True,input_immutable=True,native_padding_max=max(native_padding)))
+    receipts.append(dict(case=name,max_error=max(errors),split_states=states,graphs=2,replays=16,guards=True,input_immutable=True,reference_padding_max=max(native_padding)))
     (a.output/'progress.json').write_text(json.dumps(receipts,indent=2)+'\n');print(name,'PASS',max(errors),flush=True)
     del banks,b,graph,out,output,workspace,kl,meta,ptrs,call,ref,q,k,v,original,table,mask,ql
+    cpu_references.clear()
     torch.npu.empty_cache()
 (a.output/'complete.json').write_text(json.dumps(dict(status='passed',receipts=receipts),indent=2)+'\n')

@@ -203,3 +203,26 @@ oracle for short rows was added to distinguish native vs candidate; fresh run
 fia-cp-oracle is in progress. Keep CP artifact unqualified, do not update its
 native.json. Native-attention diagnostic mode is an existing potential fallback
 for progressing model PD work, not an excuse to claim CP compatibility.
+
+Fletcher redirected native FIA bug reporting/investigation to a future fork;
+PD proceeds with owned FIA. The independent CPU short-row oracle in the mixed
+harness showed candidate error0.000586 vs native0.156696 for request11. However,
+standalone native fixed/dynamic controls and metadata-planner-only control all
+passed; do NOT claim the isolated root cause is established. The prototype
+README lists exact evidence capsules. Mainline now runs the full owned FIA gate
+against independent CPU attention (`--reference cpu`), not the unreliable mixed
+harness native comparator. Runtime native manifests remain unchanged pending
+that result. Pinned native page-lifetime CPU fixture passes in the new core venv.
+
+The independent full CPU FIA gate remains incomplete: five cases passed, but
+long16 replay0 atKV3 exceeded the unchanged tolerance in one live element
+(error0.00321957). See the CP probe README and
+`/workspace/betterscale-pd-runtime/fia-cp-cpu-oracle-2/failure.json`. Do not
+confuse the parked native-reference bug with owned FIA qualification, or
+promote the rebuilt binary's native pins yet.
+
+Owned TP2 GDN recurrence now passes24 NPU graph waves against independent CPU
+recurrence, including accepted-candidate1..3 selection and a wave12 host export /
+new-slot restore / continuation. See `prototypes/pd-kv-layout/gdn_resume_probe.py`
+and its README. This is actual recurrent target State, but not yet conv/Store
+or model handoff; do not generalize the leaf result to whole-model PD.
