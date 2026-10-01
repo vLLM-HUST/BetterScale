@@ -162,8 +162,7 @@ global-idle wave gating. It is emphatically not a production latency score or
 the D step period. Single-token path2.06s. No MTP or task-quality claim.
 
 Both services subsequently stopped with exit0 and8/8 NPUs idle on each host.
-Raw source/run/log/directory/summary remain beside hw86-dual-pd3. The active
-follow-on is the262144 model gate with24.25GiB/rank State; it is still unqualified.
+Raw source/run/log/directory/summary remain beside hw86-dual-pd3. The subsequent262144 model gate with24.25GiB/rank State passed; see below.
 The EP8 staging helper's two changed Python files compare exactly against
 candidate-package-10-ep8-state (ep8-staging-reproduction2).
 Fifty affected CPU tests pass at this checkpoint.
@@ -181,8 +180,8 @@ With context262144, the1K four-owner two-turn gate passed in103.65s.
 The32768-token four-owner two-turn gate passed in566.71s, including12 exact
 post-H2D State comparisons and final copies on both sides. This long delay is a
 naive full-payload/readback diagnostic cost, not device step timing. Its ordinary
-checkpoint is735,908,281 bytes. The262080-token gate and a subsequent exact
-262144-total-token warm continuation remain active and unqualified here.
+checkpoint is735,908,281 bytes. The262080-token gate and subsequent exact262144-total-token warm continuation
+also passed; their final receipts are summarized below.
 Receipts: runtime/hw86-long-pd-{1024,32768,262080}; the final single-session edge
 uses exact-context-boundary.py and hw86-exact-context-boundary.*.
 
@@ -195,9 +194,69 @@ into subsequent waves, not serialized accidentally one at a time.
 
 It also adds a loopback-only token-ID frontend, per-operation transport receipts,
 a same-directory controller lock, refusal to restart over unfinished ownership,
-and idempotent content-addressed Store puts. These changes need a live startup/
-frontend gate before promotion.55 affected CPU tests pass; an actual85MiB Store
+and idempotent content-addressed Store puts. Their live startup/frontend gates subsequently passed as recorded below.55 affected CPU tests pass; an actual85MiB Store
 repeat-put/get gate passed at~0.3s per operation (naive-cache-idempotent-gate).
 Do not infer that this isolates the long-service bottleneck. A future optimized
 path should reuse the existing worker-direct streamed State protocols rather than
 treating repeated multi-GiB Python serialization as the desired architecture.
+
+### Near256K and exact262144 model boundary passed
+
+hw86-long-pd-262080 exited0 in4045.34s. Four sessions, one per D owner,
+completed both turns:262097 total tokens after the first16 outputs and262121
+after the next8. All four P instances participated. All warm P imports reported
+262096 cached tokens. The12 complete post-H2D target State comparisons passed,
+and final P/D cache bytes matched. All five sessions (including a P-only1-token
+case) ended owner=P/inactive in the saved summary's directory snapshot.
+The ordinary full checkpoint is5,432,863,177 bytes.
+
+The follow-on warm request uses the first session's history, extends the input
+to262142 tokens and produces2 outputs via P then D. It passed at exactly262144
+total tokens, with both post-H2D State comparisons exact, in734.92s.
+Receipt: hw86-exact-context-boundary.json, source exact-context-boundary.py;
+the saved long-gate directory is consequently advanced by this extra turn.
+Do not mistake its current epoch for the earlier summary's snapshot.
+
+These are full-model shape, State-transfer and ownership/lifetime gates under
+CANN9.1 and the pinned donors, not task-quality or MTP qualification. The multi-
+minute naive full-blob diagnostic overhead is a major remaining performance
+limitation; it is not evidence of a slow D kernel or a saturated physical link.
+
+
+### Final capacity-aware cohort and frontend gates (2026-10-02)
+
+Frozen final node sources are from1dbf8d7 (hw81-p4-final-source and
+hw86-d8-final-source). Both use context262144,24.25GiB State/rank and512GiB
+DRAM Store. Each D owner reports1044 free/1045 total blocks of2048 tokens,
+max_requests16. This supports8 full-context requests per owner under the
+conservative reservation, not16. Long-context capacity is independent of seats.
+
+hw86-final-cohort exited0 in269.93s:64 requests (1K prompt,16 outputs),16 per
+owner, submitted in one D wave after a probe-only P staging barrier. All64
+reported cached1025 and16 outputs. The post-wave capacity receipts exactly
+matched startup; sampled final P/D cache bytes matched once per owner and all
+Directory sessions were P/inactive. This is not a simultaneous64-live-row
+trace proof and does not claim64 concurrent256K requests.
+
+hw86-frontend exited0: real-model first turn and restored warm continuation,
+409 for overlapping same-session submission,400 for context overflow and bad
+schema, and caller-disconnect work drained to P/inactive without failure.
+frontend_probe.py is the retained live client. The frontend is loopback-only,
+token-ID based, non-streaming and single-controller; not a public production API.
+
+Reproduce with run_pool_node.sh for each role and BETTERSCALE_PD_CONTEXT=262144;
+use pool_admission_probe.py --p http://10.244.1.16:55581
+--d http://10.244.2.32:55586 --output <fresh-directory>. Start
+naive_pd_frontend.py against these peers with a fresh directory; run
+frontend_probe.py --directory <frontend-directory.db> --output <receipt.json>.
+Exact launch commands and frozen sources are in the runtime run.sh files and
+final evidence backups. Do not reuse a nonempty Directory after uncertain
+ownership without explicit recovery.
+
+After gates the frontend and both node services stopped with exit0. Saved
+hw86-d8-final-cleanup.txt and hw81-p4-final-cleanup.txt show8/8 NPUs idle.
+The bounded two-host target-only naive PD integration is qualified, including
+the256K shape/byte/lifecycle boundary. MTP, fine-grained online State movement,
+async incremental transport, HA and task-quality qualification remain outside
+this result. The expensive full-blob path must not be advertised as production
+handoff latency.
