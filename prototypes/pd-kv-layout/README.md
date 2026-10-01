@@ -305,3 +305,24 @@ The isolated venv inherits torch but has no `bin/torchrun`; use its Python with
 --master-port 29661`. Expose exactly six
 authorized devices. The probe is bounded by120s HCCL watchdog and an outer
 240s process timeout; it does not scan ports or hosts.
+
+### EP6 native MoE numerical leaf (2026-10-01)
+
+`ep6_moe_probe.py` passed four six-rank eager waves on physical2..7. It uses
+pinned core linear43/43/43/43/42/42 ownership and actual CANN BF16 routing,
+grouped matmul, SwiGLU, second grouped matmul and unpermute, with HCCL input
+all-gather/output reduction. Independent CPU per-expert products reproduce
+BF16 stage boundaries; max absolute error0.000227. Cases cover all256 experts,
+changing ownership, a skew with five entirely empty expert ranks, and zero
+contribution/padding rows. Receipt: task runtime `ep6-moe.json`. This is a small
+hidden64/intermediate64 eager fixture, not model-size/FULL-graph qualification.
+
+Pinned A2's `_select_a2_moe_comm_method` selects ALLGATHER for EP6, not MC2.
+Two Python integration gaps precede an actual model launch: AscendMoERunner's
+local-capacity check assumes floor(256/6)=42 on every rank; ALLGATHER dispatcher
+uses rank*local_count, giving incorrect rank4/5 starts168/210 instead of172/214.
+Its non-EPLB placement helper already returns the correct core map. ALLTOALL
+has additional equal-count assumptions but is not this A2 default route.
+Correct capacity/range arithmetic under an explicit uneven-linear/no-EPLB
+contract; do not change the donor source pins or infer MC2 support from this
+all-gather result. Current BetterScale TP2/DP1 admission is still unchanged.
