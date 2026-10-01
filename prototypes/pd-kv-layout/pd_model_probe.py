@@ -6,7 +6,7 @@ availability claim. D attention owners are fixed per session; MTP never transfer
 import argparse,json,multiprocessing as mp,os,time,traceback,uuid
 from pathlib import Path
 ROOT=Path('/workspace/betterscale-pd-runtime')
-MODEL='/data/shared_models/modelscope_cache/Qwen/Qwen3.5-35B-A3B'
+MODEL=os.environ.get('BETTERSCALE_MODEL_PATH','/data/shared_models/modelscope_cache/Qwen/Qwen3.5-35B-A3B')
 
 def worker(role,connection,output):
  import sys

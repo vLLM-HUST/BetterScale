@@ -652,3 +652,29 @@ assigned hardware, after checking its environment and resource authority. The
 last qualified route remains blocking `--streamed`; serialized async lifecycle
 control passes, concurrent async numerical gate remains unresolved. No native
 release pins or shared system installation were changed.
+
+
+### hw86 migration admission (2026-10-01)
+
+The PD source and both exact donor commits are restored. The private runtime
+archive passed its transfer SHA-256 check; inherited system CANN9.1.0,
+Torch2.10.0+cpu and torch_npu2.10.0.post4 match the previous host. Driver changed
+from25.2.1 to26.0.rc1. The isolated venv retains vLLM0.25.1,
+vLLM-Ascend0.25.1rc1 and transformers5.14.1; no system package was replaced.
+
+The35 checkpoint/Store/session/async CPU tests pass. New one-card receipts under
+`/workspace/betterscale-pd-runtime/`:
+
+- `hw86-fia-query-transitions/complete.json`: owned FIA against the CPU oracle,
+  two captured banks,16 replays, changing Q lengths, guards/input immutability
+  and zero-padding checks pass. This does not use the parked native FIA oracle.
+- `hw86-model-stream-oracle/complete.json`: permuted synthetic model pages and
+  partial-tail increments roundtrip through two-slot pinned D2H/DRAM Store with
+  exact byte comparisons. No model inference or compute overlap is claimed.
+
+All NPUs and the task Store master were released after these gates. Full model
+qualification waits for the replacement weight download; old weights were not
+part of the migration archive. Override the old shared-path default with
+`BETTERSCALE_MODEL_PATH=/workspace/models/Qwen3.5-35B-A3B` when launching
+`run_pd_model_probe.sh`. Do not silently substitute another installed model.
+The last qualified real-model transfer remains the old-host blocking route.

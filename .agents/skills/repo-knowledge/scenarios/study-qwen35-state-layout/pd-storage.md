@@ -370,3 +370,12 @@ waiting for copies but preserving pin/eviction/request order passes all owners
 README names the exact-byte/logprob discriminator; do not silently enable the
 async route. Native DPLB public utility calls broadcast to all owners, unlike
 its targeted `_call_utility_async` seam—important for later frontend integration.
+
+
+Hardware migration admission: the restored hw86 task runtime passes the35 CPU
+checks, owned FIA CPU-oracle Q-transition replay gate and synthetic exact-byte
+NPU→DRAM Store gate on driver26.0.rc1 (same CANN9.1/post4). See the prototype
+README for receipts and the model-path override. This is not yet a new-host
+full-model or concurrent-async qualification; the old async discrepancy remains
+open. Full historical artifacts are preserved locally outside the source repo;
+large trace directories are not required in the new runtime bootstrap.
