@@ -17,6 +17,8 @@ def run(rank,output,barrier,real,control):
  from vllm import LLM,SamplingParams
  model=LLM(model='/data/shared_models/modelscope_cache/Qwen/Qwen3.5-35B-A3B',
      load_format='auto' if real else 'dummy',**({} if real else {'hf_overrides':four_layers}),tensor_parallel_size=2,enable_expert_parallel=not control,
+     # Match Ascend's worker_cls=auto fixup, skipped by our explicit Worker.
+     all2all_backend='flashinfer_all2allv',
      dtype='bfloat16',quantization=None,max_model_len=2048,max_num_batched_tokens=2048,max_num_seqs=2,
      kv_cache_memory_bytes=2<<30,enable_prefix_caching=False,skip_tokenizer_init=True,
      enforce_eager=True,async_scheduling=False,seed=601,worker_cls='ep6_native_worker.Worker',
@@ -58,7 +60,7 @@ if __name__=='__main__':
    if any(c.exitcode not in (None,0) for c in children):raise RuntimeError([(c.name,c.exitcode) for c in children])
    if time.monotonic()>deadline:raise TimeoutError('EP6 dummy deadline')
   correct=not a.real or all(row['correct'] for r in range(size) for row in json.loads((a.output/f'rank{r}.json').read_text()))
-  (a.output/'complete.json').write_text(json.dumps(dict(status='passed' if correct else 'quality-failed',scope=('40-layer real-weight six retrievals' if a.real else 'four-layer dummy')+(' native TP2 no EP control' if a.control else ' native DP3TP2EP6')+' eager no MTP; no State/PD/FULL claim',exitcodes=[c.exitcode for c in children]),indent=2))
+  (a.output/'complete.json').write_text(json.dumps(dict(status='passed' if correct else 'quality-failed',scope=(f'40-layer real-weight {2*size} retrievals' if a.real else 'four-layer dummy')+(' native TP2 no EP control' if a.control else ' native DP3TP2EP6')+' eager no MTP; no State/PD/FULL claim',exitcodes=[c.exitcode for c in children]),indent=2))
   assert correct,'EP6 retrieval failure; inspect rank receipts'
  finally:
   barrier.abort()

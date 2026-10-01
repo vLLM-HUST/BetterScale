@@ -1,6 +1,9 @@
 """Actual TP2 target-only export/drop/new-seat import/continuation gate."""
 import argparse,json,time
 from pathlib import Path
+from vllm.plugins import load_general_plugins
+# Match CLI bootstrap before importing the Worker/model module graph.
+load_general_plugins()
 import checkpoint_entry
 from betterscale.models.qwen35 import CAPTURE_SIZES
 from vllm import LLM,SamplingParams

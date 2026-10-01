@@ -52,3 +52,19 @@ class CheckpointTest(unittest.TestCase):
   self.assertFalse(c.scheduler.kv_cache_manager.block_pool.live)
 
 if __name__=='__main__':unittest.main()
+
+
+def test_explicit_wire_bytes_roundtrip():
+    import torch
+    from model_checkpoint import wire_encode,wire_decode
+    original={'layers':[torch.arange(12).reshape(3,4).bfloat16(),torch.randn(2,3)]}
+    encoded=wire_encode(original)
+    assert isinstance(encoded['layers'][0]['data'],bytes)
+    # The actual utility codec's untyped decode must preserve this envelope.
+    import msgspec
+    decoded=wire_decode(msgspec.msgpack.decode(msgspec.msgpack.encode(encoded)))
+    for a,b in zip(original['layers'],decoded['layers']):
+        torch.testing.assert_close(a,b,rtol=0,atol=0)
+    encoded['layers'][0]['shape']=[100]
+    import pytest
+    with pytest.raises(ValueError,match='Malformed'):wire_decode(encoded)

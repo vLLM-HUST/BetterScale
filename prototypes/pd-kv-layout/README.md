@@ -387,8 +387,10 @@ four dummy layers, eager, two balanced/skewed request phases and all clean exits
 The full40-layer real-weight `ep6-real-2` executes both phases and exits cleanly,
 but all six strict code-retrieval checks FAIL (repeats prompt filler instead).
 The same64-token MARBLE input returns the correct answer through our TP2
-no-draft path (`ep6-quality-control.json`). An original-native TP2/no-EP control
-is required before attributing this to EP6 rather than native new-runtime math.
+no-draft path (`ep6-quality-control.json`). The original-native TP2/no-EP control now also passes both retrievals
+(`ep6-native-tp2-control/complete.json`), narrowing the failure to the EP6
+integration rather than a generic native new-runtime failure. This does not yet
+distinguish MoE routing/weights/reductions from DP-dependent attention behavior.
 No six-rank real-model correctness qualification is claimed.
 
 Launcher pitfalls are fixed in `run_ep6_model_probe.sh`: source CANN+ATB without
@@ -418,3 +420,47 @@ physical storage, then requires cached continuation to match cold exactly.
 CPU tensors are the initial transport; Store integration, incremental overlap,
 concurrent import and cross-owner execution are subsequent gates, not claims of
 this first vertical. Model result is pending.
+
+The first checkpoint model attempt failed before requests because the offline
+entry imported the Worker/model graph before native general-plugin patches;
+`UnquantizedFusedMoEMethod.is_monolithic` was missing. The launcher now loads
+general plugins first, matching normal CLI bootstrap. Preserve
+`logs/model-checkpoint-roundtrip.log`; this is not checkpoint numerical evidence.
+
+The failing EP6 first-layer trace (`ep6-trace`, six external `.pt` files) shows
+all local expert weights exactly match their source model slices, but TP peers
+receive different half-sequences: nonzero input differences occupy rows0..31
+of the64-token request, with the other half zero padded. The source explains
+this: core's `use_sequence_parallel_moe` enables model-side chunking under
+DP+TP+EP; Ascend `platform.py:615` switches `all2all_backend` to
+`flashinfer_all2allv` to disable that when its non-SP route is active, **but only
+for worker_cls=auto**. Our explicit Worker skips that platform fixup. The native
+probe now sets the same backend marker explicitly and guards against model-side
+SP. This marker does not select CUDA execution: Ascend still chooses its native
+AllGather implementation. The repaired real-model gate must pass before this
+source/trace diagnosis is considered sufficient runtime qualification.
+
+Checkpoint attempt2 exported target State and retired the original cache, but
+import rejected tensor geometry. Source inspection found the safe utility RPC
+encodes tensors into untyped triples and does not reconstruct nested tensors
+without insecure serialization. The prototype now uses an explicit BF16/FP32
+shape/dtype/bytes envelope, validated before decoding, rather than enabling
+pickle. Its msgpack roundtrip and malformed-length CPU test pass; model rerun is
+required. Keep `model-checkpoint-roundtrip-2` as a failed integration receipt.
+
+**Post-fix result:** `ep6-real-nosp/complete.json` passes all six strict real-model
+retrievals (DP lengths64/65/65, then834/65/65), with clean exits on all clients.
+The first-layer captured expert weights remain exactly equal to the source
+slices. CPU-local MoE sampled-row errors are small (largest0.0001135) after the
+non-SP correction (`ep6-trace-nosp/analysis.json`). This qualifies this native
+eager no-MTP gate, not owned State, FULL DP replay, or P/D handoff.
+
+**Complete target restore result:** `model-checkpoint-roundtrip-3/receipt.json`
+passes exact64-token restored/cold continuation equality. Cursor4475 is fully
+cached after restoring from seat0 to seat1 and physical FA block order[1,2,3] to
+[3,2,1], after dropping the original resident. Both workers acknowledge the new
+epoch and no draft state is transferred. One observed quiescent utility-RPC
+export/import costs1.006/1.117seconds including host copies/serialization, not
+an incremental PCIe benchmark. The explicit wire path fixes attempt2 without
+enabling insecure utility serialization. This is still one TP2 engine, not
+cross-group or Mooncake model transfer.
