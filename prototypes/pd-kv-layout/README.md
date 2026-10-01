@@ -543,3 +543,23 @@ and pending-hot barriers. The fourth run above qualifies that path end to end.
 A native C SIGINT handler can make signal.getsignal return None; the fixture uses
 Python's default interrupt handler as the restorable fallback rather than trying
 to register None. Attempt3's cleanup did terminate its master despite that error.
+
+### Actual incremental NPU→CPU dense export
+
+`pd_model_probe.py --incremental` now passes the same three-owner/two-turn matrix
+through real DRAM (`p2d6-model-incremental/complete.json`). The producer selects
+only intersecting logical pages and copies only `[Store frontier, target cursor)`
+to CPU; import refuses a partial payload unless Store first reconstructs all
+required history. Permuted-page/partial-tail CPU checks and a delta reconstruction
+test cover the new boundary. The retained State-retirement Future is unchanged.
+
+All12 handoffs still pass exact restored/cold16-token continuations at4440/280/60.
+Each D turn exports only16 new dense tokens (327,680 aggregate bytes); each second
+P turn exports12 (245,760 bytes), alongside the full selected GDN/conv checkpoint.
+Total dense D2H payload is98,877,440 bytes versus390,103,040 for full snapshots of
+those same frontiers. This is an exact payload count, not a throughput claim.
+We also removed one redundant checkpoint repack in the controller; elapsed-time
+changes must not be attributed solely to reduced PCIe bytes. The pipeline remains
+quiescent and synchronous at the RPC boundary, and receiver H2D remains full.
+No compute overlap, async page-reference lifetime, DRAM eviction policy, native
+async frontend, or production recovery qualification is implied.

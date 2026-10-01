@@ -344,3 +344,10 @@ arrival to actual State retirement before export. Twelve synchronous handoffs,
 1.41–4.63s including full CPU snapshot/RPC/Store, are correctness evidence only.
 NPU→CPU incremental export, compute overlap, production async frontend attachment,
 cache eviction/recovery, and removal of startup-only draft memory remain open.
+
+The same full model matrix now passes incremental dense D2H:
+`p2d6-model-incremental/complete.json`. Only new target token intervals leave the
+NPU; Store reconstructs full history before import. Across12 handoffs dense bytes
+are98,877,440 rather than390,103,040 full-snapshot bytes; selected GDN/conv remains
+a full turn-end checkpoint. This is still quiescent RPC export, not compute
+fallback/overlap or async page-lifetime qualification. Receiver H2D is full.

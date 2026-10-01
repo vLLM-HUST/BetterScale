@@ -27,8 +27,8 @@ def envelope(data,shape,dtype):
 
 
 def split(payload):
-    h=payload['header'];cursor=h['cursor'];shards=payload['shards']
-    if (h['identity']!=IDENTITY or h['block_size']!=2048 or not 0<cursor<=8192
+    h=payload['header'];cursor=h['cursor'];shards=payload['shards'];start=h.get('dense_start',0)
+    if (type(start) is not int or not 0<=start<=cursor or h['identity']!=IDENTITY or h['block_size']!=2048 or not 0<cursor<=8192
             or len(h['tokens'])!=cursor+1 or len(shards)!=2
             or [s['rank'] for s in shards]!=[0,1]):
         raise ValueError('Incompatible target Store geometry')
@@ -40,7 +40,7 @@ def split(payload):
             if set(data)=={'key','value'}:
                 fa+=1
                 for kind in ('key','value'):
-                    dense[f'{name}/{kind}/head{rank}']=tensor(data[kind],(cursor,1,256),'bfloat16')
+                    dense[f'{name}/{kind}/head{rank}']=tensor(data[kind],(cursor-start,1,256),'bfloat16')
             elif set(data)=={'conv','recurrent'}:
                 tensor(data['recurrent'],(16,128,128),'float32');tensor(data['conv'],(3,4096),'bfloat16')
                 gdn[rank][name]=data['recurrent'];conv[rank][name]=data['conv']
@@ -55,10 +55,12 @@ def publish(directory,objects,lease,payload,next_owner):
     dense,checkpoint=split(payload);header=payload['header'];streams=tuple(sorted(dense))
     turn=Turn(directory,objects,lease,streams,TOKEN_BYTES)
     try:
+        start=header.get('dense_start',0)
+        if start not in (0,turn.cursor):raise ValueError('Dense increment does not start at committed Store frontier')
         # At most40 MiB per immutable batch, two pending batches/64 MiB total.
         while turn.cursor<header['cursor']:
             begin=turn.cursor;end=min(begin+2048,header['cursor'])
-            turn.append(end,{s:dense[s][begin*TOKEN_BYTES:end*TOKEN_BYTES] for s in streams})
+            turn.append(end,{s:dense[s][(begin-start)*TOKEN_BYTES:(end-start)*TOKEN_BYTES] for s in streams})
         return turn.finish(header['tokens'][:-1],checkpoint,next_owner,writer_retired=True,
                            pending_token=header['tokens'][-1])
     finally:turn.close()

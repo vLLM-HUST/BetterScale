@@ -48,14 +48,16 @@ def idle(core):
     return scheduler
 
 
-def export(core,tokens,salt):
+def export(core,tokens,salt,dense_start=0):
     scheduler=idle(core)
     candidates=[s for s in scheduler.residents.seats if s.owner is None and s.tokens==tuple(tokens)
                 and s.cache_salt==salt and s.fence<=scheduler.processed_step_seq]
     if len(candidates)!=1:raise ValueError('Expected exactly one fully retired matching resident')
     seat=candidates[0]
+    if type(dense_start) is not int or not 0<=dense_start<=seat.cursor:
+        raise ValueError('Invalid dense export interval')
     header=dict(identity=IDENTITY,tokens=list(tokens),cursor=seat.cursor,seat=seat.index,epoch=seat.epoch,
-                block_size=scheduler.block_size,blocks=[b.block_id for b in seat.blocks.blocks[0]])
+                dense_start=dense_start,block_size=scheduler.block_size,blocks=[b.block_id for b in seat.blocks.blocks[0]])
     shards=core.model_executor.collective_rpc('pd_export_target',args=(header,))
     if len(shards)!=2:raise RuntimeError('TP2 export requires two worker acknowledgements')
     return dict(header=header,shards=wire_encode(shards))
@@ -72,7 +74,7 @@ def drop(core,salt):
 
 def restore(core,payload,salt):
     scheduler=idle(core);header=payload['header'];tokens=header['tokens'];cursor=header['cursor']
-    if (header['identity']!=IDENTITY or cursor!=len(tokens)-1 or not 0<cursor<=8192
+    if (header.get('dense_start',0)!=0 or header['identity']!=IDENTITY or cursor!=len(tokens)-1 or not 0<cursor<=8192
             or header['block_size']!=scheduler.block_size or len(payload['shards'])!=2
             or any(type(t) is not int or t<0 for t in tokens)):
         raise ValueError('Incompatible target checkpoint')
@@ -99,16 +101,16 @@ def restore(core,payload,salt):
 
 
 
-def export_retired(core,tokens,salt):
+def export_retired(core,tokens,salt,dense_start=0):
     """Return a native utility Future when async output precedes State retirement."""
     from concurrent.futures import Future
     try:idle(core)
     except RuntimeError:
         if getattr(core,'_pd_pending_export',None) is not None:
             raise RuntimeError('One pending checkpoint export per engine')
-        future=Future();core._pd_pending_export=(future,tokens,salt)
+        future=Future();core._pd_pending_export=(future,tokens,salt,dense_start)
         return future
-    return export(core,tokens,salt)
+    return export(core,tokens,salt,dense_start)
 
 
 def service_export(core):
@@ -117,8 +119,8 @@ def service_export(core):
     try:idle(core)
     except RuntimeError:return
     core._pd_pending_export=None
-    future,tokens,salt=pending
-    try:future.set_result(export(core,tokens,salt))
+    future,tokens,salt,dense_start=pending
+    try:future.set_result(export(core,tokens,salt,dense_start))
     except BaseException as exc:future.set_exception(exc)
 
 
@@ -153,6 +155,17 @@ def worker_root(worker,header,*,source):
     return runner,root,get_tensor_model_parallel_rank()
 
 
+
+def dense_span(tensor,indices,block,cursor,start):
+    """Gather only intersecting logical pages and expose only new token bytes."""
+    if type(start) is not int or not 0<=start<=cursor<=len(indices)*block:
+        raise ValueError('Invalid dense page span')
+    if start==cursor:return tensor.new_empty((0,*tensor.shape[2:]))
+    logical=tensor.view(-1,block,*tensor.shape[2:])
+    gathered=logical.index_select(0,indices[start//block:(cursor+block-1)//block]).flatten(0,1)
+    return gathered[start%block:start%block+cursor-start]
+
+
 def export_worker(worker,header):
     import torch
     from betterscale.live.llm.qwen35.state import GDNState
@@ -170,8 +183,7 @@ def export_worker(worker,header):
             layers[name]={}
             for kind in ('key','value'):
                 tensor=getattr(leaf,kind).tensor
-                logical=tensor.view(-1,block,*tensor.shape[2:])
-                layers[name][kind]=logical.index_select(0,indices).flatten(0,1)[:cursor].cpu().clone()
+                layers[name][kind]=dense_span(tensor,indices,block,cursor,header.get('dense_start',0)).cpu().clone()
     return dict(rank=rank,layers=layers,draft_valid=False)
 
 

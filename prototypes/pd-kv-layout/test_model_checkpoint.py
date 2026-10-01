@@ -74,7 +74,7 @@ def test_deferred_export_waits_for_real_retirement(monkeypatch):
     from types import SimpleNamespace
     import model_checkpoint as checkpoint
     core=SimpleNamespace(batch_queue=[object()],scheduler=SimpleNamespace(has_requests=lambda:False,_pending_hot=[]))
-    monkeypatch.setattr(checkpoint,'export',lambda c,t,s:dict(tokens=t,salt=s))
+    monkeypatch.setattr(checkpoint,'export',lambda c,t,s,start=0:dict(tokens=t,salt=s))
     future=checkpoint.export_retired(core,[1,2],'s')
     assert not future.done()
     checkpoint.service_export(core);assert not future.done()
@@ -85,3 +85,13 @@ def test_deferred_export_waits_for_real_retirement(monkeypatch):
     core.scheduler._pending_hot=[];checkpoint.service_export(core)
     assert future.result()=={'tokens':[1,2],'salt':'s'}
     assert core._pd_pending_export is None
+
+
+def test_dense_span_permuted_partial_pages():
+    import torch
+    from model_checkpoint import dense_span
+    pages=torch.arange(12*2*1*3).view(12,2,1,3)
+    ids=torch.tensor([4,1,5]);logical=pages.view(6,4,1,3)
+    full=logical[ids].flatten(0,1)[:9]
+    for start in (0,1,4,5,8,9):
+        assert torch.equal(dense_span(pages,ids,4,9,start),full[start:])

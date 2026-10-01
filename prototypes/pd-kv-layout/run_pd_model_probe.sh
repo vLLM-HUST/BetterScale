@@ -16,4 +16,4 @@ export VLLM_CACHE_ROOT="$root/model-cache" TASK_QUEUE_ENABLE=0 HCCL_OP_EXPANSION
 export VLLM_ENABLE_V1_MULTIPROCESSING=1 VLLM_WORKER_MULTIPROC_METHOD=spawn
 export VLLM_PLUGINS=ascend,ascend_model,ascend_model_loader,ascend_kv_connector
 export MTP_TOKENS=2 MTP_GDN_LAYOUT_FUSION=1 BETTERSCALE_MTP_GREEDY=1 BETTERSCALE_GDN_SMALL_COPIES=1 MTP_PROFILE=0
-exec timeout --signal=TERM --kill-after=30 1700 "$root/venv/bin/python" /workspace/BetterScale/prototypes/pd-kv-layout/pd_model_probe.py --output "$1"
+exec timeout --signal=TERM --kill-after=30 1700 "$root/venv/bin/python" /workspace/BetterScale/prototypes/pd-kv-layout/pd_model_probe.py --output "$1" "${@:2}"

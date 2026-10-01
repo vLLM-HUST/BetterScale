@@ -40,3 +40,16 @@ def test_bidirectional_model_streams_only_append_delta(tmp_path):
 def test_reject_missing_target_plane():
  data=payload(1);del data['shards'][1]['layers']['layer3']['value']
  with pytest.raises(ValueError):split(data)
+
+
+def test_incremental_device_payload_reconstructs_full_model(tmp_path):
+ store=MemoryStore();objects=Objects(store);directory=Directory(tmp_path/'dir.sqlite');directory.create('s',IDENTITY,'P')
+ initial=payload(5);streams=tuple(sorted(split(initial)[0]))
+ publish(directory,objects,directory.claim('s','P',IDENTITY),initial,'D0')
+ delta=payload(8);expected=payload(8);delta['header']['dense_start']=5
+ for shard in delta['shards']:
+  for data in shard['layers'].values():
+   if set(data)=={'key','value'}:
+    for value in data.values():value['shape'][0]=3;value['data']=value['data'][5*512:]
+ key=publish(directory,objects,directory.claim('s','D0',IDENTITY),delta,'P')
+ assert load(objects,key,IDENTITY,streams)['shards']==expected['shards']
