@@ -4,11 +4,12 @@ This is a local experiment actor, not an HTTP service or a second DP coordinator
 Native FIRST_REQ wakes EP peers. The parent controls quiescent session handoffs.
 """
 import asyncio
+import os
 import traceback
 import uuid
 
 METHODS = frozenset(('pd_export_retired', 'pd_wait_export', 'pd_finish_export',
-                     'pd_drop_target', 'pd_import_target'))
+                     'pd_drop_target', 'pd_import_target', 'pd_probe_retired'))
 
 async def owner_utility(client, owner, method, *args):
     if type(owner) is not int or not 0 <= owner < len(client.core_engines):
@@ -23,6 +24,10 @@ async def run(role, connection, output):
     from pd_model_probe import prepare_worker, engine_options
     is_p = prepare_worker(role, native_async=True)
     options = engine_options(is_p)
+    if os.environ.get('BETTERSCALE_NUMERICAL_RESIDENCY'):
+        if is_p:raise ValueError('Numerical probe supports D only')
+        import numerical_entry
+        options.update(worker_cls='numerical_entry.Worker',scheduler_cls='numerical_entry.Scheduler')
     from vllm import SamplingParams
     from vllm.sampling_params import RequestOutputKind
     from vllm.engine.arg_utils import AsyncEngineArgs
@@ -80,6 +85,8 @@ async def run(role, connection, output):
                 result = await utility('pd_drop_target', args['salt'])
             elif op == 'import':
                 result = await utility('pd_import_target', args['payload'], args['salt'])
+            elif op == 'observe':
+                result = await utility('pd_probe_retired', args['salt'])
             elif op == 'append':
                 result = args['tokens'] + model.get_tokenizer().encode(
                     args['text'], add_special_tokens=False)

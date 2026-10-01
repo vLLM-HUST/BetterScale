@@ -738,3 +738,13 @@ reproduced pure-D baseline variation. Do not weaken numerical acceptance or
 promote production correctness implicitly. Transfer byte/lifetime evidence still
 stands within its envelope; model numerical qualification/root-cause work is a
 separate unresolved gate. No change to the parked native FIA-reference bug work.
+
+### Numerical repeatability diagnostics (hw86)
+
+The fixed-seat cold control still bifurcates without P/Store/checkpoint. Bounded
+white-box taps locate first-layer variability after DP MoE reduction, and a
+fixed-input BF16 reduce-scatter leaf reproduces nondeterminism. Strict HCCL
+eliminates variability in that leaf, not yet a production qualification.
+See the scenario's [evidence and reproduction envelope](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/pd-storage.md#cold-request-numerical-repeatability-investigation-hw86-2026-10-01).
+The numerical_entry/trace helpers are opt-in diagnostics; do not make the
+fixed-seat eviction or Python-forward instrumentation a serving default.

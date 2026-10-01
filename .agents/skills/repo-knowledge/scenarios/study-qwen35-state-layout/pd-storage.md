@@ -394,3 +394,72 @@ promote numerical qualification or silently relax exact-token gates; preserve th
 byte/lifetime and model-numerical evidence separately. The native frontend actor
 uses pinned targeted utilities (never DPLB broadcast) and native FIRST_REQ;
 its routing works but numerical acceptance is not stable.
+
+## Cold-request numerical repeatability investigation (hw86, 2026-10-01)
+
+Keep this distinct from the parked native-FIA reference issue: these probes use
+our owned FIA. User requested black/white-box verification, not a relaxed token
+gate. Experimental diagnostic sources are in `prototypes/pd-kv-layout/`.
+
+**Black box:** `hw86-cold-fixed-seat` repeats the same281-token prompt12 times,
+D6 only, no P/Store/checkpoint, cached0 and fresh salts. Diagnostic Scheduler
+forces seat0 using the ordinary cold victim path; retirement Future records the
+actual completed resident. All12 use seat0/FA page1 (epochs1,3,...23). Two output
+sequences remain (11/1). Logprobs also vary after the first request. Neither a
+changing seat/page nor PD transfer is necessary for the observed bifurcation.
+
+**White box:** `hw86-whitebox-python-graph` and
+`hw86-whitebox-python-graph-trace` capture layers0/1/3/7/15/39 on EP ranks2/3.
+FULL ACL graphs remain enabled, but every rank sets ForwardContext.skip_compiled
+during the wrapper call so original Python forward/hooks participate in capture.
+Device-copy taps, a post-prefill synchronization and CPU snapshots perturb timing.
+This is an explicitly instrumented arm, not unchanged compiled baseline evidence.
+The281 live input IDs/positions are identical across12 prefills; output still has
+two sequences. Compared with repeat0 on both TP ranks (22 comparisons):
+layer0 residual is exact in all22; layer0 hidden/MLP output differs in all22,
+max abs0.000244140625. Layer1/3/7/15/39 hidden maxima rise to
+0.01123046875/0.0205078125/0.04150390625/0.547119140625/8.21875.
+Layer0 pair0→1 has1021 differing elements out of575488, max0.0001220703125.
+Both TP ranks have identical comparison statistics. These observations locate
+the first *sampled* divergence within post-attention norm/MLP; they do not yet
+identify a kernel or establish acceptable numerical error.
+
+Reproduction uses `BETTERSCALE_MODEL_PATH=/workspace/models/Qwen3.5-35B-A3B`,
+`BETTERSCALE_NUMERICAL_TRACE=<external trace dir>`,
+`run_native_cold_probe.sh <new output> --residency fixed-seat --repeats 12
+--prompt-receipt <hw86-p2d6-native-async/pd-session-1-cold2.json>`.
+Use `analyze_numerical_trace.py <trace dir>` with CPU torch.
+`BETTERSCALE_NUMERICAL_MOE_TRACE=1` adds first-MoE taps (experimental, pending
+qualification at this note's creation); gathered active DP1 rows are512:793.
+
+Observer lessons: target names include `language_model.model.layers.N`.
+Compiled forward did not execute ordinary Python hooks even with compile cache
+disabled; sentinel failures in `hw86-whitebox-fixed*` are observer failures,
+not model-error evidence. Do not repeat those expensive startup arms. The
+successful capsule contains the exact source snapshot and protocol metadata.
+No change here qualifies PD production numerics or identifies HCCL as the cause.
+
+
+First-MoE taps now succeeded (`hw86-whitebox-moe{,-trace,-source}`):
+on EP2/3, MLP input, gathered active input, router logits, local routed output and
+shared output are exact across all22 repeat comparisons. Final routed output
+(after DP reduce-scatter) differs in all22, max0.000244140625. Other four ranks'
+local outputs were not tapped; this alone would not isolate the collective.
+
+The independent `reduce_scatter_repeat_probe.py` closes that leaf uncertainty:
+six devices, parity DP groups[0,2,4]/[1,3,5], fixed seeded BF16 input1536×2048,
+output512×2048,32 eager and32 FULL-graph calls/rank. Under AIV/default HCCL
+determinism,219/384 outputs differ from their mode's first call, max0.00048828125.
+Setting **only HCCL_DETERMINISTIC=strict** in a fresh process yields0/384 differing
+outputs (`hw86-reduce-scatter-{repeat,strict}`). Inputs remain exact. Saved final
+outputs fit an explicit CPU BF16 three-input summation order exactly; strict uses
+(0+2)+1 across allsix ranks. Its max difference from FP32-sum-then-BF16 remains
+0.00048828125: determinism is not a claim of FP32 accumulation or better accuracy.
+The model-level strict control is a separate gate, pending at this note's creation.
+
+Exact-runtime donor `vllm_ascend/batch_invariant.py:override_envs_for_invariance`
+also selects strict HCCL, but the diagnostic does NOT enable its other numerical
+rewrites. [HCCL's official environment reference](https://www.hiascend.com/doc_center/source/zh/canncommercial/900/API/hcclug/hcclenvref_07_0010.html)
+documents determinism priority over AIV, including possible algorithm changes.
+Keep strict as an explicit experimental setting, not a hidden production default;
+performance and the complete PD matrix need separate evidence.
