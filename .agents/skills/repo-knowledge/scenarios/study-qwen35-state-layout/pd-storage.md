@@ -121,9 +121,9 @@ identical full-prefix draft KV cheaply. Do not claim warm draft equivalence.
 Current container has CANN9.1.0, torch_npu2.10.0.post4 and differently pinned
 installed donors. Qualified BetterScale needs CANN9.0.1 / torch_npu post2 plus
 its explicit vLLM/Ascend source and native payload pins. Source submodules alone
-are not a built runtime. Fletcher was asked for a prior image/artifact location;
-component probes can proceed, but do not bypass validation to label a model run
-as baseline-compatible. P-only/no-MTP and Qwen35 DP/EP are new qualification
+are not a built runtime. Fletcher subsequently explicitly chose adapting BetterScale to the new CANN /
+torch_npu environment while retaining BOTH original donor source pins. This
+authorizes a new qualification track, not guard bypass or reuse of old results. P-only/no-MTP and Qwen35 DP/EP are new qualification
 surfaces even after the old environment is restored.
 
 ### Pinned upstream connector seams worth borrowing
@@ -144,3 +144,62 @@ this wrapper unchanged would erase that correctness boundary. Use lower-level
 Store results or an explicitly failing wrapper. This is a local integration
 assessment, not a claim about the correctness of the upstream system's cache-
 miss policy. Our prototype already fails closed on Store put errors.
+
+
+### Active new-runtime qualification track
+
+Task-owned environment/artifacts: `/workspace/betterscale-pd-runtime` on hw180.
+The system installation is untouched. Its venv inherits system torch2.10.0+cpu /
+torch_npu2.10.0.post4 and installs transformers5.14.1 locally. Pinned core
+752a3a504 built in empty-device mode, VLLM_VERSION_OVERRIDE=0.25.1 (shallow clone
+otherwise generated an incorrect development version), then installed locally;
+import resolves to this venv and reports0.25.1. Optional Rust frontend is absent;
+not needed for the intended Python serving route. Build needed semantic_version
+for setuptools-rust even with the Rust frontend optional.
+
+Pinned Ascend9bf964cb native build runs CPU-only, SOC_VERSION=ascend910b2,
+MAX_JOBS=16, no dependencies/build isolation upgrade. Exact catlass41bf90da was
+cloned locally from the installed source's matching submodule. Build's global
+safe.directory writes are redirected using GIT_CONFIG_GLOBAL to a task-owned
+file; source donor is not patched. Logs: logs/ascend-build.log. A successful wheel
+still requires the owned four-file runtime.patch and source validation.
+
+CANN9.1 FIA CP materialization initially failed on an outer else formatting
+change; builder now accepts the two observed spellings. Its alignment header
+was renamed fused_alignment.hpp, FLOAT_PER_BLOCK needs an explicit 32-byte/sizeof(float)
+constant (the AscendC name is vector-pass-only), and FAInfer gained leading K/V layout template parameters. The adapter
+uses the vendor's ColumnMajor/RowMajor defaults. Existing numerical rewrite
+assertions remain. Current changed prepare.py is DEVELOPMENT ONLY, not qualified.
+Compiled artifact: fia-cp-build-5/libbs_fia_cp.so (logs/fia-cp-build-5.log). Do not refresh
+native.json until numerical/graph gates validate the new artifact.
+
+Owned GDN compiled at gdn-build with BS_GDN_OWNED_INIT=ON and
+exact catlass, -j2; logs/gdn-build.log. GDN host adapter also compiled after
+adding the CANN include path required by torch_npu post4 ACL headers; regular FIA
+host library compiled. Model startup and numerical gates remain unqualified.
+Qwen35 worker does not use HC patch; HC packaging is not the immediate gate.
+Continue from evidence, not by replacing shared installations or relaxing all
+version/source checks. Only the runtime versions explicitly adapted should
+change; vLLM and vLLM-Ascend source hashes remain authoritative.
+
+
+New FIA CP gate caught an adaptation bug: substring matching an outer else also
+matched the indented inner empty-slice else, placing padding initialization in
+the wrong branch. Fixed with line-anchored matching and an explicit nested-else
+regression test (8 CP CPU tests pass). No native manifest was changed. Build5
+passes edges, C16-short and nonuniform split cases with two-bank16-replay checks;
+moderate/large zero-KV padding comparison failed. Current hypothesis is undefined
+native padding reference (mismatches observed in padding indices), not proven;
+probe now records live vs padding errors and a small output/reference artifact.
+Do not treat a passing compile or the first three cases as complete qualification.
+
+
+The padding hypothesis was confirmed by fia-cp-moderate-diagnostic/failure.json:
+live max0.000244, candidate padding0, native padding max3.328125. Gate now checks
+live rows against native and independently requires candidate padding0 on both
+banks. Full leaf3 then passed edges/short/nonuniform/moderate but failed extreme
+replay7 on LIVE rows (max0.1755). Not dismissed as padding. An independent CPU
+oracle for short rows was added to distinguish native vs candidate; fresh run
+fia-cp-oracle is in progress. Keep CP artifact unqualified, do not update its
+native.json. Native-attention diagnostic mode is an existing potential fallback
+for progressing model PD work, not an excuse to claim CP compatibility.

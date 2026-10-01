@@ -6,6 +6,7 @@ partial identities and zero-KV padding. Installed vendor licenses are kept.
 No full-only diagnostic or flat-scheduler build is exposed here.
 """
 import argparse
+import re
 from pathlib import Path
 p=argparse.ArgumentParser()
 p.add_argument('--output',type=Path,required=True)
@@ -14,6 +15,17 @@ a=p.parse_args()
 k=a.cann/'opp/built-in/op_impl/ai_core/tbe/impl/ops_transformer/ascendc/fused_infer_attention_score'
 a.output.mkdir(parents=True,exist_ok=True);v=a.output/'vendor';v.mkdir(exist_ok=True)
 s=(k/'flash_attention_regular.h').read_text()
+# CANN9.1 joins this outer else onto the closing-brace line. Match only
+# the established branch boundary; all numerical transformation guards remain.
+def outer_else(text, start):
+    candidates = ('            } \n            else {', '            } else {')
+    matches = [re.search('^' + re.escape(marker), text[start:], re.MULTILINE)
+               for marker in candidates]
+    matches = [start + match.start() for match in matches if match is not None]
+    if not matches:
+        raise ValueError('unrecognized vendor outer else boundary')
+    return min(matches)
+
 for before,after in (
  ('int32_t stN1IdxNow = (BIdx == startBIdx) ? startN1Idx : 0;','int32_t stN1IdxNow = startN1Idx;'),
  ('int32_t enN1IdxNow = (BIdx == endBIdx) ? endN1Idx : curQNBlockNumTmp - 1;','int32_t enN1IdxNow = endN1Idx;')):
@@ -36,7 +48,7 @@ if True:
     # lane, not general prefill. Remove generic Q/head traversal, uniformly
     # for every length and every split/no-split plan in that contract.
     begin=s.index('                for (uint32_t BIdx = startBIdx;')
-    end=s.index('            } \n            else {',begin)
+    end=outer_else(s,begin)
     s=s[:begin]+'''                for (uint32_t BIdx = startBIdx; BIdx <= endBIdx; BIdx++) {
                     uint32_t kv = static_cast<uint32_t>(gActualKvseqlen.GetValue(BIdx));
                     uint32_t blocks = (kv + 511) / 512;
@@ -118,6 +130,23 @@ c=c.replace('__aicore__ inline void operator()(',
 (v/'combine_outlined.hpp').write_text(c)
 source=Path(__file__).parent
 s=(source/'lane_kernel.cpp').read_text()
+if not (k/'attn_infra/detail/alignment.hpp').is_file():
+    if not (k/'attn_infra/detail/fused_alignment.hpp').is_file():
+        raise FileNotFoundError('vendor alignment header is absent')
+    s=s.replace('attn_infra/detail/alignment.hpp', 'attn_infra/detail/fused_alignment.hpp')
+    s=s.replace('using NpuArch::Detail::Alignment::CeilDiv;',
+                'using NpuArch::Detail::Alignment::CeilDiv;\nconstexpr uint32_t FLOAT_PER_BLOCK = 32 / sizeof(float);')
+interface=(k/'flash_attention_interface.cpp').read_text()
+if 'class LAYOUT_K = layout::ColumnMajor,' in interface:
+    assert 'class LAYOUT_V = layout::RowMajor,' in interface
+    old='SplitFuse::FAInfer<bfloat16_t,bfloat16_t,float,true,true,'
+    assert s.count(old)==1
+    # New vendor template exposes K/V layouts before its existing parameters.
+    # Preserve the vendor defaults, not a new KV storage interpretation.
+    s=s.replace(old, 'SplitFuse::FAInfer<NpuArch::layout::ColumnMajor,NpuArch::layout::RowMajor,'
+                     'bfloat16_t,bfloat16_t,float,true,true,')
+
+
 s=s.replace('#include "vendor/flash_attention_interface.cpp"',
     '#include "vendor/combine_outlined.hpp"\n#include "vendor/flash_attention_interface.cpp"')
 
@@ -264,9 +293,8 @@ new='''                    uint32_t lo = BIdx == startBIdx ?
                     }'''
 assert s.count(old)==1
 s=s.replace(old,new)
-needle='            } \n            else {'
 start=s.index('__gm__ uint32_t* desc =')
-pos=s.index(needle,start)
+pos=outer_else(s,start)
 s=s[:pos]+'''                // Only zero-KV graph padding follows the live request prefix.
                 // Reuse the vendor's empty-context output initialization.
                 if (coreIdx == 0) {

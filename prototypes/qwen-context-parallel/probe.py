@@ -14,6 +14,7 @@ p.add_argument('--source',type=Path,required=True)
 p.add_argument('--kernel',type=Path,required=True)
 p.add_argument('--native',type=Path,required=True)
 p.add_argument('--device-lengths',action='store_true')
+p.add_argument('--case', help='Bounded diagnostic subset; omission runs the complete gate')
 a=p.parse_args();a.output.mkdir(exist_ok=False)
 sys.path.insert(0,str(a.source));from plan import schedule,encode
 import torch
@@ -33,12 +34,51 @@ cases=[('edges',[1,2,3,3],[127,512,513,1025]),
        ('moderate',[3]*16,[32768]*14+[262144]*2),
        ('extreme',[3]*16,[1024]*15+[262144]),
        ('long16',[3]*16,[262144]*16)]
+if a.case:
+    cases=[case for case in cases if case[0]==a.case]
+    if not cases: raise ValueError('unknown diagnostic case')
 (a.output/'protocol.json').write_text(json.dumps(dict(device=int(os.environ['ASCEND_RT_VISIBLE_DEVICES']),cases=cases,
     kernel_sha256=hashlib.sha256(a.kernel.read_bytes()).hexdigest(),native_sha256=hashlib.sha256(a.native.read_bytes()).hexdigest(),
     scope='Two captured banks; device-only length changes and zero-KV padding' if a.device_lengths else 'Exact host lengths; two captured banks',torch=torch.__version__,torch_npu=torch_npu.__version__),indent=2)+'\n')
 receipts=[]
+def compare(actual, expected, phase, bank, lengths):
+    live=sum(live_qs)
+    # Zero-KV padding is our explicit zero-output contract, not a live request.
+    # CANN9.1 native FIA returned nonzero padding in the moderate case;
+    # compare only real rows to it and check BOTH banks' padding independently.
+    native_padding.append(expected[live:].float().abs().max().item() if len(expected)>live else 0.0)
+    try:
+        torch.testing.assert_close(actual[:live],expected[:live],rtol=.02,atol=.003)
+        if len(actual)>live:
+            torch.testing.assert_close(actual[live:],torch.zeros_like(actual[live:]),rtol=0,atol=0)
+    except AssertionError:
+        live=sum(live_qs)
+        details=dict(case=name,phase=phase,bank=bank,
+                     live_max_error=(actual[:live].float()-expected[:live].float()).abs().max().item(),
+                     output_padding_max=actual[live:].float().abs().max().item() if len(actual)>live else None,
+                     native_padding_max=expected[live:].float().abs().max().item() if len(actual)>live else None)
+        # Independently discriminate candidate vs native on bounded short rows.
+        oracle=[]; query_start=0; page_start=0
+        for request,(qn,kvn,npages) in enumerate(zip(live_qs,lengths,pages)):
+            if 0 < kvn <= 4096:
+                qq=q[query_start:query_start+qn].cpu().float().transpose(0,1)
+                kk=k[page_start:page_start+npages].cpu().float().reshape(-1,256)[:kvn]
+                vv=v[page_start:page_start+npages].cpu().float().reshape(-1,256)[:kvn]
+                scores=(qq@kk.T)*256**-.5
+                allowed=torch.arange(kvn)[None,:]<=kvn-qn+torch.arange(qn)[:,None]
+                truth=(scores.masked_fill(~allowed,-torch.inf).softmax(-1)@vv).transpose(0,1)
+                def error(value):
+                    return (value[query_start:query_start+qn].cpu().float()-truth).abs().max().item()
+                oracle.append(dict(request=request,kv=kvn,candidate_max=error(actual),native_max=error(expected)))
+            query_start+=qn; page_start+=npages
+        details['short_row_cpu_oracle']=oracle
+        (a.output/'failure.json').write_text(json.dumps(details,indent=2)+'\n')
+        torch.save({'output':actual.cpu(),'native':expected.cpu()},a.output/'failure.pt')
+        raise
+
 for name,qs,upper in cases:
     live_qs,live_upper=list(qs),list(upper)
+    native_padding=[]
     if a.device_lengths:
         qs=qs+[13];upper=upper+[0]
     qends=list(accumulate(qs));pages=[(n+127)//128 for n in upper];columns=max(pages)
@@ -67,7 +107,7 @@ for name,qs,upper in cases:
         ptrs=(u*10)(*[x.data_ptr() for x in (q,k,v,mask,table,out,ql,kl,workspace[4096:-4096],meta)])
         def call(ptrs=ptrs):kernel.lane_launch(torch.npu.current_stream().npu_stream,ptrs)
         call();torch.npu.synchronize()
-        torch.testing.assert_close(out,native(upper),rtol=.02,atol=.003)
+        compare(out,native(upper),'initial',bank,upper)
         graph=torch.npu.NPUGraph()
         with torch.npu.graph(graph):call()
         banks.append(dict(workspace=workspace,output=output,out=out,kl=kl,meta=meta,raw=raw.raw,ptrs=ptrs,graph=graph))
@@ -77,14 +117,14 @@ for name,qs,upper in cases:
         if a.device_lengths:lengths=lengths+[0]
         q.mul_(-1)
         ref=native(lengths)
-        for b in banks:
+        for bank,b in enumerate(banks):
             plan=schedule(live_upper,live_qs) if a.device_lengths else schedule(lengths,qs);states.append(plan['split_nodes'])
             b['kl'].copy_(torch.tensor(lengths,dtype=torch.int64))
             b['meta'].copy_(torch.tensor(list(encode(b['raw'],plan)),dtype=torch.uint8))
             b['out'].fill_(float('nan'));b['workspace'][4096:-4096].zero_()
             b['graph'].replay();torch.npu.synchronize()
-            torch.testing.assert_close(b['out'],ref,rtol=.02,atol=.003)
-            errors.append((b['out'].float()-ref.float()).abs().max().item())
+            compare(b['out'],ref,f'replay-{step}',bank,lengths)
+            errors.append((b['out'][:sum(live_qs)].float()-ref[:sum(live_qs)].float()).abs().max().item())
             assert torch.all(b['workspace'][:4096]==165).item() and torch.all(b['workspace'][-4096:]==165).item()
             assert torch.all(b['output'][:2048]==-123).item() and torch.all(b['output'][-2048:]==-123).item()
         if a.device_lengths:assert torch.all(b['out'][sum(live_qs):]==0).item()
@@ -100,7 +140,7 @@ for name,qs,upper in cases:
                 torch.testing.assert_close(banks[0]['out'][start:start+qn].cpu().float(),expected,rtol=.02,atol=.003)
                 start+=qn;page+=npages
     for actual,expected in zip((k,v,table),original):torch.testing.assert_close(actual,expected,rtol=0,atol=0)
-    receipts.append(dict(case=name,max_error=max(errors),split_states=states,graphs=2,replays=16,guards=True,input_immutable=True))
+    receipts.append(dict(case=name,max_error=max(errors),split_states=states,graphs=2,replays=16,guards=True,input_immutable=True,native_padding_max=max(native_padding)))
     (a.output/'progress.json').write_text(json.dumps(receipts,indent=2)+'\n');print(name,'PASS',max(errors),flush=True)
     del banks,b,graph,out,output,workspace,kl,meta,ptrs,call,ref,q,k,v,original,table,mask,ql
     torch.npu.empty_cache()

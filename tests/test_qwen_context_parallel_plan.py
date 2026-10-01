@@ -145,3 +145,24 @@ class PlanTest(unittest.TestCase):
 
 
 if __name__ == '__main__':unittest.main()
+
+
+def test_vendor_else_boundary_ignores_nested_branch():
+    """Padding must follow the outer producer loop, not its empty-slice else."""
+    import ast
+    import re
+    source = path.with_name('prepare.py')
+    tree = ast.parse(source.read_text())
+    helper = next(node for node in tree.body
+                  if isinstance(node, ast.FunctionDef) and node.name == 'outer_else')
+    namespace = {'re': re}
+    exec(compile(ast.Module(body=[helper], type_ignores=[]), str(source), 'exec'), namespace)
+    locate = namespace['outer_else']
+    for outer in ('            } \n            else {', '            } else {'):
+        prefix = 'descriptor\n                    } else {\n                        nested();\n'
+        text = prefix + outer + '\n                native_tasks();\n'
+        assert locate(text, 0) == len(prefix)
+        assert locate(text, len('descriptor')) == len(prefix)
+    import pytest
+    with pytest.raises(ValueError, match='outer else'):
+        locate('                    } else {', 0)
