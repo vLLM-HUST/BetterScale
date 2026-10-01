@@ -8,9 +8,9 @@ from pathlib import Path
 ROOT=Path('/workspace/betterscale-pd-runtime')
 MODEL=os.environ.get('BETTERSCALE_MODEL_PATH','/data/shared_models/modelscope_cache/Qwen/Qwen3.5-35B-A3B')
 
-def worker(role,connection,output):
+def prepare_worker(role,*,native_async=False):
  import sys
- is_p=role=='P';rank=0 if is_p else int(role[1:])
+ is_p=role=='P';rank=0 if is_p or role=='D' else int(role[1:])
  package=ROOT/('candidate-package-6-no-draft' if is_p else 'candidate-package-7-ep6-state')
  runtime=ROOT/('owned-runtime' if is_p else 'ep6-runtime')
  sys.path[:0]=[str(package),str(runtime)]
@@ -18,22 +18,32 @@ def worker(role,connection,output):
  os.environ.update(ASCEND_RT_VISIBLE_DEVICES='0,1' if is_p else '2,3,4,5,6,7',
   HCCL_IF_BASE_PORT='29635' if is_p else '29675',VLLM_DP_RANK=str(rank),VLLM_DP_RANK_LOCAL=str(rank),
   VLLM_DP_SIZE='1' if is_p else '3',VLLM_DP_MASTER_IP='127.0.0.1',VLLM_DP_MASTER_PORT='29673')
+ if native_async:
+  for key in ('VLLM_DP_RANK','VLLM_DP_RANK_LOCAL','VLLM_DP_SIZE','VLLM_DP_MASTER_IP','VLLM_DP_MASTER_PORT'):os.environ.pop(key,None)
+ return is_p
+
+def engine_options(is_p):
  from vllm.plugins import load_general_plugins
  load_general_plugins()
  if is_p:import checkpoint_entry
  else:import ep6_state_entry
  from betterscale.models.qwen35 import CAPTURE_SIZES
- from vllm import LLM,SamplingParams
  entry='checkpoint_entry' if is_p else 'ep6_state_entry'
- model=None
- try:
-  model=LLM(model=MODEL,tensor_parallel_size=2,enable_expert_parallel=not is_p,all2all_backend='flashinfer_all2allv',
+ return dict(model=MODEL,tensor_parallel_size=2,enable_expert_parallel=not is_p,all2all_backend='flashinfer_all2allv',
    distributed_executor_backend='mp',worker_cls=entry+'.Worker',dtype='bfloat16',max_model_len=8192,
    max_num_seqs=16,max_num_batched_tokens=4096,seed=17,enable_prefix_caching=True,mamba_cache_mode='align',async_scheduling=True,
    additional_config={'enable_cpu_binding':False,'using_live_runtime':True},limit_mm_per_prompt={'image':0,'video':0},
    compilation_config=dict(cudagraph_mode='FULL',cudagraph_capture_sizes=CAPTURE_SIZES,max_cudagraph_capture_size=4096),
    speculative_config=dict(method='mtp',num_speculative_tokens=2),scheduler_cls=entry+'.Scheduler',
    kv_cache_memory_bytes=8<<30,generation_config='vllm')
+
+def worker(role,connection,output):
+ is_p=prepare_worker(role)
+ options=engine_options(is_p)
+ from vllm import LLM,SamplingParams
+ model=None
+ try:
+  model=LLM(**options)
   core=model.llm_engine.engine_core;connection.send(('ready',role))
   while True:
    op,args=connection.recv()
@@ -63,25 +73,27 @@ def worker(role,connection,output):
 
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--incremental',action='store_true');p.add_argument('--streamed',action='store_true');p.add_argument('--async-export',action='store_true');p.add_argument('--serialize-export',action='store_true');p.add_argument('--verify-transfer',action='store_true');a=p.parse_args();a.async_export=a.async_export or a.serialize_export;a.streamed=a.streamed or a.async_export;a.incremental=a.incremental or a.streamed;a.output.mkdir(parents=True,exist_ok=False)
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--incremental',action='store_true');p.add_argument('--streamed',action='store_true');p.add_argument('--async-export',action='store_true');p.add_argument('--serialize-export',action='store_true');p.add_argument('--verify-transfer',action='store_true');p.add_argument('--native-async',action='store_true');p.add_argument('--logprobs',action='store_true');p.add_argument('--cold-controls',type=int,choices=range(4),default=0);a=p.parse_args();a.async_export=a.async_export or a.serialize_export;a.streamed=a.streamed or a.async_export;a.incremental=a.incremental or a.streamed;a.output.mkdir(parents=True,exist_ok=False)
  from dram_store_fixture import dram_store
  from model_store import publish,publish_streamed,load
  from model_checkpoint import IDENTITY
  from session import Directory,Objects
  ctx=mp.get_context('spawn');children={};pipes={};stage='startup';receipts=[]
  def receive(role,timeout=240):
-  pipe=pipes[role]
+  pipe=pipes['D' if a.native_async and role.startswith('D') else role]
   if not pipe.poll(timeout):raise TimeoutError(f'{stage}: {role} response deadline')
   status,data=pipe.recv()
   if status=='error':raise RuntimeError(f'{role}: {data}')
   return data
  def call(role,op,**kwargs):
-  pipes[role].send((op,kwargs));return receive(role)
+  if a.native_async:
+   kwargs['owner']=0 if role=='P' else int(role[1:])
+  pipes['D' if a.native_async and role.startswith('D') else role].send((op,kwargs));return receive(role)
  def generate(role,name,tokens,salt,n):
-  if role=='P':result=call(role,'generate',tokens=tokens,salt=salt,n=n,diagnostic=a.verify_transfer)
+  if role=='P' or a.native_async:result=call(role,'generate',tokens=tokens,salt=salt,n=n,diagnostic=a.verify_transfer or a.logprobs)
   else:
    # Send the real request first; it can wait in collectives until peers wake.
-   pipes[role].send(('generate',dict(tokens=tokens,salt=salt,n=n,diagnostic=a.verify_transfer)))
+   pipes[role].send(('generate',dict(tokens=tokens,salt=salt,n=n,diagnostic=a.verify_transfer or a.logprobs)))
    peers=[r for r in pipes if r.startswith('D') and r!=role]
    for peer in peers:pipes[peer].send(('wake',{}))
    for peer in peers:receive(peer)
@@ -91,8 +103,11 @@ def main():
  try:
   with dram_store(a.output/'store',55401) as stores:
    directory=Directory(a.output/'directory.sqlite');objects={'P':Objects(stores[0]),'D':Objects(stores[1])}
-   for role in ('P','D0','D1','D2'):
-    parent,child=ctx.Pipe();process=ctx.Process(target=worker,args=(role,child,a.output),name='pd-'+role)
+   if a.native_async:
+    from native_async_pool import worker as pool_worker
+   else:pool_worker=worker
+   for role in (('P','D') if a.native_async else ('P','D0','D1','D2')):
+    parent,child=ctx.Pipe();process=ctx.Process(target=pool_worker,args=(role,child,a.output),name='pd-'+role)
     process.start();child.close();pipes[role]=parent;children[role]=process
    deadline=time.monotonic()+900
    for role in pipes:assert receive(role,max(1,deadline-time.monotonic()))==role
@@ -144,11 +159,16 @@ def main():
     lease=directory.claim(sid,owner,IDENTITY);stage=sid+' second decode'
     warm=generate(owner,sid+'-decode2',tokens,salt,16)
     cold=generate(owner,sid+'-cold2',tokens,salt+'-cold',16)
-    row=dict(session=sid,owner=owner,equal=warm['token_ids']==cold['token_ids'],cached=warm['cached'],cursor=len(tokens)-1,cold_cached=cold['cached'])
+    controls=[]
+    for control in range(a.cold_controls):
+     result=generate(owner,sid+f'-cold-control-{control}',tokens,salt+f'-cold-control-{control}',16)
+     assert result['cached']==0
+     controls.append(dict(equal_to_first_cold=result['token_ids']==cold['token_ids'],equal_to_warm=result['token_ids']==warm['token_ids']))
+    row=dict(session=sid,owner=owner,equal=warm['token_ids']==cold['token_ids'],cached=warm['cached'],cursor=len(tokens)-1,cold_cached=cold['cached'],cold_controls=controls)
     (a.output/(sid+'-receipt.json')).write_text(json.dumps(row,indent=2))
     assert row['equal'] and row['cached']==row['cursor'] and cold['cached']==0,row
     stage=sid+' final checkpoint';handoff(owner,'P',tokens+warm['token_ids'],salt,lease)
-   (a.output/'complete.json').write_text(json.dumps(dict(status='passed',incremental_d2h=a.incremental,streamed_d2h_store=a.streamed,async_retired_export=a.async_export,serialize_export=a.serialize_export,verify_transfer=a.verify_transfer,scope='P2 D6 actual-model DRAM P-D-P-D-P target-only handoff, three fixed attention owners; no compute overlap/production HA claim',handoffs=receipts),indent=2))
+   (a.output/'complete.json').write_text(json.dumps(dict(status='passed',incremental_d2h=a.incremental,streamed_d2h_store=a.streamed,async_retired_export=a.async_export,serialize_export=a.serialize_export,verify_transfer=a.verify_transfer,native_async_frontend=a.native_async,logprobs=a.logprobs or a.verify_transfer,cold_controls=a.cold_controls,scope='P2 D6 actual-model DRAM P-D-P-D-P target-only handoff, three fixed attention owners; no compute overlap/production HA claim',handoffs=receipts),indent=2))
  except BaseException:
   (a.output/'failure.json').write_text(json.dumps(dict(stage=stage,error=traceback.format_exc(),handoffs=receipts),indent=2));raise
  finally:

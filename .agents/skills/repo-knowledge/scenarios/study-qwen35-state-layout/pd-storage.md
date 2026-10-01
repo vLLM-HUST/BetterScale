@@ -379,3 +379,18 @@ README for receipts and the model-path override. This is not yet a new-host
 full-model or concurrent-async qualification; the old async discrepancy remains
 open. Full historical artifacts are preserved locally outside the source repo;
 large trace directories are not required in the new runtime bootstrap.
+
+
+New hw86 evidence supersedes an async-copy-only explanation: blocking, exact-byte
+async-oracle and plain retired-async offline matrices each pass12 handoffs, but
+switching to native AsyncLLM/DPLB coordination reproduces the short-session token
+bifurcation even with blocking copies. A **D6-only control with no P, Store or
+checkpoint** repeats the identical281-token input12 times with fresh salts and
+cached0: two16-token sequences,9/3 split. One alternate wins by0.25 logprob at
+position4; not all alternates are ties. See prototype README's pure-D section and
+`hw86-native-cold-only/numerical-summary.json`. This localizes the acceptance
+problem beyond a required PD transfer trigger, not to a proven component. Do not
+promote numerical qualification or silently relax exact-token gates; preserve the
+byte/lifetime and model-numerical evidence separately. The native frontend actor
+uses pinned targeted utilities (never DPLB broadcast) and native FIRST_REQ;
+its routing works but numerical acceptance is not stable.

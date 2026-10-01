@@ -678,3 +678,63 @@ part of the migration archive. Override the old shared-path default with
 `BETTERSCALE_MODEL_PATH=/workspace/models/Qwen3.5-35B-A3B` when launching
 `run_pd_model_probe.sh`. Do not silently substitute another installed model.
 The last qualified real-model transfer remains the old-host blocking route.
+
+
+### Restored model gates and native async frontend boundary
+
+On hw86, `hw86-p2d6-streamed/complete.json` passes all12 real-model handoffs and
+all three exact16-token warm/cold comparisons. The second-decode sequences also
+match the old-host blocking baseline. Whole handoff2.43–3.75s remains an end-to-end
+correctness measurement, not PCIe bandwidth. `hw86-p2d6-async-oracle` also passes
+all12 handoffs,24 TP shard exact-byte oracles and all three model comparisons;
+`hw86-p2d6-async-plain` passes without that extra snapshot or logprob collection
+(exit0). These bounded passes do NOT establish that the old discrepancy was fixed.
+
+`--native-async` replaces the four offline SyncMPClient actors with one P AsyncLLM
+and one D DPLBAsyncMPClient pool. Common model options are unchanged. The native
+FIRST_REQ/coordinator handles EP peer activation; the controller issues no manual
+wake. Generation explicitly supplies `data_parallel_rank`; session utilities use
+only the pinned targeted `_call_utility_async(..., engine=core_engines[owner])`
+seam. Eight CPU tests reject invalid owners/manual wake and protect against using
+the public broadcast utility; the affected suite totals43 passing tests. This is
+an in-process frontend integration experiment, not an HTTP service or production
+connector. Source gates/candidate runtimes remain unchanged.
+
+**The first native frontend numerical gate failed**, even with blocking
+`--streamed`: `hw86-p2d6-native-async/failure.json`, D1 second continuation,
+frontier280, first output difference at index4. Its warm output now takes the
+`**Final Answer:**` branch previously seen in the old async run's cold output.
+Its cold output matches the earlier baseline. Input token IDs and all preceding
+P/D outputs are identical to the restored blocking baseline. Therefore concurrent
+KV export is not a necessary trigger; this does not prove every transfer is sound.
+
+The changed diagnostic `--logprobs --cold-controls 2` records repeated all-cold
+requests after each warm/cold pair, without enabling the transfer snapshot.
+`hw86-native-cold-controls/complete.json` passes12 handoffs/all model comparisons,
+but D1's index4 top-two logprob margins vary0.25(warm),0.125(cold),0.375/0.375(two
+fresh cold controls). This measures variability, not an accepted error tolerance.
+
+### Pure-D discriminator: output variation without PD
+
+`native_cold_probe.py` starts **only D6**, with the same owned target-only runtime
+and native AsyncLLM coordinator. It never creates P, Store, or invokes checkpoint
+utilities. Supply `--prompt-receipt` from the preceding D1 cold receipt,
+`--output`, and optionally `--repeats`(2–16, default12)/`--owner`(default1). Use the
+same task-local CANN/ATB/native-library environment as `run_pd_model_probe.sh`,
+then run this script instead of `pd_model_probe.py`. Its `completed` status means
+the experiment completed, not that numerical determinism passed.
+
+`hw86-native-cold-only/complete.json` and `numerical-summary.json`: same281-token
+input, same D1 owner,12 unique salts, every cached count0,16 greedy output tokens.
+There are **two token sequences (9 versus3)**, exactly the two earlier branches.
+At the first divergent output position4, two alternate outcomes have a tie, but
+one has the alternate token332 ahead of22365 by0.25. Do not dismiss the whole
+phenomenon as an argmax tie. Cold runs can use different resident seats/pages and
+DP wave timing; this is not proof of a particular kernel, storage, allocator or
+coordinator defect. All NPUs and task Store masters were verified released.
+
+Current decision boundary: exact warm/cold token equality is confounded by a
+reproduced pure-D baseline variation. Do not weaken numerical acceptance or
+promote production correctness implicitly. Transfer byte/lifetime evidence still
+stands within its envelope; model numerical qualification/root-cause work is a
+separate unresolved gate. No change to the parked native FIA-reference bug work.
