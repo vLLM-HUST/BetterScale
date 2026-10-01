@@ -59,6 +59,9 @@ def export(core,tokens,salt,dense_start=0,stream_store=None):
     header=dict(identity=IDENTITY,tokens=list(tokens),cursor=seat.cursor,seat=seat.index,epoch=seat.epoch,
                 dense_start=dense_start,block_size=scheduler.block_size,blocks=[b.block_id for b in seat.blocks.blocks[0]])
     if stream_store is not None:header['stream_store']=stream_store
+    if stream_store is not None and stream_store.get('asynchronous'):
+        from model_async_export import begin
+        return begin(core,header,seat)
     shards=core.model_executor.collective_rpc('pd_export_target',args=(header,))
     if len(shards)!=2:raise RuntimeError('TP2 export requires two worker acknowledgements')
     return dict(header=header,shards=wire_encode(shards))
@@ -140,6 +143,9 @@ def install_core():
         EngineCoreProc._process_engine_step=step
     EngineCore.pd_drop_target=drop
     EngineCore.pd_import_target=restore
+    from model_async_export import finish,wait
+    EngineCore.pd_finish_export=finish
+    EngineCore.pd_wait_export=wait
 
 
 def worker_root(worker,header,*,source):
@@ -234,3 +240,7 @@ def install_worker():
     from vllm_ascend.worker.worker import NPUWorker
     NPUWorker.pd_export_target=export_worker
     NPUWorker.pd_import_target=import_worker
+    from model_async_export import begin_worker,finish_worker,wait_worker
+    NPUWorker.pd_begin_export=begin_worker
+    NPUWorker.pd_finish_export=finish_worker
+    NPUWorker.pd_wait_export=wait_worker

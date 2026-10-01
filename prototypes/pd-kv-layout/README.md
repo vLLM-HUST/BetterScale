@@ -601,3 +601,45 @@ export, preserve immutable token intervals (not just Tensor object lifetimes),
 and release pins only after both workers' DMA/Store completion, including abort.
 GDN/conv must remain a selected, matching retired frontier. Production still
 needs native async frontend integration, eviction/recovery and draft validity.
+
+### Retired asynchronous export — experimental, NOT qualified
+
+`--async-export` starts at the same retired frontier, snapshots selected GDN/conv
+before returning, pins native FA block references, and runs dense transfer in a
+worker thread. The probe evicts the source hot resident and executes an unrelated
+8-token request before collecting the transfer. Pins release only after both TP
+workers explicitly acknowledge drained work; RPC/unknown-drain failures quarantine
+pins rather than pretending DMA finished. Completed worker receipts survive a
+Core-side retry. The slot/stream resources are retained if device drain fails.
+The one-export-per-engine bound is intentionally narrow, not a scheduling policy.
+
+**Do not promote this route:** `p2d6-model-async-retired/failure.json` passes the
+long D0 session, then D1's280-token second continuation diverges at output index4.
+Interestingly its restored sequence matches all three earlier qualified runs;
+the new cold control instead emits `**Final Answer:**`. This is an observation,
+not proof that transfer or cold compute is at fault, nor a near-tie dismissal.
+All8 NPUs and its Store master were subsequently verified released.
+
+The changed-hypothesis control `--serialize-export` waits for each worker job
+before the unrelated request, **without releasing native pins** or changing the
+hot eviction/request sequence. `p2d6-model-async-serialized/complete.json` passes
+all12 handoffs and all three exact continuations; exit0 and full cleanup verified.
+This narrows the investigation to concurrency/timing-sensitive behavior, but does
+not establish the faulty component. Worker host-job intervals include Store client
+teardown; their intersection with a request interval is NOT hardware DMA/compute
+profiling. A next `--verify-transfer` diagnostic compares every streamed Store
+chunk byte-for-byte against a retired main-thread CPU snapshot and records top5
+output logprobs. Its initial live run is `p2d6-model-async-oracle` (pending).
+
+Eight new CPU tests cover retained page references after eviction, single-export
+admission, wrong IDs, missing/failed drain acknowledgements, retry, Store failure,
+worker completion fencing and the serialization control's unchanged pin lifetime.
+The existing blocking `--streamed` route remains the last qualified transfer mode.
+
+Native async frontend follow-up: at pinned core752a3a504, DPLBAsyncMPClient's public
+`call_utility_async` **broadcasts to every Core and returns only the first result**.
+Do not use that method for an owner-specific session export/import/drop. Its
+`_call_utility_async(..., engine=core_engines[owner])` is the inspected targeted
+seam; any eventual adapter must preserve the pinned source boundary. Request
+routing/FIRST_REQ already exists as described above; don't build a second DP
+coordinator just to work around the offline experiment.

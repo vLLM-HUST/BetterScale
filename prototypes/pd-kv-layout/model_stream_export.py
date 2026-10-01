@@ -9,7 +9,9 @@ from pathlib import Path
 import sys,time
 
 
-def export_dense(runner,root,rank,header):
+def export_dense(runner,root,rank,header,*,lifetime=None,expected_dense=None):
+    if lifetime is None:lifetime={}
+    lifetime['drained']=True
     import torch
     from betterscale.live.llm.qwen35.state import GDNState
     from model_checkpoint import dense_span
@@ -44,6 +46,11 @@ def export_dense(runner,root,rank,header):
         pointers=[[slots[slot].data_ptr()+i*chunk_tokens*512] for i in range(20)]
         rc=client.batch_put_from_multi_buffers(list(keys.values()),pointers,[[nbytes]]*20,config)
         if rc!=[0]*20:raise IOError(f'Model dense Store put failed: {rc}')
+        if expected_dense is not None:
+            for name,key in keys.items():
+                begin=int(key.rsplit('/dense/',1)[1].split('/',1)[0])-first
+                expected=expected_dense[name][begin:begin+nbytes//512].view(torch.uint8).numpy().tobytes()
+                if bytes(client.get(key))!=expected:raise RuntimeError(f'Concurrent dense Store bytes differ: {name}, token {begin+first}')
     try:
         rc=client.setup(f'127.0.0.1:{ports[rank]}','http://127.0.0.1:55402/metadata',
                         0,64*1024**2,'tcp','', '127.0.0.1:55401')
@@ -57,6 +64,8 @@ def export_dense(runner,root,rank,header):
             retained[slot]=[];stop=min(start+chunk_tokens,cursor);nbytes=(stop-start)*512
             keys={name:f'{prefix}/dense/{start}/{name}' for name,_ in planes}
             if any(f is not None and not f.done() for f in pending):concurrent_enqueues+=1
+            lifetime['drained']=False
+            lifetime['retained']=(slots,retained,indices,stream,client)
             with torch.npu.stream(stream):
                 for i,(_,tensor) in enumerate(planes):
                     source=dense_span(tensor,indices,header['block_size'],stop,start)
@@ -70,10 +79,12 @@ def export_dense(runner,root,rank,header):
         return dict(acknowledged=True,chunks=chunks,streams=[n for n,_ in planes],
                     dense_bytes=(cursor-first)*20*512,ring_slots=2,
                     copy_enqueued_while_store_pending=concurrent_enqueues,
-                    seconds=time.perf_counter()-started)
+                    seconds=time.perf_counter()-started,exact_transfer_oracle=expected_dense is not None)
     finally:
         # Even failed Store work must stop reading before unregister/free.
         pool.shutdown(wait=True)
         stream.synchronize()
+        lifetime['drained']=True
         for slot in reversed(registered):client.unregister_buffer(slot.data_ptr())
         client.close()
+        lifetime.pop('retained',None)

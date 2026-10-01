@@ -360,3 +360,13 @@ the retired idle export, so this proves transfer-stage pipelining, **not compute
 overlap**. Whole2.55–4.16s handoffs still include GDN/conv RPC and full receiver
 H2D. The next async boundary needs native page refcounts (block_pool.touch /
 free_blocks), not merely retained tensor objects; see the prototype README.
+
+The next retired async-export cut is **unqualified**. Native FA page pins now
+outlive explicit hot eviction and release only after both worker drain acks;
+CPU failure/refcount tests pass. The actual concurrent-activity gate failed D1's
+second warm/cold comparison at280 tokens (`p2d6-model-async-retired`). A control
+waiting for copies but preserving pin/eviction/request order passes all owners
+(`p2d6-model-async-serialized`). Root cause is not established. The prototype
+README names the exact-byte/logprob discriminator; do not silently enable the
+async route. Native DPLB public utility calls broadcast to all owners, unlike
+its targeted `_call_utility_async` seam—important for later frontend integration.

@@ -41,10 +41,12 @@ def worker(role,connection,output):
    if op=='generate':
     tokens=args['tokens'];salt=args['salt'];n=args['n']
     inp=dict(prompt=tokens,cache_salt=salt) if isinstance(tokens,str) else dict(prompt_token_ids=tokens,cache_salt=salt)
-    r=model.generate([inp],SamplingParams(temperature=0,max_tokens=n,ignore_eos=True),use_tqdm=False)[0]
-    result=dict(prompt_token_ids=r.prompt_token_ids,token_ids=list(r.outputs[0].token_ids),text=r.outputs[0].text,cached=r.num_cached_tokens)
+    r=model.generate([inp],SamplingParams(temperature=0,max_tokens=n,ignore_eos=True,logprobs=5 if args.get('diagnostic') else None),use_tqdm=False)[0]
+    result=dict(prompt_token_ids=r.prompt_token_ids,token_ids=list(r.outputs[0].token_ids),text=r.outputs[0].text,cached=r.num_cached_tokens,logprobs=[{str(k):v.logprob for k,v in row.items()} for row in r.outputs[0].logprobs] if r.outputs[0].logprobs is not None else None)
    elif op=='wake':result=core.call_utility('pd_start_wave')
    elif op=='export':result=core.call_utility('pd_export_retired',args['tokens'],args['salt'],args.get('dense_start',0),args.get('stream_store'))
+   elif op=='wait-export':result=core.call_utility('pd_wait_export',args['transfer_id'])
+   elif op=='finish-export':result=core.call_utility('pd_finish_export',args['transfer_id'])
    elif op=='drop':result=core.call_utility('pd_drop_target',args['salt'])
    elif op=='import':result=core.call_utility('pd_import_target',args['payload'],args['salt'])
    elif op=='append':result=args['tokens']+model.get_tokenizer().encode(args['text'],add_special_tokens=False)
@@ -61,7 +63,7 @@ def worker(role,connection,output):
 
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--incremental',action='store_true');p.add_argument('--streamed',action='store_true');a=p.parse_args();a.incremental=a.incremental or a.streamed;a.output.mkdir(parents=True,exist_ok=False)
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--incremental',action='store_true');p.add_argument('--streamed',action='store_true');p.add_argument('--async-export',action='store_true');p.add_argument('--serialize-export',action='store_true');p.add_argument('--verify-transfer',action='store_true');a=p.parse_args();a.async_export=a.async_export or a.serialize_export;a.streamed=a.streamed or a.async_export;a.incremental=a.incremental or a.streamed;a.output.mkdir(parents=True,exist_ok=False)
  from dram_store_fixture import dram_store
  from model_store import publish,publish_streamed,load
  from model_checkpoint import IDENTITY
@@ -76,10 +78,10 @@ def main():
  def call(role,op,**kwargs):
   pipes[role].send((op,kwargs));return receive(role)
  def generate(role,name,tokens,salt,n):
-  if role=='P':result=call(role,'generate',tokens=tokens,salt=salt,n=n)
+  if role=='P':result=call(role,'generate',tokens=tokens,salt=salt,n=n,diagnostic=a.verify_transfer)
   else:
    # Send the real request first; it can wait in collectives until peers wake.
-   pipes[role].send(('generate',dict(tokens=tokens,salt=salt,n=n)))
+   pipes[role].send(('generate',dict(tokens=tokens,salt=salt,n=n,diagnostic=a.verify_transfer)))
    peers=[r for r in pipes if r.startswith('D') and r!=role]
    for peer in peers:pipes[peer].send(('wake',{}))
    for peer in peers:receive(peer)
@@ -99,19 +101,30 @@ def main():
     start=time.monotonic();source_objects=objects['P' if source=='P' else 'D'];dest_objects=objects['P' if dest=='P' else 'D']
     dense_start=json.loads(source_objects.get(lease.base))['cursor'] if a.incremental and lease.base is not None else 0
     port=55421 if source=='P' else 55423+2*int(source[1:])
-    stream_store=dict(prefix=f'pd/{lease.session}/{lease.epoch}/{uuid.uuid4().hex}',ports=[port,port+1]) if a.streamed else None
+    stream_store=dict(prefix=f'pd/{lease.session}/{lease.epoch}/{uuid.uuid4().hex}',ports=[port,port+1],asynchronous=a.async_export,verify_transfer=a.verify_transfer) if a.streamed else None
     payload=call(source,'export',tokens=tokens,salt=salt,dense_start=dense_start,stream_store=stream_store)
+    activity=None
+    if a.async_export:
+     ticket=payload
+     assert call(source,'drop',salt=salt),'Expected hot eviction while native export pins remain'
+     if a.serialize_export:call(source,'wait-export',transfer_id=ticket['transfer_id'])
+     activity_start=time.monotonic()
+     other=generate(source,f'{salt}-export-activity-{lease.epoch}',
+       'The access code is MARBLE. What is the access code? Answer:',salt+'-activity-'+str(lease.epoch),8)
+     activity=[activity_start,time.monotonic()]
+     payload=call(source,'finish-export',transfer_id=ticket['transfer_id'])
+     assert all(n>=1 for n in payload['page_pin_receipt']['refs_at_release'])
     stream_receipts=[s['dense_store'] for s in payload['shards']] if a.streamed else []
     dense_bytes=sum(s['dense_bytes'] for s in stream_receipts) if a.streamed else sum(len(data[k]['data']) for shard in payload['shards'] for data in shard['layers'].values() if set(data)=={'key','value'} for k in ('key','value'))
     assert dense_bytes==(len(tokens)-1-dense_start)*20480
     key=(publish_streamed if a.streamed else publish)(directory,source_objects,lease,payload,dest)
     streams=tuple(json.loads(source_objects.get(key))['streams'])
-    assert call(source,'drop',salt=salt),'Expected source resident retirement'
+    if not a.async_export:assert call(source,'drop',salt=salt),'Expected source resident retirement'
     del payload
     restored=load(dest_objects,key,IDENTITY,streams)
     installed=call(dest,'import',payload=restored,salt=salt)
     row=dict(source=source,destination=dest,cursor=len(tokens)-1,seconds=time.monotonic()-start,
-      seat=installed['seat'],draft_state_transferred=False,dense_start=dense_start,dense_bytes=dense_bytes,stream_pipeline=[{k:v for k,v in s.items() if k not in ('chunks','streams')} for s in stream_receipts])
+      seat=installed['seat'],draft_state_transferred=False,dense_start=dense_start,dense_bytes=dense_bytes,host_activity_interval=activity,stream_pipeline=[{k:v for k,v in s.items() if k not in ('chunks','streams')} for s in stream_receipts])
     receipts.append(row);print('PD_HANDOFF',json.dumps(row),flush=True)
    for rank,repeats in enumerate((220,12,1)):
     owner=f'D{rank}';sid=f'pd-session-{rank}';salt=sid;directory.create(sid,IDENTITY,'P')
@@ -135,7 +148,7 @@ def main():
     (a.output/(sid+'-receipt.json')).write_text(json.dumps(row,indent=2))
     assert row['equal'] and row['cached']==row['cursor'] and cold['cached']==0,row
     stage=sid+' final checkpoint';handoff(owner,'P',tokens+warm['token_ids'],salt,lease)
-   (a.output/'complete.json').write_text(json.dumps(dict(status='passed',incremental_d2h=a.incremental,streamed_d2h_store=a.streamed,scope='P2 D6 actual-model DRAM P-D-P-D-P target-only handoff, three fixed attention owners; no compute overlap/production HA claim',handoffs=receipts),indent=2))
+   (a.output/'complete.json').write_text(json.dumps(dict(status='passed',incremental_d2h=a.incremental,streamed_d2h_store=a.streamed,async_retired_export=a.async_export,serialize_export=a.serialize_export,verify_transfer=a.verify_transfer,scope='P2 D6 actual-model DRAM P-D-P-D-P target-only handoff, three fixed attention owners; no compute overlap/production HA claim',handoffs=receipts),indent=2))
  except BaseException:
   (a.output/'failure.json').write_text(json.dumps(dict(stage=stage,error=traceback.format_exc(),handoffs=receipts),indent=2));raise
  finally:
