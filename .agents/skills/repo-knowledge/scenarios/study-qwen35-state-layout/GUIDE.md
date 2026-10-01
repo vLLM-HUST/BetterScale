@@ -27,6 +27,9 @@ frontier, read [seat-scheduler.md](seat-scheduler.md).
 For restoring long context, physical-memory-sized shared pages, chunked
 prefill and SWE exact-token streaming, read [long-context.md](long-context.md).
 
+For D6 step timing, native msprof timelines, and the unqualified B16 boundary,
+read [d-cluster-efficiency.md](d-cluster-efficiency.md).
+
 ## Latest policy correction: hot resident seats
 
 Read [resident-seat-policy.md](resident-seat-policy.md) before using any earlier

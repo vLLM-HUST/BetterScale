@@ -818,3 +818,12 @@ it passes the no-activity matrix with median 0.436 s P->D / 0.654 s D->P.
 This does not qualify throughput, busy-pool admission or universal subsecond
 latency. The remaining delay is accepted for current PD work; do not make
 removing it a blocker or independently put locally idle EP ranks to sleep.
+
+## D-only efficiency observation
+
+Use `bash run_d_cluster_probe.sh /absolute/new/output` on the prepared hw86
+task runtime. This runs balanced B1/B8 target-only cohorts and a bounded native
+CANN/msprof B8 capture; no P engine is started. Read the
+[D6 evidence and interpretation boundaries](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/d-cluster-efficiency.md)
+before interpreting timings or increasing concurrency. B16 currently fails an
+attention metadata guard and is not included in the default probe.
