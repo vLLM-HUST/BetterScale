@@ -463,3 +463,97 @@ rewrites. [HCCL's official environment reference](https://www.hiascend.com/doc_c
 documents determinism priority over AIV, including possible algorithm changes.
 Keep strict as an explicit experimental setting, not a hidden production default;
 performance and the complete PD matrix need separate evidence.
+
+
+Model-level strict control now passes: `hw86-cold-fixed-strict` uses the original
+compiled/FULL route (no white-box trace or skip_compiled), same fixed seat0 and
+281-token prompt,12 fresh cold requests. All16 generated tokens and every returned
+top5 logprob are exactly identical. This is strong causal evidence for reduction
+nondeterminism in the original cold-repeat failure, not an accuracy waiver.
+
+`hw86-native-pd-strict` uses native AsyncLLM, strict HCCL, blocking incremental
+streamed DRAM handoffs and two extra cold controls per owner. All12 P→D→P
+handoffs and allthree16-token warm/cold comparisons pass. Both cold controls have
+exact tokens and top5 logprobs for every owner. However warm/cold logprobs are
+**not exact**: maximum common-candidate absolute deltas for D0/1/2 are
+0.6871938705/0.8673906326/0.4368438721, with5/1/5 changed top5 candidate sets.
+All generated prefixes match so these comparisons are like-for-like. The fixed
+warm/cold difference is separate from repeated-cold nondeterminism; do not call
+numerical acceptance complete just because the sampled argmax stays the same.
+A same-owner/no-transfer split-prefill control is the next discriminator.
+No production default or release pin was changed; no strict async-export
+compute-overlap qualification is implied by this blocking handoff result.
+
+
+The same-owner split-prefill control `hw86-native-warm-local-strict` reproduces
+a fixed warm/cold difference **without any transfer**. D1 prefills the first280
+tokens, then continues the same281-token prompt from cached280; cold recomputes
+all281. Three pairs all return the same16 tokens. Each path is internally exact
+across repeats, but warm/cold top5 logprob max delta is0.3743658066 each time.
+This demonstrates a local continuation-versus-prefill numerical difference in
+addition to the now-controlled reduction nondeterminism. It does not explain
+all of the larger P/D-path difference or prove either path is acceptably accurate.
+
+
+White-box continuation follow-up:
+`hw86-whitebox-warm` and `hw86-whitebox-gdn` preserve strict HCCL and use the
+explicit Python-forward/FULL observer arm. The matched warm first token has
+**capacity16, prefill with initial State**, whereas cold has capacity512; this
+comparison is not simply recurrent-decode versus prefill. Later generated tokens
+use capacity3. Actual input ID and position match. Layer0 post-attention residual
+already differs. Embedding/input norm/gate and BA projection are exact across
+six rank/repeat pairs; QKVZ has only a tiny4.70e-38 difference, while GDN core
+output reaches0.00390625 max difference. Do not attribute the larger discrepancy
+to the subnormal projection difference without following the inputs.
+
+`hw86-whitebox-recurrence` captures full first-layer preprocessed q/k/v/g/beta
+for the280-token prefix, the1-token continuation and the281-token cold prefill.
+These five arrays concatenate **exactly** to the cold arrays, for both TP ranks
+and both repeats. An independent CPU gated-delta recurrence (formula reused
+from `gdn_resume_probe.py`, with FP64 and FP32 controls) therefore yields exactly
+the same warm/cold result. CPU FP32 versus FP64 maximum error is6.17e-7.
+NPU GDN output versus FP64 has whole-prefix relative L2 error0.181–0.192%;
+last-token relative L2 is0.071–0.178%, depending on rank/path. The NPU warm/cold
+last-token difference is0.001953125 on rank2 and0.00390625 on rank3.
+These are bounded real-model-layer measurements, **not accepted tolerances**.
+They locate a chunk/initial-State continuation numerical seam after preprocessing.
+An explicit State-before/after tap is still needed to separate State carry from
+chunk arithmetic; do not label this a proven copy bug or harmless rounding.
+
+`analyze_gdn_recurrence.py` runs CPU-only against captured activations. Its
+independent recurrence has hand-derived scalar-embedding and zero-beta tests;
+it does not validate convolution or whole-model accuracy. Keep these capsules
+outside Git; source/protocol and compact findings belong here.
+
+
+Final State discriminator in this investigation:
+`hw86-whitebox-state` records the selected first-layer State before/after each
+prefill core call. The prefix's published State is **bitwise identical** to the
+continuation's input State on both ranks, both repeats. Preprocessed inputs still
+concatenate exactly to cold input. Thus this observed seam is not a local State
+carry corruption. The independent reference finds prefix-State relative L2 error
+0.2066%/0.2373% (rank2/3). Even when seeded with the *actual* carried State, the
+one-token chunk update differs from FP64 by0.1806%/0.1662% relative L2 in final
+State (max abs0.05649/0.02810); warm/cold final-State difference is
+0.2044%/0.1720%. This separates carry identity from arithmetic error without
+claiming that a particular fused operator has been identified or setting a
+whole-model acceptance tolerance.
+
+**Current disposition:** the random cold-repeat failure has a demonstrated
+deterministic-HCCL control, confirmed on the original compiled path. The remaining
+fixed continuation/cold discrepancy has exact activation and State-carry controls
+and an independent FP64 numerical reference. Treat GDN chunk/initial-State
+arithmetic as an open accuracy workstream. Do not call the production PD numerical
+gate passed or silently replace the qualified release kernels. The present
+verification work adds only opt-in probes; it does not adopt new arithmetic.
+
+To reproduce the final trace, combine the native warm-prefix control with
+`HCCL_DETERMINISTIC=strict`, `BETTERSCALE_NUMERICAL_TRACE=<external dir>`,
+`BETTERSCALE_NUMERICAL_LAST_TOKEN_TRACE=1`,
+`BETTERSCALE_NUMERICAL_GDN_TRACE=1`, and
+`BETTERSCALE_NUMERICAL_RECURRENCE_TRACE=1`. Use owner1, the same281-token prompt,
+natural residency and2 repeats. The recurrence trace keeps full real-token GDN
+inputs (not only last-token taps); `analyze_gdn_recurrence.py <trace dir>` checks
+them without NPU access. The large State buffers are diagnostic-only, not a serving
+checkpoint protocol. FULL graph observation still explicitly bypasses compiled
+Python and perturbs timing.

@@ -13,11 +13,43 @@ def differences(reference, candidate):
                 max_abs=float(delta.max()), mean_abs=float(delta.mean()))
 
 
+
+def compare_warm(root):
+    """Compare the first continued token to the same cold-prefill position."""
+    rows=[]
+    for rank in (2,3):
+        paths=sorted(root.glob(f"rank{rank}-prefill*.pt"),
+                     key=lambda p:int(p.stem.split("prefill")[1]))
+        states=[torch.load(p,map_location="cpu",weights_only=True) for p in paths]
+        for index,state in enumerate(states):
+            if state["actual_tokens"]!=280:
+                continue
+            warm=states[index+1]
+            cold=next(d for d in states[index+2:] if d["actual_tokens"]==281)
+            assert warm["actual_tokens"]==1 and warm["last_only"] and cold["last_only"]
+            wi,ci=warm["actual_tokens"]-1,cold["actual_tokens"]-1
+            assert torch.equal(warm["inputs"]["input_ids"][wi],cold["inputs"]["input_ids"][ci])
+            assert torch.equal(warm["inputs"]["positions"][...,wi],cold["inputs"]["positions"][...,ci])
+            row=dict(rank=rank,warm_index=warm["index"],cold_index=cold["index"],layers={},gdn={})
+            for layer,values in warm["layers"].items():
+                row["layers"][layer]={key:differences(value,cold["layers"][layer][key])
+                                      for key,value in values.items()}
+            for key,value in warm.get("gdn",{}).items():
+                row["gdn"][key]=differences(value[-1:],cold["gdn"][key][-1:])
+            rows.append(row)
+    assert rows, "No warm/cold pairs"
+    (root/"warm-cold-comparison.json").write_text(json.dumps(rows,indent=2))
+    print(json.dumps(rows[0],indent=2))
+    print("pairs",len(rows))
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("root", type=Path)
+    parser.add_argument("--warm-prefix",action="store_true")
     args = parser.parse_args()
     torch.set_num_threads(4)
+    if args.warm_prefix:
+        return compare_warm(args.root)
     comparisons = []
     for rank in (2, 3):
         files = sorted(args.root.glob(f"rank{rank}-prefill*.pt"),

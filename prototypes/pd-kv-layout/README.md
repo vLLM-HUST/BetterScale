@@ -744,7 +744,11 @@ separate unresolved gate. No change to the parked native FIA-reference bug work.
 The fixed-seat cold control still bifurcates without P/Store/checkpoint. Bounded
 white-box taps locate first-layer variability after DP MoE reduction, and a
 fixed-input BF16 reduce-scatter leaf reproduces nondeterminism. Strict HCCL
-eliminates variability in that leaf, not yet a production qualification.
+eliminates variability in that leaf and in12 original-compiled cold repeats
+(tokens and top5 logprobs exact). The strict native P2/D6 matrix passes12
+handoffs, but fixed warm/cold logprob differences remain. Same-owner no-transfer
+controls and independent FP64 recurrence isolate an open GDN chunk/State
+continuation accuracy seam; this is not a production numerical qualification.
 See the scenario's [evidence and reproduction envelope](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/pd-storage.md#cold-request-numerical-repeatability-investigation-hw86-2026-10-01).
 The numerical_entry/trace helpers are opt-in diagnostics; do not make the
 fixed-seat eviction or Python-forward instrumentation a serving default.
