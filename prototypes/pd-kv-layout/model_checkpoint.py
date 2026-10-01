@@ -71,6 +71,14 @@ def export(core,tokens,salt,dense_start=0,stream_store=None):
     return dict(header=header,shards=wire_encode(shards))
 
 
+def capacity(core):
+    """Idle admission snapshot, not a reservation or a concurrent allocator."""
+    scheduler=idle(core);pool=scheduler.kv_cache_manager.block_pool
+    return dict(block_size=scheduler.block_size,free_blocks=pool.get_num_free_blocks(),
+                total_blocks=pool.num_gpu_blocks,max_requests=scheduler.max_num_running_reqs,
+                context_limit=scheduler.max_model_len)
+
+
 def drop(core,salt):
     scheduler=idle(core);removed=[]
     for seat in scheduler.residents.seats:
@@ -158,6 +166,7 @@ def install_core():
             return result
         step._pd_retirement_service=True
         EngineCoreProc._process_engine_step=step
+    EngineCore.pd_capacity=capacity
     EngineCore.pd_drop_target=drop
     EngineCore.pd_import_target=restore
     from model_import_lifetime import abort,failure_probe

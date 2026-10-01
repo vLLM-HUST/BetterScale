@@ -49,6 +49,7 @@ class FakePeer:
 
 async def start(path):
     c=pd.Coordinator(path,"unusedP","unusedD",verify_imports=True)
+    c.capacities=[dict(block_size=2048,free_blocks=100,max_requests=16) for _ in range(4)]
     c.p=FakePeer("P");c.d=FakePeer("D")
     c.tasks=[asyncio.create_task(c._prefill(i)) for i in range(4)]
     c.tasks.append(asyncio.create_task(c._decode()))
@@ -145,4 +146,27 @@ def test_state_readback_corruption_fences_destination(tmp_path):
             row=db.execute("SELECT active,owner FROM sessions").fetchone()
             assert row==(1,f"D{pd.owner_for('broken')}")
         await c.close()
+    asyncio.run(scenario())
+
+
+def test_wave_admission_accounts_for_context_and_reuses_deferred():
+    from types import SimpleNamespace as NS
+    capacities=[dict(block_size=2048,free_blocks=1044,max_requests=16) for _ in range(4)]
+    long=[NS(owner=0,tokens=[1]*262080,n=16) for _ in range(16)]
+    wave,pending=pd.select_wave(long,capacities,64)
+    assert len(wave)==8 and len(pending)==8
+    wave,pending=pd.select_wave(pending,capacities,64)
+    assert len(wave)==8 and not pending
+    medium=[NS(owner=owner,tokens=[1]*100000,n=16) for owner in range(4) for _ in range(16)]
+    wave,pending=pd.select_wave(medium,capacities,64)
+    assert len(wave)==64 and not pending
+
+
+def test_restart_refuses_unfinished_directory_before_contacting_nodes(tmp_path):
+    async def scenario():
+        c=pd.Coordinator(tmp_path/"directory.db","unusedP","unusedD")
+        c.directory.create("s",pd.IDENTITY,"P")
+        c.directory.claim("s","P",pd.IDENTITY)
+        with pytest.raises(RuntimeError,match="unfinished ownership"):await c.start()
+        assert c.client is None and c.controller_lock is None
     asyncio.run(scenario())

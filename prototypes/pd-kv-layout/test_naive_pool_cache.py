@@ -14,6 +14,7 @@ class Store:
         self.objects[key]=data
         return 0
     def get(self,key):return self.objects.get(key)
+    def get_size(self,key):return len(self.objects[key]) if key in self.objects else -1
 
 
 def payload():
@@ -26,6 +27,9 @@ def test_chunked_publish_and_missing_chunk():
         await cache.put(key,data)
         assert store.writes[-1]=="manifest:"+key
         assert await cache.get(key)==data
+        written=len(store.writes)
+        await cache.put(key,data)
+        assert len(store.writes)==written
         manifest=unpack(store.objects["manifest:"+key])
         del store.objects[manifest["chunks"][0][0]]
         with pytest.raises(KeyError):await cache.get(key)
@@ -53,3 +57,10 @@ def test_no_manifest_after_failed_chunk():
 def test_bad_rpc_rejected_before_actor(body):
     from naive_pool_node import validate_rpc
     with pytest.raises(ValueError):validate_rpc("D",body)
+
+
+def test_capacity_rpc_is_read_only_and_has_no_extra_arguments():
+    from naive_pool_node import validate_rpc
+    assert validate_rpc("D",dict(instance=0,op="capacity",args={}))==(0,"capacity",{})
+    with pytest.raises(ValueError):
+        validate_rpc("D",dict(instance=0,op="capacity",args={"owner":0}))

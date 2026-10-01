@@ -22,7 +22,10 @@ async def run(args):
             names.append(name);counts[owner]+=1
         if len(names)==args.sessions:break
     assert {owner_for(s) for s in names}==set(range(4))
-    coordinator=await Coordinator(args.output/"directory.db",args.p,args.d,max_batch=args.sessions,verify_imports=True).start()
+    def event(value):
+        with (args.output/"transport-events.jsonl").open("a") as stream:
+            stream.write(json.dumps(value)+"\n")
+    coordinator=await Coordinator(args.output/"directory.db",args.p,args.d,max_batch=args.sessions,verify_imports=True,trace=event).start()
     receipts=[]
     started=time.perf_counter()
     try:

@@ -95,3 +95,17 @@ def test_dense_span_permuted_partial_pages():
     full=logical[ids].flatten(0,1)[:9]
     for start in (0,1,4,5,8,9):
         assert torch.equal(dense_span(pages,ids,4,9,start),full[start:])
+
+
+def test_capacity_receipt_is_idle_and_preserves_allocator():
+    from model_checkpoint import capacity
+    c=core()
+    c.scheduler.max_num_running_reqs=16;c.scheduler.max_model_len=262144
+    pool=c.scheduler.kv_cache_manager.block_pool
+    pool.num_gpu_blocks=1045;pool.get_num_free_blocks=lambda:1044
+    assert capacity(c)==dict(block_size=2048,free_blocks=1044,total_blocks=1045,
+                             max_requests=16,context_limit=262144)
+    assert not pool.live
+    c.batch_queue=[object()]
+    import pytest
+    with pytest.raises(RuntimeError):capacity(c)

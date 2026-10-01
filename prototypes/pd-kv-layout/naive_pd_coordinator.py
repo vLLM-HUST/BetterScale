@@ -6,6 +6,8 @@ consensus, automatic failover, online State loading, or an OpenAI API server.
 import asyncio
 from dataclasses import dataclass
 import hashlib
+import fcntl
+import math
 import re
 import sqlite3
 import time
@@ -23,8 +25,14 @@ class RemoteError(RuntimeError):
         super().__init__(message)
 
 class Peer:
-    def __init__(self,url,client):
-        self.url=url.rstrip("/");self.client=client
+    def __init__(self,url,client,trace=None):
+        self.url=url.rstrip("/");self.client=client;self.trace=trace
+
+    def _record(self,op,start,size,**fields):
+        if self.trace:
+            end=time.perf_counter()
+            self.trace(dict(peer=self.url,op=op,start=start,end=end,seconds=end-start,
+                            bytes=size,**fields))
 
     async def health(self):
         async with self.client.get(self.url+"/health") as response:
@@ -32,29 +40,40 @@ class Peer:
             return await response.json()
 
     async def rpc(self,instance,op,**args):
+        start=time.perf_counter()
         async with self.client.post(self.url+"/rpc",
                 data=pack(dict(instance=instance,op=op,args=args))) as response:
             data=await response.read()
             if response.status!=200:
-                raise RemoteError(response.status,data[:4096].decode(errors="replace"))
-            return unpack(data)
+                try:message=unpack(data)["error"]
+                except (ValueError,KeyError,TypeError):message=data.decode(errors="replace")
+                self._record(op,start,len(data),instance=instance,status=response.status)
+                raise RemoteError(response.status,str(message)[:4096])
+            value=unpack(data)
+            self._record(op,start,len(data),instance=instance,owner=args.get("owner"),
+                         requests=len(args.get("items",[])))
+            return value
 
     async def get(self,key):
+        start=time.perf_counter()
         async with self.client.get(self.url+"/checkpoint/"+key) as response:
             if response.status!=200:
                 raise RemoteError(response.status,(await response.text())[:4096])
             data=await response.read()
             if not 0<len(data)<=MAX_STATE or hashlib.sha256(data).hexdigest()!=key:
                 raise RuntimeError("Remote checkpoint content identity mismatch")
+            self._record("get",start,len(data),key=key)
             return data
 
     async def put(self,key,data):
+        start=time.perf_counter()
         async with self.client.put(self.url+"/checkpoint/"+key,data=data) as response:
             if response.status!=200:
                 raise RemoteError(response.status,(await response.read())[:4096].decode(errors="replace"))
             result=await response.json()
             if result.get("key")!=key or result.get("bytes")!=len(data):
                 raise RemoteError(response.status,"Destination checkpoint not acknowledged")
+            self._record("put",start,len(data),key=key)
 
 @dataclass
 class Job:
@@ -71,20 +90,48 @@ class Job:
 def owner_for(session):
     return zlib.crc32(session.encode())%4
 
+def select_wave(candidates,capacities,max_batch):
+    """Reserve each request's complete generation footprint before importing."""
+    if capacities is None:raise RuntimeError("Missing D capacity receipt")
+    counts=[0]*4;blocks=[0]*4;selected=[];deferred=[]
+    for job in candidates:
+        owner=job.owner;cap=capacities[owner]
+        # Keep native MTP lookahead allocation despite target-only proposals.
+        need=math.ceil((len(job.tokens)+job.n-1+2)/cap["block_size"])
+        if need>cap["free_blocks"]:raise ValueError("Request exceeds idle owner KV capacity")
+        if (len(selected)>=max_batch or counts[owner]>=cap["max_requests"]
+                or blocks[owner]+need>cap["free_blocks"]):
+            deferred.append(job)
+        else:
+            selected.append(job);counts[owner]+=1;blocks[owner]+=need
+    return selected,deferred
+
 class Coordinator:
-    def __init__(self,path,p_url,d_url,*,max_batch=8,verify_imports=False):
+    def __init__(self,path,p_url,d_url,*,max_batch=8,verify_imports=False,trace=None):
         if not 1<=max_batch<=64:raise ValueError("D wave limit must be1..64")
         self.directory=Directory(path)
         self.urls=p_url,d_url
         self.max_batch=max_batch
         self.verify_imports=verify_imports
+        self.capacities=None
+        self.trace=trace
+        self.controller_lock=None
         self.inflight={};self.pending=asyncio.Queue(maxsize=128)
         self.ready=asyncio.Queue(maxsize=128)
         self.failure=None;self.tasks=[];self.client=None
 
     async def start(self):
+        self.controller_lock=open(self.directory.path+".controller.lock","a")
+        try:
+            fcntl.flock(self.controller_lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with self.directory.transaction() as db:
+                if db.execute("SELECT 1 FROM sessions WHERE active!=0 OR owner!='P' LIMIT 1").fetchone():
+                    raise RuntimeError("Directory has unfinished ownership; explicit recovery required")
+        except BaseException:
+            self.controller_lock.close();self.controller_lock=None
+            raise
         self.client=aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1860))
-        self.p,self.d=[Peer(url,self.client) for url in self.urls]
+        self.p,self.d=[Peer(url,self.client,self.trace) for url in self.urls]
         try:
             for peer,kind,count in ((self.p,"P",4),(self.d,"D",1)):
                 status=await peer.health()
@@ -93,8 +140,16 @@ class Coordinator:
                         or len(status.get("actors",[]))!=count
                         or any(not a["alive"] or a["quarantined"] for a in status["actors"])):
                     raise RuntimeError("Node topology/context/health does not match controller")
+                if kind=="D":
+                    self.capacities=status["actors"][0]["info"]["capacities"]
+                    if len(self.capacities)!=4 or any(
+                            c["context_limit"]!=context_limit() or c["block_size"]<=0
+                            or c["free_blocks"]<math.ceil(context_limit()/c["block_size"])
+                            or c["max_requests"]!=16 for c in self.capacities):
+                        raise RuntimeError("D owner cannot admit one full-context request")
         except BaseException:
             await self.client.close()
+            self.controller_lock.close();self.controller_lock=None
             raise
         self.tasks=[asyncio.create_task(self._prefill(i)) for i in range(4)]
         self.tasks.append(asyncio.create_task(self._decode()))
@@ -105,6 +160,8 @@ class Coordinator:
         for task in self.tasks:task.cancel()
         await asyncio.gather(*self.tasks,return_exceptions=True)
         if self.client:await self.client.close()
+        if self.controller_lock:
+            self.controller_lock.close();self.controller_lock=None
 
     async def submit(self,session,prompt,n):
         if self.failure:raise RuntimeError("Coordinator stopped after uncertain execution")
@@ -208,14 +265,14 @@ class Coordinator:
         deferred=[]
         while True:
             first=deferred.pop(0) if deferred else await self.ready.get()
-            jobs=[first];counts=[0]*4;counts[first.owner]=1
             await asyncio.sleep(.025)
-            while len(jobs)<self.max_batch and not self.ready.empty():
-                candidate=self.ready.get_nowait()
-                if counts[candidate.owner]>=16:
-                    deferred.append(candidate)
-                else:
-                    jobs.append(candidate);counts[candidate.owner]+=1
+            candidates=[first]+deferred;deferred=[]
+            while not self.ready.empty():candidates.append(self.ready.get_nowait())
+            try:
+                jobs,deferred=select_wave(candidates,self.capacities,self.max_batch)
+            except Exception as error:
+                self._fail(candidates,error)
+                return
             try:
                 if self.failure:raise RuntimeError("Coordinator failed closed")
                 for job in jobs:

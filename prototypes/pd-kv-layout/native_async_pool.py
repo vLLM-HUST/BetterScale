@@ -9,7 +9,7 @@ import traceback
 import uuid
 
 METHODS = frozenset(('pd_export_retired', 'pd_wait_export', 'pd_finish_export',
-                     'pd_drop_target', 'pd_import_target', 'pd_probe_retired', 'pd_abort_import', 'pd_import_failure_probe', 'pd_close_store_clients'))
+                     'pd_drop_target', 'pd_import_target', 'pd_probe_retired', 'pd_abort_import', 'pd_import_failure_probe', 'pd_close_store_clients', 'pd_capacity'))
 
 async def owner_utility(client, owner, method, *args):
     if type(owner) is not int or not 0 <= owner < len(client.core_engines):

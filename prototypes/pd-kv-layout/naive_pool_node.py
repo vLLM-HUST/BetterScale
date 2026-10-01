@@ -36,7 +36,7 @@ def validate_rpc(kind,body):
     if type(instance) is not int or not 0<=instance<(4 if kind=="P" else 1):
         raise ValueError("Invalid instance")
     fields={"generate_batch":{"items"},"export":{"owner","tokens","salt"},
-            "import":{"owner","key","salt"},"drop":{"owner","salt"}}
+            "import":{"owner","key","salt"},"drop":{"owner","salt"},"capacity":set()}
     if not isinstance(op,str) or op not in fields or not isinstance(args,dict) or set(args)!=fields[op]:
         raise ValueError("Unqualified RPC/arguments")
     def owner_salt(item):
@@ -62,7 +62,7 @@ def validate_rpc(kind,body):
                 raise ValueError("Invalid request envelope/duplicate writer")
             salts.add(item["salt"]);counts[item["owner"]]+=1
         if max(counts)>16:raise ValueError("Owner capacity exceeded")
-    else:
+    elif op!="capacity":
         owner_salt(args)
         if op=="export":tokens(args["tokens"])
         if op=="import" and (not isinstance(args["key"],str) or len(args["key"])!=64
@@ -136,17 +136,21 @@ class Cache:
             raise ValueError("Checkpoint is not the admitted TP2 target representation")
         async with self.lock:
             def publish():
+                def put_immutable(key,value):
+                    size=self.store.get_size(key)
+                    if size==len(value):return
+                    if size>=0:raise RuntimeError("Immutable Store object size collision")
+                    rc=self.store.put(key,value)
+                    if rc!=0:raise RuntimeError(f"DRAM object put failed: {rc}")
                 chunks=[]
                 for offset in range(0,len(data),8<<20):
                     chunk=data[offset:offset+(8<<20)]
                     chunk_key="chunk:"+hashlib.sha256(chunk).hexdigest()
-                    rc=self.store.put(chunk_key,chunk)
-                    if rc!=0:raise RuntimeError(f"DRAM chunk put failed: {rc}")
+                    put_immutable(chunk_key,chunk)
                     chunks.append((chunk_key,len(chunk)))
                 # A generation becomes discoverable only after every chunk ack.
                 manifest=pack(dict(size=len(data),chunks=chunks))
-                rc=self.store.put("manifest:"+key,manifest)
-                if rc!=0:raise RuntimeError(f"DRAM manifest put failed: {rc}")
+                put_immutable("manifest:"+key,manifest)
             await asyncio.to_thread(publish)
 
     async def get(self,key):

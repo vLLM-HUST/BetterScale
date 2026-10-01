@@ -22,14 +22,19 @@ async def run(kind,instance,connection):
     try:
         model=AsyncLLM.from_engine_args(AsyncEngineArgs(**options))
         assert len(model.engine_core.core_engines)==layout["dp"]
-        connection.send(("ready",dict(kind=kind,instance=instance,layout=layout,
+        capacities=[await owner_utility(model.engine_core,owner,"pd_capacity")
+                    for owner in range(layout["dp"])]
+        connection.send(("ready",dict(capacities=capacities,kind=kind,instance=instance,layout=layout,
                                         context_limit=options["max_model_len"],
                                         state_bytes=options["kv_cache_memory_bytes"],target_only=True)))
         while True:
             op,args=await asyncio.to_thread(connection.recv)
             if op=="stop":
                 connection.send(("ok",None));break
-            if op=="generate_batch":
+            if op=="capacity":
+                result=[await owner_utility(model.engine_core,owner,"pd_capacity")
+                        for owner in range(layout["dp"])]
+            elif op=="generate_batch":
                 items=args["items"]
                 counts=[0]*layout["dp"]
                 if not 1<=len(items)<=16*layout["dp"]:

@@ -167,3 +167,37 @@ follow-on is the262144 model gate with24.25GiB/rank State; it is still unqualifi
 The EP8 staging helper's two changed Python files compare exactly against
 candidate-package-10-ep8-state (ep8-staging-reproduction2).
 Fifty affected CPU tests pass at this checkpoint.
+
+## 256K follow-on and next admission frontier
+
+The first full-context configuration uses the same24.25GiB State/rank on both
+roles. This is a bounded qualification budget, **not a measurement of maximal
+D8 HBM utilization**. Both native pools report2,140,160 pooled token slots per
+TP2 attention owner, or8.16×262144 before allocator reservations.
+Sources: hw81-p4-256k-source and hw86-d8-256k-source, frozen from af91af4.
+The512GiB DRAM segment/host is within the inspected~2TB container memory limit.
+
+With context262144, the1K four-owner two-turn gate passed in103.65s.
+The32768-token four-owner two-turn gate passed in566.71s, including12 exact
+post-H2D State comparisons and final copies on both sides. This long delay is a
+naive full-payload/readback diagnostic cost, not device step timing. Its ordinary
+checkpoint is735,908,281 bytes. The262080-token gate and a subsequent exact
+262144-total-token warm continuation remain active and unqualified here.
+Receipts: runtime/hw86-long-pd-{1024,32768,262080}; the final single-session edge
+uses exact-context-boundary.py and hw86-exact-context-boundary.*.
+
+The next source change (not yet loaded into these frozen services) introduces
+an idle Core capacity receipt and admission by both execution seats and complete
+request KV-page footprint, including retained lookahead allowance. Sixteen seats
+must not imply that16×256K fits a24.25GiB owner. CPU fixtures show8 such requests
+per1044 free2048-token blocks, while16×100K fits. Deferred requests are packed
+into subsequent waves, not serialized accidentally one at a time.
+
+It also adds a loopback-only token-ID frontend, per-operation transport receipts,
+a same-directory controller lock, refusal to restart over unfinished ownership,
+and idempotent content-addressed Store puts. These changes need a live startup/
+frontend gate before promotion.55 affected CPU tests pass; an actual85MiB Store
+repeat-put/get gate passed at~0.3s per operation (naive-cache-idempotent-gate).
+Do not infer that this isolates the long-service bottleneck. A future optimized
+path should reuse the existing worker-direct streamed State protocols rather than
+treating repeated multi-GiB Python serialization as the desired architecture.
