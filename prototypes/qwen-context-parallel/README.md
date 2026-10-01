@@ -128,3 +128,11 @@ Receipts are `fia-wave-single-2` and `fia-wave-draft-padding` under the task
 runtime root. The new `plan_discard_latest` host ABI needs the rebuilt adapter;
 old native manifests are NOT promoted by these tests.18 affected CPU tests and
 the native C++1000-wave lifecycle check pass. Model validation remains pending.
+
+A subsequent full-model request exposed a separate metadata normalization gap:
+MTP may put zero-KV padding inside the first16 rows, while the old compactor
+kept those rows and folded only rows17 onward. `compact_padding` now preserves
+the exact1..16 live prefix and collapses the entire zero suffix, rejecting holes
+and seventeen live requests. This is validated for capacities through4096;26
+affected CPU tests pass. The owning CP planner still rejects noncanonical input.
+The model-level run before this fix failed closed, not a successful continuation.

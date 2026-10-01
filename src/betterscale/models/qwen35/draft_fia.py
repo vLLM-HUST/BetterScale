@@ -12,22 +12,23 @@ import torch
 
 
 def compact_padding(metadata):
-    # Native merged draft pads its one-token phase to the *token* capacity,
-    # potentially2048 rows although this service admits only16 real requests.
-    # Zero-KV padding rows can share one ignored tail query; never fold live rows.
-    if len(metadata.actual_seq_lengths_q) <= 17:
+    # Preserve every live request, then fold the entire zero-KV suffix into
+    # one ignored query interval. MTP can pad to a large token capacity; even
+    # the first16 rows may contain padding when fewer requests are active.
+    lengths = list(metadata.seq_lens_list)
+    ends = list(metadata.actual_seq_lengths_q)
+    if len(lengths) != len(ends) or not lengths:
+        raise ValueError("Invalid draft query/KV metadata")
+    live = next((i for i, length in enumerate(lengths) if length == 0), len(lengths))
+    if not 1 <= live <= 16 or any(lengths[live:]):
+        raise ValueError("Draft metadata requires1..16 live rows and trailing padding")
+    if len(lengths) <= live + 1:
         return metadata
-    if any(metadata.seq_lens_list[16:]):
-        raise ValueError(
-            "Draft padding compaction encountered a live seventeenth request"
-        )
     result = copy.copy(metadata)
-    result.actual_seq_lengths_q = metadata.actual_seq_lengths_q[:16] + [
-        metadata.actual_seq_lengths_q[-1]
-    ]
-    result.seq_lens_list = metadata.seq_lens_list[:16] + [0]
-    result.seq_lens = metadata.seq_lens[:16]
-    result._mtp_device_seq_lens = metadata._mtp_device_seq_lens[:16]
+    result.actual_seq_lengths_q = ends[:live] + [ends[-1]]
+    result.seq_lens_list = lengths[:live] + [0]
+    result.seq_lens = metadata.seq_lens[:live]
+    result._mtp_device_seq_lens = metadata._mtp_device_seq_lens[:live]
     return result
 
 
