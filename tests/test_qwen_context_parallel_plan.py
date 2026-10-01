@@ -166,3 +166,51 @@ def test_vendor_else_boundary_ignores_nested_branch():
     import pytest
     with pytest.raises(ValueError, match='outer else'):
         locate('                    } else {', 0)
+
+def test_full_target_batch_native_positive_dummy_is_not_a_seat():
+    from types import SimpleNamespace
+    device_lengths = object()
+    original = SimpleNamespace(actual_seq_lengths_q=list(range(1,17))+[24],
+        seq_lens_list=[1030]*16+[1], num_actual_tokens=16,
+        _mtp_device_seq_lens=device_lengths)
+    with __import__('pytest').raises(ValueError, match='Expected1..16'):
+        cp.schedule(original.seq_lens_list, [1]*16+[8])
+    adjusted=adapter.target_metadata(original,16,24)
+    assert adjusted.seq_lens_list == [1030]*16+[0]
+    assert adjusted.actual_seq_lengths_q == list(range(1,17))+[24]
+    assert original.seq_lens_list[-1] == 1
+    assert adjusted._mtp_device_seq_lens is device_lengths
+    storage=ctypes.create_string_buffer(bytes(native(17))+bytes(4096-2528))
+    frame=SimpleNamespace(context_parallel=True,tokens=24,workspace=123,
+        h_tiling=SimpleNamespace(data_ptr=lambda:ctypes.addressof(storage)))
+    adapter.prepare(frame,adjusted)
+    assert struct.unpack_from('<I',storage.raw,3328)[0] == 16
+
+
+def test_target_rows_follow_runner_not_kv_sentinel():
+    from types import SimpleNamespace
+    # A genuine one-token history is live; only the proven suffix is padding.
+    original=SimpleNamespace(actual_seq_lengths_q=[1,2,4,6],
+        seq_lens_list=[1,1,0,1],num_actual_tokens=2)
+    adjusted=adapter.target_metadata(original,2,6)
+    assert adjusted.seq_lens_list == [1,1,0]
+    assert adjusted.actual_seq_lengths_q == [1,2,6]
+    assert original.actual_seq_lengths_q == [1,2,4,6]
+    unpadded=SimpleNamespace(actual_seq_lengths_q=[1,2],
+        seq_lens_list=[1,1],num_actual_tokens=2)
+    assert adapter.target_metadata(unpadded,2,2) is unpadded
+
+
+def test_target_metadata_fails_closed_on_wrong_ownership():
+    import pytest
+    from types import SimpleNamespace
+    base=dict(actual_seq_lengths_q=[1,2,6],seq_lens_list=[10,20,1],
+              num_actual_tokens=2)
+    for changes,live,tokens in [
+        ({},0,6), ({},4,6), ({},2,7), ({'num_actual_tokens':3},2,6),
+        ({'seq_lens_list':[10,20]},2,6),
+        ({'seq_lens_list':[0,20,1]},2,6),
+        ({'seq_lens_list':[10,20,10]},2,6),
+        ({'actual_seq_lengths_q':[1,1,6]},2,6)]:
+        with pytest.raises(ValueError):
+            adapter.target_metadata(SimpleNamespace(**(base|changes)),live,tokens)

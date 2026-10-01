@@ -218,6 +218,8 @@ def install(library, *, heads=12, kvheads=2, requests=9, tokens=2048):
             if self.input_batch.num_reqs:
                 raise RuntimeError("Context-parallel capture requires an empty startup pool")
             m = cp.capture_metadata(m, tokens)
+        elif frame.context_parallel:
+            m = cp.target_metadata(m, self.input_batch.num_reqs, tokens)
         planner = self._fia_planner
         if planner.fixtures is not None and not ctx.capturing:
             frame.prepare(

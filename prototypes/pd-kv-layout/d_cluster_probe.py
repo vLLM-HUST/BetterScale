@@ -6,7 +6,7 @@ import os
 import time
 from pathlib import Path
 
-async def main(output):
+async def main(output, batches, profile_batch):
     from pd_model_probe import prepare_worker, engine_options
     prepare_worker("D", native_async=True)
     options = engine_options(False)
@@ -42,8 +42,10 @@ async def main(output):
         await asyncio.gather(*(request("warmup", o, 0, 32) for o in range(3)))
         await model.wait_for_requests_to_drain()
         reports = []
-        for label, batch, capture in [("b1",1,False),("b8",8,False),
-                                       ("b8-profile",8,True)]:
+        cohorts = [(f"b{batch}", batch, False) for batch in batches]
+        if profile_batch:
+            cohorts.append((f"b{profile_batch}-profile", profile_batch, True))
+        for label, batch, capture in cohorts:
             armed = await model.collective_rpc("d_probe_arm", args=(str(output),label,batch,capture))
             begin = time.perf_counter_ns()
             requests = await asyncio.gather(*(request(label,o,i,128)
@@ -64,6 +66,8 @@ async def main(output):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output",type=Path,required=True)
+    parser.add_argument("--batches",type=int,nargs="+",choices=range(1,17),default=[1,8,16])
+    parser.add_argument("--profile-batch",type=int,choices=range(17),default=8)
     args=parser.parse_args()
     args.output.mkdir(parents=True,exist_ok=False)
-    asyncio.run(main(args.output))
+    asyncio.run(main(args.output,args.batches,args.profile_batch))

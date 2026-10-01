@@ -822,8 +822,12 @@ removing it a blocker or independently put locally idle EP ranks to sleep.
 ## D-only efficiency observation
 
 Use `bash run_d_cluster_probe.sh /absolute/new/output` on the prepared hw86
-task runtime. This runs balanced B1/B8 target-only cohorts and a bounded native
+task runtime. This runs balanced B1/B8/B16 target-only cohorts and a bounded native
 CANN/msprof B8 capture; no P engine is started. Read the
 [D6 evidence and interpretation boundaries](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/d-cluster-efficiency.md)
-before interpreting timings or increasing concurrency. B16 currently fails an
-attention metadata guard and is not included in the default probe.
+before interpreting timings or increasing concurrency. The configured B16 width
+now passes after fixing positive-KV native padding at the owned target metadata
+boundary; the16-live-request guard remains intact. Use --batches 8 16
+--profile-batch 0 for timing without a capture. D uses the isolated
+candidate-package-8-fia-padding; its two-file staging recipe is retained in the
+knowledge entry.

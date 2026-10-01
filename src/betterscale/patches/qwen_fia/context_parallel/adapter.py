@@ -44,6 +44,34 @@ def capture_metadata(metadata, tokens):
     return result
 
 
+def target_metadata(metadata, live_requests, tokens):
+    """Translate native target padding into the owned zero-KV padding ABI.
+
+    At full native request capacity, Ascend appends a positive-KV dummy row.
+    KV positivity therefore cannot identify real requests. The runner's live
+    count and unpadded token frontier identify the boundary; never mutate the
+    shared metadata or its device-authoritative length tensor.
+    """
+    ends = list(metadata.actual_seq_lengths_q)
+    lengths = list(metadata.seq_lens_list)
+    if (type(live_requests) is not int or not 0 < live_requests <= len(ends)
+            or len(ends) != len(lengths)
+            or ends[-1] != tokens
+            or ends[live_requests - 1] != metadata.num_actual_tokens
+            or any(b <= a for a, b in zip([0] + ends, ends))
+            or any(n <= 0 for n in lengths[:live_requests])):
+        raise ValueError("Target FIA live rows/frontier do not match runner metadata")
+    if len(ends) == live_requests:
+        return metadata
+    # Native padding may be KV0 or KV1; it is not another execution seat.
+    if any(n not in (0, 1) for n in lengths[live_requests:]):
+        raise ValueError("Target FIA padding contains a non-padding KV length")
+    result = copy.copy(metadata)
+    result.actual_seq_lengths_q = ends[:live_requests] + [ends[-1]]
+    result.seq_lens_list = lengths[:live_requests] + [0]
+    return result
+
+
 def prepare(frame, metadata):
     if not getattr(frame, 'context_parallel', False):
         return

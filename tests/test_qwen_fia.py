@@ -195,6 +195,7 @@ class WorkspaceContract(unittest.TestCase):
             h_tiling=pointer,
             plan=3,
             workspace=1,
+            context_parallel=False,
         )
         with (
             patch(

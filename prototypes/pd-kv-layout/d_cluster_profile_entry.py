@@ -6,6 +6,15 @@ from contextlib import nullcontext
 from ep6_state_entry import Worker as BaseWorker
 
 class Worker(BaseWorker):
+    def compile_or_warm_up_model(self):
+        result = super().compile_or_warm_up_model()
+        import os
+        directory = os.environ.get("BETTERSCALE_FIA_METADATA_AUDIT")
+        if directory:
+            from fia_padding_observer import install
+            install(directory)
+        return result
+
     def d_probe_arm(self, output, label, batch, capture):
         if getattr(self, "_probe", None) is not None:
             raise RuntimeError("Previous observation not retired")
