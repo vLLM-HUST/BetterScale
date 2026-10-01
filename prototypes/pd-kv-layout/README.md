@@ -358,3 +358,63 @@ the model-level failure. The two required native library envs are
 `target_only_diagnostic.py` suppresses only the scheduler's next proposal list,
 retaining draft computation and lookahead buffers. It is an isolation experiment,
 not production P-only execution or a claim that cold MTP State is safe.
+
+### Target-only full-model isolation
+
+Both `model-target-only-continuation/receipt.json` (draft computed but proposals
+not scheduled) and `model-no-draft-continuation/receipt.json` (no real-request
+draft forward) pass exact64-token warm/cold/uninterrupted equality on the4412
+prompt. Warm hits4475 tokens; cold hits0. This localizes the observed earlier
+failure to the speculative path/composition, but does not establish its cause.
+The second mode keeps native asynchronous sampled-count/next-token publication;
+returning no draft is not permission to skip that feedback. Startup still loads
+and captures the baseline draft model: memory/initialization reduction is open.
+Three CPU tests protect proposal suppression, feedback, and rejection of actual
+speculative work in this profile.
+
+### Integrated EP6 source boundary and current evidence
+
+`stage_ep6_runtime.py` now requires a pristine pinned model runner, stages only
+the Ascend package (not an entire site-packages directory), and applies the two
+explicit uneven-linear EP6 Python corrections. The native diagnostic has its own
+candidate pin manifest using the original four donor files, not the State/MTP
+adapted ones. An earlier attempt accidentally used the owned runner, hit the
+State APC hook with a native no-APC configuration, and failed; it is not native
+MoE evidence. Preserve `ep6-dummy-4` under the task runtime root.
+
+`ep6-dummy-5/complete.json` passes three simultaneous native TP2 clients/EP6,
+four dummy layers, eager, two balanced/skewed request phases and all clean exits.
+The full40-layer real-weight `ep6-real-2` executes both phases and exits cleanly,
+but all six strict code-retrieval checks FAIL (repeats prompt filler instead).
+The same64-token MARBLE input returns the correct answer through our TP2
+no-draft path (`ep6-quality-control.json`). An original-native TP2/no-EP control
+is required before attributing this to EP6 rather than native new-runtime math.
+No six-rank real-model correctness qualification is claimed.
+
+Launcher pitfalls are fixed in `run_ep6_model_probe.sh`: source CANN+ATB without
+nounset (vendor scripts reference unset shell variables), then append CANN's
+Python path so `acl` remains importable. The pinned config parser first calls an
+HF override on a model-type-only placeholder. Transformers5.14 chat templates
+return BatchEncoding by default: use `return_dict=False` and assert an integer
+list before passing prompt_token_ids; malformed input led to client shutdown
+waiting on DP peers, not an accelerator deadlock established by evidence.
+
+### First complete target checkpoint vertical
+
+`model_checkpoint.py` is an idle-engine-only TP2 prototype, not a production
+connector. Core owns native FA page references and resident epochs; workers
+export only target dense KV, selected GDN and canonical conv history. Import
+validates every tensor before writes, installs into fresh page/seat ownership,
+normalizes selectors, updates the worker epoch mirror so ingress does not erase
+the imported State, and publishes the hot resident only after both worker acks.
+Failure releases pages and invalidates the unpublished epoch. MTP is excluded.
+Four CPU tests use the actual ResidentLeases implementation to cover successful
+publish/export/drop, incomplete acks, worker failure and active-engine rejection.
+
+`checkpoint_model_probe.py` / `checkpoint_entry.py` select the existing no-draft
+candidate plus idle checkpoint utility methods; all other baseline gates remain.
+The model gate exports, drops the original hot cache, restores at different
+physical storage, then requires cached continuation to match cold exactly.
+CPU tensors are the initial transport; Store integration, incremental overlap,
+concurrent import and cross-owner execution are subsequent gates, not claims of
+this first vertical. Model result is pending.
