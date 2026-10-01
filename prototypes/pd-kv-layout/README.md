@@ -1,7 +1,9 @@
-# PD KV layout: first CPU prototype
+# PD KV layout and target-state handoff prototypes
 
-Research prototype only. No serving hooks, NPU initialization, model loading,
-Store service, new runtime installation or production topology change.
+Bounded research prototypes, not production qualification. The first section
+records the CPU-only layout experiment; later sections add real DRAM Store,
+NPU/model State restoration and isolated P2/D6 integration gates. Release pins
+and shared installed runtimes remain unchanged.
 
 ## Question and scope
 
@@ -464,3 +466,37 @@ export/import costs1.006/1.117seconds including host copies/serialization, not
 an incremental PCIe benchmark. The explicit wire path fixes attempt2 without
 enabling insecure utility serialization. This is still one TP2 engine, not
 cross-group or Mooncake model transfer.
+
+
+### Owned State on six decode cards
+
+`stage_ep6_state_candidate.py` copies the qualified no-draft candidate and changes
+only two topology admission checks in that isolated artifact, not the released
+source. `ep6_state_entry.py` keeps the same Scheduler/State ownership and adds an
+explicit post-startup idle-rank route: eager with no attention metadata, and no
+draft dummy forward. This is necessary because idle ranks must participate in
+target MoE collectives without modifying hot sessions or issuing unmatched MTP
+collectives. Native startup/capture is unchanged; two CPU tests check suppression,
+restoration on errors and unchanged startup behavior.
+
+`ep6-state/complete.json` PASSES real-model DP3/TP2/EP6 target-only State with
+uneven prompts4412/252/32 and output lengths64/16/8. All three32-token warm/cold
+continuations match exactly; warm hits4475/267/39, cold hits0. Early-finished
+ranks retain their hot sessions while peers continue. All clients exit0 and all
+six NPUs are subsequently free. This is not qualification of FULL idle replay.
+
+`model_store.py` bridges explicit target wire tensors to40 head-major streams,
+selected GDN and canonical conv blobs through the existing session protocol.
+Only newly committed dense ranges become new Store objects; previous immutable
+chunks are retained. The current producer still exports complete snapshots at
+quiescent boundaries; no incremental D2H or overlap claim. Two CPU tests cover
+bidirectional model geometry, append-only manifests and missing dependencies;
+`model-store-cpu-2/receipt.json` repeats full-geometry synthetic bytes against real
+Mooncake DRAM. `dram_store_fixture.py` owns a task-local loopback CPU master,
+one1GiB DRAM segment and two clients, with bounded startup/cleanup.
+
+`pd_model_probe.py` launches P on0/1 and three D TP2 owners on2..7 concurrently,
+then attempts P→D→P→D→P per session through that Store adapter. It compares second
+D continuation with cold computation and checks exact cache frontiers. Result
+is pending; it is a synchronous turn-boundary first vertical, not the desired
+compute/PCIe/Store incremental pipeline or a distributed durable coordinator.

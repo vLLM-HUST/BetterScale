@@ -296,3 +296,34 @@ P2+D6 topology progress: real NPU cards2..7 passed TP2-group reductions and8
 unequal-split EP6 HCCL dispatch/combine roundtrips using the pinned core's exact
 43/43/43/43/42/42 expert map. This settles the basic six-rank transport/mapping
 question, not fused-MoE or model integration. See PD prototype README/receipt.
+
+### Current model boundary (2026-10-01, supersedes pending gates above)
+
+Use `prototypes/pd-kv-layout/README.md` for the reproducer/artifact details.
+Full target-only TP2 continuation now passes exact warm/cold/uninterrupted
+64-token comparison. Complete target export/drop/import also passes after moving
+resident0→1 and permuting FA page ownership, with4475 cached tokens. Real-request
+MTP forwarding/proposals are disabled; startup still loads/captures the drafter.
+The original speculative warm-continuation mismatch remains unresolved and is
+not excused as a near-tie; do not silently re-enable it in PD acceptance.
+
+Native DP3/TP2/EP6 real40-layer retrieval passes after the two uneven-expert map
+corrections **and** the normal Ascend non-SP backend marker. An explicit Worker
+skips Ascend platform's worker_cls=auto-only `all2all_backend` fixup, otherwise
+Qwen chunks each TP input in half while Ascend's non-SP AllGather expects full
+replicas. Trace weights match source exactly; the pre-fix first-layer input
+halves and post-fix six correct retrievals make this a concrete integration gap.
+
+The isolated `candidate-package-7-ep6-state` additionally passes real owned State
+DP3/TP2/EP6 skew/idle-rank warm-versus-cold continuations (cursors4475/267/39).
+Its runtime idle participants force eager/no-attention and temporarily suppress
+drafter dummy work: no resident-state writes and no extra MTP EP collectives
+absent on active peers. Startup/capture remains unchanged. This does not qualify
+FULL idle replay, real-request MTP, or production ownership/availability.
+
+Safe untyped native utility RPC does not reconstruct nested tensors; use the
+prototype's explicit shape/dtype/bytes envelope rather than enabling insecure
+serialization. The target-to-Store adapter uses40 head-major dense streams,
+turn-end GDN/conv blobs and the existing local CAS/immutable-manifest protocol.
+Full-geometry synthetic DRAM P→D→P and incremental manifests pass; actual-model
+P2/D6 Store handoff is the next live gate, not yet a claimed result here.
