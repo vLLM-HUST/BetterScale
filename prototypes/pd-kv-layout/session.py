@@ -116,7 +116,7 @@ def restore_manifest(objects,key,identity,streams,token_bytes):
     if key is None:return dict(tokens=[],chunks=[],cursor=0)
     try:
         m=json.loads(objects.get(key));cursor=m['cursor']
-        if (m['schema']!=1 or m['identity']!=identity or m['streams']!=list(streams)
+        if (m['schema'] not in (1,2) or m['identity']!=identity or m['streams']!=list(streams)
                 or m['token_bytes']!=token_bytes or type(cursor) is not int or cursor<0
                 or not isinstance(m['tokens'],list) or len(m['tokens'])!=cursor
                 or any(type(t) is not int or t<0 for t in m['tokens'])
@@ -135,9 +135,14 @@ def restore_manifest(objects,key,identity,streams,token_bytes):
                 raise ValueError('Invalid base frontier')
             for k in keys.values():dependency(k,(stop-frontier)*token_bytes)
             frontier=stop
-        if (frontier!=cursor or not isinstance(m['checkpoint'],dict)
-                or set(m['checkpoint'])!={'gdn','conv'}):
+        if frontier!=cursor or not isinstance(m['checkpoint'],dict):
             raise ValueError('Incomplete base snapshot')
+        if m['schema']==2:
+            from model_store_checkpoint import FORMAT,validate_descriptors
+            if m.get('checkpoint_format')!=FORMAT:raise ValueError('Unknown checkpoint format')
+            validate_descriptors(m['checkpoint'])
+        elif set(m['checkpoint'])!={'gdn','conv'} or m.get('checkpoint_format') is not None:
+            raise ValueError('Incomplete base checkpoint')
         for d in m['checkpoint'].values():dependency(d['key'],d['bytes'])
         for k,size in sizes.items():
             if objects.store.get_size(k)!=size:raise CacheMiss('Missing/truncated base dependency: '+k)
@@ -269,11 +274,21 @@ class Turn:
         self.chunks.append(dict(start=self.cursor, stop=stop, keys=dict(keys)))
         self.cursor = stop
 
-    def finish(self, tokens, checkpoint, next_owner, *, writer_retired, pending_token=None):
+    def finish(self, tokens, checkpoint, next_owner, *, writer_retired, pending_token=None,
+               checkpoint_format=None, checkpoint_prefix=None):
         if self.closed or self.failed or not writer_retired:
             raise Conflict("cannot publish before final writer retirement")
-        if (len(tokens) != self.cursor or list(tokens[:len(self.base["tokens"])]) != self.base["tokens"]
-                or set(checkpoint) != {"gdn", "conv"} or any(not v for v in checkpoint.values())):
+        if checkpoint_format is not None:
+            from model_store_checkpoint import FORMAT,validate_descriptors
+            namespace=f'pd/{self.lease.session}/{self.lease.epoch}/'
+            if (checkpoint_format!=FORMAT or not isinstance(checkpoint_prefix,str)
+                    or not checkpoint_prefix.startswith(namespace)
+                    or not checkpoint_prefix[len(namespace):] or '/' in checkpoint_prefix[len(namespace):]):
+                raise ValueError('Invalid checkpoint writer')
+            validate_descriptors(checkpoint,prefix=checkpoint_prefix)
+        elif set(checkpoint)!={'gdn','conv'} or any(not v for v in checkpoint.values()):
+            raise ValueError('Incomplete target checkpoint')
+        if (len(tokens) != self.cursor or list(tokens[:len(self.base["tokens"])]) != self.base["tokens"]):
             raise ValueError("incompatible frontier/checkpoint")
         if any(type(t) is not int or t < 0 for t in tokens):
             raise ValueError("invalid token history")
@@ -282,16 +297,18 @@ class Turn:
         try:
             while self.pending:
                 self._drain_one()
-            descriptors = {}
-            for name, payload in checkpoint.items():
-                key = f"{self.prefix}/checkpoint/{name}"
-                frozen = bytes(payload)
-                self.objects.put(key, frozen)
-                descriptors[name] = {"key": key, "bytes": len(frozen)}
-            manifest = dict(schema=1, identity=self.lease.identity, streams=list(self.streams),
+            descriptors = dict(checkpoint) if checkpoint_format else {}
+            if checkpoint_format is None:
+                for name, payload in checkpoint.items():
+                    key = f"{self.prefix}/checkpoint/{name}"
+                    frozen = bytes(payload)
+                    self.objects.put(key, frozen)
+                    descriptors[name] = {"key": key, "bytes": len(frozen)}
+            manifest = dict(schema=2 if checkpoint_format else 1, identity=self.lease.identity, streams=list(self.streams),
                             token_bytes=self.token_bytes, cursor=self.cursor, tokens=list(tokens),
                             chunks=self.chunks, checkpoint=descriptors, pending_token=pending_token,
                             epoch=self.lease.epoch)
+            if checkpoint_format:manifest['checkpoint_format']=checkpoint_format
             key = f"{self.prefix}/manifest"
             self.objects.put(key, json.dumps(manifest).encode())
             # Only this CAS exposes the new version/next writer. Stale writes are

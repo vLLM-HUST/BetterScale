@@ -225,6 +225,11 @@ def _import_worker(worker,header,shards):
     from betterscale.live.llm.qwen35.state import GDNState
     runner,root,rank=worker_root(worker,header,source=False)
     shard=shards[rank];seat=header['seat'];cursor=header['cursor'];block=header['block_size']
+    checkpoint_receipt=None
+    if header.get('checkpoint_format') is not None:
+        from model_store_checkpoint import FORMAT,load_worker
+        if header['checkpoint_format']!=FORMAT:raise ValueError('Unknown target checkpoint format')
+        shard,checkpoint_receipt=load_worker(runner,header,rank,shard['checkpoint_store'])
     streamed=header.get('dense_store') is not None
     expected_layers={n for n,l in root.target.items() if not streamed or isinstance(l,GDNState)}
     if shard['rank']!=rank or shard['draft_valid'] is not False or set(shard['layers'])!=expected_layers:
@@ -266,10 +271,13 @@ def _import_worker(worker,header,shards):
     if streamed:
         from model_stream_import import import_dense
         dense_receipt=import_dense(worker,runner,root,rank,header)
+    if checkpoint_receipt is not None and header['dense_store'].get('verify'):
+        from model_store_checkpoint import verify_installed
+        verify_installed(root,seat,shard);checkpoint_receipt['exact_transfer_oracle']=True
     root.continuation.selection.tensor[seat]=1;root.conv_selection.tensor[seat]=1
     root.continuation.resident_epoch.tensor[seat]=header['epoch'];root.remaining_outputs.tensor[seat]=0
     runner._live_resident_epochs[seat]=header['epoch'];runner._live_previous_verify.discard(seat)
-    return dict(rank=rank,seat=seat,epoch=header['epoch'],cursor=cursor,draft_valid=False,dense_import=dense_receipt)
+    return dict(rank=rank,seat=seat,epoch=header['epoch'],cursor=cursor,draft_valid=False,dense_import=dense_receipt,checkpoint_import=checkpoint_receipt)
 
 
 def install_worker():

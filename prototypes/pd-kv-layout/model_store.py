@@ -101,15 +101,20 @@ def publish_streamed(directory,objects,lease,payload,next_owner):
             or not 0<=start<=cursor<=8192 or len(h['tokens'])!=cursor+1
             or len(shards)!=2 or [s['rank'] for s in shards]!=[0,1]):
         raise ValueError('Invalid streamed model header')
+    direct=bool(h['stream_store'].get('direct_checkpoint'));descriptors={}
     gdn={};conv={};streams=[];by_rank=[]
     for shard in shards:
         rank=shard['rank'];ack=shard['dense_store'];gdn[rank]={};conv[rank]={}
         if shard['draft_valid'] is not False or ack['acknowledged'] is not True:
             raise ValueError('Unacknowledged target stream')
-        for name,data in shard['layers'].items():
-            if set(data)!={'recurrent','conv'}:raise ValueError('Unexpected streamed checkpoint plane')
-            tensor(data['recurrent'],(16,128,128),'float32');tensor(data['conv'],(3,4096),'bfloat16')
-            gdn[rank][name]=data['recurrent'];conv[rank][name]=data['conv']
+        if direct:
+            descriptor=shard['checkpoint_store'];descriptors[f'rank{rank}']=descriptor
+            gdn[rank]={name:None for name in descriptor['layers']}
+        else:
+            for name,data in shard['layers'].items():
+                if set(data)!={'recurrent','conv'}:raise ValueError('Unexpected streamed checkpoint plane')
+                tensor(data['recurrent'],(16,128,128),'float32');tensor(data['conv'],(3,4096),'bfloat16')
+                gdn[rank][name]=data['recurrent'];conv[rank][name]=data['conv']
         local=ack['streams'];fa={}
         for name in local:
             layer,kind,head=name.rsplit('/',2)
@@ -134,11 +139,16 @@ def publish_streamed(directory,objects,lease,payload,next_owner):
             or {s.rsplit('/',1)[0] for s in streams[:20]}!={s.rsplit('/',1)[0] for s in streams[20:]}
             or [(c['start'],c['stop']) for c in by_rank[0]]!=[(c['start'],c['stop']) for c in by_rank[1]]):
         raise ValueError('Mismatched streamed TP layouts')
+    options={}
+    if direct:
+        from model_store_checkpoint import FORMAT,validate_descriptors
+        validate_descriptors(descriptors,prefix=prefix)
+        options=dict(checkpoint_format=FORMAT,checkpoint_prefix=prefix)
     turn=Turn(directory,objects,lease,tuple(sorted(streams)),TOKEN_BYTES)
     try:
         if turn.cursor!=start:raise ValueError('Stream does not start at committed frontier')
         for a,b in zip(*by_rank):
             turn.append_acknowledged(a['stop'],dict(a['keys'],**b['keys']),prefix=prefix)
-        checkpoint=dict(gdn=msgspec.msgpack.encode(gdn),conv=msgspec.msgpack.encode(conv))
-        return turn.finish(h['tokens'][:-1],checkpoint,next_owner,writer_retired=True,pending_token=h['tokens'][-1])
+        checkpoint=descriptors if direct else dict(gdn=msgspec.msgpack.encode(gdn),conv=msgspec.msgpack.encode(conv))
+        return turn.finish(h['tokens'][:-1],checkpoint,next_owner,writer_retired=True,pending_token=h['tokens'][-1],**options)
     finally:turn.close()

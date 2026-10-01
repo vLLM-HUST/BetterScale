@@ -21,8 +21,8 @@ take precedence over those old judgments.**
   materially different geometry, transfer/State identity failure, departure
   from the measured envelope or representative task-quality regression.
 - Native AsyncLLM/DPLB targeted-owner coordination, retired async export,
-  hot eviction during export and worker-direct streamed Store ingress now pass
-  the P2/D6 matrix. See the current ingress evidence below. Preserve import
+  hot eviction and worker-direct dense AND target-checkpoint transport now pass
+  the P2/D6 matrix. See the direct-checkpoint/latency evidence below. Preserve import
   quarantine until both TP workers drain; never release on an unknown RPC outcome.
   Strict remains an isolation control, not a production default.
 - hw86 is the active host; hw180 is retired and must not be required. Dedicated
@@ -789,3 +789,50 @@ approximately 64 MB per handoff through worker/Core/controller/Core/worker,
 including serialization and TP broadcast; dense ingress alone does not remove
 that data-plane detour. No direct-checkpoint implementation or qualification is
 claimed yet.
+
+
+### Worker-direct target checkpoint and true handoff timer (2026-10-01)
+
+The opt-in --direct-checkpoint path keeps GDN/conv payloads off controller/Core
+RPC too. Source workers snapshot the retired target State before hot eviction,
+then serialize/upload one approximately 32.2 MB shard per TP rank as part of the
+background export. Only acknowledged descriptors return through control RPC.
+Manifest schema2/format tp2-target-shards-v1 names both immutable checkpoint
+shards; schema1 remains the legacy GDN/conv format. Destination workers fetch
+and validate identity/cursor/rank/census/geometry before installing their local
+target State. Dense transfer, fencing and publication-after-both-drains stay
+unchanged. Checkpoint blobs still use CPU msgpack/byte copies locally: this is
+not a zero-copy or pinned checkpoint pipeline claim.
+
+CPU tests pass 87 cases. The real DRAM SDK checkpoint roundtrip passes with a
+32,198,674-byte synthetic target shard. hw86-native-direct-checkpoint-oracle
+passes 12 handoffs, three exact 16-token comparisons, and 96 shard byte oracles:
+24 each for dense Store export, dense H2D, checkpoint Store export and checkpoint
+H2D. Post-H2D rank1 failure still drains before release, never publishes the
+failed resident and retries successfully. No actor failures or leaked NPU/Store
+processes remain after exit.
+
+The same-source hw86-native-direct-checkpoint-latency arm removes byte oracles,
+fault injection AND the unrelated export-activity request (--no-export-activity).
+It preserves hot eviction/real handoffs and passes all 12 handoffs/token gates.
+This is a real no-activity measurement, unlike subtracting the old injected
+interval. Six handoffs per direction, context frontiers 32–4456:
+- P->D: median 0.727 s, range 0.646–1.624 s.
+- D->P: median 1.462 s, range 1.363–1.597 s.
+- Manifest publication medians 7.5 / 15.3 ms; restore-plan medians 0.7 / 0.7 ms.
+- Destination import RPC medians 0.591 s (D) / 0.109 s (P).
+- D source export begin/drop/finish medians 0.629 / 0.411 / 0.285 s.
+
+D-side control scheduling is now a visible cost beyond data transfer. The
+pinned donor checks global DP finish only every 32 steps and executes dummy
+batches while its wave remains active. This is a candidate explanation for
+small-utility delays, not yet a causal qualification or permission to alter
+production cadence. A shorter cadence must be applied consistently to every
+D core and preserve pause-consensus semantics; qualify it separately and keep
+the donor/default behavior unchanged unless deliberately adopted.
+
+All evidence/source capsules live under the task runtime; direct-checkpoint
+oracle and latency arms share the oracle source capsule. Neither test qualifies
+cross-host physical placement, busy-engine request admission, HA, representative
+throughput or a production latency SLA. Receiver dense H2D is still full-history
+for a fresh GPU resident; MTP is still not transferred.

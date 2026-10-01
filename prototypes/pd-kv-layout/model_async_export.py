@@ -71,6 +71,10 @@ def begin_worker(worker,header):
             torch.npu.set_device(runner.device)
             start=time.monotonic()
             result=export_dense(runner,root,rank,header,lifetime=job['lifetime'],expected_dense=expected)
+            if header['stream_store'].get('direct_checkpoint'):
+                from model_store_checkpoint import publish_worker
+                descriptor=publish_worker(runner,header,shard)
+                job['shard']=dict(rank=rank,draft_valid=False,checkpoint_store=descriptor)
             result['host_job_interval']=[start,time.monotonic()]
             return result
         job['pool']=ThreadPoolExecutor(max_workers=1,thread_name_prefix='pd-retired-export')

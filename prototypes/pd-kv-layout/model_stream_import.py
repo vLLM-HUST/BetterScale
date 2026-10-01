@@ -24,7 +24,7 @@ def load_plan(objects,key,identity,streams,ports,*,verify=False):
     """Stage target checkpoint blobs only; workers validate every dense read."""
     try:
         manifest=json.loads(objects.get(key));cursor=manifest['cursor']
-        if (identity!=IDENTITY or manifest['schema']!=1 or manifest['identity']!=identity
+        if (identity!=IDENTITY or manifest['schema'] not in (1,2) or manifest['identity']!=identity
                 or manifest['streams']!=list(streams) or manifest['token_bytes']!=512
                 or type(cursor) is not int or not 0<cursor<=8192
                 or len(manifest['tokens'])!=cursor or len(streams)!=40
@@ -32,6 +32,17 @@ def load_plan(objects,key,identity,streams,ports,*,verify=False):
                 or type(manifest['pending_token']) is not int or manifest['pending_token']<0):
             raise ValueError('Invalid target manifest')
         validate_chunks(manifest['chunks'],cursor,streams)
+        if manifest['schema']==2:
+            from model_store_checkpoint import FORMAT,validate_descriptors
+            if manifest.get('checkpoint_format')!=FORMAT:raise ValueError('Unknown checkpoint format')
+            validate_descriptors(manifest['checkpoint'])
+            return dict(header=dict(identity=identity,cursor=cursor,
+                        tokens=manifest['tokens']+[manifest['pending_token']],block_size=2048,
+                        checkpoint_format=FORMAT,
+                        dense_store=dict(streams=list(streams),chunks=manifest['chunks'],ports=ports,verify=verify)),
+                        shards=[dict(rank=rank,draft_valid=False,checkpoint_store=manifest['checkpoint'][f'rank{rank}'])
+                                for rank in (0,1)])
+        if manifest.get('checkpoint_format') is not None:raise ValueError('Unknown checkpoint format')
         if set(manifest['checkpoint'])!={'gdn','conv'}:raise ValueError('Missing target checkpoint')
         checkpoints={}
         for name,descriptor in manifest['checkpoint'].items():

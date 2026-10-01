@@ -73,7 +73,9 @@ def worker(role,connection,output):
 
 
 def main():
- p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--incremental',action='store_true');p.add_argument('--streamed',action='store_true');p.add_argument('--async-export',action='store_true');p.add_argument('--serialize-export',action='store_true');p.add_argument('--verify-transfer',action='store_true');p.add_argument('--native-async',action='store_true');p.add_argument('--import-failure-probe',action='store_true');p.add_argument('--stream-import',action='store_true');p.add_argument('--logprobs',action='store_true');p.add_argument('--cold-controls',type=int,choices=range(4),default=0);a=p.parse_args();a.async_export=a.async_export or a.serialize_export;a.streamed=a.streamed or a.async_export;a.incremental=a.incremental or a.streamed;a.output.mkdir(parents=True,exist_ok=False)
+ p=argparse.ArgumentParser(description=__doc__);p.add_argument('--output',type=Path,required=True);p.add_argument('--incremental',action='store_true');p.add_argument('--streamed',action='store_true');p.add_argument('--async-export',action='store_true');p.add_argument('--serialize-export',action='store_true');p.add_argument('--verify-transfer',action='store_true');p.add_argument('--native-async',action='store_true');p.add_argument('--import-failure-probe',action='store_true');p.add_argument('--stream-import',action='store_true');p.add_argument('--direct-checkpoint',action='store_true');p.add_argument('--no-export-activity',action='store_true');p.add_argument('--logprobs',action='store_true');p.add_argument('--cold-controls',type=int,choices=range(4),default=0);a=p.parse_args();a.async_export=a.async_export or a.serialize_export;a.streamed=a.streamed or a.async_export;a.incremental=a.incremental or a.streamed;a.output.mkdir(parents=True,exist_ok=False)
+ if a.no_export_activity and not a.async_export:raise ValueError('No-activity arm requires async export')
+ if a.direct_checkpoint and not (a.stream_import and a.async_export):raise ValueError('Direct checkpoint requires async export and streamed ingress')
  if a.stream_import and not a.native_async:raise ValueError('Stream import currently qualified through native async actor only')
  if a.import_failure_probe and not a.native_async:raise ValueError('Import failure probe requires native async actor')
  from dram_store_fixture import dram_store
@@ -122,7 +124,7 @@ def main():
      now=time.monotonic();phases[name]=now-phase_start;phase_start=now
     dense_start=json.loads(source_objects.get(lease.base))['cursor'] if a.incremental and lease.base is not None else 0
     port=55421 if source=='P' else 55423+2*int(source[1:])
-    stream_store=dict(prefix=f'pd/{lease.session}/{lease.epoch}/{uuid.uuid4().hex}',ports=[port,port+1],asynchronous=a.async_export,verify_transfer=a.verify_transfer) if a.streamed else None
+    stream_store=dict(prefix=f'pd/{lease.session}/{lease.epoch}/{uuid.uuid4().hex}',ports=[port,port+1],asynchronous=a.async_export,verify_transfer=a.verify_transfer,direct_checkpoint=a.direct_checkpoint) if a.streamed else None
     mark('prepare')
     payload=call(source,'export',tokens=tokens,salt=salt,dense_start=dense_start,stream_store=stream_store)
     mark('export_begin')
@@ -132,14 +134,16 @@ def main():
      assert call(source,'drop',salt=salt),'Expected hot eviction while native export pins remain'
      if a.serialize_export:call(source,'wait-export',transfer_id=ticket['transfer_id'])
      mark('hot_drop_and_optional_wait')
-     activity_start=time.monotonic()
-     other=generate(source,f'{salt}-export-activity-{lease.epoch}',
-       'The access code is MARBLE. What is the access code? Answer:',salt+'-activity-'+str(lease.epoch),8)
-     activity=[activity_start,time.monotonic()]
+     if not a.no_export_activity:
+      activity_start=time.monotonic()
+      other=generate(source,f'{salt}-export-activity-{lease.epoch}',
+        'The access code is MARBLE. What is the access code? Answer:',salt+'-activity-'+str(lease.epoch),8)
+      activity=[activity_start,time.monotonic()]
      mark('injected_request')
      payload=call(source,'finish-export',transfer_id=ticket['transfer_id'])
      assert all(n>=1 for n in payload['page_pin_receipt']['refs_at_release'])
     mark('finish_export')
+    checkpoint_exports=[s['checkpoint_store'] for s in payload['shards']] if a.direct_checkpoint else []
     stream_receipts=[s['dense_store'] for s in payload['shards']] if a.streamed else []
     dense_bytes=sum(s['dense_bytes'] for s in stream_receipts) if a.streamed else sum(len(data[k]['data']) for shard in payload['shards'] for data in shard['layers'].values() if set(data)=={'key','value'} for k in ('key','value'))
     assert dense_bytes==(len(tokens)-1-dense_start)*20480
@@ -161,6 +165,7 @@ def main():
     row=dict(source=source,destination=dest,cursor=len(tokens)-1,seconds=time.monotonic()-start,
       seat=installed['seat'],phase_seconds=phases,draft_state_transferred=False,dense_start=dense_start,dense_bytes=dense_bytes,host_activity_interval=activity,stream_pipeline=[{k:v for k,v in s.items() if k not in ('chunks','streams')} for s in stream_receipts])
     if a.stream_import:row['receiver_streams']=[r['dense_import'] for r in installed['workers']]
+    if a.direct_checkpoint:row.update(checkpoint_exports=checkpoint_exports,checkpoint_imports=[r['checkpoint_import'] for r in installed['workers']])
     receipts.append(row);print('PD_HANDOFF',json.dumps(row),flush=True)
    for rank,repeats in enumerate((220,12,1)):
     owner=f'D{rank}';sid=f'pd-session-{rank}';salt=sid;directory.create(sid,IDENTITY,'P')
@@ -189,7 +194,7 @@ def main():
     (a.output/(sid+'-receipt.json')).write_text(json.dumps(row,indent=2))
     assert row['equal'] and row['cached']==row['cursor'] and cold['cached']==0,row
     stage=sid+' final checkpoint';handoff(owner,'P',tokens+warm['token_ids'],salt,lease)
-   (a.output/'complete.json').write_text(json.dumps(dict(status='passed',incremental_d2h=a.incremental,streamed_d2h_store=a.streamed,async_retired_export=a.async_export,serialize_export=a.serialize_export,verify_transfer=a.verify_transfer,native_async_frontend=a.native_async,streamed_store_h2d=a.stream_import,logprobs=a.logprobs or a.verify_transfer,cold_controls=a.cold_controls,scope='P2 D6 actual-model DRAM P-D-P-D-P target-only handoff, three fixed attention owners; no compute overlap/production HA claim',handoffs=receipts),indent=2))
+   (a.output/'complete.json').write_text(json.dumps(dict(status='passed',incremental_d2h=a.incremental,streamed_d2h_store=a.streamed,async_retired_export=a.async_export,serialize_export=a.serialize_export,verify_transfer=a.verify_transfer,native_async_frontend=a.native_async,streamed_store_h2d=a.stream_import,direct_checkpoint=a.direct_checkpoint,export_activity=not a.no_export_activity,logprobs=a.logprobs or a.verify_transfer,cold_controls=a.cold_controls,scope='P2 D6 actual-model DRAM P-D-P-D-P target-only handoff, three fixed attention owners; no compute overlap/production HA claim',handoffs=receipts),indent=2))
  except BaseException:
   (a.output/'failure.json').write_text(json.dumps(dict(stage=stage,error=traceback.format_exc(),handoffs=receipts),indent=2));raise
  finally:

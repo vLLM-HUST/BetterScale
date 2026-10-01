@@ -785,3 +785,13 @@ transfer. Incremental publication validates prior object sizes rather than
 reading and discarding all prior payloads. Both optimized oracle and plain
 P2/D6 matrices pass; see repo knowledge for before/after phase costs and the
 important injected-request timing boundary. GDN/conv still use control RPC.
+
+
+Add --direct-checkpoint to --native-async --async-export --stream-import to
+move target GDN/conv shards directly between workers and Store. The manifest
+uses schema2 with explicit tp2-target-shards-v1 format; control RPC carries
+descriptors, not model-state payloads. The oracle/failure matrix passes 96 shard
+byte checks. For actual quiescent handoff latency, remove --verify-transfer and
+--import-failure-probe and add --no-export-activity: the ordinary overlap harness
+intentionally includes another request and is not a pure latency benchmark.
+The qualified no-activity medians are 0.727 s P->D and 1.462 s D->P, not an SLA.
