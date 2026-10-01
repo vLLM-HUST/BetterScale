@@ -28,6 +28,31 @@ take precedence over those old judgments.**
 - Fletcher accepts remaining handoff/control latency as a current development
   boundary; do not make eliminating it a new blocker. The shorter DP finish
   cadence is an opt-in experiment, not a production default or throughput claim.
+- Current-version scope, confirmed by Fletcher on 2026-10-02: retain
+  `idle(core)` for PD Core admission/mutation. Deliver numerical and behavioral
+  correctness under this conservative gate; defer online load/unload and
+  fine-grained frontend/network pipeline integration to the next version.
+  **Global DP quiescence is not a fundamental prerequisite for block transfer.**
+  Online transfer of ready generations is possible with the appropriate
+  producer fences, page pins/version identity and completion protocol. Request
+  resumption needs that request's consistent State, not inherently a globally
+  idle pool. Earlier global-idle statements describe this prototype, not the
+  intended architecture. Do not remove the gate piecemeal or build a competing
+  fine-grained protocol before integrating the existing work.
+- Git discovery on 2026-10-02 found the directly relevant
+  [incremental-cache branch](https://github.com/vLLM-HUST/BetterScale/tree/2dac92cd59b49802a120dcce1e1f9a15d4c8758d),
+  separate from PD, with common ancestor `852c106`.
+  Enter its `.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/incremental-cache.md`
+  and `cache-pressure.md` before future integration. The inspected incremental
+  note records page-version/weak-placement lifetime, shared host FA payloads,
+  sparse restores, TP completion and serialized automatic cache transactions
+  while unrelated inference remains runnable. Source seams are
+  `src/betterscale/models/qwen35/cache_{pages,actions,policy,worker}.py` and
+  `src/betterscale/live/runtime/page_state.py`.
+  These are relevant prior implementations, **not verification that the full
+  frontend/network protocol Fletcher mentioned is present**, nor qualification
+  on this PD runtime. Its source/evidence remain on that branch; nothing was
+  merged or cherry-picked in this synchronization.
 - hw86 is the active host; hw180 is retired and must not be required. Dedicated
   task artifacts live under /workspace/betterscale-pd-runtime, implementation in
   /workspace/BetterScale. Runtime/release pins are unchanged.

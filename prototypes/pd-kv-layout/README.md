@@ -5,6 +5,21 @@ records the CPU-only layout experiment; later sections add real DRAM Store,
 NPU/model State restoration and isolated P2/D6 integration gates. Release pins
 and shared installed runtimes remain unchanged.
 
+## Current-version boundary (2026-10-02)
+
+Keep `idle(core)` for Core admission/mutation in this version. Numerical,
+exact-byte and ownership/lifetime correctness are the acceptance boundary;
+online load/unload and fine-grained frontend/network pipelining are deferred.
+This conservative gate does not imply that online block transfers inherently
+require global DP idle. Integrating generation/fence-aware online operations
+is separate work, not a reason to relax the current gate ad hoc.
+
+The related `codex/qwen35-incremental-cache` branch at `2dac92c` contains
+incremental host backup and sparse device restore work; it was located, not
+merged or qualified with this PD path. See the repo-knowledge
+[resume entry](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/pd-storage.md)
+for exact source pointers and evidence boundaries.
+
 ## Question and scope
 
 Compare a TP2 producer with (1) TP2 decode, (2) native token-major TP1 decode
