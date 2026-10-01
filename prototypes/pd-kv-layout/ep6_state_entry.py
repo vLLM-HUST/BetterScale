@@ -2,7 +2,19 @@
 from betterscale.models import qwen35
 from checkpoint_entry import Scheduler as BaseScheduler,Worker as BaseWorker
 qwen35.STATE_SCHEDULER='ep6_state_entry.Scheduler'
-class Scheduler(BaseScheduler):pass
+def start_wave(core):
+    # Sync offline clients have no native DP coordinator. The experiment's
+    # controller must wake idle EP peers when dispatching to a single owner.
+    if core.has_coordinator or core.pending_pause or core.ignore_start_dp_wave:
+        raise RuntimeError('Incompatible DP wave ownership')
+    core.engines_running=True
+    return core.current_wave
+
+class Scheduler(BaseScheduler):
+ def __init__(self,*args,**kwargs):
+  from vllm.v1.engine.core import DPEngineCoreProc
+  DPEngineCoreProc.pd_start_wave=start_wave
+  super().__init__(*args,**kwargs)
 
 
 def idle_target_only(runner,native,*args,**kwargs):

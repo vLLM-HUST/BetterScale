@@ -43,6 +43,7 @@ def worker(role,connection,output):
     inp=dict(prompt=tokens,cache_salt=salt) if isinstance(tokens,str) else dict(prompt_token_ids=tokens,cache_salt=salt)
     r=model.generate([inp],SamplingParams(temperature=0,max_tokens=n,ignore_eos=True),use_tqdm=False)[0]
     result=dict(prompt_token_ids=r.prompt_token_ids,token_ids=list(r.outputs[0].token_ids),text=r.outputs[0].text,cached=r.num_cached_tokens)
+   elif op=='wake':result=core.call_utility('pd_start_wave')
    elif op=='export':result=core.call_utility('pd_export_target',args['tokens'],args['salt'])
    elif op=='drop':result=core.call_utility('pd_drop_target',args['salt'])
    elif op=='import':result=core.call_utility('pd_import_target',args['payload'],args['salt'])
@@ -75,7 +76,14 @@ def main():
  def call(role,op,**kwargs):
   pipes[role].send((op,kwargs));return receive(role)
  def generate(role,name,tokens,salt,n):
-  result=call(role,'generate',tokens=tokens,salt=salt,n=n)
+  if role=='P':result=call(role,'generate',tokens=tokens,salt=salt,n=n)
+  else:
+   # Send the real request first; it can wait in collectives until peers wake.
+   pipes[role].send(('generate',dict(tokens=tokens,salt=salt,n=n)))
+   peers=[r for r in pipes if r.startswith('D') and r!=role]
+   for peer in peers:pipes[peer].send(('wake',{}))
+   for peer in peers:receive(peer)
+   result=receive(role)
   (a.output/(name+'.json')).write_text(json.dumps(result,indent=2));print('PD_PHASE',role,name,result['cached'],flush=True)
   return result
  try:

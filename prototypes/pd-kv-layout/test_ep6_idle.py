@@ -27,3 +27,12 @@ def test_initial_capture_is_unchanged(monkeypatch):
  def native(r,*a,**kw):
   assert r.drafter is draft and kw=={'is_graph_capturing':True};return 9
  assert call(r,native,3,is_graph_capturing=True)==9
+
+
+def test_single_owner_wave_requires_explicit_coordinator(monkeypatch):
+ node=next(n for n in ast.parse(Path(__file__).with_name('ep6_state_entry.py').read_text()).body if isinstance(n,ast.FunctionDef) and n.name=='start_wave')
+ ns={};exec(compile(ast.Module(body=[node],type_ignores=[]),'wave','exec'),ns)
+ core=SimpleNamespace(has_coordinator=False,pending_pause=False,ignore_start_dp_wave=False,engines_running=False,current_wave=4)
+ assert ns['start_wave'](core)==4 and core.engines_running
+ core.has_coordinator=True
+ with pytest.raises(RuntimeError):ns['start_wave'](core)

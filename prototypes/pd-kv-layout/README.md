@@ -500,3 +500,26 @@ then attempts P→D→P→D→P per session through that Store adapter. It compa
 D continuation with cold computation and checks exact cache frontiers. Result
 is pending; it is a synchronous turn-boundary first vertical, not the desired
 compute/PCIe/Store incremental pipeline or a distributed durable coordinator.
+
+The first actual P2/D6 run booted all four engines and transferred4412-token
+real target State P→D0 through DRAM with both import acknowledgements (3.91s
+whole quiescent handoff, not PCIe timing), then D0's first request waited on idle
+EP peers. The offline `SyncMPClient` instances have no DP coordinator and do not
+broadcast FIRST_REQ; prior three-client probes submitted work on every rank.
+The explicit test controller now wakes the other idle Core loops when dispatching
+to one owner, preserving each Core's wave counter and rejecting composition with
+a native coordinator. A CPU contract test covers that boundary.
+
+Do not promote that experiment-only wake helper into a second production DP
+protocol. Pinned `DPAsyncMPClient` already sends FIRST_REQ to its coordinator;
+`DPLBAsyncMPClient.get_core_engine_for_request` honors `request.data_parallel_rank`,
+and the completion frontend reads `X-data-parallel-rank`. Production session
+routing can reuse those existing owners/waves instead of recreating them.
+
+The stuck first run was intentionally interrupted, not counted as a successful
+D continuation. Its native signal path left the task's CPU master alive; that
+exact master was identified by its loopback55401 command and terminated, and all
+NPUs were verified free. Attempt2 failed only the occupied-port preflight before
+NPU launch. The fixture now records its master PID and reinstalls Python SIGINT
+unwinding after client initialization, with master cleanup in a finally block.
+Retain `logs/p2d6-model-store*.log`; corrected model attempt3 is pending.

@@ -327,3 +327,11 @@ serialization. The target-to-Store adapter uses40 head-major dense streams,
 turn-end GDN/conv blobs and the existing local CAS/immutable-manifest protocol.
 Full-geometry synthetic DRAM P→D→P and incremental manifests pass; actual-model
 P2/D6 Store handoff is the next live gate, not yet a claimed result here.
+
+A first P→D0 actual-model Store import acknowledged both TP workers, but a request
+sent to only that offline SyncMPClient stalled because its other EP peers were
+not awakened. The experiment controller must explicitly start idle Core waves.
+For production, prefer existing native async DP coordination: DPAsyncMPClient
+sends FIRST_REQ, DPLBAsyncMPClient accepts request.data_parallel_rank, and the
+completion frontend reads X-data-parallel-rank. This is a frontend/coordinator
+integration boundary, not evidence against the qualified EP6 numerical route.

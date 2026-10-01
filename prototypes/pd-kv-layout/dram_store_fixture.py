@@ -1,11 +1,12 @@
 """Task-local CPU/TCP Mooncake master and two clients; explicit loopback ports."""
 from contextlib import contextmanager
-import os,socket,subprocess,sys,time
+import os,signal,socket,subprocess,sys,time
 from pathlib import Path
 CPU_ENV=Path('/workspace/pd-kv-layout-results/store-cpu-venv')
 
 @contextmanager
 def dram_store(output,port=55381):
+    original_int=signal.getsignal(signal.SIGINT)
     # This isolated directory contains only the CPU Mooncake wheel and pip.
     # Do not accidentally import the container's older NPU Store wheel.
     site=CPU_ENV/'lib/python3.12/site-packages';sys.path.insert(0,str(site))
@@ -40,9 +41,16 @@ def dram_store(output,port=55381):
                 rc=client.setup(f'127.0.0.1:{port+3+i}',f'http://127.0.0.1:{port+1}/metadata',
                     1024*1024**2 if i==0 else 0,64*1024**2,'tcp','',f'127.0.0.1:{port}')
                 if rc!=0:raise RuntimeError(f'DRAM client setup: {rc}')
+            (output/'master.pid').write_text(str(proc.pid)+'\n')
+            # Native libraries may install a process-exit SIGINT handler. Keep
+            # Python's unwind path so interruption closes this owned master.
+            signal.signal(signal.SIGINT,signal.default_int_handler)
             yield tuple(clients)
         finally:
-            for client in reversed(clients):client.close()
-            proc.terminate()
-            try:proc.wait(timeout=10)
-            except subprocess.TimeoutExpired:proc.kill();proc.wait(timeout=5)
+            try:
+                for client in reversed(clients):client.close()
+            finally:
+                proc.terminate()
+                try:proc.wait(timeout=10)
+                except subprocess.TimeoutExpired:proc.kill();proc.wait(timeout=5)
+                signal.signal(signal.SIGINT,original_int)
