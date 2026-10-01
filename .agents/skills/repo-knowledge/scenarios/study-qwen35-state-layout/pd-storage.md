@@ -253,3 +253,10 @@ artifacts. `ascend-build-resumed.log` is the current incremental build log. Do n
 delete a compiler lock without checking its owner or conflate this timeout
 cleanup with a source/CANN compilation defect. Model14 safetensors shards are
 present (71,903,878,016 bytes), not yet loaded or tensor-validated.
+
+Pinned Ascend build and isolated source-digest validation succeeded. Canonical
+conv history and the owned prefill GDN composition both pass independent CPU
+oracles including host checkpoint/new-slot continuation; see PD prototype README.
+Next full-model qualification uses a separate candidate package with explicit
+post4 and exact rebuilt artifact pins. It must not change repository release
+qualification merely to permit the experiment; donor source hashes remain fixed.

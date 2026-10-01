@@ -262,3 +262,30 @@ Receipt: `/workspace/betterscale-pd-runtime/gdn-store-resume/receipt.json`.
 Use the clean `store-staging-venv` and put the exact core source checkout on
 PYTHONPATH (the probe imports its Triton utilities). This is one1MiB blocking
 checkpoint, not asynchronous dense transport, conv restore or full model PD.
+
+## Pinned native runtime and composed prefill, CANN9.1
+
+The exact Ascend0.25.1rc1 source built successfully against the current toolkit.
+Wheel and isolated adapted donor are under `/workspace/betterscale-pd-runtime/`;
+`runtime.prepare` validated every adapted source digest and native payload.
+Correct extension import is `vllm_ascend.vllm_ascend_C`, not `_C`.
+
+`conv_resume_probe.py` passes eight captured TP2 prefill-conv waves with an
+independent CPU depthwise-conv/SiLU oracle, canonical3-token history and new-slot
+restore. Histories are byte-exact; max output error0.00024414.
+`prefill_resume_probe.py` then passes the actual owned MixedCore prefill path:
+conv, gates/normalization, layout-fused WY, owned AscendC chunk/H/O, and output
+restore. Eight variable-length waves cross64/128 tile boundaries and transfer
+both conv/GDN host checkpoints at wave4. CPU recurrence remains independent
+after migration. Max output error2.143e-5, State error2.620e-4; conv histories
+exact. This is prefill-only one-layer composition, not speculative mixed rows,
+Store-backed composed state or full-model inference.
+
+Standalone MixedCore callers must initialize pinned donor Triton device properties
+with `init_device_properties_triton()` after device selection, as the real Worker
+does. The first attempt omitted this lifecycle call and failed before numerical
+execution; the corrected receipt is `prefill-resume-initialized/complete.json`.
+Use the isolated owned donor and repository source on PYTHONPATH,
+MTP_GDN_LAYOUT_FUSION=1, BETTERSCALE_GDN_SMALL_COPIES=1, and explicit rebuilt
+BETTERSCALE_GDN_LIBRARY / BETTERSCALE_GDN_HOST_LIBRARY. Hardware admission still
+belongs to the caller. Product native/version pins have not yet been promoted.
