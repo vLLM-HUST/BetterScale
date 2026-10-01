@@ -21,7 +21,7 @@ def schedule(lengths, queries, divisor=18, startup=4):
     if not 1 <= len(lengths) == len(queries) <= 16:
         raise ValueError('Expected1..16 real requests; padding is not live work')
     if any(type(q) is not int or not 1 <= q <= MAX_QUERY for q in queries):
-        raise ValueError('Only Q1..3 decode/verification is admitted')
+        raise ValueError(f'Only Q1..{MAX_QUERY} owned attention is admitted; queries={queries}')
     if any(type(n) is not int or not q <= n <= 262144 for n, q in zip(lengths, queries)):
         raise ValueError('Actual KV must include all query tokens and fit native256K')
     if type(divisor) is not int or not 1 <= divisor <= CORES or type(startup) is not int or startup < 0:

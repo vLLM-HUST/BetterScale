@@ -40,6 +40,9 @@ cases=[('edges',[1,2,3,3],[127,512,513,1025]),
        ('long16',[3]*16,[262144]*16)]
 if a.case=='draft-padding': cases=[('draft-padding',[1],[262144])]
 if a.case=='single': cases=[('single',[3],[262144])]
+if a.case=='query-transitions':
+    assert a.device_lengths and a.wave_planner
+    cases=[('query-transitions',[16],[8192])]
 if a.case=='short-prefill': cases=[('short-prefill',[1,4,8,16],[513,4096,32768,262144])]
 if a.case:
     cases=[case for case in cases if case[0]==a.case]
@@ -115,7 +118,7 @@ for name,qs,upper in cases:
     def reference(lengths, sign=1):
         if a.reference=='native':
             return native(lengths)
-        key=(tuple(lengths),sign)
+        key=(tuple(lengths),tuple(qs),sign)
         if key not in cpu_references:
             expected=torch.zeros(q.shape,dtype=torch.float32)
             start=0; page=0
@@ -176,6 +179,11 @@ for name,qs,upper in cases:
         banks.append(dict(workspace=workspace,output=output,out=out,kl=kl,meta=meta,raw=raw.raw,ptrs=ptrs,graph=graph,host_meta=host_meta))
     errors=[];states=[]
     for step in range(8):
+        if name=='query-transitions':
+            live_qs=[(1,3,16,2,8,1,3,16)[step]]
+            qs=[live_qs[0],q.shape[0]-live_qs[0]]
+            qends=[live_qs[0],q.shape[0]]
+            ql.copy_(torch.tensor(qends,dtype=torch.int64))
         lengths=(live_upper if step%2 else [max(qn,min(n,(3,511,512,513)[step//2])) for qn,n in zip(live_qs,live_upper)])
         if a.device_lengths:lengths=lengths+[0]
         q.mul_(-1)

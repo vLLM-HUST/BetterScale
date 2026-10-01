@@ -152,3 +152,12 @@ pass with dynamic host metadata in `fia-wave-q16-regression/complete.json`,
 max error0.001476. Both use the new `fia-cp-q16-build/libbs_fia_cp.so` under
 `/workspace/betterscale-pd-runtime`;26 affected CPU tests pass. These are leaf
 and metadata-composition gates, not yet successful model warm continuation.
+
+`--case query-transitions --wave-planner --device-lengths --initialize-padding`
+additionally changes live Q through1/3/16/2/8/1/3/16 within each captured bank,
+with fixed total query storage and varying zero padding. This closes a missing
+replay-metadata axis, independently of model continuation: receipt
+`fia-query-transitions/complete.json`,16 replays, max error0.001124. Query counts
+above16 remain rejected; a model MTP frame can reach that guard even though
+its total padded capacity is also used by verification graphs. Do not silently
+raise MAX_QUERY: vendor Q/head tiling and partial reduction must be extended too.

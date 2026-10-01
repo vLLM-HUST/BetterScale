@@ -326,3 +326,35 @@ has additional equal-count assumptions but is not this A2 default route.
 Correct capacity/range arithmetic under an explicit uneven-linear/no-EPLB
 contract; do not change the donor source pins or infer MC2 support from this
 all-gather result. Current BetterScale TP2/DP1 admission is still unchanged.
+
+### New-runtime model continuation gate remains open
+
+`model_continuation_probe.py` compares warm resume, cold reconstruction and an
+uninterrupted greedy generation, recording tokens/logprobs and exact cache hits.
+CANN9.1/post4 candidate4 (owned FIA Q1..16) serves4412-token prefill and4476-token
+warm continuation with4475 hits, but warm diverged at continuation token9.
+Cold reconstruction and uninterrupted generation match exactly across64 tokens.
+A fresh diagnostic repeats the mismatch; at the first difference warm favored
+`key` by3.25 logits, cold favored`gate` by8, not a near-tie explanation.
+Receipts: task runtime `model-smoke-q16/`, especially `diagnostics/`.
+
+A length diagnostic had matching32-token warm continuations for output lengths
+1..8,15..17,31..33, but differences for63..65 (at continuation30/29/28 in that
+run). Do not generalize one failure index to every seat/history. Appending1 or8
+newline tokens matched cold; appending3 differed immediately. The appended16
+case failed closed on a draft-frame query exceeding Q16. Shape admission and
+numerical continuation are separate unresolved boundaries.
+
+To distinguish kernel transitions from scheduler/terminal ownership,
+`gdn_transition_probe.py` uses actual owned prefill/verify compositions with
+5-token extended conv storage, independent CPU recurrence, selected candidates
+1..3 and verify→prefill→verify transitions. All24 waves pass (max output error
+0.00002447). Receipt:`gdn-transition-4/complete.json`. Earlier fixture attempt3
+incorrectly reused the recurrent selector as the conv selector after prefill;
+production intentionally keeps these separate. This passing leaf does not clear
+the model-level failure. The two required native library envs are
+`BETTERSCALE_GDN_LIBRARY` and `BETTERSCALE_GDN_HOST_LIBRARY`.
+
+`target_only_diagnostic.py` suppresses only the scheduler's next proposal list,
+retaining draft computation and lookahead buffers. It is an isolation experiment,
+not production P-only execution or a claim that cold MTP State is safe.
