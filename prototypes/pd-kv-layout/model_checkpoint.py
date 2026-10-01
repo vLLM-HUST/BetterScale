@@ -58,6 +58,9 @@ def export(core,tokens,salt,dense_start=0,stream_store=None):
         raise ValueError('Invalid dense export interval')
     header=dict(identity=IDENTITY,tokens=list(tokens),cursor=seat.cursor,seat=seat.index,epoch=seat.epoch,
                 dense_start=dense_start,block_size=scheduler.block_size,blocks=[b.block_id for b in seat.blocks.blocks[0]])
+    if hasattr(core,'step_counter'):
+        header['dp_control']=dict(finish_sync_steps=getattr(core,'_pd_finish_sync_interval',32),
+                                 step_counter=core.step_counter,engines_running=core.engines_running)
     if stream_store is not None:header['stream_store']=stream_store
     if stream_store is not None and stream_store.get('asynchronous'):
         from model_async_export import begin
@@ -140,6 +143,8 @@ def service_export(core):
 
 
 def install_core():
+    from model_dp_control import install
+    install()
     from vllm.v1.engine.core import EngineCore
     EngineCore.pd_export_target=export
     EngineCore.pd_export_retired=export_retired

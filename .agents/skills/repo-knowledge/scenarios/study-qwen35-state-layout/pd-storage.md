@@ -25,6 +25,9 @@ take precedence over those old judgments.**
   the P2/D6 matrix. See the direct-checkpoint/latency evidence below. Preserve import
   quarantine until both TP workers drain; never release on an unknown RPC outcome.
   Strict remains an isolation control, not a production default.
+- Fletcher accepts remaining handoff/control latency as a current development
+  boundary; do not make eliminating it a new blocker. The shorter DP finish
+  cadence is an opt-in experiment, not a production default or throughput claim.
 - hw86 is the active host; hw180 is retired and must not be required. Dedicated
   task artifacts live under /workspace/betterscale-pd-runtime, implementation in
   /workspace/BetterScale. Runtime/release pins are unchanged.
@@ -836,3 +839,53 @@ oracle and latency arms share the oracle source capsule. Neither test qualifies
 cross-host physical placement, busy-engine request admission, HA, representative
 throughput or a production latency SLA. Receiver dense H2D is still full-history
 for a fresh GPU resident; MTP is still not transferred.
+
+
+### DP finish cadence: bounded experiment and accepted remaining latency
+
+Fletcher accepts the remaining RPC/control delay on 2026-10-01 and does not want
+PD development blocked on removing it. His event-driven control-thread idea is
+an exploration, not authorization to invent a second DP coordinator or mutate
+State/page ownership from an IO thread.
+
+The already-running hw86-native-direct-checkpoint-sync1 arm completes after that
+steering: same direct-checkpoint/no-activity matrix, --dp-finish-sync 1, strict
+HCCL, default model/runtime pins unchanged. All 12 handoffs and three token
+comparisons pass. Source receipts prove D0/D1/D2 all use interval1 and report
+engines_running=false / step_counter=0 at their export snapshots.
+Compared with interval32, median whole handoffs are:
+- P->D 0.727 -> 0.436 s (sync1 range 0.306–1.648 s);
+- D->P 1.462 -> 0.654 s (sync1 range 0.575–0.794 s).
+D export begin/drop/finish medians become 0.314 / 0.0012 / 0.170 s; destination
+import medians become 0.271 s to D and 0.152 s to P. First/large handoff remains
+a tail: do not claim universal subsecond latency or a production SLA.
+
+model_dp_control.py retains the native step counter and pause-consensus state
+transitions and only changes the collective finish-check interval, consistently
+across D cores. --dp-finish-sync defaults to32 and leaves the donor implementation
+untouched; 1/4/8 are explicit experiment choices. Seven CPU tests cover cadence,
+sync inputs, pause consensus, unchanged default and invalid intervals; the
+affected control/checkpoint/owner-utility subset passes22 tests. No installed
+runtime is patched. The sync1 arm did not repeat the byte/fault oracle: those
+96 oracle checks qualify the unchanged direct data path, while this arm qualifies
+the bounded control-cadence/token experiment. Representative throughput and
+busy-pool/multi-request scheduling costs remain unmeasured. Do not promote
+interval1 merely from its better quiescent handoff numbers.
+
+The pinned vLLM core already has background input/output socket threads
+(core.py process_input_sockets / input_queue.put_nowait); the main Core loop
+consumes the queue. The 32-step rule is global DP finish detection, not socket
+polling cadence. A locally empty attention owner may still need to participate
+as an EP expert, so local queue emptiness cannot independently stop its rank.
+Reuse the native coordinator/FIRST_REQ wave protocol. A useful future connector
+boundary is notification -> background transfer -> ready event -> scheduler
+publication at a safe boundary; receiving a notification is not authority to
+mutate resident/page ownership or reorder HCCL collectives from an IO thread.
+No such busy-engine admission integration has been implemented by this experiment.
+
+All resources were released after the sync1 arm. Its source capsule and receipts
+are under the task runtime. Long probes should use a detached bounded wrapper,
+a prelaunch source capsule and an exit-status sentinel. A quiet long SSH monitor
+has disconnected twice despite a surviving job: inspect the recorded PID/status
+instead of relaunching. A 45-second monitor heartbeat avoided that transport
+idle failure; it is not hardware polling or a substitute for ownership checks.

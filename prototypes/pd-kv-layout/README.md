@@ -795,3 +795,11 @@ byte checks. For actual quiescent handoff latency, remove --verify-transfer and
 --import-failure-probe and add --no-export-activity: the ordinary overlap harness
 intentionally includes another request and is not a pure latency benchmark.
 The qualified no-activity medians are 0.727 s P->D and 1.462 s D->P, not an SLA.
+
+
+--dp-finish-sync defaults to32 (unchanged donor). The explicit native-actor
+experiment --dp-finish-sync 1 applies finish checks consistently to every D core;
+it passes the no-activity matrix with median 0.436 s P->D / 0.654 s D->P.
+This does not qualify throughput, busy-pool admission or universal subsecond
+latency. The remaining delay is accepted for current PD work; do not make
+removing it a blocker or independently put locally idle EP ranks to sleep.
