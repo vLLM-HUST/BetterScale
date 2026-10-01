@@ -160,6 +160,8 @@ def install_core():
     from model_async_export import finish,wait
     EngineCore.pd_finish_export=finish
     EngineCore.pd_wait_export=wait
+    from model_store_clients import close_core
+    EngineCore.pd_close_store_clients=close_core
 
 
 def worker_root(worker,header,*,source):
@@ -280,3 +282,5 @@ def install_worker():
     NPUWorker.pd_begin_export=begin_worker
     NPUWorker.pd_finish_export=finish_worker
     NPUWorker.pd_wait_export=wait_worker
+    from model_store_clients import close_worker
+    NPUWorker.pd_close_store_clients=close_worker

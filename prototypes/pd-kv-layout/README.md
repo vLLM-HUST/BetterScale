@@ -777,3 +777,11 @@ for the accepted envelope. Remove the two diagnostic flags for the plain arm.
 Fresh/evicted GPU residents still need full-history H2D; incremental Store
 publication does not imply incremental receiver H2D. This remains a single-host
 prototype, not a production placement/HA or bandwidth qualification.
+
+
+Worker Store connections are now retained across transfers and explicitly closed
+at normal actor shutdown. Buffer registrations and DMA lifetime remain per
+transfer. Incremental publication validates prior object sizes rather than
+reading and discarding all prior payloads. Both optimized oracle and plain
+P2/D6 matrices pass; see repo knowledge for before/after phase costs and the
+important injected-request timing boundary. GDN/conv still use control RPC.

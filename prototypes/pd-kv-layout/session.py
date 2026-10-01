@@ -106,6 +106,46 @@ class Objects:
         return bytes(payload)
 
 
+
+def restore_manifest(objects,key,identity,streams,token_bytes):
+    """Check immutable dependency sizes without rereading historical payloads.
+
+    This is a point-in-time check, not a pin/lease. A later eviction still makes
+    receiver restore fail closed, just as after the old full-payload check.
+    """
+    if key is None:return dict(tokens=[],chunks=[],cursor=0)
+    try:
+        m=json.loads(objects.get(key));cursor=m['cursor']
+        if (m['schema']!=1 or m['identity']!=identity or m['streams']!=list(streams)
+                or m['token_bytes']!=token_bytes or type(cursor) is not int or cursor<0
+                or not isinstance(m['tokens'],list) or len(m['tokens'])!=cursor
+                or any(type(t) is not int or t<0 for t in m['tokens'])
+                or not isinstance(m['chunks'],list)):
+            raise ValueError('Invalid base manifest')
+        sizes={};frontier=0
+        def dependency(k,size):
+            if not isinstance(k,str) or not k or k in sizes or type(size) is not int or size<=0:
+                raise ValueError('Invalid dependency')
+            sizes[k]=size
+        for chunk in m['chunks']:
+            stop=chunk['stop'];keys=chunk['keys']
+            if (type(chunk['start']) is not int or chunk['start']!=frontier
+                    or type(stop) is not int or not frontier<stop<=cursor
+                    or not isinstance(keys,dict) or set(keys)!=set(streams)):
+                raise ValueError('Invalid base frontier')
+            for k in keys.values():dependency(k,(stop-frontier)*token_bytes)
+            frontier=stop
+        if (frontier!=cursor or not isinstance(m['checkpoint'],dict)
+                or set(m['checkpoint'])!={'gdn','conv'}):
+            raise ValueError('Incomplete base snapshot')
+        for d in m['checkpoint'].values():dependency(d['key'],d['bytes'])
+        for k,size in sizes.items():
+            if objects.store.get_size(k)!=size:raise CacheMiss('Missing/truncated base dependency: '+k)
+        return m
+    except (KeyError,TypeError,ValueError) as exc:
+        raise CacheMiss('Invalid base snapshot') from exc
+
+
 def restore(objects, key, identity, streams, token_bytes):
     """Stage ALL required bytes before returning anything consumable.
 
@@ -158,7 +198,7 @@ class Turn:
             raise ValueError("invalid transfer geometry")
         self.directory, self.objects, self.lease = directory, objects, lease
         self.streams, self.token_bytes = tuple(streams), token_bytes
-        self.base, _, _ = restore(objects, lease.base, lease.identity, streams, token_bytes)
+        self.base = restore_manifest(objects, lease.base, lease.identity, streams, token_bytes)
         self.cursor = self.base["cursor"]
         self.chunks = list(self.base["chunks"])
         self.pending = []

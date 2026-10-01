@@ -28,6 +28,9 @@ class MemoryStore:
     def get(self, key):
         return self.data.get(key)
 
+    def get_size(self,key):
+        return len(self.data[key]) if key in self.data else -1
+
 
 @pytest.fixture
 def setup(tmp_path):
@@ -244,3 +247,35 @@ def test_acknowledged_external_chunks_keep_namespace_and_epoch_fences(setup):
         with pytest.raises(Conflict,match='stale writer'):complete(writer,[1,2],'D0')
         assert directory.current('session') is None
     finally:writer.close()
+
+
+@pytest.mark.parametrize('failure',[None,'dense-missing','dense-short','checkpoint-missing','checkpoint-short'])
+def test_incremental_publish_checks_base_without_payload_reads(setup,failure):
+    directory,store=setup
+    first=turn(directory,store,'P0');first.append(3,payload(0,3))
+    key=complete(first,[1,2,3],'D0');m=json.loads(store.data[key])
+    if failure:
+        victim=(next(iter(m['chunks'][0]['keys'].values())) if failure.startswith('dense')
+                else m['checkpoint']['gdn']['key'])
+        if failure.endswith('missing'):del store.data[victim]
+        else:store.data[victim]=store.data[victim][:-1]
+    reads=[];get=store.get
+    def record(k):
+        reads.append(k)
+        assert k==key,'Publisher must not reread historical payloads'
+        return get(k)
+    store.get=record
+    if failure:
+        with pytest.raises(CacheMiss):turn(directory,store,'D0')
+    else:
+        resumed=turn(directory,store,'D0');assert resumed.cursor==3;resumed.close()
+    assert reads==[key]
+
+
+@pytest.mark.parametrize('field,value',[('checkpoint',['gdn','conv']),('chunks',None),('cursor',True)])
+def test_metadata_only_base_rejects_malformed_manifest(setup,field,value):
+    directory,store=setup
+    first=turn(directory,store,'P0');first.append(3,payload(0,3))
+    key=complete(first,[1,2,3],'D0');m=json.loads(store.data[key]);m[field]=value
+    store.data[key]=json.dumps(m).encode()
+    with pytest.raises(CacheMiss):turn(directory,store,'D0')

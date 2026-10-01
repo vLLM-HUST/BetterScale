@@ -87,7 +87,9 @@ def import_dense(worker,runner,root,rank,header):
     stream=torch.npu.Stream(device=runner.device)
     indices=torch.tensor(header['blocks'],dtype=torch.int64,device=runner.device)
     stream.wait_stream(torch.npu.current_stream(runner.device))
-    client=MooncakeDistributedStore();registered=[];closed=False
+    from model_store_clients import acquire,release
+    client=acquire(runner,ports[rank],(slots,stream,indices,planes),MooncakeDistributedStore)
+    registered=[];closed=False
     # Keep every DMA operand and Store registration reachable across failed fences.
     retained=(slots,stream,indices,planes,client)
     def cleanup():
@@ -97,7 +99,7 @@ def import_dense(worker,runner,root,rank,header):
             slot=registered[-1]
             if client.unregister_buffer(slot.data_ptr())!=0:raise RuntimeError('Import unregister failed')
             registered.pop()
-        if not closed:client.close();closed=True
+        if not closed:release(runner,ports[rank]);closed=True
     worker._pd_import_cleanup=cleanup
     pool=ThreadPoolExecutor(max_workers=1,thread_name_prefix='pd-store-ingress')
     events=[None,None];start_time=time.perf_counter();chunks=plan['chunks']
@@ -111,9 +113,6 @@ def import_dense(worker,runner,root,rank,header):
             [[[0]] for _ in local],[[[0]] for _ in local],[[[count]] for _ in local])
         if result!=[[[count]] for _ in local]:raise CacheMiss('Dense Store read incomplete')
     try:
-        rc=client.setup(f'127.0.0.1:{ports[rank]}','http://127.0.0.1:55402/metadata',
-                        0,64*1024**2,'tcp','','127.0.0.1:55401')
-        if rc!=0:raise RuntimeError(f'Import Store setup failed: {rc}')
         for slot in slots:
             if client.register_buffer(slot.data_ptr(),size)!=0:raise RuntimeError('Import registration failed')
             registered.append(slot)

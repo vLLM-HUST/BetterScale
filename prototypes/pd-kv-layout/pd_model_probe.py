@@ -116,21 +116,30 @@ def main():
    print('PD_ALL_ENGINES_READY',flush=True)
    def handoff(source,dest,tokens,salt,lease):
     start=time.monotonic();source_objects=objects['P' if source=='P' else 'D'];dest_objects=objects['P' if dest=='P' else 'D']
+    phases={};phase_start=start
+    def mark(name):
+     nonlocal phase_start
+     now=time.monotonic();phases[name]=now-phase_start;phase_start=now
     dense_start=json.loads(source_objects.get(lease.base))['cursor'] if a.incremental and lease.base is not None else 0
     port=55421 if source=='P' else 55423+2*int(source[1:])
     stream_store=dict(prefix=f'pd/{lease.session}/{lease.epoch}/{uuid.uuid4().hex}',ports=[port,port+1],asynchronous=a.async_export,verify_transfer=a.verify_transfer) if a.streamed else None
+    mark('prepare')
     payload=call(source,'export',tokens=tokens,salt=salt,dense_start=dense_start,stream_store=stream_store)
+    mark('export_begin')
     activity=None
     if a.async_export:
      ticket=payload
      assert call(source,'drop',salt=salt),'Expected hot eviction while native export pins remain'
      if a.serialize_export:call(source,'wait-export',transfer_id=ticket['transfer_id'])
+     mark('hot_drop_and_optional_wait')
      activity_start=time.monotonic()
      other=generate(source,f'{salt}-export-activity-{lease.epoch}',
        'The access code is MARBLE. What is the access code? Answer:',salt+'-activity-'+str(lease.epoch),8)
      activity=[activity_start,time.monotonic()]
+     mark('injected_request')
      payload=call(source,'finish-export',transfer_id=ticket['transfer_id'])
      assert all(n>=1 for n in payload['page_pin_receipt']['refs_at_release'])
+    mark('finish_export')
     stream_receipts=[s['dense_store'] for s in payload['shards']] if a.streamed else []
     dense_bytes=sum(s['dense_bytes'] for s in stream_receipts) if a.streamed else sum(len(data[k]['data']) for shard in payload['shards'] for data in shard['layers'].values() if set(data)=={'key','value'} for k in ('key','value'))
     assert dense_bytes==(len(tokens)-1-dense_start)*20480
@@ -138,16 +147,19 @@ def main():
     streams=tuple(json.loads(source_objects.get(key))['streams'])
     if not a.async_export:assert call(source,'drop',salt=salt),'Expected source resident retirement'
     del payload
+    mark('store_publish')
     if a.stream_import:
      from model_stream_import import load_plan
      port=55431 if dest=='P' else 55433+2*int(dest[1:])
      restored=load_plan(dest_objects,key,IDENTITY,streams,[port,port+1],verify=a.verify_transfer)
     else:restored=load(dest_objects,key,IDENTITY,streams)
+    mark('restore_plan')
     inject=a.import_failure_probe and not receipts
     installed=call(dest,'import-failure-probe' if inject else 'import',payload=restored,salt=salt)
+    mark('import_rpc')
     if inject:(a.output/'import-failure-recovery.json').write_text(json.dumps(installed['failure_probe'],indent=2))
     row=dict(source=source,destination=dest,cursor=len(tokens)-1,seconds=time.monotonic()-start,
-      seat=installed['seat'],draft_state_transferred=False,dense_start=dense_start,dense_bytes=dense_bytes,host_activity_interval=activity,stream_pipeline=[{k:v for k,v in s.items() if k not in ('chunks','streams')} for s in stream_receipts])
+      seat=installed['seat'],phase_seconds=phases,draft_state_transferred=False,dense_start=dense_start,dense_bytes=dense_bytes,host_activity_interval=activity,stream_pipeline=[{k:v for k,v in s.items() if k not in ('chunks','streams')} for s in stream_receipts])
     if a.stream_import:row['receiver_streams']=[r['dense_import'] for r in installed['workers']]
     receipts.append(row);print('PD_HANDOFF',json.dumps(row),flush=True)
    for rank,repeats in enumerate((220,12,1)):

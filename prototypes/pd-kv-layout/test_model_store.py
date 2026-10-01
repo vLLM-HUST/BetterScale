@@ -7,6 +7,7 @@ class MemoryStore:
  def __init__(self):self.values={}
  def put(self,k,v):self.values[k]=v;return 0
  def get(self,k):return self.values.get(k)
+ def get_size(self,k):return len(self.values[k]) if k in self.values else -1
 
 def payload(cursor):
  shards=[]

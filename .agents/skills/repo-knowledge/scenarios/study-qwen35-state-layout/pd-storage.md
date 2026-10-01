@@ -715,3 +715,77 @@ resource-tracker shutdown warning reports four shared-memory objects; after exit
 /dev/shm is empty and all eight NPUs and task Store processes are released.
 Next measure whole-handoff phase costs before choosing an optimization: receiver
 copy time alone does not explain multi-second checkpoint/RPC/control latency.
+
+
+### Handoff cost discrimination and connection lifetime (2026-10-01)
+
+Do not interpret the earlier whole-handoff timer as pure PD latency: the harness
+deliberately evicts the source hot resident and runs an unrelated eight-token
+request before joining the export. In the plain matrix that injected request
+takes 1.17–1.25 s on P and 2.89–3.20 s on D. Even subtraction is not a no-activity
+benchmark because the injected work overlaps the export.
+
+The unchanged-path phase run hw86-native-stream-ingress-phases passes all 12
+handoffs. Median seconds (P-source / D-source):
+- export begin 0.025 / 0.597;
+- hot drop 0.001 / 1.322;
+- injected request 1.167 / 2.963;
+- finish-export RPC 0.317 / 0.686;
+- publish 0.129 / 0.274;
+- restore plan 0.095 / 0.067;
+- import RPC (to D / to P) 1.791 / 1.582.
+Full receipts/source capsule are under the task runtime, not Git. This locates
+cost; it does not prove each phase's internal cause.
+
+A bounded CPU SDK probe store-control-cost isolates three setup/size-query/close
+cycles: setup 14.5–21.1 ms, two size queries 0.22–0.25 ms, close 1.006–1.031 s.
+get_size returns the exact object byte count and -704 for a missing object in
+this DRAM fixture. A separate store-close-gil experiment has a 5 ms Python ticker:
+close lasts 0.978 s, max ticker gap 0.983 s, only one ticker sample inside close.
+That is strong evidence of Python-thread starvation during close, consistent
+with GIL retention; it is not a source-level proof or universal runtime claim.
+Do not blame all D control latency on DP synchronization before removing this
+worker-side teardown stall. The pinned donor also checks global DP completion
+only every 32 steps, but no DP protocol change has been adopted.
+
+Source inspection also finds Turn construction reading the entire prior dense
+history and GDN/conv checkpoint merely to validate the base manifest. New code
+uses manifest validation plus get_size dependency checks: missing/truncated
+objects still fail, historical payloads are not materialized. This remains a
+point-in-time check, not a pin/lease; receiver reads still fail closed if Store
+evicts a dependency afterwards. Metadata work still scales with manifest size.
+
+Worker-owned connections now outlive individual transfers. Endpoint-specific
+busy entries retain DMA operands until drain and unregister; an unreleased
+transfer cannot be replaced or closed. Normal actor stop closes clients through
+targeted owner utilities after all jobs finish. Per-transfer pinned-buffer
+registration and exact-byte/failure gates remain intact. CPU tests cover reuse,
+busy-close rejection, setup failure, close retry, and metadata-only publication
+with missing/truncated base objects (76 affected tests, followed by three more
+malformed-manifest cases; the final session subset passes all 24 tests).
+
+
+hw86-native-persistent-store-oracle passes 12 handoffs, 48 byte oracles and
+post-H2D failure/drain/retry. hw86-native-persistent-store-plain passes the same
+handoff/token matrix without diagnostics. Both exit 0; no actor failure files,
+all NPUs/task Store processes released, /dev/shm empty after shutdown.
+
+Compared with the phase baseline, plain median seconds:
+- P-source: import RPC to D 1.791 -> 0.855; injected request 1.167 -> 0.151;
+  entire instrumented handoff 3.515 -> 1.615.
+- D-source: hot-drop 1.322 -> 0.293; import RPC to P 1.582 -> 0.599;
+  injected request remains 2.963 -> 2.927; entire handoff 7.514 -> 5.302.
+- Subtracting the injected interval gives 2.356 -> 1.466 (P-source) and
+  4.551 -> 2.375 (D-source), but this is NOT a separate no-activity measurement.
+The large P injected-request improvement is consistent with removing background
+client-close Python starvation. D wave/execution overhead remains unresolved.
+These are one bounded before/after matrix, not distributions or throughput SLAs.
+Comparison receipt: persistent-store-comparison.json. Oracle/plain source
+capsules differ only by a later malformed-manifest validation guard/tests;
+ordinary valid handoff behavior is unchanged.
+
+Next remove target checkpoint payloads from control RPC. GDN/conv still take
+approximately 64 MB per handoff through worker/Core/controller/Core/worker,
+including serialization and TP broadcast; dense ingress alone does not remove
+that data-plane detour. No direct-checkpoint implementation or qualification is
+claimed yet.

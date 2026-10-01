@@ -38,7 +38,9 @@ def export_dense(runner,root,rank,header,*,lifetime=None,expected_dense=None):
     stream=torch.npu.Stream(device=runner.device)
     indices=torch.tensor(header['blocks'],dtype=torch.int64,device=runner.device)
     stream.wait_stream(torch.npu.current_stream(runner.device))
-    client=MooncakeDistributedStore();pool=ThreadPoolExecutor(max_workers=1,thread_name_prefix='pd-model-store')
+    from model_store_clients import acquire,release
+    client=acquire(runner,ports[rank],(slots,retained,indices,stream),MooncakeDistributedStore)
+    pool=ThreadPoolExecutor(max_workers=1,thread_name_prefix='pd-model-store')
     config=ReplicateConfig();config.replica_num=1
     started=time.perf_counter();concurrent_enqueues=0
     def put(event,slot,keys,nbytes):
@@ -52,9 +54,6 @@ def export_dense(runner,root,rank,header,*,lifetime=None,expected_dense=None):
                 expected=expected_dense[name][begin:begin+nbytes//512].view(torch.uint8).numpy().tobytes()
                 if bytes(client.get(key))!=expected:raise RuntimeError(f'Concurrent dense Store bytes differ: {name}, token {begin+first}')
     try:
-        rc=client.setup(f'127.0.0.1:{ports[rank]}','http://127.0.0.1:55402/metadata',
-                        0,64*1024**2,'tcp','', '127.0.0.1:55401')
-        if rc!=0:raise RuntimeError(f'Model dense Store setup failed: {rc}')
         for slot in slots:
             if client.register_buffer(slot.data_ptr(),size)!=0:raise RuntimeError('Model pinned registration failed')
             registered.append(slot)
@@ -85,6 +84,7 @@ def export_dense(runner,root,rank,header,*,lifetime=None,expected_dense=None):
         pool.shutdown(wait=True)
         stream.synchronize()
         lifetime['drained']=True
-        for slot in reversed(registered):client.unregister_buffer(slot.data_ptr())
-        client.close()
+        for slot in reversed(registered):
+            if client.unregister_buffer(slot.data_ptr())!=0:raise RuntimeError('Export unregister failed')
+        release(runner,ports[rank])
         lifetime.pop('retained',None)
