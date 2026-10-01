@@ -14,7 +14,7 @@ p.add_argument('--source',type=Path,required=True)
 p.add_argument('--kernel',type=Path,required=True)
 p.add_argument('--native',type=Path,required=True)
 p.add_argument('--device-lengths',action='store_true')
-p.add_argument('--reference', choices=('native','cpu'), default='native')
+p.add_argument('--reference', choices=('native','cpu','cpu-kernel'), default='native')
 p.add_argument('--case', help='Bounded diagnostic subset; omission runs the complete gate')
 a=p.parse_args();a.output.mkdir(exist_ok=False)
 sys.path.insert(0,str(a.source));from plan import schedule,encode
@@ -71,7 +71,16 @@ def compare(actual, expected, phase, bank, lengths):
                 truth=(scores.masked_fill(~allowed,-torch.inf).softmax(-1)@vv).transpose(0,1)
                 def error(value):
                     return (value[query_start:query_start+qn].cpu().float()-truth).abs().max().item()
-                oracle.append(dict(request=request,kv=kvn,candidate_max=error(actual),native_max=error(expected)))
+                observation=dict(request=request,kv=kvn,candidate_max=error(actual),native_max=error(expected))
+                if kvn <= 128:
+                    # Source-derived single-tile arithmetic diagnostic only:
+                    # FP32 exponential/row sum, BF16 P before the PV matmul.
+                    masked=scores.masked_fill(~allowed,-torch.inf)
+                    exponential=(masked-masked.amax(-1,keepdim=True)).exp()
+                    rounded=(exponential.bfloat16().float()@vv)/exponential.sum(-1,keepdim=True)
+                    rounded=rounded.transpose(0,1).bfloat16().float()
+                    observation['candidate_bf16_exp_max']=(actual[query_start:query_start+qn].cpu().float()-rounded).abs().max().item()
+                oracle.append(observation)
             query_start+=qn; page_start+=npages
         details['short_row_cpu_oracle']=oracle
         (a.output/'failure.json').write_text(json.dumps(details,indent=2)+'\n')
@@ -94,7 +103,7 @@ for name,qs,upper in cases:
     def native(lengths):
         return torch_npu.npu_fused_infer_attention_score(q,k,v,block_table=table,atten_mask=mask,input_layout='TND',block_size=128,
             actual_seq_lengths=qends,actual_seq_lengths_kv=lengths,num_heads=8,num_key_value_heads=1,scale=256**-.5,sparse_mode=3,next_tokens=0)[0]
-    cpu_query=q.cpu().float() if a.reference=='cpu' else None
+    cpu_query=q.cpu().float() if a.reference!='native' else None
     cpu_references={}
     def reference(lengths, sign=1):
         if a.reference=='native':
@@ -112,7 +121,16 @@ for name,qs,upper in cases:
                     vv=v[page:page+used_pages].cpu().float().reshape(-1,256)[:kvn]
                     scores=(qq@kk.T)*256**-.5
                     allowed=torch.arange(kvn)[None,:]<=kvn-qn+torch.arange(qn)[:,None]
-                    expected[start:start+qn]=(scores.masked_fill(~allowed,-torch.inf).softmax(-1)@vv).transpose(0,1)
+                    masked=scores.masked_fill(~allowed,-torch.inf)
+                    if a.reference=='cpu-kernel' and kvn <= 128:
+                        # Single KV tile: source DownCastP rounds unnormalized
+                        # exponentials to BF16 before PV; row sum remains FP32.
+                        exponential=(masked-masked.amax(-1,keepdim=True)).exp()
+                        truth=(exponential.bfloat16().float()@vv)/exponential.sum(-1,keepdim=True)
+                        truth=truth.bfloat16().float()
+                    else:
+                        truth=masked.softmax(-1)@vv
+                    expected[start:start+qn]=truth.transpose(0,1)
                 start+=qn;page+=npages
             cpu_references[key]=expected.npu()
         return cpu_references[key]
@@ -152,7 +170,7 @@ for name,qs,upper in cases:
             assert torch.all(b['workspace'][:4096]==165).item() and torch.all(b['workspace'][-4096:]==165).item()
             assert torch.all(b['output'][:2048]==-123).item() and torch.all(b['output'][-2048:]==-123).item()
         if a.device_lengths:assert torch.all(b['out'][sum(live_qs):]==0).item()
-        if name=='edges':
+        if name=='edges' and a.reference!='cpu-kernel':
             start=0;page=0
             for qn,kvn,npages in zip(live_qs,lengths,pages):
                 qq=q[start:start+qn].cpu().float().transpose(0,1)

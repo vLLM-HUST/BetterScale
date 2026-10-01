@@ -235,3 +235,11 @@ the task runtime root. Conv, full model and distributed attention owners remain
 unqualified. Pinned Ascend full native build reached3341 object files before
 the initial30-minute timeout; no compiler error was emitted. It is continuing
 incrementally with a longer bound and verbose log, without changing donor pins.
+
+Owned CP FIA's strict-FP32 outlier is now explained by its documented BF16
+exponential rounding before PV: the independently emulated single-tile output
+is bit-exact for every request in the failing wave. The source-aware independent
+CPU gate passes the complete device-length matrix, without increasing tolerance
+or using native FIA as reference. The earlier pure-FP32 failure remains a distinct
+precision diagnostic. See the CP README for exact scope and source; serving
+qualification and native artifact admission are not implied by this leaf gate.

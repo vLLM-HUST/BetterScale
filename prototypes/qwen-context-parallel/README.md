@@ -70,3 +70,29 @@ diagnosed owned-kernel defect; native-reference tolerances are not automatically
 a complete FP32 mathematical error budget. Do not mark this candidate qualified
 or update native artifact pins from these partial results. PD recurrence and
 checkpoint work can proceed independently.
+
+### Independent numerical contract, 2026-10-01
+
+The single-element strict FP32 discrepancy is explained for the captured failing
+wave, not erased: the vendor arithmetic used by our kernel declares ElementP as
+BF16 and `DownCastP` rounds the **unnormalized exponentials** with CAST_RINT
+before PV; row sums remain FP32. In
+`fia-cp-cpu-rounding/failure.json`, independently emulating that single-tile
+arithmetic gives **exactly zero difference for all16 request outputs**, including
+the previously failing element. No native attention operator is used.
+
+`--reference cpu-kernel` therefore uses that source-derived CPU arithmetic for
+KV<=128 (one tile), and the original FP32 mathematical reference for longer
+contexts. It leaves rtol0.02/atol0.003 unchanged and retains the separate
+`--reference cpu` strict mathematical diagnostic. The complete device-length
+gate passes all six cases, two banks,16 replays each, fixed upper-envelope
+schedules through16x256K and exact zero padding, workspace/output guards and
+input immutability. Largest reference error is0.001476. Receipt:
+`/workspace/betterscale-pd-runtime/fia-cp-cpu-kernel/complete.json`. This qualifies
+the bounded owned CP leaf on the new runtime, not full serving or the native FIA
+reference. No inference about the parked native issue's root cause is needed.
+
+Source for the precision boundary is CANN9.1's
+`flash_attention_interface.cpp` (ElementP=InputDtypeQ) and
+`attn_infra/epilogue/block/online_softmax/`
+`fused_block_epilogue_online_softmax_softmax.inc.hpp` (`DownCastP`).
