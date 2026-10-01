@@ -43,10 +43,10 @@ def summarize(root):
             for a,b in zip(r["arrivals"],r["arrivals"][1:]):
                 if 40<=a[0]<b[0]<=110 and b[0]-a[0]==1:
                     itl.append((b[1]-a[1])/1e6)
-        results.append(dict(label=label,ranks=ranks,client_single_token_itl_ms=(None if request["capture"] else distribution(itl)),
+        results.append(dict(label=label,observed_ranks=len(ranks),ranks=ranks,client_single_token_itl_ms=(None if request["capture"] else distribution(itl)),
                             cohort_seconds=(request["end_ns"]-request["begin_ns"])/1e9,
                             request_count=len(request["requests"])))
-    return dict(scope="1024 prompt / 128 target-only decode tokens; balanced DP3TP2EP6. "
+    return dict(scope="1024 prompt / 128 target-only decode tokens; balanced native DP/TP2/EP; rank receipts determine topology. "
                 "Host call duration is NOT device busy time; profiled and non-profiled arms separate.",
                 cohorts=results)
 

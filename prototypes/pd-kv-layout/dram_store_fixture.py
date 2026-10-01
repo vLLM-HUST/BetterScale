@@ -5,7 +5,7 @@ from pathlib import Path
 CPU_ENV=Path('/workspace/pd-kv-layout-results/store-cpu-venv')
 
 @contextmanager
-def dram_store(output,port=55381):
+def dram_store(output,port=55381,*,segment_bytes=1024*1024**2):
     original_int=signal.getsignal(signal.SIGINT)
     if not callable(original_int) and original_int not in (signal.SIG_DFL,signal.SIG_IGN):
         original_int=signal.default_int_handler # native C handler has no Python handle
@@ -41,7 +41,7 @@ def dram_store(output,port=55381):
             for i in range(2):
                 client=MooncakeDistributedStore();clients.append(client)
                 rc=client.setup(f'127.0.0.1:{port+3+i}',f'http://127.0.0.1:{port+1}/metadata',
-                    1024*1024**2 if i==0 else 0,64*1024**2,'tcp','',f'127.0.0.1:{port}')
+                    segment_bytes if i==0 else 0,64*1024**2,'tcp','',f'127.0.0.1:{port}')
                 if rc!=0:raise RuntimeError(f'DRAM client setup: {rc}')
             (output/'master.pid').write_text(str(proc.pid)+'\n')
             # Native libraries may install a process-exit SIGINT handler. Keep

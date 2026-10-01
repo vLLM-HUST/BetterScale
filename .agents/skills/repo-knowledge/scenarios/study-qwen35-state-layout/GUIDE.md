@@ -1,5 +1,8 @@
 # Study native Qwen3.5 state layout
 
+For **dual-host P4 / DP4TP2EP8 PD and the 256K follow-on**, read
+[dual-host-pd.md](dual-host-pd.md) first.
+
 For current **P2/D6 PD development**, first follow the **Resume here** section in
 [pd-storage.md](pd-storage.md). It records accepted numerical boundaries and the
 active transfer/lifetime frontier; older failure gates below are historical.

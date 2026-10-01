@@ -5,6 +5,7 @@ CPU tensors are the first transport; no MTP state, background writers, distribut
 consensus, live-session snapshotting or production connector claim.
 """
 import math
+from pd_limits import context_limit
 import uuid
 
 IDENTITY='qwen35-35b-a3b-bf16-tp2-target-only-v1'
@@ -84,7 +85,7 @@ def restore(core,payload,salt):
     scheduler=idle(core);header=payload['header'];tokens=header['tokens'];cursor=header['cursor']
     if getattr(core,'_pd_import',None) is not None:
         raise RuntimeError('A quarantined import must drain before another import')
-    if (header.get('dense_start',0)!=0 or header['identity']!=IDENTITY or cursor!=len(tokens)-1 or not 0<cursor<=8192
+    if (header.get('dense_start',0)!=0 or header['identity']!=IDENTITY or cursor!=len(tokens)-1 or not 0<cursor<context_limit()
             or header['block_size']!=scheduler.block_size or len(payload['shards'])!=2
             or any(type(t) is not int or t<0 for t in tokens)):
         raise ValueError('Incompatible target checkpoint')
@@ -174,7 +175,7 @@ def worker_root(worker,header,*,source):
     from vllm.distributed import get_tensor_model_parallel_world_size,get_tensor_model_parallel_rank
     runner=worker.model_runner;root=runner._live_state_root;seat=header['seat']
     if (get_tensor_model_parallel_world_size()!=2 or header['identity']!=IDENTITY
-            or not 0<=seat<20 or not 0<header['cursor']<=8192 or len(root.target)!=40
+            or not 0<=seat<20 or not 0<header['cursor']<context_limit() or len(root.target)!=40
             or header['block_size']!=runner.block_size):
         raise ValueError('Unqualified model checkpoint geometry')
     torch.npu.synchronize()
