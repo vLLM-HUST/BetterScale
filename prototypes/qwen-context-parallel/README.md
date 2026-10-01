@@ -136,3 +136,19 @@ the exact1..16 live prefix and collapses the entire zero suffix, rejecting holes
 and seventeen live requests. This is validated for capacities through4096;26
 affected CPU tests pass. The owning CP planner still rejects noncanonical input.
 The model-level run before this fix failed closed, not a successful continuation.
+
+### Short-prefill owned route on CANN9.1
+
+The model's4412-token long prefill plus64-token generation passes, but the
+warm4476-token continuation selected a16-token short-prefill bucket and hit
+native FD/10 admission. Extend owned query geometry toQ1..16 and capacity16,
+not just a Q1..3 bypass. Empty-partial output uses128KiB UB at Q16, so its LSE
+fill moves to128KiB to avoid overlap (AtlasA2 UB192KiB).
+
+`fia-wave-q16/complete.json` passes mixed Q1/4/8/16 through256K context with
+real serving metadata, two banks and16 replays, independent CPU-kernel oracle,
+guards and input immutability; max error0.001377. The six original cases also
+pass with dynamic host metadata in `fia-wave-q16-regression/complete.json`,
+max error0.001476. Both use the new `fia-cp-q16-build/libbs_fia_cp.so` under
+`/workspace/betterscale-pd-runtime`;26 affected CPU tests pass. These are leaf
+and metadata-composition gates, not yet successful model warm continuation.

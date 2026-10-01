@@ -314,7 +314,9 @@ helper='''        // Empty partial is the reduction identity: O=0 and logsumexp=
 #ifdef __DAV_C220_VEC__
             if (AscendC::GetSubBlockIdx() != 0) { return; }
             auto zeros = resource.ubBuf.template GetBufferByByte<float>(0);
-            auto negInf = resource.ubBuf.template GetBufferByByte<float>(6 * 16384);
+            // Q16 x8 heads x256 FP32 zero output occupies128KiB.
+            // Keep the LSE fill disjoint, within AtlasA2's192KiB UB.
+            auto negInf = resource.ubBuf.template GetBufferByByte<float>(8 * 16384);
             AscendC::PipeBarrier<PIPE_ALL>();
             AscendC::WaitFlag<AscendC::HardEvent::MTE3_V>(EVENT_ID6);
             AscendC::Duplicate(zeros, 0.0f, rows * embedV);

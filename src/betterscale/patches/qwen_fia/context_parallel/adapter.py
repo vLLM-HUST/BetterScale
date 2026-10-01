@@ -12,7 +12,7 @@ import struct
 
 from .plan import encode, schedule
 
-CAPACITIES = (3, 6, 12, 24, 40, 48)
+CAPACITIES = (3, 6, 12, 16, 24, 40, 48)
 _LIBRARY = None
 
 

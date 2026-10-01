@@ -133,11 +133,11 @@ class PlanTest(unittest.TestCase):
             self.assertEqual(adjusted.actual_seq_lengths_q[-1],tokens)
             self.assertEqual(len(adjusted.seq_lens_list),n+int(sum(lengths[:n])<tokens))
             self.assertEqual(cp.schedule([tokens]*n,lengths[:n])['split_nodes'],0)
-            if max(q)>3:
+            if max(q)>16:
                 with self.assertRaises(ValueError):cp.schedule([tokens]*n,q)
 
     def test_reject_wrong_geometry_and_non_verification(self):
-        for lengths, queries in (([0],[1]),([2],[3]),([262145],[3]),([1024],[4]),([1024]*17,[3]*17)):
+        for lengths, queries in (([0],[1]),([2],[3]),([262145],[3]),([1024],[17]),([1024]*17,[3]*17)):
             with self.assertRaises(ValueError):cp.schedule(lengths, queries)
         plan = cp.schedule([1024,2048], [3,3])
         raw = native(2);struct.pack_into('<I',raw,4,128)

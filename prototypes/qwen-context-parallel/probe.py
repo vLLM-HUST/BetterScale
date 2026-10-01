@@ -40,6 +40,7 @@ cases=[('edges',[1,2,3,3],[127,512,513,1025]),
        ('long16',[3]*16,[262144]*16)]
 if a.case=='draft-padding': cases=[('draft-padding',[1],[262144])]
 if a.case=='single': cases=[('single',[3],[262144])]
+if a.case=='short-prefill': cases=[('short-prefill',[1,4,8,16],[513,4096,32768,262144])]
 if a.case:
     cases=[case for case in cases if case[0]==a.case]
     if not cases: raise ValueError('unknown diagnostic case')
