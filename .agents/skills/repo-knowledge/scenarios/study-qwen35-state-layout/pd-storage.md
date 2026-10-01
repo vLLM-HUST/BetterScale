@@ -260,3 +260,25 @@ oracles including host checkpoint/new-slot continuation; see PD prototype README
 Next full-model qualification uses a separate candidate package with explicit
 post4 and exact rebuilt artifact pins. It must not change repository release
 qualification merely to permit the experiment; donor source hashes remain fixed.
+
+### Next integrated topology: one host P2 + D6 (Fletcher, 2026-10-01)
+
+Use all eight hw180 cards for the first real PD cooperation experiment: two P
+cards and six D cards. Prefer TP2 attention groups (one P group, three D groups)
+while retaining a definite D owner per session. This is a same-host functional
+step toward the production layout, not a demand to finish cross-host networking
+first. EP6 and EP8 should share protocol logic, but kernel compatibility still
+needs evidence. Qwen35 has256 experts; pinned core `expert_map_manager.py`
+supports uneven EP partitions43/43/43/43/42/42 with EPLB off. EPLB requires even
+division. Do not declare EP6 impossible just because256 is not divisible by6,
+or assume the Ascend MC2/fused-MoE routes already support that uneven mapping.
+
+The first TP2 model candidate startup passed source/artifact admission but failed
+before weights on missing `libatb.so`. ATB9.1 is installed separately at
+`/usr/local/Ascend/nnal/atb/9.1.0/atb/set_env.sh`; sourcing it selects the torch
+C++ ABI and `_register_atb_extensions()` then passes. The second startup uses
+that environment, loaded weights and is capturing the unchanged FULL graph
+catalog. Logs: `model-server.log` (loader failure) and `model-server-atb.log`
+(current). Candidate package is isolated under the task runtime root, not a
+published distribution. Context8192/State8GiB per rank is a bounded smoke, not
+256K capacity qualification.
