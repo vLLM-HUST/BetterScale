@@ -96,3 +96,7 @@ Source for the precision boundary is CANN9.1's
 `flash_attention_interface.cpp` (ElementP=InputDtypeQ) and
 `attn_infra/epilogue/block/online_softmax/`
 `fused_block_epilogue_online_softmax_softmax.inc.hpp` (`DownCastP`).
+
+The exact-host-plan variant (without `--device-lengths`) also passed all six
+cases and all16 replays, exercising full/split plan transitions. Receipt:
+`/workspace/betterscale-pd-runtime/fia-cp-cpu-host-plan/complete.json`.

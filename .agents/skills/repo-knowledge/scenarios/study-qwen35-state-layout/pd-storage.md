@@ -243,3 +243,13 @@ CPU gate passes the complete device-length matrix, without increasing tolerance
 or using native FIA as reference. The earlier pure-FP32 failure remains a distinct
 precision diagnostic. See the CP README for exact scope and source; serving
 qualification and native artifact admission are not implied by this leaf gate.
+
+Both owned CP gates now pass: device-authoritative lengths and exact-host
+full/split plan transitions. Pinned donor build recovery: initial timeout left
+eight task-owned `kernel_meta_Compressor*/kernel_meta.lock` files with dead PIDs;
+the first incremental attempt failed only on these locks. After verifying every
+PID absent, locks were renamed to `kernel_meta.lock.timeout-backup`, preserving
+artifacts. `ascend-build-resumed.log` is the current incremental build log. Do not
+delete a compiler lock without checking its owner or conflate this timeout
+cleanup with a source/CANN compilation defect. Model14 safetensors shards are
+present (71,903,878,016 bytes), not yet loaded or tensor-validated.
