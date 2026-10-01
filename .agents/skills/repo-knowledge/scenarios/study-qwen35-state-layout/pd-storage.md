@@ -226,3 +226,12 @@ recurrence, including accepted-candidate1..3 selection and a wave12 host export 
 new-slot restore / continuation. See `prototypes/pd-kv-layout/gdn_resume_probe.py`
 and its README. This is actual recurrent target State, but not yet conv/Store
 or model handoff; do not generalize the leaf result to whole-model PD.
+
+The same one-layer GDN numerical continuation also passed through two real
+DRAM Store clients (`store_smoke.py --gdn-resume`), not just host RAM. Exact
+checkpoint bytes are required before restore; all24 post/replay state checks
+use an independent CPU recurrence. See `gdn-store-resume/receipt.json` under
+the task runtime root. Conv, full model and distributed attention owners remain
+unqualified. Pinned Ascend full native build reached3341 object files before
+the initial30-minute timeout; no compiler error was emitted. It is continuing
+incrementally with a longer bound and verbose log, without changing donor pins.

@@ -253,3 +253,12 @@ VLLM_PLUGINS='' python gdn_resume_probe.py --output /new/receipt`.
 The new-container receipt is
 `/workspace/betterscale-pd-runtime/gdn-resume/complete.json`; all NPUs were idle
 after normal exit.
+
+`store_smoke.py --gdn-resume` composes that same numerical gate with two real
+Store clients: the wave12 selected recurrent checkpoint is put into DRAM and
+read by the other client before new-slot restoration. This passed with the same
+output/state errors, clean client/master exit and all devices idle afterwards.
+Receipt: `/workspace/betterscale-pd-runtime/gdn-store-resume/receipt.json`.
+Use the clean `store-staging-venv` and put the exact core source checkout on
+PYTHONPATH (the probe imports its Triton utilities). This is one1MiB blocking
+checkpoint, not asynchronous dense transport, conv restore or full model PD.

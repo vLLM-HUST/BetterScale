@@ -78,6 +78,7 @@ def main():
     parser.add_argument("--base-port", type=int, default=55181)
     parser.add_argument("--ssd", action="store_true")
     parser.add_argument("--npu-staging", action="store_true")
+    parser.add_argument("--gdn-resume", action="store_true")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     port = args.base_port
@@ -207,6 +208,19 @@ def main():
                 receipt["checks"].append("lease expiry permits normal deletion")
             receipt["checks"].append("remove test-owned object")
             receipt["session_checks"] = session_roundtrip(args.output_dir / "directory.sqlite", p, d)
+            if args.gdn_resume:
+                from gdn_resume_probe import check as check_gdn
+                import torch
+                def checkpoint_transport(checkpoint):
+                    # Quiescent, selected recurrent target State, not a random blob.
+                    key = f"gdn-resume-{os.getpid()}"
+                    payload = checkpoint.numpy().tobytes()
+                    assert p.put(key, payload) == 0
+                    returned = d.get(key)
+                    assert returned == payload
+                    return torch.frombuffer(bytearray(returned), dtype=torch.float32).reshape(checkpoint.shape).clone()
+                receipt["gdn_resume"] = check_gdn(args.output_dir / "gdn-resume", checkpoint_transport)
+                receipt["scope"] = "real DRAM Store TCP, owned GDN checkpoint/new-slot continuation; same-host"
             if args.npu_staging:
                 from npu_store_staging import check
                 receipt["npu_staging"] = check(p, d)
