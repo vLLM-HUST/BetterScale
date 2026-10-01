@@ -747,8 +747,12 @@ fixed-input BF16 reduce-scatter leaf reproduces nondeterminism. Strict HCCL
 eliminates variability in that leaf and in12 original-compiled cold repeats
 (tokens and top5 logprobs exact). The strict native P2/D6 matrix passes12
 handoffs, but fixed warm/cold logprob differences remain. Same-owner no-transfer
-controls and independent FP64 recurrence isolate an open GDN chunk/State
-continuation accuracy seam; this is not a production numerical qualification.
+controls and independent FP64 recurrence isolate a GDN chunk/State
+continuation accuracy seam. Fletcher accepts the measured envelope for current
+PD development; it is no longer a blocker. Strict HCCL is a repeatability
+control, not a demonstrated accuracy requirement: saved strict/non-strict leaf
+outputs both have about0.232% relative L2 error against FP64 summation. This
+does not qualify every production workload.
 See the scenario's [evidence and reproduction envelope](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/pd-storage.md#cold-request-numerical-repeatability-investigation-hw86-2026-10-01).
 The numerical_entry/trace helpers are opt-in diagnostics; do not make the
 fixed-seat eviction or Python-forward instrumentation a serving default.

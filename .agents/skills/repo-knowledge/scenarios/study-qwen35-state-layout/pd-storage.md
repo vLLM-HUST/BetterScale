@@ -539,13 +539,13 @@ State (max abs0.05649/0.02810); warm/cold final-State difference is
 claiming that a particular fused operator has been identified or setting a
 whole-model acceptance tolerance.
 
-**Current disposition:** the random cold-repeat failure has a demonstrated
-deterministic-HCCL control, confirmed on the original compiled path. The remaining
-fixed continuation/cold discrepancy has exact activation and State-carry controls
-and an independent FP64 numerical reference. Treat GDN chunk/initial-State
-arithmetic as an open accuracy workstream. Do not call the production PD numerical
-gate passed or silently replace the qualified release kernels. The present
-verification work adds only opt-in probes; it does not adopt new arithmetic.
+**Disposition updated by Fletcher, 2026-10-01:** the measured fixed GDN
+continuation/cold difference is accepted for the current PD prototype and no
+longer blocks PD development. Preserve its measured envelope below; do not turn
+it into an unlimited tolerance or a new kernel-rewrite task. Exact activation,
+State-carry and transfer-byte identities remain separate contracts. Strict HCCL
+is a repeatability control, not a demonstrated accuracy requirement for
+production. Broader service/production qualification is not implied.
 
 To reproduce the final trace, combine the native warm-prefix control with
 `HCCL_DETERMINISTIC=strict`, `BETTERSCALE_NUMERICAL_TRACE=<external dir>`,
@@ -557,3 +557,49 @@ inputs (not only last-token taps); `analyze_gdn_recurrence.py <trace dir>` check
 them without NPU access. The large State buffers are diagnostic-only, not a serving
 checkpoint protocol. FULL graph observation still explicitly bypasses compiled
 Python and perturbs timing.
+
+
+### Accepted numerical envelope and non-strict HCCL assessment
+
+Fletcher explicitly accepts the currently observed GDN segmentation difference:
+we cannot eliminate it within the present work and should record it rather than
+block PD progress. This is a bounded engineering acceptance, not proof that every
+future shape, context length or kernel change is safe.
+
+Accepted observation anchors (BF16 Qwen35, TP2, hw86, layer0,280+1 versus281):
+- Whole-prefix GDN output relative L2 versus FP64:0.181–0.192%.
+- Prefix recurrent State relative L2 versus FP64:0.2066–0.2373%.
+- Warm/cold last-token GDN output max absolute difference:0.001953125–0.00390625.
+- Warm/cold final-State relative L2:0.1720–0.2044%.
+- Local no-transfer warm/cold common-candidate logprob max difference:0.37437;
+  the broader P/D fixture reaches0.86739. These downstream observations are not
+  universal logprob tolerances; the measured fixture's output tokens agree.
+
+Retain exact State-carry/transport-byte checks. For comparable numerical
+regressions, report movement from this envelope; do not blindly reuse an
+elementwise atol for differently scaled tensors. Historical statements above
+that call this an unaccepted blocker are superseded by this explicit decision.
+
+Non-strict HCCL: the saved final output on each of six leaf-probe ranks is
+bitwise equal to a legal three-input BF16 addition order. No element lies outside
+that order envelope. A follow-up CPU FP64-sum comparison of those saved outputs
+(not every one of384 transient replays) gives:
+- default/non-strict relative L2:0.23189–0.23277%;
+- strict relative L2:0.23164–0.23277%;
+- both arms max absolute error versus FP64:0.00042724609375;
+- all inspected elements satisfy the standard two-addition bound
+  abs(error) <= gamma2 * sum(abs(inputs)), u=1/256,
+  gamma2=2*u/(1-2*u). This is an absolute conditioning-aware bound, not a claim
+  of a fixed small ULP distance near cancellation.
+
+The0.00048828125 reported earlier is the *difference between repeated NPU
+outputs*, not the error against FP64. Strict fixes the reduction order; the
+measured accuracy is essentially unchanged. Evidence supports ordinary BF16
+rounding-order variability, not a demonstrated numerical failure requiring
+strict. Model amplification and greedy-token bifurcation are real but do not,
+by themselves, establish degraded task quality. Use strict for deterministic
+diagnosis/token regression isolation; do not silently make it a production
+accuracy mandate. Non-strict end-to-end quality and strict's performance cost
+have not been measured in a representative workload.
+CPU assessment receipt: runtime root hccl-rounding-assessment.json, copied into
+the local migration backup. No NPU rerun or runtime change was needed.
