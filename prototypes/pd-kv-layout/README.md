@@ -643,3 +643,12 @@ Do not use that method for an owner-specific session export/import/drop. Its
 seam; any eventual adapter must preserve the pinned source boundary. Request
 routing/FIRST_REQ already exists as described above; don't build a second DP
 coordinator just to work around the offline experiment.
+
+**Hardware migration stop (2026-10-01):** Fletcher requested backup/sync because
+hw180 is being reclaimed. The `p2d6-model-async-oracle` run was interrupted during
+startup, before any new numerical/transfer result; its KeyboardInterrupt receipt
+is not a failed oracle or qualification. Resume that discriminator on the newly
+assigned hardware, after checking its environment and resource authority. The
+last qualified route remains blocking `--streamed`; serialized async lifecycle
+control passes, concurrent async numerical gate remains unresolved. No native
+release pins or shared system installation were changed.
