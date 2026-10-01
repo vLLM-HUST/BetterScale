@@ -232,5 +232,7 @@ For why heterogeneous pooling still wastes GDN space, read
 [padding-versus-pooling.md](padding-versus-pooling.md): padding arithmetic versus
 free-capacity fungibility, and the separate-domain condition for lane savings.
 
-For PD ownership, head-major cache storage and the source-only Mooncake fit study,
-read [pd-storage.md](pd-storage.md).
+For PD ownership, head-major Mooncake storage, current P2/D6 integration and
+accepted numerical boundaries, read [pd-storage.md](pd-storage.md), starting at
+its **Resume here** section. Historical numerical blockers are superseded by
+Fletcher's bounded GDN acceptance; do not repeat that investigation by default.

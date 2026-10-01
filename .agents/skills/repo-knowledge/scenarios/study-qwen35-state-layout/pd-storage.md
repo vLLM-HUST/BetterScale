@@ -1,6 +1,36 @@
 # Explore PD storage and head-major transfer
 
-Source-only research, 2026-10-01. BetterScale baseline
+## Resume here: accepted decisions and next PD work
+
+Fletcher confirmed on2026-10-01 that the accumulated experience should prevent
+reopening the same numerical inquiry. The chronological evidence below includes
+historical failures and earlier blocking judgments; **this section and the
+[accepted envelope](#accepted-numerical-envelope-and-non-strict-hccl-assessment)
+take precedence over those old judgments.**
+
+- Accept the measured GDN segmentation/continuation envelope for current PD
+  development. Do not start another GDN precision rewrite or repeat the same
+  full-model probes merely because warm/cold logprobs differ.
+- Non-strict HCCL variability is consistent with BF16 summation-order rounding.
+  Strict is an explicit repeatability/diagnostic control, not a mandatory
+  production accuracy fix. Do not equate a changed greedy token with corruption.
+- Exact transfer bytes, immutable pinned generations, single active writer,
+  owner affinity and publication-after-ack remain non-negotiable. Numerical
+  acceptance does not relax those storage/lifetime contracts.
+- Reopen numerical work only for new evidence: changed arithmetic/runtime,
+  materially different geometry, transfer/State identity failure, departure
+  from the measured envelope or representative task-quality regression.
+- Resume PD from native AsyncLLM/DPLB targeted-owner coordination. Blocking
+  streamed handoffs pass; next qualify retired asynchronous export with native
+  peer activation, exact-byte oracle, explicit hot eviction and another request.
+  Use strict for that isolation arm without changing production defaults.
+- hw86 is the active host; hw180 is retired and must not be required. Dedicated
+  task artifacts live under /workspace/betterscale-pd-runtime, implementation in
+  /workspace/BetterScale. Runtime/release pins are unchanged.
+
+## Historical investigation and retained evidence
+
+Initial source-only research, 2026-10-01. BetterScale baseline
 852c10663e703f853c81435d6fd89a6c8affdef3; Mooncake reference
 0d1a8040faebb7c127c8901840a38c2ff57e80c5, inspected at
 /workspace/Mooncake-reference on hw180. No runtime install or device test.

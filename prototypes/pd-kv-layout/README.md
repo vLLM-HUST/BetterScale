@@ -733,7 +733,8 @@ phenomenon as an argmax tie. Cold runs can use different resident seats/pages an
 DP wave timing; this is not proof of a particular kernel, storage, allocator or
 coordinator defect. All NPUs and task Store masters were verified released.
 
-Current decision boundary: exact warm/cold token equality is confounded by a
+Historical decision boundary (superseded by the accepted numerical envelope
+below): exact warm/cold token equality is confounded by a
 reproduced pure-D baseline variation. Do not weaken numerical acceptance or
 promote production correctness implicitly. Transfer byte/lifetime evidence still
 stands within its envelope; model numerical qualification/root-cause work is a
