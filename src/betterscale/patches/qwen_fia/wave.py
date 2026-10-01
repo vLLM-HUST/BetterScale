@@ -79,9 +79,21 @@ class Planner:
             raise RuntimeError(
                 f"FIA plan {plan}: cap={frame.tokens}, q={offsets}, kv={lengths}"
             )
+        if frame.context_parallel:
+            # Native planning supplies geometry, not the owned kernel's launch
+            # identity. FD/non-FD and launch-grid transitions are irrelevant to
+            # this route; encode still validates the exact metadata ABI.
+            try:
+                if self.lib.plan_metadata(plan, frame.h_tiling.data_ptr(), 2528) != 2528:
+                    raise RuntimeError("Unqualified FIA tiling layout")
+                cp.prepare(frame, m)
+            finally:
+                self.status(self.lib.plan_discard_latest(plan))
+            self.calls += 1
+            return
         try:
             if self.lib.plan_is_fd(plan) != 0 or self.lib.plan_blocks(plan) != 24:
-                raise RuntimeError("Unqualified Qwen256 FIA variant/grid")
+                raise RuntimeError(f"Unqualified Qwen256 FIA variant/grid: fd={self.lib.plan_is_fd(plan)} blocks={self.lib.plan_blocks(plan)} cap={frame.tokens} q={offsets} kv={lengths}")
             if self.lib.plan_metadata(plan, frame.h_tiling.data_ptr(), 2528) != 2528:
                 raise RuntimeError("Unqualified FIA tiling layout")
             workspace = self.lib.plan_workspace(plan)

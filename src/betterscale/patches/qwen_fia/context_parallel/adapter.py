@@ -12,7 +12,7 @@ import struct
 
 from .plan import encode, schedule
 
-CAPACITIES = (6, 12, 24, 40, 48)  # capacity3 / single-request graph stays native
+CAPACITIES = (3, 6, 12, 24, 40, 48)
 _LIBRARY = None
 
 
@@ -79,7 +79,13 @@ def launch(frame, query, key, value, mask, output):
         _LIBRARY.lane_launch.argtypes = [ctypes.c_void_p,ctypes.POINTER(ctypes.c_uint64)]
         _LIBRARY.lane_launch.restype = None
     # Fixed capacity: length-dependent partial count never changes graph storage.
-    scratch = torch.empty(frame.cp_workspace, dtype=torch.uint8, device=query.device)
+    # Native geometry planning may change scratch offsets across FD variants.
+    # encode admits at most128MiB; keep graph allocation fixed at that bound.
+    scratch = torch.empty(128 << 20, dtype=torch.uint8, device=query.device)
+    if frame.tokens > 48:
+        # MTP's large graph capacities may have thousands of zero-KV padding
+        # rows; the Q1..3 kernel initializes only its small query tile.
+        output.zero_()
     ptrs = (ctypes.c_uint64*10)(*[t.data_ptr() for t in
         (query,key,value,mask,frame.table,output,frame.q,frame.kv,scratch,frame.tiling)])
     _LIBRARY.lane_launch(torch.npu.current_stream().npu_stream,ptrs)

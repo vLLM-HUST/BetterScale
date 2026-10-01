@@ -100,3 +100,31 @@ Source for the precision boundary is CANN9.1's
 The exact-host-plan variant (without `--device-lengths`) also passed all six
 cases and all16 replays, exercising full/split plan transitions. Receipt:
 `/workspace/betterscale-pd-runtime/fia-cp-cpu-host-plan/complete.json`.
+
+### Serving integration: metadata is not native launch identity
+
+The first new-runtime TP2 model produced32 tokens, but the long-request test
+failed the old non-FD/24-block guard. A bounded planner-only observation found
+Q3/KV4410 -> FD/9 blocks and padded Q1/Q3 -> FD/10 blocks, while Q4096 prefill
+remained non-FD/24. This is a serving admission gap, separate from the parked
+native numerical-reference anomaly.
+
+Owned attention now borrows only the validated2528-byte geometry. It releases
+the newest metadata-only plan without retaining a native function/grid identity
+or accumulating plan tombstones. Native-launch paths retain their strict guard.
+The owned launch allocates the admitted128MiB scratch bound, stable across
+metadata-plan changes. Capacity3 target attention and small MTP frames use the
+owned route; later one-token MTP steps may use larger capacities. Large draft
+frames explicitly zero output before launch: the Q1..3 kernel only initializes
+one small padding tile and must not be mistaken for an arbitrary-padding fill.
+
+`--wave-planner --case single` passes two banks/16 replays with actual serving
+Planner metadata changing between KV3 and256K, comparing to independent CPU.
+`--wave-planner --initialize-padding --device-lengths --padding-tokens 4095
+--case draft-padding` passes one live query plus4095 padding rows. The naked
+kernel test failed padding, as expected from the discovered small-tile limit;
+the explicit zero+kernel composition passes guards, live output and exact zeros.
+Receipts are `fia-wave-single-2` and `fia-wave-draft-padding` under the task
+runtime root. The new `plan_discard_latest` host ABI needs the rebuilt adapter;
+old native manifests are NOT promoted by these tests.18 affected CPU tests and
+the native C++1000-wave lifecycle check pass. Model validation remains pending.

@@ -60,5 +60,12 @@ int main() {
   assert(plan_bind_metadata(id,1234)==0 && plans[id]->placeholders.size()==2);
   assert(word(*plans[id],280)==1234);
   assert(plan_release(id)==0);
+  const auto before_metadata=plans.size();
+  for(int wave=0;wave<1000;++wave) {
+    fixture(); int temporary=plan_finish(); assert(temporary>=0);
+    assert(plan_discard_latest(temporary-1)==-1);
+    assert(plan_discard_latest(temporary)==0);
+    assert(plans.size()==before_metadata);
+  }
   puts("native FIA CPU admission/lifecycle PASS");
 }

@@ -14,6 +14,9 @@ p.add_argument('--source',type=Path,required=True)
 p.add_argument('--kernel',type=Path,required=True)
 p.add_argument('--native',type=Path,required=True)
 p.add_argument('--device-lengths',action='store_true')
+p.add_argument('--padding-tokens',type=int,default=13)
+p.add_argument('--wave-planner',action='store_true')
+p.add_argument('--initialize-padding',action='store_true')
 p.add_argument('--reference', choices=('native','cpu','cpu-kernel'), default='native')
 p.add_argument('--case', help='Bounded diagnostic subset; omission runs the complete gate')
 a=p.parse_args();a.output.mkdir(exist_ok=False)
@@ -35,12 +38,14 @@ cases=[('edges',[1,2,3,3],[127,512,513,1025]),
        ('moderate',[3]*16,[32768]*14+[262144]*2),
        ('extreme',[3]*16,[1024]*15+[262144]),
        ('long16',[3]*16,[262144]*16)]
+if a.case=='draft-padding': cases=[('draft-padding',[1],[262144])]
+if a.case=='single': cases=[('single',[3],[262144])]
 if a.case:
     cases=[case for case in cases if case[0]==a.case]
     if not cases: raise ValueError('unknown diagnostic case')
 (a.output/'protocol.json').write_text(json.dumps(dict(device=int(os.environ['ASCEND_RT_VISIBLE_DEVICES']),cases=cases,
     kernel_sha256=hashlib.sha256(a.kernel.read_bytes()).hexdigest(),native_sha256=hashlib.sha256(a.native.read_bytes()).hexdigest(),
-    reference=a.reference,scope='Two captured banks; device-only length changes and zero-KV padding' if a.device_lengths else 'Exact host lengths; two captured banks',torch=torch.__version__,torch_npu=torch_npu.__version__),indent=2)+'\n')
+    reference=a.reference,wave_planner=a.wave_planner,initialize_padding=a.initialize_padding,padding_tokens=a.padding_tokens,scope='Two captured banks; device-only length changes and zero-KV padding' if a.device_lengths else 'Exact host lengths; two captured banks',torch=torch.__version__,torch_npu=torch_npu.__version__),indent=2)+'\n')
 receipts=[]
 def compare(actual, expected, phase, bank, lengths):
     live=sum(live_qs)
@@ -91,7 +96,8 @@ for name,qs,upper in cases:
     live_qs,live_upper=list(qs),list(upper)
     native_padding=[]
     if a.device_lengths:
-        qs=qs+[13];upper=upper+[0]
+        assert a.padding_tokens > 0
+        qs=qs+[a.padding_tokens];upper=upper+[0]
     qends=list(accumulate(qs));pages=[(n+127)//128 for n in upper];columns=max(pages)
     table=torch.zeros(len(qs),columns,dtype=torch.int32);offset=0
     for row,count in enumerate(pages):table[row,:count]=torch.arange(offset,offset+count);offset+=count
@@ -134,6 +140,15 @@ for name,qs,upper in cases:
                 start+=qn;page+=npages
             cpu_references[key]=expected.npu()
         return cpu_references[key]
+    def wave_metadata(lengths, host):
+        from types import SimpleNamespace
+        from betterscale.patches.qwen_fia.wave import Planner
+        planner=Planner(lib,heads=8,kvheads=1)
+        planner.fixtures=(q,k,v,q,256**-.5)  # suppressed native launch
+        frame=SimpleNamespace(tokens=sum(qs),columns=columns,requests=len(qs),
+                              context_parallel=True,h_tiling=host,table=table,plan=None)
+        planner.native(frame,SimpleNamespace(actual_seq_lengths_q=qends,seq_lens_list=lengths,attn_mask=mask))
+        assert frame.plan is None  # no persistent native launch identity
     banks=[]
     for bank in range(2):
         workspace=torch.full((128*1024**2+8192,),165,dtype=torch.uint8,device='npu')
@@ -147,12 +162,17 @@ for name,qs,upper in cases:
         (a.output/f'{name}-bank{bank}.bin').write_bytes(raw.raw)
         plan=schedule(live_upper,live_qs);meta.copy_(torch.tensor(list(encode(raw.raw,plan)),dtype=torch.uint8))
         ptrs=(u*10)(*[x.data_ptr() for x in (q,k,v,mask,table,out,ql,kl,workspace[4096:-4096],meta)])
-        def call(ptrs=ptrs):kernel.lane_launch(torch.npu.current_stream().npu_stream,ptrs)
+        host_meta=torch.empty(4096,dtype=torch.uint8)
+        if a.wave_planner:
+            wave_metadata(upper,host_meta);meta.copy_(host_meta)
+        def call(ptrs=ptrs,out=out):
+            if a.initialize_padding: out.zero_()
+            kernel.lane_launch(torch.npu.current_stream().npu_stream,ptrs)
         call();torch.npu.synchronize()
         compare(out,reference(upper),'initial',bank,upper)
         graph=torch.npu.NPUGraph()
         with torch.npu.graph(graph):call()
-        banks.append(dict(workspace=workspace,output=output,out=out,kl=kl,meta=meta,raw=raw.raw,ptrs=ptrs,graph=graph))
+        banks.append(dict(workspace=workspace,output=output,out=out,kl=kl,meta=meta,raw=raw.raw,ptrs=ptrs,graph=graph,host_meta=host_meta))
     errors=[];states=[]
     for step in range(8):
         lengths=(live_upper if step%2 else [max(qn,min(n,(3,511,512,513)[step//2])) for qn,n in zip(live_qs,live_upper)])
@@ -163,6 +183,9 @@ for name,qs,upper in cases:
             plan=schedule(live_upper,live_qs) if a.device_lengths else schedule(lengths,qs);states.append(plan['split_nodes'])
             b['kl'].copy_(torch.tensor(lengths,dtype=torch.int64))
             b['meta'].copy_(torch.tensor(list(encode(b['raw'],plan)),dtype=torch.uint8))
+            if a.wave_planner:
+                wave_metadata(upper if a.device_lengths else lengths,b['host_meta'])
+                b['meta'].copy_(b['host_meta'])
             b['out'].fill_(float('nan'));b['workspace'][4096:-4096].zero_()
             b['graph'].replay();torch.npu.synchronize()
             compare(b['out'],ref,f'replay-{step}',bank,lengths)

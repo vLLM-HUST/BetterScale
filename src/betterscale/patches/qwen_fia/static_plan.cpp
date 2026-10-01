@@ -138,6 +138,13 @@ extern "C" int plan_release(int id) {
   plans[id].reset(); return 0;
 }
 
+// Metadata-only plans never escape to a graph/template. Discard only the last
+// temporary slot, so repeated owned-kernel planning cannot grow tombstones.
+extern "C" int plan_discard_latest(int id) {
+  if(id<0 || size_t(id)+1!=plans.size() || !plans[id]) return -1;
+  plans.pop_back(); return 0;
+}
+
 // Refresh one persistent frame from the immediately-created temporary plan.
 // The temporary ID never escapes the planner. Persistent IDs are not recycled;
 // steady replay planning therefore does not accumulate a tombstone per wave.

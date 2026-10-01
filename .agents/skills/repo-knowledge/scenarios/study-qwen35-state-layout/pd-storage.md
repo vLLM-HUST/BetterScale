@@ -282,3 +282,12 @@ catalog. Logs: `model-server.log` (loader failure) and `model-server-atb.log`
 (current). Candidate package is isolated under the task runtime root, not a
 published distribution. Context8192/State8GiB per rank is a bounded smoke, not
 256K capacity qualification.
+
+The first full-model smoke returned32 deterministic greedy tokens, but long
+requests exposed legacy FIA serving admission: single-request decode uses a
+native FD plan, rejected by the old fixed non-FD guard. Owned CP attention now
+uses only native geometry metadata (not native launch identity), supports the
+capacity3 target route and selected MTP phases, and explicitly initializes large
+draft padding. Both new integration leaf probes pass; see CP README. Full model
+continuation is still pending. Current branch source requires the rebuilt
+`plan_discard_latest` host ABI; release manifests remain deliberately unchanged.

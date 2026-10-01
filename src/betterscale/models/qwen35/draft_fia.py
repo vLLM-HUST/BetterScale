@@ -51,6 +51,7 @@ def install():
     from vllm_ascend.spec_decode.llm_base_proposer import (
         AscendSpecDecodeBaseProposer as Proposer,
     )
+    from betterscale.patches.qwen_fia.context_parallel import adapter as cp
     from betterscale.patches.qwen_fia import check_library
     from betterscale.patches.qwen_fia.wave import (
         Planner,
@@ -118,7 +119,13 @@ def install():
                 cpu = runner.input_batch.block_table[gid].get_cpu_tensor()
                 key = kw["num_input_tokens"], runner._owned_bank, step
                 plan_metadata = compact_padding(m)
+                owned_attention = cp.enabled(key[0]) or (step > 0 and cp.enabled(3))
+                if owned_attention and getattr(runner, "_owned_capture_bank", None) is not None:
+                    if runner.input_batch.num_reqs:
+                        raise RuntimeError("Draft CP capture requires an empty startup pool")
+                    plan_metadata = cp.capture_metadata(plan_metadata, key[0])
                 entry = dict(
+                    context_parallel=owned_attention,
                     key=key,
                     metadata=plan_metadata,
                     cpu=cpu,
@@ -205,12 +212,15 @@ def install():
                 query.device,
                 owner.proposer.runner._owned_ingress,
                 requests=17,
+                context_parallel=entry["context_parallel"],
             )
             frame.prepare(planner, entry["metadata"], entry["cpu"], entry["num_reqs"])
             owner.frames[entry["key"]] = frame
         frame = owner.frames[entry["key"]]
         if query.shape[0] != frame.tokens or key.shape != planner.fixtures[1].shape:
             raise ValueError("Draft graph changed its captured FIA capacity")
+        if frame.context_parallel:
+            return cp.launch(frame, query, key, value, m.attn_mask, output)
         plan = planner.check(library.plan_clone(frame.plan))
         try:
             scratch = torch.empty(
