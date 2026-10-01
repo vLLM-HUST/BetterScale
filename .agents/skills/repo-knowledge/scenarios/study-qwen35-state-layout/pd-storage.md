@@ -125,3 +125,22 @@ are not a built runtime. Fletcher was asked for a prior image/artifact location;
 component probes can proceed, but do not bypass validation to label a model run
 as baseline-compatible. P-only/no-MTP and Qwen35 DP/EP are new qualification
 surfaces even after the old environment is restored.
+
+### Pinned upstream connector seams worth borrowing
+
+Read narrow seams rather than forking the 2059-line Ascend hybrid connector:
+`upstream/vllm-ascend/vllm_ascend/distributed/kv_transfer/kv_p2p/mooncake_hybrid_connector.py`.
+Its SupportsHMA path handles MambaSpec address groups, a P-side N-1 truncation
+for D last-token recomputation, and delayed freeing until transfer completion.
+These are useful frontier/lifetime precedents. Its save_kv_layer/wait_for_save
+are no-ops and request_finished handoff is P->D, not our bidirectional durable
+session manifest/DRAM lifecycle. Owned resident GDN candidates are not ordinary
+native Mamba blocks; do not register all candidate storage as the selected state.
+
+`kv_pool/ascend_store/backend/mooncake_backend.py` wraps multi-buffer Store puts
+and gets, but `put` logs errors and does not return an acknowledged result to
+its caller. Our manifest publication must require positive completion; borrowing
+this wrapper unchanged would erase that correctness boundary. Use lower-level
+Store results or an explicitly failing wrapper. This is a local integration
+assessment, not a claim about the correctness of the upstream system's cache-
+miss policy. Our prototype already fails closed on Store put errors.
