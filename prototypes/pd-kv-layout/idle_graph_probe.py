@@ -23,17 +23,28 @@ async def run(output):
             last=item;arrivals.append((len(item.outputs[0].token_ids),time.perf_counter_ns()))
         assert len(last.outputs[0].token_ids)==n
         return dict(owner=owner,arrivals=arrivals,ids=list(last.outputs[0].token_ids))
+    async def all_ranks(method,*args):
+        # DPLB collective_rpc broadcasts but discards all except engine0's
+        # result. Keep every receipt so a gate cannot silently assert on [].
+        groups=await asyncio.gather(*(model.engine_core._call_utility_async(
+            "collective_rpc",method,None,args,None,engine=e)
+            for e in model.engine_core.core_engines))
+        result=[row for group in groups for row in group]
+        assert sorted(row["rank"] for row in result)==list(range(8))
+        return result
     try:
         await asyncio.gather(*(request(o,f"park-{o}",16) for o in range(4)))
         await model.wait_for_requests_to_drain()
-        armed=await model.collective_rpc("idle_guard_arm",args=(0,))
+        armed=await all_ranks("idle_guard_arm",0)
         await model.start_profile("idle-skew")
         result=await request(0,"active-skew",128)
         await model.wait_for_requests_to_drain()
         await model.stop_profile()
-        checked=await model.collective_rpc("idle_guard_check")
+        checked=await all_ranks("idle_guard_check")
+        assert sum(row["checked"]>0 for row in checked)==6
         recovered=await asyncio.gather(*(request(o,f"return-{o}",32) for o in range(4)))
         await model.wait_for_requests_to_drain()
+        assert result["ids"][:32]==recovered[0]["ids"]
         (output/"summary.json").write_text(json.dumps(dict(ok=True,armed=armed,checked=checked,
             single_owner=result,recovered=recovered),indent=2))
         print("IDLE_GRAPH_GATE_PASS",flush=True)

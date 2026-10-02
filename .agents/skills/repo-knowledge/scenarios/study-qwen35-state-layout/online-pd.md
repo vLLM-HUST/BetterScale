@@ -196,3 +196,59 @@ timing receipts and launcher logs under the same runtime root on both hosts.
 All16 NPUs were released after capture (cleanup receipts8 idle/host).
 The observer/control CPU suite passed8 tests. Source, exact gates and profile
 evidence are backed up locally outside Documents; no model weights are copied.
+
+## Idle graph participation and streamed replies — 2026-10-02
+
+The first D8-only idle-graph qualification uses source6694588 and the unchanged
+online-v2-D numerical capsule. Native wave/graph-bucket selection remains in
+charge; no request or model round is manufactured to advance I/O. Idle GDN
+publication bypasses resident address/selector normalization, then uses
+negative verify slots. FA clears the consumer slot mapping (not merely its
+native source) and reads the allocator-reserved zero null page. A peer-prefill
+bucket uses empty cold prefill rows and routes outputs to one defined-zero
+negative-slot verification token. It is not safe to assign a negative prefill
+State slot to the raw chunk kernel.
+
+The v1 gate failed before workload because importing Worker through the probe
+client preceded plugin initialization. Keep diagnostic worker entry separate.
+The v2 gate deliberately rejected a synchronized peer-prefill bucket; v3 added
+the empty-row path, rather than silently allowing resident0 writes.
+
+hw86-idle-graph-v3 exited0: all owners parked1K/16; owner0 alone produced128;
+all owners returned32. The first32 tokens of owner0 match exactly between
+skewed and all-active phases. Idle guard compares all target GDN tensors and
+four control tensors, plus first64 kernel pages of each target FA leaf.
+The pinned DPLB utility broadcasts/checks every engine but returns only engine0's
+receipt (which has zero guarded tensors). Therefore v3's summary is not a
+per-rank census; the subsequent probe explicitly gathers eight receipts and
+requires six nonempty guards. Do not mistake its first-engine-only response
+for either a six-rank evidence list or a non-broadcast RPC.
+
+All8 exported native DBs contain160 graph replays. Device0's126 steady
+slot-mapping cycles: median19.582ms, P9521.533ms, P9923.809ms; one142.082ms
+prefill/transition cycle is not hidden. Device1 median19.540ms. Idle devices
+have no real-request FA anchors, as expected. This is a short profiled1K skew
+gate, not a matched production throughput claim. Raw/profile/timing/summary
+artifacts are hw86-idle-graph-v3* under the runtime root.
+
+fd8ea9b adds bounded token progress through actor/node, exact-token SSE ingress,
+and separate generation-output and checkpoint-commit futures. A completed
+response does not await D backup; a same-session following turn waits for its
+previous commit, while a genuinely overlapping generation is rejected.
+Disconnect/slow-reader delivery does not stop native State work. Thirteen
+CPU stream/coordinator/object/timing tests pass; the unmodified SWE client also
+accepts the frontend against a CPU fixture. Hardware streaming remains a
+separate gate. Full active-generation sealed-page backup is NOT established
+by this change: current checkpoint commands still require a retired frontier.
+
+Real workload source is swe-prefix-reuse695dd8b. hw86's isolated
+/workspace/swe-workloads contains512 accepted complete trajectories,
+24227 turns, max context230362, source revisionfb0c0dccc7a5cce79b3f6de891848acdede36685.
+The initializer verifies pinned metadata and source digest; its receipt records
+527 examined rows and exclusions. HF mirror was used without implicit tokens
+after direct endpoint failures. The official TraceLab v0.0.2 raw digest was
+verified in the local workload checkout; its prepared empirical profile was
+copied, not approximated from histogram bins. Plan arrival-gate-0.05-160.json
+uses8 sessions, constant0.05 sessions/s,160s, codex gaps, seed20261002.
+The profile's first-output gaps are synthetic completion-relative waits, not
+measured user think time. Large datasets and profiles stay outside Git.
