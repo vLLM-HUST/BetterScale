@@ -1615,3 +1615,32 @@ command and is applied before worker enqueue, removing the second RPC barrier.
 drain, error propagation, placement-before-store, and existing ownership/TP gates.
 Hardware qualification of this candidate is still pending; v23 remains the
 pre-change evidence. Do not claim cadence or throughput improvement yet.
+
+
+0c1304d v24 cold-restarts both nodes with reviewed capsules. The same192x4K/
+2048-output + warm8 all16-byte-audit gate PASSES76.960s (v23 was87.353s).
+After explicit native-quorum retirement of192 fixture checkpoints per side,
+rank pools have zero bytes/objects/readers; all16 audits switched off.
+
+Identical SWE2.0/240 plan,512 connections, unprofiled replay VALID:
+2242requests,2029 window/213 drain, zero failures/misses.2329.5708 total tokens/s,145.59818/all16chips,291.19635/Dchip. Relative to v23
+1785.3583 this is+30.48%; TTFT P953.35329s versus5.46938s. Final60s host
+dispatch cadence median46.65–47.16ms/P9576.57–79.48ms (not all steps<50ms).
+Mean rows15.37–18.19, still below48. Core State RPC enqueue p50~0.25ms;
+separate pd_rank_peer RPC is gone. DP metadata P95~9–11ms on first two ranks,
+down from31–38ms in v23. This qualifies the removed admission-path drain;
+not all remaining gaps are proven compute, and tail target remains unmet.
+
+Final60s sender output sum3792.82tokens/s (native sender window, NOT the official
+whole-window score). Full240s sender sum2321.04tokens/s differs from client
+2329.57 because P first tokens and exact boundary semantics differ.
+Wall516.812s is a legitimate drain, not a stalled transaction: last response
+starts203.469s, ends516.804s, emits32725tokens, succeeds. All2242 client requests
+pass. Final pools hold~20.6–23.5GiB payload/rank, below128GiB logical limit.
+Do not interpret an ongoing single long output after deadline as a stuck State RPC.
+
+Artifacts online-rank-v24-{observer-analysis,sender-window,memory-after,
+full48-cadence}.json, gate/, D-timing/, front/, plus
+/workspace/swe-workloads/rank-v24-rate2.0/. Next pressure step keeps C48 and
+raises arrival rate; expand the distinct verified trajectory pool rather than
+recycle512 sessions or silently alter completion-relative delay semantics.
