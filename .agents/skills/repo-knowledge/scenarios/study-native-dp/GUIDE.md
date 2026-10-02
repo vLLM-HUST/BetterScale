@@ -1,5 +1,16 @@
 # Study native donor DP+EP
 
+## Qwen shared-expert overlap on the pinned AllGather route
+
+Before interpreting serialized EP/shared work or enabling multistream, read
+[`ep-shared-overlap`](../../../../../prototypes/ep-shared-overlap/README.md).
+The two-card hw112 receipt distinguishes donor flag enablement from moving the
+first shared-stage event before DP prepare/gather; graph device overlap and
+serial numerical parity are measured, not inferred from streams. Preserve the
+native combine fence and final TP reduction. The default stays off; two-card
+leaf results are not an EP8/whole-engine admission. That guide also retains the
+native leaf bootstrap and the Ascend950 boundary of DeepSeek's Sept30 code.
+
 For released0.4.1 APC compatibility, enter `prototypes/prefix-caching/README.md`
 and its retained193–195 capsules before re-running prefix experiments. Both TP
 and DP cold/warm retrieval gates pass; use native engine affinity for DP. The
