@@ -98,3 +98,30 @@ def test_http_pipeline_preserves_bytes_and_collision_response():
                 await asyncio.gather(*(cycle(c,i) for i in range(1,5)))
         finally:await runner.cleanup()
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("fail",[False,True])
+def test_parallel_put_still_waits_for_both_replicas(fail):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier,Event
+    sink=PeerObjectSink(["http://10.244.1.16:55581","http://10.244.2.32:55586"])
+    entered=Barrier(3);release=Event();first_done=Event()
+    def put(url,key,data):
+        entered.wait(timeout=2)
+        if url==sink.urls[0]:
+            first_done.set()
+            if fail:raise RuntimeError("replica failed")
+        else:
+            assert release.wait(timeout=2)
+    sink._put=put
+    try:
+        with ThreadPoolExecutor(max_workers=1) as caller:
+            future=caller.submit(sink.put,"a"*64,b"payload")
+            entered.wait(timeout=2);assert first_done.wait(timeout=2)
+            assert not future.done()
+            release.set()
+            if fail:
+                with pytest.raises(RuntimeError,match="replica failed"):future.result(timeout=2)
+            else:assert future.result(timeout=2) is None
+    finally:
+        release.set();sink.close()

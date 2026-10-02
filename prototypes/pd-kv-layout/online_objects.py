@@ -5,6 +5,7 @@ are present; publication requires complete PUT acknowledgements from both hosts.
 Eviction is a cache miss, never permission to invent a restored frontier.
 """
 import asyncio
+from concurrent.futures import ThreadPoolExecutor, wait
 import hashlib
 import json
 import urllib.error
@@ -130,6 +131,7 @@ class PeerObjectSink:
                     or p.port not in (55581,55586) or p.path or p.query or p.username or p.password):
                 raise ValueError("Unqualified private object endpoint")
         self.urls=tuple(urls)
+        self.puts=ThreadPoolExecutor(max_workers=2,thread_name_prefix="state-replica")
 
     def request(self,url,key,method="GET",data=None):
         request=urllib.request.Request(url+"/objects/"+identity(key),data=data,method=method)
@@ -159,7 +161,14 @@ class PeerObjectSink:
             raise RuntimeError("Object acknowledgement mismatch")
 
     def put(self,key,data):
-        for url in self.urls:self._put(url,key,data)
+        # Immutable copies may transfer concurrently; publication still requires
+        # both validated acknowledgements. Join both even if either one fails.
+        futures=[self.puts.submit(self._put,url,key,data) for url in self.urls]
+        wait(futures)
+        for future in futures:future.result()
+
+    def close(self):
+        self.puts.shutdown(wait=True)
 
     def get(self,key):
         for url in self.urls:

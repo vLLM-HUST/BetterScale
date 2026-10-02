@@ -445,3 +445,32 @@ split the same-host D return path into actor-to-node, node queue and network/
 coordinator phases. This candidate is frozen as online-stream-v5-source;
 the audited gate and identical rate0.2 comparison are pending. No numerical,
 State ownership, model pins or kernel changes accompany this output-path cut.
+
+
+## Bounded return-pipe drain qualified — 2026-10-02
+
+c608372 v5 passes the audited4-owner cold/warm gate in11.995s, then disables
+audits with all16 receipts. Same rate0.2/300s replay: valid,60 sessions,
+284 requests,250 in-window/34 drained,0 failed/missed; wall406.674s.
+Total268.103 tokens/s, TTFT P955.027s. The small throughput change versus
+v4 is not a repeated A/B estimate; the return-path improvement is much larger.
+
+Across284 per-request return-path P95 values, median19.040ms/P9528.259ms
+(max single chunk64.592ms), versus v4 median194.806ms/P95669.503ms
+(max1253.082ms). Stage-P95 distributions (median/P95 across requests):
+actor-to-node14.551/22.172ms, node queue4.367/9.876ms,
+node-to-coordinator0.999/1.448ms. The measured delay was largely before the
+node HTTP send, not the network RTT. Device cadence is a separate metric.
+Evidence: stream-v5-return-summary.json and v5 frontend/workload receipts.
+
+An idle-system CPU-only replica fanout probe uses fresh32MiB random objects,
+three alternating-order repeats per setting, exact GET equality and both
+HEAD receipts. Serial versus concurrent two-replica PUT median0.405/0.199s
+for one object; four concurrent objects1.017/0.697s. Source remains opaque;
+no NPU/State copy or active model workload overlaps this microprobe. It is
+not end-to-end throughput. replica-fanout-probe.json and its driver retain
+the setup. A bounded two-thread sink candidate now overlaps only immutable
+replica PUTs, joining BOTH validated receipts even on one failure; it does
+not relax checkpoint publication quorum. CPU success/failure tests prove
+the caller cannot return while the other replica is still in flight.
+Hardware and full-load qualification of this next cut remain pending.
