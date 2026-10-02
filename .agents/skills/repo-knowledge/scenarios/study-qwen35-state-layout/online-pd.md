@@ -365,10 +365,39 @@ warm gate. Only after it passes does a private audit RPC disable verification.
 The setter rejects any in-flight worker I/O, never launches a model wave, and
 collects all16 rank receipts (previous=True,enabled=False) before starting the
 unaudited rate0.2 run. This avoids reloading16 models just to switch an audit.
-The hardware/compressed workload result is still pending here.
+The hardware/compressed workload gate passed (12.607s), then all16 audit
+receipts confirmed previous=True/enabled=False with no in-flight State I/O.
 
 The v4 frontend also retains output-ready and checkpoint-committed boundaries.
 D-stream-return measures actor-yield to coordinator callback only when D and
 frontend share the explicit bind address; no cross-host monotonic comparison.
 It is return-path latency, not device cadence. Actor arrivals remain in committed
 turn receipts for joining the native Core/worker observer where useful.
+
+
+## Compressed online baseline — 2026-10-02
+
+The d79dd4c v4 rate0.2/300s replay is valid:60 sessions,278 requests,
+0 failures or missed due requests,243 completed in window and35 drained;
+wall404.603s. Total16-chip output261.91 tokens/s (16.3694/chip),
+TTFT P955.548s. This is target-only, not active-MTP production throughput.
+No bulk artifact copy overlapped this window. Short completion-relative plans
+visit different subsequent turns when the system is faster: do not treat the
+request counts or these single runs as a paired fixed-request benchmark.
+
+The278 completed turns independently show output-ready precedes checkpoint
+commit: post-output commit delay median3.193s/P9510.812s/max17.438s, excluded
+from response completion. Controller State wait RPC medians/P95s: P-store
+2.152/3.286s, P-load0.469/0.739s, D-store1.842/2.801s, D-load0.556/1.003s.
+These are await durations, not isolated network times or device cadence.
+There is still per-owner maintenance queueing beyond those operation waits.
+
+Return-path jitter remains observable: across per-request actor-yield to
+coordinator callback P95 values, median194.8ms/P95669.5ms; largest observed
+single chunk1253.1ms. The late drained request's submillisecond return path
+is not representative of concurrent load. This metric excludes native Core
+compute and does not establish that decode cadence stalled. Keep native
+profile and return-path analysis separate. Evidence is hw86-online-stream-v4-
+front/control.jsonl, gate/summary.json, audit-disabled.json and the immutable
+/workspace/swe-workloads/stream-v4-rate0.2 artifacts. The next0.5/300s point
+and a separate bounded16-card real-workload profile are not yet qualified.
