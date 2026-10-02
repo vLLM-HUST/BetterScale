@@ -16,6 +16,8 @@ class Scheduler(BaseScheduler):
         # admission: alongside running decode it pads 1+num_spec_tokens before
         # _update_after_schedule. Declare zero proposals at the scheduling
         # source; keep native lookahead allocation and runner startup unchanged.
+        if self.kv_cache_manager.block_pool.null_block.block_id!=0:
+            raise RuntimeError("Idle graph requires the reserved null FA block0")
         self.num_spec_tokens=0
         self._spec_token_placeholders=[]
 
@@ -29,12 +31,17 @@ class Worker(BaseWorker):
         self._pd_distributed = p.data_parallel_size > 1
         if self._pd_distributed:
             from vllm_ascend.worker.model_runner_v1 import NPUModelRunner
+            from idle_graph import install,target_only
+            install()
             original=NPUModelRunner._dummy_run
             def dummy(runner,*args,**kwargs):
-                return idle_target_only(runner,original,*args,**kwargs)
+                return target_only(runner,original,*args,**kwargs)
             NPUModelRunner._dummy_run=dummy
 
     def compile_or_warm_up_model(self):
         result=super().compile_or_warm_up_model()
-        if self._pd_distributed:self.model_runner._pd_target_only_ready=True
+        if self._pd_distributed:
+            from idle_graph import initialize_null_page
+            initialize_null_page(self.model_runner)
+            self.model_runner._pd_target_only_ready=True
         return result
