@@ -1362,3 +1362,25 @@ transport limit to E+4 supplied36. Keep State max_pending20, separate from
 execution/residency, rather than silently widening transfer admission. v14 is
 FAILED startup, not a C32 numerical/throughput gate. The next candidate changes
 only this configuration back to the already-qualified transport bound.
+
+v15 (e806a4b control/node, ca21426 D capsule, C32/R40/44GiB) starts and
+passes128-session4K/2048-output plus warm8 byte-audit/lifecycle gate80.471s.
+Only25–29 actual live rows were reached; a second128-session warm4096 gate
+passes109.766s but still peaks25–30. Do not call either full-C32 saturation.
+P finishes within~8s, later D generation starts~60s; D admission wait is zero,
+actual H2D6ms and complete load-wait RPC<.5s. The missing requests are waiting
+for HTTP connections, not NPU DMA.
+
+Coordinator's shared aiohttp client had the default TCPConnector limit100.
+Long generation requests occupy those connections and starve subsequent
+load/control calls at C32x4=128. cb5437b disables this hidden transport cap;
+explicit request permits and device/State budgets remain the admission bound.
+19 controller tests pass, including128 held local HTTP generation connections
+while a separate control RPC still completes, and a256-permit C32 receipt.
+The next warm supply uses this frontend-only fix with unchanged live v15 workers.
+
+v13 native DP0TP0 msprof export has300 target slot-mapping anchors,600 graph
+replay calls,3600 FA and9000 GDN tasks (MTP2). Interior295 DEVICE cycle periods:
+median39.261ms/P9544.670ms/max48.334ms while profiler active. Retain the
+distinction from the whole-run host dispatch median32.8ms. Artifact:
+online-rank-v13-device-cadence.json plus the adjacent native profile DB.
