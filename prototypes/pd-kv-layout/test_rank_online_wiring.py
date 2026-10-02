@@ -87,3 +87,10 @@ def test_private_turns_publish_then_retire_both_sticky_copies_without_object_ser
                             ("store_match","P",owners[0],owners[1])]
         finally:await c.close()
     asyncio.run(run())
+
+
+def test_memory_rpc_is_readonly_actor_wide_without_arbitrary_arguments():
+    assert validate("D",dict(instance=0,op="memory",args=dict(owner=0)))[1]=="memory"
+    for args in (dict(owner=True),dict(owner=1),dict(owner=0,reset=True)):
+        with pytest.raises(ValueError):
+            validate("D",dict(instance=0,op="memory",args=args))

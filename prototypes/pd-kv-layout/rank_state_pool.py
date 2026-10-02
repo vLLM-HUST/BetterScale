@@ -60,6 +60,7 @@ class Writer:
             self.pool._owns(self.item)
             self.item.state = "sealed"
             self.pool.objects.move_to_end(self.item.key)
+            self.pool._collect_if_dead(self.item)
         self.item = None
         return self._size
 
@@ -90,6 +91,7 @@ class Reader:
             if not self.closed:
                 self.pool._owns(self.item)
                 self.item.readers -= 1
+                self.pool._collect_if_dead(self.item)
                 self.closed = True
                 self.item = None
 
@@ -139,6 +141,15 @@ class RankStatePool:
                     self.references[key] = self.references.get(key, 0) + 1
             return tuple(key in self.objects and self.objects[key].state == "sealed" for key in keys)
 
+    def _collect_if_dead(self, item):
+        # No checkpoint can restore an unreachable version. Keeping UUID-bound
+        # resident/tail snapshots as weak LRU entries merely grows pinned RAM.
+        # A reader or uncertain DMA still owns its address independently.
+        if (item.state == "sealed" and not item.readers
+                and not self.references.get(item.key)):
+            del self.objects[item.key]
+            self.bytes -= item.size
+
     def drop(self, checkpoint):
         with self.lock:
             self._healthy()
@@ -146,6 +157,9 @@ class RankStatePool:
                 self.references[key] -= 1
                 if not self.references[key]:
                     del self.references[key]
+                    item = self.objects.get(key)
+                    if item is not None:
+                        self._collect_if_dead(item)
 
     def reserve(self, key, size):
         if type(size) is not int or not 0 < size <= self.budget:

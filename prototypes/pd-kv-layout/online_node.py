@@ -18,6 +18,10 @@ def validate(kind,body):
     if op=="generate":
         if not isinstance(args,dict) or set(args)!={"owner","tokens","salt","n"}:raise ValueError("Bad generation")
         validate_rpc(kind,dict(instance=instance,op="generate_batch",args={"items":[args]}))
+    elif op=="memory":
+        if (not isinstance(args,dict) or set(args)!={"owner"}
+                or type(args["owner"]) is not int or args["owner"]!=0):
+            raise ValueError("Bad memory RPC")
     elif op=="audit":
         if (not isinstance(args,dict) or set(args)!={"owner","enabled"}
                 or type(args["owner"]) is not int or args["owner"]!=0

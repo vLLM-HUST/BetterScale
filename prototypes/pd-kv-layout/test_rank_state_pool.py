@@ -83,3 +83,19 @@ def test_independent_concurrent_writers():
         list(executor.map(run, range(20)))
     assert p.bytes <= p.budget
     p.close()
+
+
+def test_retired_versions_do_not_fill_pool_with_unreachable_pinned_objects():
+    p=pool(size=1<<20)
+    p.retain("base",("page",));write(p,"page",7)
+    for i in range(100):
+        cp=str(i);resident="resident:"+cp
+        p.retain(cp,("page",resident));write(p,resident,i)
+        p.drop(cp)
+        assert p.bytes==32 and set(p.objects)=={"page"}
+    reader=p.read("page")
+    p.drop("base")
+    assert p.bytes==32  # independent DMA/TE reader still owns the address
+    reader.close()
+    assert p.bytes==0 and not p.objects
+    p.close()

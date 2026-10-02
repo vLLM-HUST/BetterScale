@@ -1057,3 +1057,73 @@ Services stopped after these gates; next run explicitly sets
 BETTERSCALE_PD_CONTEXT=262144 (24.25GiB device State/rank) with fresh services
 and directory. Local evidence copies: online-rank-v2-hw86/hw81-evidence.tgz in
 the migration backup. Source, runtime pins, model capsules and task goal persist.
+
+### Full-budget private State qualification and first real replay
+
+online-rank-v3 runs the same0b6baec frozen source/13bd8e3 cache capsules with
+BETTERSCALE_PD_CONTEXT=262144,24.25GiB State/rank. Audit-on gate1 passes four
+32K cold/warm sessions and one exact262144-token boundary in54.525s. All TP
+post-H2D byte checks and terminal no-pending assertions pass. Only then was audit
+disabled on all16 ranks (online-rank-v3-audit-disabled.json) for actual workload.
+
+swe-prefix-reuse695dd8b, existing512-trajectory pool and unchanged0.3/300s
+arrival plan: valid,90sessions launched,519requests,490in-window/29drained,
+0failed/0missed due. Window output498.8733tokens/s total16chips
+(31.17958/chip including P), TTFT P950.90915s, offeredTTFT P950.91034s,
+wall385.134s. All90sessions remain incomplete trajectories at deadline, as
+expected for this finite-window protocol; do not call them fully completed.
+Prior concurrent-v1 matched plan produced284.2533tokens/s and10.4044s TTFT P95.
+This is a matched offered-plan observation, not a saturated capacity ceiling,
+controlled single-variable speedup, MTP result or device-step timing.
+The new run has no worker/device cadence instrumentation. The next1.0/300s
+point uses the same live services; pool residency includes earlier gate/replay
+sessions with distinct salts. Retained artifacts: runtime online-rank-v3-* and
+/workspace/swe-workloads/rank-v3-rate0.3 plus rank-v3-server.json.
+
+### Overnight objective update
+
+Fletcher explicitly re-enabled MTP qualification and set the optimization target:
+8D chips total5600–6400+output tokens/s, step below50ms, active decode KV near80%
+of each card's actual available KV budget. Investigate raising D budget above
+24.25GiB using EP8's smaller weight shard and avoiding D prefill/mixed capture.
+These are targets, not proven hardware limits. Preserve correctness, report
+effective accepted outputs (not speculative proposals), and measure cadence/KV
+occupancy in the same workload window. P budget and graph needs remain separate.
+
+Prior MTP-v2 failure has now been localized from retained logs: D
+host_metadata.prepare rejects 'pure verification belongs to its small graph,
+not mixed'. integration.capacity classifies by computed>=prompt, whereas
+MTPFrame roles use drafts>=0. A warm one-token tail can therefore require
+investigation of disagreeing role/graph classification. This is a source-based
+hypothesis, not yet a hardware-verified fix. D-only small graph policy is a
+promising joint correctness/capacity seam; do not merely remove the assertion.
+
+### Higher-offer pressure failure: unreachable pinned versions
+
+The following rank-v3-rate1.0 run is INVALID, not a throughput result. At
+15:33:40UTC, D worker3760075 (physical3, StateNUMA1) failed a128MiB host allocation:
+aclrtMallocHostWithCfg207001 / halMemAlloc drvRetCode6, moduleId7,vaFlag1.
+Peer P failed closed; no unknown checkpoint was published. Driver evidence is
+/root/ascend/log/debug/plog/plog-3760075_20261002153340079.log. A later diagnostic
+read of NUMA3 was NOT that rank's selected node; do not attribute its free-memory
+figure to this failure. Host MemAvailable was~1.46TiB; cgroup current~694GiB.
+These do not establish a pinning limit or allocator root cause. Both services
+and frontend were stopped, all accelerator workers retired; restart fresh.
+
+Source inspection did identify an owned retention bug: pool.drop removed
+checkpoint refs but kept all unreachable resident/tail UUID versions until the
+128GiB logical pool threshold. Such versions cannot be restored by any current
+checkpoint and mostly cannot be reused by a later version. Long replay therefore
+accumulated dead pinned snapshots. Pool now collects sealed zero-ref objects at
+checkpoint drop or last reader close, never writing/quarantined/read-held objects.
+Shared pages stay pinned by the successor manifest. A100-generation regression
+keeps only its referenced base page. Runtime memory RPC reports private pool
+counts/bytes plus Torch pinned-allocator and device memory statistics.
+
+Installed ATen/core/CachingHostAllocator.h rounds host allocations to
+PowerOf2Ceil(size); payload bytes are not reserved host bytes. Runtime metrics
+must distinguish them. Do not claim GC alone has fixed all NUMA/driver pressure
+until repeated real load and allocator stats agree. Next candidate keeps graph
+policy unchanged for this qualification; D-only graph code is opt-in and still
+CPU-only. No disabling pinning, shared-memory workaround, cache drops under active
+DMA, or host-wide memory knobs were used.

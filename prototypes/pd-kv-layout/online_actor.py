@@ -44,6 +44,13 @@ def options(kind,instance):
             raise ValueError("private rank qualification requires target-only uncompressed State")
         value["additional_config"].update(pd_rank_private=True, pd_rank_role=kind,
             pd_rank_instance=instance, state_cache_two_phase_store=True)
+    decode_only=os.environ.get("BETTERSCALE_PD_DECODE_ONLY","0")
+    if decode_only not in ("0","1"):raise ValueError("Invalid D graph policy flag")
+    if kind=="D" and decode_only=="1":
+        from decode_graph_policy import KEYS
+        value["additional_config"]["pd_decode_only"]=True
+        value["compilation_config"].update(cudagraph_capture_sizes=KEYS,
+            max_cudagraph_capture_size=max(KEYS))
     profile_dir=os.environ.get("BETTERSCALE_PD_PROFILE_DIR")
     if profile_dir:
         value["profiler_config"]=dict(profiler="torch",torch_profiler_dir=profile_dir,
@@ -85,6 +92,13 @@ async def run(kind,instance,pipe):
                 if len(ids)!=args["n"]:raise RuntimeError("Incomplete generation")
                 answer=dict(token_ids=ids,full_tokens=list(result.prompt_token_ids)+ids,
                             cached=result.num_cached_tokens,start_ns=started,arrivals=arrivals,request_id=request_id)
+            elif op=="memory":
+                rows=await asyncio.gather(*(model.engine_core._call_utility_async(
+                    "collective_rpc","pd_memory",None,(),None,engine=e)
+                    for e in model.engine_core.core_engines))
+                answer=[row for group in rows for row in group]
+                if sorted((r["owner"],r["rank"]) for r in answer)!=[(o,t) for o in range(layout["dp"]) for t in range(2)]:
+                    raise RuntimeError("Incomplete rank memory receipt")
             elif op=="audit":
                 rows=await asyncio.gather(*(model.engine_core._call_utility_async(
                     "collective_rpc","pd_object_audit",None,(args["enabled"],),None,engine=e)

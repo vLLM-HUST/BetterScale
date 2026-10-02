@@ -81,6 +81,16 @@ class Scheduler(BaseScheduler):
 
 
 class Worker(BaseWorker):
+    def __init__(self,vllm_config,*args,**kwargs):
+        decode_only=vllm_config.additional_config.get("pd_decode_only",False)
+        if decode_only:
+            from decode_graph_policy import qualify
+            qualify(vllm_config)
+        super().__init__(vllm_config,*args,**kwargs)
+        if decode_only:
+            from decode_graph_policy import install
+            install()
+
     def pd_rank_peer(self, key, peer_group):
         from betterscale.live.runtime.host_state import HostStateKey
         if not isinstance(key, str) or not 1 <= len(key) <= 128:
@@ -88,6 +98,26 @@ class Worker(BaseWorker):
         runtime = self.model_runner._pd_rank_runtime
         runtime.replica.set_peer(HostStateKey(key, 1), peer_group)
         return dict(owner=runtime.pool.owner, key=key, peer_group=peer_group)
+
+    def pd_memory(self):
+        import torch
+        runner=self.model_runner
+        worker=runner._state_cache_worker
+        host=torch.npu.host_memory_stats()
+        free,total=torch.npu.mem_get_info(runner.device)
+        row=dict(owner=self.vllm_config.parallel_config.data_parallel_rank,rank=worker.rank,
+                 device_free=free,device_total=total,
+                 device_allocated=torch.npu.memory_allocated(runner.device),
+                 device_reserved=torch.npu.memory_reserved(runner.device),
+                 host={k:v for k,v in host.items() if k.endswith((".current",".peak"))})
+        runtime=getattr(runner,"_pd_rank_runtime",None)
+        if runtime is not None:
+            with runtime.pool.lock:
+                row["pool"]=dict(bytes=runtime.pool.bytes,budget=runtime.pool.budget,
+                    objects=len(runtime.pool.objects),checkpoints=len(runtime.pool.groups),
+                    referenced=len(runtime.pool.references),
+                    readers=sum(x.readers for x in runtime.pool.objects.values()))
+        return row
 
     def pd_object_audit(self,enabled):
         if type(enabled) is not bool:raise ValueError("Audit mode must be boolean")
