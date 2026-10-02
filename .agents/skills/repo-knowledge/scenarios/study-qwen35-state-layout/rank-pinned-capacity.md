@@ -8,9 +8,10 @@ Use the existing installed CANN/driver APIs before inventing an allocator.
 No global sysctls, cache drops, driver replacements or new pageable/shared tier
 are authorized by this note.
 
-Current live nodes are stopped after v26 failure. The only production source
-change so far is allocation-time diagnostics; no candidate allocator has been
-adopted. Capacity-only success must NOT overrule a duplex-bandwidth regression.
+The v26 failure below is historical. Startup-reserved private VMM arenas and
+automatic idle LRU subsequently passed v28/v29 native gates; see the latest
+sections before choosing a launch budget. Capacity-only success must NOT
+overrule a duplex-bandwidth regression.
 Before resuming serving, qualify allocation/placement, exact native DMA in both
 directions, lifetime cleanup, private TP replication, then the numerical gate.
 
@@ -266,3 +267,38 @@ still needs physical-capacity repair/qualification rather than logical promises.
   fence. Cancellation now preserves a nonempty failed-closed reason
   (CancelledError has an empty str), so it cannot accidentally reopen admission.
  98 targeted CPU tests pass; the following native gate must cover this change.
+
+
+## Full-context arena gate and real SWE supply boundary — v29
+
+Native026d452/controller39774e0, P12GiB/D24GiB per-rank physical arenas,
+C48/R56/44GiB D and MTP2: v29-gate passed256 cold4K/128 turns,256 continuations
+and an exact262144 total-context turn.113.219s,400 automatic evictions;
+post-retirement all16 pool/checkpoint/arena-used counters returned to0.
+All16 byte audits were enabled for the gate, then disabled before performance.
+
+The same frozen512-session SWE2/s240s plan completed VALID:2106 requests,
+1848 in-window and258 drained,0 failures/misses, all2106 State commits.
+Aggregate accepted throughput1878.44 tokens/s; TTFT P95 15.801s. This is an
+explicit reduced-host-capacity point, not production peak. Host admission P95
+22.12s and all four P ledgers reached7.39GiB limits; D ledger peaks9.11–10.83GiB
+versus17GiB limit.1597 cache evictions,426 P loads. Last60s D host dispatch
+averaged10.58–12.28 rows with median44.89–45.23ms and P95 77.8–81.9ms.
+These are host dispatch timestamps, NOT native device step measurements.
+P host-byte supply, not D concurrency, is the demonstrated constraint here.
+
+Artifacts: /workspace/betterscale-pd-runtime/online-rank-v29-gate/,
+online-rank-v29-front/control.jsonl, online-rank-v29-D-timing/;
+/workspace/swe-workloads/rank-v29-rate2.0/. analyze_online_supply.py now scopes
+worker windows explicitly while labeling controller whole-file cohorts/drain.
+
+Per-P-instance physical budgets can now be selected with
+BETTERSCALE_PD_P_STATE_HOST_GIB='[32,32,12,48]'; each entry applies to both
+private TP ranks of that instance, not a shared pool. D retains the scalar
+BETTERSCALE_PD_STATE_HOST_GIB. Existing capacity-normalized routing selects new
+P sessions; old sessions remain sticky. This option does not qualify those
+budgets until native startup and gates pass. Before v30, hw81 free order9+
+GiB by node0..7 was27.46,44.76,4.66,107.70,13.66,74.28,75.02,60.93 while
+12GiB/node remained reserved. Thus the bounded next candidate32/32/12/48 uses
+available NUMA capacity without retrying the weak node2 at24/48GiB. Physical
+availability is time-dependent; stop on startup failure rather than fallback.

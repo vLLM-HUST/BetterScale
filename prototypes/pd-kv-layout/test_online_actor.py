@@ -87,3 +87,23 @@ def test_wide_actor_accepts_control_above_old_ceiling_but_is_bounded():
         with pytest.raises(RuntimeError,match="bound exceeded"):
             await actor.call("cache",{})
     asyncio.run(run())
+
+
+def test_private_host_budget_is_per_p_group_and_d_stays_scalar(monkeypatch):
+    from online_actor import host_budget_gib
+    import pytest
+    monkeypatch.delenv("BETTERSCALE_PD_STATE_HOST_GIB", raising=False)
+    monkeypatch.delenv("BETTERSCALE_PD_P_STATE_HOST_GIB", raising=False)
+    assert host_budget_gib("P", 3) == 128
+    monkeypatch.setenv("BETTERSCALE_PD_STATE_HOST_GIB", "24")
+    assert host_budget_gib("P", 0) == 24
+    monkeypatch.setenv("BETTERSCALE_PD_P_STATE_HOST_GIB", "[32,32,12,48]")
+    assert [host_budget_gib("P", i) for i in range(4)] == [32,32,12,48]
+    assert host_budget_gib("D", 0) == 24
+    for bad in ('[32,32,12]', '[32,32,12,0]', '[32,32,12,129]',
+                '[32,32,12,true]', '[32,32,12,48.0]', '{}', 'invalid'):
+        monkeypatch.setenv("BETTERSCALE_PD_P_STATE_HOST_GIB", bad)
+        with pytest.raises(ValueError):host_budget_gib("P", 0)
+        assert host_budget_gib("D", 0) == 24
+    for role, index in (("D", 1), ("P", 4), ("P", -1), ("P", True), ("X", 0)):
+        with pytest.raises(ValueError):host_budget_gib(role, index)

@@ -25,6 +25,23 @@ def rpc_capacity(capacities):
     return max(160, 2 * sum(rows) + 32)
 
 
+def host_budget_gib(kind, instance):
+    """One private budget per TP rank; P groups may have unequal NUMA supply."""
+    if kind not in ("P", "D") or type(instance) is not int or not 0 <= instance < (4 if kind == "P" else 1):
+        raise ValueError("Invalid host State placement")
+    budgets = os.environ.get("BETTERSCALE_PD_P_STATE_HOST_GIB")
+    if kind == "P" and budgets is not None:
+        values = json.loads(budgets)
+        if (not isinstance(values, list) or len(values) != 4
+                or any(type(n) is not int or not 1 <= n <= 128 for n in values)):
+            raise ValueError("P host State budgets must be four integers in1..128GiB")
+        return values[instance]
+    value = int(os.environ.get("BETTERSCALE_PD_STATE_HOST_GIB", "128"))
+    if not 1 <= value <= 128:
+        raise ValueError("rank host State budget must be1..128GiB")
+    return value
+
+
 def options(kind,instance):
     from pool_topology import placement
     from pd_model_probe import prepare_worker,engine_options
@@ -54,9 +71,7 @@ def options(kind,instance):
                  data_parallel_size=layout["dp"],data_parallel_size_local=layout["dp"],
                  data_parallel_address="127.0.0.1",data_parallel_rpc_port=layout["rpc_port"],
                  disable_log_stats=True)
-    host_gib=int(os.environ.get("BETTERSCALE_PD_STATE_HOST_GIB","128"))
-    if not 1<=host_gib<=128:
-        raise ValueError("rank host State budget must be1..128GiB")
+    host_gib=host_budget_gib(kind,instance)
     value["additional_config"].update(state_cache_host_bytes=host_gib<<30,
         state_cache_incremental=True,state_cache_control_rpc=True,state_cache_policy=False,
         state_cache_max_pending=20,pd_mtp=os.environ.get("BETTERSCALE_PD_MTP")=="1")

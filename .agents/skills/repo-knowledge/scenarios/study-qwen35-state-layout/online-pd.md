@@ -10,13 +10,16 @@ nonexistent newer branch or repeat naive whole-checkpoint profiling.
 Current branch codex/pd-incremental-online is active on hw86, with hw81 as P.
 Read the October3 v24/v25 sections below and
 [the physical pinned-capacity frontier](rank-pinned-capacity.md) before reusing older gates. MTP2 is enabled and qualified; D is C48/R56/44GiB with
-decode-only graphs, P is four TP2 C16/R20 instances. The last valid SWE replay
+decode-only graphs, P is four TP2 C16/R20 instances. The pre-arena SWE replay
 v25 achieved2440.5 aggregate accepted tokens/s, but the <50ms cadence goal
 remains unmet. v26 higher pressure FAILED pinned allocation; its profile is
 diagnostic only. Startup-reserved private arenas and fenced idle LRU passed
 the16-rank v28 correctness gate at deliberately reduced P4GiB/D24GiB host
 budgets (240 automatic evictions; all pools retired to0). Full production
-physical capacity and higher-pressure performance remain unqualified. Read
+physical capacity and higher-pressure performance remain unqualified. v29
+passed the full256K gate and valid SWE at1878.44 tokens/s, but its P12GiB/rank
+arenas constrain supply (host admission P95 22.12s). The next bounded change
+is per-P-group NUMA budgets, not another concurrency or control-protocol fork. Read
 rank-pinned-capacity.md for the hw81 NUMA2 boundary and follow-on gates; inspect
 current launch receipts/health rather than inferring live process state here.
 Do not reuse stale manifests or a failed TE endpoint incarnation. Historical
