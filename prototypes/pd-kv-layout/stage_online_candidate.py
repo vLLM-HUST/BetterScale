@@ -12,7 +12,7 @@ FILES=("worker.py", "models/qwen35/seat_scheduler.py", "models/qwen35/resident_l
 def stage(repo,baseline,output,*,mtp=False):
     if output.exists():raise ValueError("Never overwrite a running/frozen capsule")
     shutil.copytree(baseline,output,ignore=shutil.ignore_patterns("__pycache__"))
-    for name in FILES + (("models/qwen35/state_address.py","models/qwen35/draft_fia.py") if mtp else ()):
+    for name in FILES + (("models/qwen35/state_address.py","models/qwen35/draft_fia.py","models/qwen35/draft_banks.py") if mtp else ()):
         shutil.copy2(repo/"src/betterscale"/name,output/"betterscale"/name)
 
 if __name__=="__main__":

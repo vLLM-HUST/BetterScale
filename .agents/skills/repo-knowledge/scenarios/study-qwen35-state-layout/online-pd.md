@@ -1193,3 +1193,22 @@ until final commit, cancellation-before-admission creates no State, and failure
 is rechecked after waiting. Frontend traces bounded error type/text and in-flight
 count to avoid losing the next cause.26 targeted CPU tests pass; hardware
 qualification of the new ingress is pending with the next candidate.
+
+### MTP private wire / D-only graph first hardware boundary
+
+online-rank-v7 (48b25fd, --mtp overlays on online-v2 capsules) starts all16
+workers. D captures12graphs (six capacities/two banks), reporting0.42GiB
+rather than the prior mixed bank2.07GiB. Four1K cold sessions complete16 outputs
+with85-lane State transfer; the next warm turn fails on P before publication:
+draft_fia -> context_parallel.plan.schedule rejects 'Only Q1..3 decode/verification
+is admitted'. Preserve this as FAILED warm MTP qualification, not a passed gate.
+
+Pinned proposer redispatches its unpadded num_tokens independently of target
+classification. A17-query warm delta uses target mixed32, but closest draft key
+is24 (verification/CP kernel); draft step0 still consumes the17 real target rows.
+The candidate keeps draft dispatch at least the already-classified/padded target
+descriptor's capacity, retaining bank identity, exact live queries and native
+numerics. Do not relax the Q1..3 assertion or swap the capsule's native kernel.
+stage_online_candidate --mtp now overlays draft_banks alongside state_address
+and draft_fia.17 focused CPU tests pass; the next hardware run must qualify warm
+continuation before any MTP throughput claim.
