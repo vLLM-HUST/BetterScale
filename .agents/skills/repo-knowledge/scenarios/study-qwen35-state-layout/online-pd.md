@@ -1431,3 +1431,40 @@ wider nodes. Both pipe ends derive max(160,2*sum(native max_requests)+32)
 from the native capacity receipt, leaving execution and State admission independent.
 24 actor/controller CPU tests pass, including320 held callers plus control and
 rejection at the finite derived bound. This change is not in live v15 D nodes.
+
+
+v18 SWE2.0/240 (480 distinct sessions) is VALID:2029 requests,
+1749 in-window/280 drain,0 failures/misses,327.355s wall,
+1871.8125 total tokens/s, TTFT P954.19718s. Client connection queue
+P95.974s; this256-connection replay has visible client backpressure.
+Post-P D admission all-request P9537.508s; final-minute D live rows~18–21,
+max25–29, still no full32. Host dispatch final-minute median~65–67ms,
+P95110–126ms. More demand exposed State/control overhead; do not equate this
+with full-row synthetic42.7ms or blame PCIe without phase receipts.
+
+The coordinator still held a D execution/page reservation through final host
+publication/adoption/retirement, although native staging had already freed it.
+Output-to-turn-commit median2.993s/P957.316s. Subinterval medians:
+output→store-wait-start.660s; store wait.620s; wait-end→commit1.589s.
+Their P95s2.316/1.045/4.587s are different distributions, not additive.
+Actual H2D device median5.845ms/P957.070ms; D2H5.780/6.908ms;
+replica wait median.517s/P95.914s. Artifacts online-rank-v18-analysis.json
+and online-rank-v18-state-analysis.json plus complete control trace.
+
+e26091f is the conservative frontend-only correction: successful noncancelled
+TP store quorum invokes a callback to release D reservation before metadata work.
+Single-session commit, immutable host refs and global transaction permit remain
+owned until full publication/retirement.28 controller/actor CPU tests pass.
+v19 repeats2.0/240 with unchanged v15D/v12P, empty native host pools and the
+same warm allocator. No source-only throughput improvement claimed.
+
+The follow-on local device-release API exposes a Future completed only after
+both TP staging receipts and native device ownership release, not host publication.
+Non-retaining store only; retaining backup, load/drop and cancellation cannot
+claim a reusable D reservation. Completed receipt history supports a delayed
+waiter. Native capacity advertises availability; actor readiness carries it and
+coordinator uses wait_device only when supported. Older nodes fall back to
+full TP store completion. Host replica/manifest commit still gates the next
+turn of that same session, not another session's released D seat.
+74 focused cache/controller/actor tests passed before the final capability
+receipt refinement; hardware qualification of local-staging admission is next.
