@@ -41,3 +41,27 @@ def test_host_call_observer_is_idempotent_and_preserves_lazy_result(tmp_path,mon
     assert all(r["begin_ns"]<=r["ns"] for r in rows)
     assert rows[0]["method"]=="execute" and rows[0]["non_block"] is True
     assert rows[-1]["method"]=="fail"
+
+
+def test_gc_observer_is_once_per_process_and_never_changes_gc_policy(monkeypatch):
+    import gc
+    import online_timing as timing
+    before=list(gc.callbacks);enabled=gc.isenabled();threshold=gc.get_threshold()
+    rows=[]
+    class FakeRecorder:
+        file=SimpleNamespace(closed=False)
+        def __init__(self,role):assert role=="gc"
+        def record(self,stage,**values):rows.append((stage,values))
+    monkeypatch.setattr(timing,"Recorder",FakeRecorder)
+    monkeypatch.setattr(timing,"_gc_started",False)
+    try:
+        timing.observe_gc();callback=gc.callbacks[-1]
+        timing.observe_gc();assert gc.callbacks==before+[callback]
+        callback("start",{"generation":2})
+        callback("stop",{"generation":2,"collected":3,"uncollectable":0})
+        assert rows[-1][0]=="python-gc" and rows[-1][1]["collected"]==3
+        assert gc.isenabled()==enabled and gc.get_threshold()==threshold
+        callback("stop",{"generation":1})  # no fabricated start for missing pairs
+    finally:
+        for callback in list(gc.callbacks):
+            if callback not in before:gc.callbacks.remove(callback)

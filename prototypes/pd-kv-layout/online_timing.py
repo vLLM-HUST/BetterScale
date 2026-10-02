@@ -12,10 +12,35 @@ class Recorder:
         self.file=(directory/f"{role}-{os.getpid()}.jsonl").open("a",buffering=65536)
         atexit.register(self.file.close)
         self.count=0
+        if role!="gc" and os.environ.get("BETTERSCALE_PD_GC_TIMING")=="1":observe_gc()
     def record(self,stage,**fields):
         self.file.write(json.dumps(dict(stage=stage,ns=time.perf_counter_ns(),**fields))+"\n")
         self.count+=1
         if self.count%64==0:self.file.flush()
+
+
+_gc_started=False
+
+
+def observe_gc():
+    """Attribute Python collection pauses without changing GC policy or cadence."""
+    global _gc_started
+    if _gc_started:return
+    # Set before opening the recorder: another recording thread may enter here.
+    _gc_started=True
+    import gc
+    recorder=Recorder("gc");begins={}
+    def callback(phase,info):
+        generation=info["generation"]
+        if phase=="start":begins[generation]=time.perf_counter_ns()
+        elif phase=="stop":
+            begin=begins.pop(generation,None)
+            if begin is not None and not recorder.file.closed:
+                recorder.record("python-gc",begin_ns=begin,generation=generation,
+                    collected=info.get("collected",0),uncollectable=info.get("uncollectable",0))
+    gc.callbacks.append(callback)
+    # Registered after Recorder's close, so this runs before the file closes.
+    atexit.register(lambda:gc.callbacks.remove(callback) if callback in gc.callbacks else None)
 
 
 def observe_method(owner,name,role,stage):

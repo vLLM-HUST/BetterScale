@@ -414,3 +414,46 @@ queue becoming the first bottleneck. Same source/budgets; D-only8s capture
 scheduled near190s. Its result is pending and will be labeled profiler-perturbed.
 Artifacts remain online-rank-v33-analysis.json, online-rank-v33-retired-memory.json
 and /workspace/swe-workloads/rank-v33-rate2.0/; v32's invalid result is retained.
+
+
+## v34 pressure and native timeline: supply collapses before seats fill
+
+Same native378c85d/controller84d233f, P32/32/12/48,D32GiB physical pools.
+4 new sessions/s,240s,frozen1024 pool,1024 client connections,8s D profiler:
+VALID3253 requests (2551 window/702 drain),0 failures/misses,3253 commits.
+Profiler-perturbed aggregate2687.30 tokens/s, TTFT P95 24.293s; connection queue0.
+Last60s D yield3212/s and mean rows12.55–14.74. Host admission P95 100.259s,
+max223.112s; ingress permit P95 33.489s;1594 evictions. This does NOT establish
+peak goodput or justify wider seats: under4/s the reduced host pools stall
+supply rather than filling D. Production80%-DRAM reservation remains unqualified.
+
+All8 native profile DBs exported and pass quick_check. Each has136 real target
+slot-map anchors and272 target/draft replays. Under100ms full MTP cycles have
+median55.27–56.17ms, compute interval-union29.15–32.33ms; communication medians
+7.24–19.45ms include waits. TP0 uncovered medians12.87–15.13ms, TP1 1.44–3.45ms.
+Separate medians are not additive; profiler perturbs timing, and a replay is
+HALF an MTP cycle. The common120.9ms outlier has DP2 TP0 uncovered83.02ms,
+while other groups spend~79–87ms in metadata synchronization. DP2 enters that
+sync~90ms after its preceding anchor, versus~1–13ms on peers. Worker State calls
+do not overlap this long gap. Framework TLV shows no long Torch/CANN call in
+the early gap; this narrows attribution to untraced host progress/scheduling,
+not proof of Python GC or a slow collective link. CPU cgroup allows176 cores,
+only1 lifetime throttling event: no evidence of recurrent CPU quota throttling.
+
+CANN wall clock and host perf_counter alignment uses each profiler_info end
+calibration; independent launch/current offsets agree within~2microseconds.
+Artifacts under /workspace/betterscale-pd-runtime: online-rank-v34-analysis.json,
+-device-analysis.json, -host-profile-spans.json, -dp2-slow-framework.json,
+-profile-window.json and -profile-exports.json. Native trees live under
+online-rank-v31-D-profile (these are v34 captures on reused v31 processes).
+No kernel/collective protocol change follows from this profile alone.
+
+BETTERSCALE_PD_GC_TIMING=1 adds optional process GC start/stop durations to
+existing host timing, without disabling/freezing/tuning GC or touching devices.
+Three timing tests pass. This is a cheap discriminator for the unattributed
+host gaps, not a claimed fix. Next bounded capacity candidate: P32/48/12/64,
+D40GiB/rank, unchanged HBM/C48/MTP. Pre-stop free high-order GiB is recorded in
+online-rank-v35-buddy-before-stop.json on each host; D minimum13.20GiB plus
+owned32 permits40, P1 has24.69+32 permitting48, P3 37.48+48 permitting64.
+P0/P2 remain unchanged (P2 only~0.11GiB free beyond its owned12). Stop on
+reservation failure; do not silently fall back to remote NUMA/pageable memory.
