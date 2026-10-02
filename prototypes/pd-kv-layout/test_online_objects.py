@@ -36,3 +36,22 @@ def test_sink_requires_two_acks_and_repairs_only_missing_replica():
 
 def test_peer_endpoints_are_explicit():
     with pytest.raises(ValueError):PeerObjectSink(["http://example.com","http://10.244.1.16:55581"])
+
+
+def test_slow_upload_does_not_block_completed_object_reads():
+    import asyncio
+    from types import SimpleNamespace
+    async def run():
+        o=Objects(Store());o.write("a"*64,b"ready")
+        entered=asyncio.Event();release=asyncio.Event()
+        async def body():
+            entered.set();await release.wait();return b"new"
+        pending=asyncio.create_task(o.route(SimpleNamespace(
+            match_info={"key":"b"*64},method="PUT",read=body)))
+        await entered.wait()
+        reply=await asyncio.wait_for(o.route(SimpleNamespace(
+            match_info={"key":"a"*64},method="GET")),.5)
+        assert reply.body==b"ready" and not pending.done()
+        release.set();assert (await pending).status==200
+        assert o.read("b"*64)==b"new"
+    asyncio.run(run())

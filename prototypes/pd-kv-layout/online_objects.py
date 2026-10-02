@@ -25,6 +25,9 @@ class Objects:
     def __init__(self, store):
         self.store=store
         self.lock=asyncio.Lock()
+        # Bound received bodies independently of Store serialization. Slow
+        # upload sockets must not lock out unrelated completed-page GET/HEAD.
+        self.uploads=asyncio.Semaphore(4)
 
     def inspect(self,key):
         raw=self.store.get("online-manifest:"+identity(key))
@@ -71,11 +74,13 @@ class Objects:
         key=request.match_info["key"]
         try:
             identity(key)
-            async with self.lock:
-                if request.method=="PUT":
+            if request.method=="PUT":
+                async with self.uploads:
                     data=await request.read()
-                    receipt=await asyncio.to_thread(self.write,key,data)
-                    return web.json_response(receipt)
+                    async with self.lock:
+                        receipt=await asyncio.to_thread(self.write,key,data)
+                return web.json_response(receipt)
+            async with self.lock:
                 if request.method=="HEAD":
                     await asyncio.to_thread(self.inspect,key)
                     return web.Response()
