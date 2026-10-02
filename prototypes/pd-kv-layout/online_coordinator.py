@@ -87,9 +87,9 @@ class Coordinator:
                 if len(capacities)!=4 or any(c["block_size"]!=2048 or c["max_requests"]!=16 for c in capacities):
                     raise RuntimeError("Unexpected owner capacity")
                 self.admission=[Admission(c["free_blocks"],c["max_requests"]) for c in capacities]
-        if len(wire_versions)!=1 or not wire_versions<={"raw-v2","zstd-resident-v1","mtp-prefix-raw-v2","mtp-prefix-zstd-resident-v1","rank-private-v1"}:
+        if len(wire_versions)!=1 or not wire_versions<={"raw-v2","zstd-resident-v1","mtp-prefix-raw-v2","mtp-prefix-zstd-resident-v1","rank-private-v1","rank-private-mtp-prefix-v1"}:
             raise RuntimeError("P/D State wire version mismatch")
-        self.rank_private=wire_versions=={"rank-private-v1"}
+        self.rank_private=wire_versions in ({"rank-private-v1"},{"rank-private-mtp-prefix-v1"})
         if self.rank_private:
             if not self.sticky_owners:
                 raise ValueError("private rank State requires sticky placement")

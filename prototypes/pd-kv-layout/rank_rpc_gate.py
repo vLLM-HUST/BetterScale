@@ -9,7 +9,7 @@ import torch_npu
 from rank_state_pool import RankStatePool
 from rank_replica_receiver import RankReplicaReceiver
 from rank_peer_control import RankControl
-from rank_replicator import RankReplicator,HOSTS
+from rank_replicator import RankReplicator,HOSTS,CONTROL_BASE
 from rank_state_transport import RankStateTransport
 from state_dma_probe import qwen35_lanes
 from store_shared_hot_probe import NpuStageDriver
@@ -31,7 +31,7 @@ def run(args):
     engine=TransferEngine()
     assert engine.initialize(HOSTS[args.role]+":56301","P2PHANDSHAKE","tcp","")==0
     receiver=RankReplicaReceiver(pool,engine)
-    server=RankControl(receiver,HOSTS[args.role],56400,set(HOSTS.values())).start()
+    server=RankControl(receiver,HOSTS[args.role],CONTROL_BASE,set(HOSTS.values())).start()
     replica=RankReplicator(pool,engine)
     def submit(descriptors,to_host,stream):
         with torch.npu.stream(stream):
@@ -43,7 +43,7 @@ def run(args):
             end.synchronize();wait.device_seconds=begin.elapsed_time(end)/1000
         return wait
     transport=RankStateTransport(pool,"rank-rpc-gate/tp2/head0",submit,replica.replicate,verify=True,release_checkpoint=receiver.drop)
-    (args.output/"ready.json").write_text(json.dumps(dict(role=args.role,control_port=56400)))
+    (args.output/"ready.json").write_text(json.dumps(dict(role=args.role,control_port=CONTROL_BASE)))
     rows=[];keys=[]
     for turn in range(3):
         key=HostStateKey("rpc-"+str(turn),1);keys.append(key)

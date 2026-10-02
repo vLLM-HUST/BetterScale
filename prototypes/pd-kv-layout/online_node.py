@@ -122,6 +122,8 @@ def main():
     private=os.environ.get("BETTERSCALE_PD_RANK_PRIVATE","0")
     if private not in ("0","1"):raise ValueError("Invalid private rank backend flag")
     if private=="1":
+        from rank_peer_control import preflight
+        preflight(args.bind)  # fail before expensive model startup/capture
         context=nullcontext([None])
     else:
         from dram_store_fixture import dram_store

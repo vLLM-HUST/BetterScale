@@ -64,3 +64,13 @@ def test_control_cannot_close_with_remote_writer_in_flight():
     with pytest.raises(RuntimeError,match="not drained"):server.close()
     ctypes.memset(result["pointer"],0,32);receiver.commit("a"*32)
     receiver.drop(key);server.close();pool.close()
+
+
+def test_listener_preflight_rejects_ephemeral_overlap_before_model_start(monkeypatch):
+    from pathlib import Path
+    from rank_peer_control import preflight
+    from rank_replicator import CONTROL_BASE
+    monkeypatch.setattr(Path,"read_text",lambda *a,**k:f"{CONTROL_BASE} {CONTROL_BASE+100}")
+    import pytest
+    with pytest.raises(ValueError,match="ephemeral"):
+        preflight("127.0.0.1")

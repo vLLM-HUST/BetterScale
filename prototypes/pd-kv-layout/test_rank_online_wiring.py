@@ -16,13 +16,14 @@ def test_store_peer_is_explicit_bounded_index(peer):
             validate("P",dict(instance=2,op="cache",args=dict(owner=0,command=c)))
 
 
-def test_private_turns_publish_then_retire_both_sticky_copies_without_object_service(tmp_path,monkeypatch):
+@pytest.mark.parametrize("wire",["rank-private-v1","rank-private-mtp-prefix-v1"])
+def test_private_turns_publish_then_retire_both_sticky_copies_without_object_service(tmp_path,monkeypatch,wire):
     class Peer:
         def __init__(self,url,*args):
             self.kind="P" if "1.16" in url else "D"
         async def health(self):
             kind=self.kind
-            info=dict(state_wire="rank-private-v1",capacities=[
+            info=dict(state_wire=wire,capacities=[
                 dict(block_size=2048,max_requests=16,free_blocks=1044)]*(1 if kind=="P" else 4))
             return dict(ready=True,kind=kind,context_limit=context_limit(),
                 actors=[dict(alive=True,quarantined=False,info=info)]*(4 if kind=="P" else 1))

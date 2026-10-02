@@ -40,8 +40,10 @@ def options(kind,instance):
     if private not in ("0", "1"):
         raise ValueError("Invalid private rank backend flag")
     if private == "1":
-        if value["additional_config"]["pd_mtp"] or os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT", "0") != "0":
-            raise ValueError("private rank qualification requires target-only uncompressed State")
+        if os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT", "0") != "0":
+            raise ValueError("private rank qualification requires uncompressed State")
+        if value["additional_config"]["pd_mtp"] and os.environ.get("BETTERSCALE_PD_DECODE_ONLY") != "1":
+            raise ValueError("private MTP qualification requires the D-only graph policy")
         value["additional_config"].update(pd_rank_private=True, pd_rank_role=kind,
             pd_rank_instance=instance, state_cache_two_phase_store=True)
     decode_only=os.environ.get("BETTERSCALE_PD_DECODE_ONLY","0")
@@ -128,7 +130,8 @@ async def run(kind,instance,pipe):
         pipe.send(("ready","ready",dict(capacities=capacities,kind=kind,instance=instance,layout=layout,
             context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=not value["additional_config"]["pd_mtp"],
             object_audit=os.environ.get("BETTERSCALE_PD_VERIFY_OBJECTS")=="1",
-            state_wire=("rank-private-v1" if value["additional_config"].get("pd_rank_private") else
+            state_wire=(("rank-private-mtp-prefix-v1" if value["additional_config"]["pd_mtp"] else "rank-private-v1")
+                if value["additional_config"].get("pd_rank_private") else
                 ("mtp-prefix-" if value["additional_config"]["pd_mtp"] else "")+
                 ("zstd-resident-v1" if os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT")=="1" else "raw-v2")))))
         while True:

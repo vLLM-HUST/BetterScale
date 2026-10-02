@@ -82,8 +82,8 @@ def build(runner, worker, config):
     owner, physical, node = owner_for(
         config, worker.rank, runner.device.index, json.loads(raw),
         os.environ.get("ASCEND_RT_VISIBLE_DEVICES"))
-    if config.get("pd_mtp") or os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT", "0") != "0":
-        raise ValueError("private State qualification is target-only and uncompressed")
+    if os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT", "0") != "0":
+        raise ValueError("private State qualification requires uncompressed frames")
     budget = config["state_cache_host_bytes"]
     if type(budget) is not int or not 0 < budget <= 128 << 30:
         raise ValueError("invalid private rank host budget")
@@ -93,7 +93,7 @@ def build(runner, worker, config):
         import vllm_ascend.vllm_ascend_C
         from rank_state_pool import RankStatePool
         from rank_replica_receiver import RankReplicaReceiver
-        from rank_replicator import RankReplicator, HOSTS
+        from rank_replicator import RankReplicator, HOSTS, CONTROL_BASE
         from rank_peer_control import RankControl
         from rank_state_transport import RankStateTransport
         TransferEngine = transfer_engine()
@@ -107,7 +107,7 @@ def build(runner, worker, config):
             raise RuntimeError("private State TransferEngine initialization failed")
         receiver = RankReplicaReceiver(pool, engine, max_pending=config["state_cache_max_pending"])
         replica = RankReplicator(pool, engine)
-        control = RankControl(receiver, host, 56400 + physical, set(HOSTS.values())).start()
+        control = RankControl(receiver, host, CONTROL_BASE + physical, set(HOSTS.values())).start()
         def submit(descriptors, to_host, stream):
             torch.npu.set_device(runner.device)
             with torch.npu.stream(stream):
@@ -120,8 +120,9 @@ def build(runner, worker, config):
                 end.synchronize()
                 wait.device_seconds = begin.elapsed_time(end) / 1000
             return wait
+        wire = "mtp-prefix" if config.get("pd_mtp") else "target"
         transport = RankStateTransport(
-            pool, f"qwen35-target-private-v1/tp2/head{worker.rank}", submit,
+            pool, f"qwen35-{wire}-private-v1/tp2/head{worker.rank}", submit,
             replica.replicate, verify=os.environ.get("BETTERSCALE_PD_VERIFY_OBJECTS") == "1")
         runtime = RankRuntime(pool, receiver, replica, control, transport)
         transport.release_checkpoint = runtime.release

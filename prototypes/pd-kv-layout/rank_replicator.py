@@ -8,10 +8,11 @@ import time
 import uuid
 
 HOSTS={"P":"10.244.1.16","D":"10.244.2.32"}
+CONTROL_BASE=27400  # outside this deployment's32768..60999 ephemeral range
 
 
 class RankReplicator:
-    def __init__(self,pool,engine,*,control_base=56400):
+    def __init__(self,pool,engine,*,control_base=CONTROL_BASE):
         self.pool,self.engine,self.control_base=pool,engine,control_base
         self.routes={}
         self.lock=Lock()

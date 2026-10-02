@@ -14,6 +14,24 @@ def checkpoint(value):
     return HostStateKey(*value)
 
 
+def preflight(host):
+    import socket
+    from pathlib import Path
+    from rank_replicator import CONTROL_BASE
+    low,high=map(int,Path("/proc/sys/net/ipv4/ip_local_port_range").read_text().split())
+    sockets=[]
+    try:
+        for port in range(CONTROL_BASE,CONTROL_BASE+8):
+            if low<=port<=high:
+                raise ValueError("rank control port overlaps kernel ephemeral range")
+            sock=socket.socket()
+            sockets.append(sock)
+            sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+            sock.bind((host,port))
+    finally:
+        for sock in sockets:sock.close()
+
+
 class RankControl:
     def __init__(self,receiver,host,port,allowed_peers):
         self.receiver=receiver

@@ -1127,3 +1127,21 @@ until repeated real load and allocator stats agree. Next candidate keeps graph
 policy unchanged for this qualification; D-only graph code is opt-in and still
 CPU-only. No disabling pinning, shared-memory workaround, cache drops under active
 DMA, or host-wide memory knobs were used.
+
+The first GC candidate online-rank-v4 (546116f) did not reach workload: P physical5
+failed binding its private control listener with EADDRINUSE after model capture.
+No stale model NPU contexts were present before launch; subsequent netstat did
+not show a persistent56405 listener. This does not prove which transient socket
+held it. The old56400..56407 control range lies inside the host's32768..60999
+ephemeral range, so the native engine or another task-local outgoing socket can
+race those late listener binds. Move the explicitly paired control endpoints to
+27400..27407; preflight all8 and reject ephemeral-range overlap BEFORE model
+startup. Do not change host sysctls or kill an unidentified listener. The failed
+candidate never qualifies GC under load; both model services were stopped.
+
+Experimental MTP-prefix private wire is prepared separately from target-only,
+with85rather than83State lanes and a distinct object namespace. It requires the
+D-only graph opt-in and --mtp capsule overlay (state_address/draft_fia), retaining
+P-side draft-prefix computation for a correct first baseline. This is not yet
+hardware-qualified and is not the eventual P-no-drafter optimization. The next
+GC pressure gate still runs target-only with mixed graph policy unchanged.
