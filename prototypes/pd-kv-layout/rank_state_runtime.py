@@ -10,6 +10,27 @@ import os
 import sys
 
 
+def allocation_failure_snapshot(pool, size, physical, node, host_stats):
+    """Bounded failure evidence before native fail-closed tears workers down."""
+    from pathlib import Path
+    status = {}
+    for line in Path("/proc/self/status").read_text().splitlines():
+        key, _, value = line.partition(":")
+        if key in ("VmSize", "VmRSS", "VmLck", "VmPin", "Threads"):
+            status[key] = value.strip()
+    return dict(stage="rank-pinned-allocation-failed", pid=os.getpid(),
+                owner=pool.owner, physical_device=physical, numa_node=node,
+                requested_bytes=size, pool_bytes=pool.bytes, budget=pool.budget,
+                objects=len(pool.objects), checkpoints=len(pool.groups),
+                readers=sum(x.readers for x in pool.objects.values()),
+                host_stats=host_stats, process=status,
+                maps=len(Path("/proc/self/maps").read_text().splitlines()),
+                meminfo=Path("/proc/meminfo").read_text(),
+                buddyinfo=Path("/proc/buddyinfo").read_text(),
+                node_meminfo=Path(f"/sys/devices/system/node/node{node}/meminfo").read_text(),
+                cgroup_current=Path("/sys/fs/cgroup/memory.current").read_text().strip())
+
+
 def transfer_engine():
     # Load the qualified CPU engine before optional connector imports can bind
     # the system Ascend wheel. Never unload a different native engine in-place.
@@ -99,7 +120,18 @@ def build(runner, worker, config):
         TransferEngine = transfer_engine()
         def allocate(size):
             torch.npu.set_device(runner.device)
-            return torch.empty(size, dtype=torch.uint8, pin_memory=True)
+            try:
+                return torch.empty(size, dtype=torch.uint8, pin_memory=True)
+            except Exception:
+                # Never retry, empty a process-global allocator, or replace
+                # pinned memory with a slower pageable/shared tier here.
+                try:
+                    print(json.dumps(allocation_failure_snapshot(
+                        pool, size, physical, node, torch.npu.host_memory_stats())),
+                        file=sys.stderr, flush=True)
+                except Exception:
+                    pass  # diagnostics must not hide the original allocation error
+                raise
         pool = RankStatePool(owner, budget, allocate)
         engine = TransferEngine()
         host = HOSTS[owner[0]]

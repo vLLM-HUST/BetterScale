@@ -38,7 +38,7 @@ def test_private_turns_publish_then_retire_both_sticky_copies_without_object_ser
         await c.start()
         def forbidden(*args):raise AssertionError("private mode touched legacy object service")
         c.sink=SimpleNamespace(get=forbidden,put=forbidden)
-        copies={};operations=[];number=0
+        copies={};operations=[];number=0;receipts={}
         async def prepare(kind,index,command):
             nonlocal number
             action=command["kind"]
@@ -48,6 +48,7 @@ def test_private_turns_publish_then_retire_both_sticky_copies_without_object_ser
                         block_count=1,byte_length=100,pages=["page:"+command["key"]])
                 copies[kind,index,cp["key"]]=cp
                 number+=1
+                receipts[number]="store"
                 operations.append((action,kind,index,command["peer_group"]))
                 return number
             if action=="adopt":
@@ -66,9 +67,13 @@ def test_private_turns_publish_then_retire_both_sticky_copies_without_object_ser
             del copies[kind,index,command["key"]]
             operations.append((action,kind,index,command["key"]))
             number+=1
+            receipts[number]="drop"
             return number
         async def cache(kind,index,command):
-            if command["kind"]=="wait":return dict(done=True)
+            if command["kind"]=="wait":
+                operation=command["operation"]
+                return dict(done=True,operation=operation,kind=receipts[operation],
+                            cancelled=False,ranks=[0,1])
             assert command["kind"]=="describe"
             return copies[kind,index,command["key"]]
         c.prepare=prepare;c.cache=cache

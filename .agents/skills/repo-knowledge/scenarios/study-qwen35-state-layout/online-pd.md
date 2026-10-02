@@ -1693,3 +1693,55 @@ Offline tokenizer PID570669 was resumed automatically after v25 drain; it
 remains healthy CPU-bound, pool1024 not yet ready. No initializer data were lost.
 The v22–v24 D evidence archive55404746 bytes is copied and size-verified locally;
 v24 follow-on attribution files written later are not in that archive yet.
+
+## October3: physical pinned-capacity boundary, v26 invalid
+
+v26 used the v24 native nodes (0c1304d) and v25 bounded-admission frontend
+(7b77d1b), C48/R56/44GiB D, four C16/R20 P instances. The verified1024-session
+Open-SWE pool preserves the previous512-session prefix;4.0 arrivals/s for240s
+plans960 sessions. At231.68s D physical6/NUMA5 failed128MiB pinned allocation:
+aclrtMallocHostWithCfg207001, drvRetCode6. A later32MiB receiver allocation
+also failed. Both nodes were shut down, retaining quarantine semantics.
+The run is INVALID:927 sessions launched,3084 requests,2450 completed,
+634 streaming failures; never report its throughput as a qualification result.
+512 client connections also queued (P95 5.15s); this is a separate pressure
+effect, not the original allocation failure.
+
+Published D manifests account for only44–60GiB/rank after Torch power-of-two
+rounding (resident95,604,788B→128MiB; FA23,068,672B→32MiB), below128GiB logical
+budget. This census excludes in-flight objects and cached allocator blocks.
+Logical byte limits are not physical locked-memory reservations.
+
+Isolated hw86 probes, CANN9.1.0 / driver26.0.rc1 / torch_npu2.10.0.post4:
+- rank-pinned-capacity-v1: one rank physical6,96GiB pinned passed.
+- v2: same rank,52GiB HBM+200GiB pinned passed; NUMA5 free plateaued near13.6GiB.
+  Allocation success does NOT prove200GiB local placement.
+- v3: eight ranks,52GiB HBM each,128MiB pinned allocations, cap128GiB/rank.
+  First failure at483.25GiB aggregate (physical1 at65.75GiB); other ranks stopped.
+  MemAvailable still1.45TiB, MemFree182GiB, no cgroup OOM/max events, maps~1350.
+  All eight allocators released to0. This is not a proved512GiB driver quota.
+- Crucial v3 peak buddyinfo: all nodes nearly exhausted order9+ blocks
+  (4KiB base pages =>2MiB), while many order0–8 blocks remained.
+  Installed driver host adaptation uses GFP_NORETRY and its huge-page path
+  allocates contiguous pages. This supports fragmentation/high-order supply as
+  the current hypothesis; do not relabel it an established allocation quota.
+- Bounded32MiB private mmap+MADV_NOHUGEPAGE+first-touch+ACL_HOST_REG_PINNED
+  registration succeeded; every page landed onNUMA5,4KiB pages; synchronous
+  H2D/D2H byte roundtrip and unregister passed. Capacity, async bandwidth and
+  lifetime integration still need qualification before replacing the allocator.
+
+Exact Torch host allocator source at git5dd8ef3f9b375b5ae4a83538d5785754148c3302
+uses aclrtMallocHostWithCfg with vaFlag1, and falls back only on unsupported
+feature, NOT OOM. pinned_mem_register still allocates through that same path
+first; toggling it alone does not bypass the failure.
+CANN9.1 official HostRegisterV2 docs support private malloc/mmap converted to
+locked memory (4KiB aligned, Linux>5.10); this is not a pageable cache tier:
+https://www.hiascend.com/document/detail/en/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_2128.html
+
+Artifacts live in /workspace/betterscale-pd-runtime/: v26 memory/process
+snapshots and manifest census, rank-pinned-capacity-v1/v2/v3.{py,json,log},
+pinned-register-probe.{py,log}. The v26 eight-second native profile completed
+before failure under online-rank-v24-D-profile; use it only for diagnostic
+cadence attribution, not headline workload qualification. Both hosts require
+fresh native process incarnations after this failure (TE endpoint reuse risk).
+No global cache drop/sysctl/runtime upgrade/pageable fallback was used.
