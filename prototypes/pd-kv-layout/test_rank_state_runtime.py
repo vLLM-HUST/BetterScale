@@ -52,3 +52,23 @@ def test_close_refuses_referenced_checkpoints_before_stopping_listener():
     pool.groups.clear()
     runtime.close()
     assert events == ["control", "pool"]
+
+
+def test_native_engine_identity_is_fenced_and_path_survives_spawn(monkeypatch):
+    import os
+    import sys
+    from rank_state_runtime import transfer_engine
+    site="/workspace/pd-kv-layout-results/store-cpu-venv/lib/python3.12/site-packages"
+    monkeypatch.setattr(sys,"path",list(sys.path))
+    monkeypatch.setenv("PYTHONPATH","/pinned/runtime")
+    cls=object()
+    module=SimpleNamespace(__file__=site+"/mooncake/engine.so",TransferEngine=cls)
+    monkeypatch.setitem(sys.modules,"mooncake",SimpleNamespace(engine=module))
+    monkeypatch.setitem(sys.modules,"mooncake.engine",module)
+    assert transfer_engine() is cls
+    assert transfer_engine() is cls
+    assert sys.path.count(site)==1 and sys.path[0]==site
+    assert os.environ["PYTHONPATH"]==site+os.pathsep+"/pinned/runtime"
+    module.__file__="/usr/local/lib/mooncake/engine.so"
+    with pytest.raises(RuntimeError,match="unqualified Mooncake"):
+        transfer_engine()

@@ -1021,3 +1021,17 @@ CPU tests include two sticky turns (D then P-only), no legacy object service,
 peer-index validation, publish-before-retirement, route cleanup and topology.
 75 targeted CPU tests pass. The runtime factory and complete16-card model path
 remain UNQUALIFIED until a frozen candidate hardware gate succeeds.
+
+The first real16-card wiring gate (online-rank-v1,13bd8e3) used the default
+8192-context/8GiB device budget, not the262144/24.25GiB production envelope.
+All16 workers and private listeners started, but the first P→D replication
+failed closed: receive deregistration returned failure and no checkpoint was
+published. /proc/3712770/maps on hw86 showed the SYSTEM Ascend Mooncake engine,
+not the qualified CPU0.3.13.post1 wheel. Its AscendDirectTransport reported
+aclrtGetCurrentContext failure in fresh commit handler threads. This does not
+invalidate the CPU-engine standalone gate; it exposes runtime import precedence.
+Stop both services; preserve quarantined buffers until process teardown, never
+retry that checkpoint. The correction pins the isolated CPU engine site before
+model/plugin imports, carries it into spawned workers and verifies module path.
+That site contains Mooncake/zstandard/pip only, no replacement Torch. No installed
+runtime or donor pin changes. Rerun from fresh services/output/SQLite directory.

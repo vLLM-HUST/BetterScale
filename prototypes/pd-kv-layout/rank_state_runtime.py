@@ -10,6 +10,24 @@ import os
 import sys
 
 
+def transfer_engine():
+    # Load the qualified CPU engine before optional connector imports can bind
+    # the system Ascend wheel. Never unload a different native engine in-place.
+    from pathlib import Path
+    site = "/workspace/pd-kv-layout-results/store-cpu-venv/lib/python3.12/site-packages"
+    if site in sys.path:
+        sys.path.remove(site)
+    sys.path.insert(0, site)
+    # This isolated site contains Mooncake/zstandard, not another Torch. Keep
+    # the path in spawned model workers as well as this actor process.
+    paths=[p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep) if p and p != site]
+    os.environ["PYTHONPATH"]=os.pathsep.join([site, *paths])
+    import mooncake.engine as module
+    if not Path(module.__file__).resolve().is_relative_to(Path(site).resolve()):
+        raise RuntimeError("private State loaded an unqualified Mooncake engine")
+    return module.TransferEngine
+
+
 def owner_for(config, tp_rank, logical_device, mapping, visible):
     from state_numa import resolve_node
     side = config["pd_rank_role"]
@@ -78,12 +96,7 @@ def build(runner, worker, config):
         from rank_replicator import RankReplicator, HOSTS
         from rank_peer_control import RankControl
         from rank_state_transport import RankStateTransport
-        # Keep the CPU-only Mooncake wheel out of model-package dependency
-        # resolution. Torch/Ascend are already imported from the pinned runtime.
-        site = "/workspace/pd-kv-layout-results/store-cpu-venv/lib/python3.12/site-packages"
-        if site not in sys.path:
-            sys.path.append(site)
-        from mooncake.engine import TransferEngine
+        TransferEngine = transfer_engine()
         def allocate(size):
             torch.npu.set_device(runner.device)
             return torch.empty(size, dtype=torch.uint8, pin_memory=True)

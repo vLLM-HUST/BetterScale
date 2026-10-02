@@ -18,6 +18,13 @@ def options(kind,instance):
     from pd_limits import context_limit,state_budget
     layout=placement(kind,instance)
     prepare_worker(kind,native_async=True)
+    if os.environ.get("BETTERSCALE_PD_RANK_PRIVATE") == "1":
+        # Resolve Torch from the pinned model environment first, then retain
+        # the isolated Mooncake-only site for subsequently spawned workers.
+        import torch
+        import torch_npu
+        from rank_state_runtime import transfer_engine
+        transfer_engine()
     value=engine_options(kind=="P")
     import online_entry
     os.environ.update(ASCEND_RT_VISIBLE_DEVICES=layout["devices"],HCCL_IF_BASE_PORT=str(layout["hccl_port"]))
