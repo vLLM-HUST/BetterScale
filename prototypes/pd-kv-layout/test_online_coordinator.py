@@ -35,11 +35,11 @@ def test_prefill_affinity_reuses_ready_permit_but_never_waits_for_busy_owner(tmp
     async def run():
         c=Coordinator(tmp_path/"directory.db","http://10.244.1.16:55581","http://10.244.2.32:55586",p_per_instance=1)
         c.p_affinity["warm"]=2
-        assert await c.acquire_p("warm")==2
-        assert await c.acquire_p("another")==0
+        assert (await c.acquire_p("warm"))[0]==2
+        assert (await c.acquire_p("another"))[0]==0
         c.p_affinity["busy"]=2
-        assert await asyncio.wait_for(c.acquire_p("busy"),.1)==1
-        assert c.p_available.qsize()==1
+        assert (await asyncio.wait_for(c.acquire_p("busy"),.1))[0]==1
+        assert sum(a.slots for a in c.p_admission)==1
     asyncio.run(run())
 
 
@@ -60,7 +60,7 @@ def test_wire_version_mismatch_fails_before_admission(tmp_path,monkeypatch,d_ver
         async def health(self):
             kind=self.kind
             info=dict(state_wire="zstd-resident-v1" if kind=="P" else d_version,
-                capacities=[dict(block_size=2048,max_requests=16,free_blocks=1044)]*4)
+                capacities=[dict(block_size=2048,max_requests=16,free_blocks=1044)]*(1 if kind=="P" else 4))
             return dict(ready=True,kind=kind,context_limit=context_limit(),
                 actors=[dict(alive=True,quarantined=False,info=info)]*(4 if kind=="P" else 1))
     monkeypatch.setattr(module,"Peer",Peer)
@@ -98,3 +98,50 @@ def test_worker_audit_mode_changes_only_without_inflight_io():
     assert method(worker,False)==dict(owner=2,rank=1,previous=True,enabled=False)
     assert cache.page_backend.verify is False
     with pytest.raises(ValueError):method(worker,1)
+
+
+def test_prefill_admission_uses_available_pages_not_four_request_cap(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"d.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        c.p_admission=[Admission(260,16) for _ in range(4)]
+        held=[await c.acquire_p(str(i),262144) for i in range(8)]
+        assert all(a.free==2 and a.slots==14 for a in c.p_admission)
+        c.p_affinity["small"]=2
+        i,n=await c.acquire_p("small",1);assert (i,n)==(2,1)
+        waiter=asyncio.create_task(c.acquire_p("large",262144))
+        await asyncio.sleep(0);assert not waiter.done()
+        await c.release_p(*held.pop())
+        held.append(await asyncio.wait_for(waiter,1))
+        await c.release_p(i,n)
+        for row in held:await c.release_p(*row)
+        assert all(a.free==260 and a.slots==16 for a in c.p_admission)
+        short=[await c.acquire_p(str(i),1) for i in range(64)]
+        assert all(a.slots==0 for a in c.p_admission)
+        for row in short:await c.release_p(*row)
+    asyncio.run(run())
+
+
+def test_owner_admission_lock_does_not_cover_transfer_completion(tmp_path):
+    from online_coordinator import Coordinator
+    from types import SimpleNamespace
+    async def run():
+        c=Coordinator(tmp_path/"d.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        release=asyncio.Event();both=asyncio.Event();waiting=[];number=0
+        async def prepare(kind,index,command):
+            nonlocal number
+            if command["kind"]=="adopt":return True
+            number+=1;return number
+        async def cache(kind,index,command):
+            if command["kind"]=="wait":
+                waiting.append(command["operation"])
+                if len(waiting)==2:both.set()
+                await release.wait();return {"done":True}
+            return {"key":command["key"]}
+        c.prepare=prepare;c.cache=cache;c.sink=SimpleNamespace(put=lambda *args:None)
+        a=asyncio.create_task(c.save("D",0,[1,2],"a"))
+        b=asyncio.create_task(c.load("D",0,{"key":"other"}))
+        await asyncio.wait_for(both.wait(),1)
+        assert len(waiting)==2 and not a.done() and not b.done()
+        release.set();await asyncio.gather(a,b)
+    asyncio.run(run())

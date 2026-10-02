@@ -75,7 +75,7 @@ def initialize_null_page(runner):
     from betterscale.live.llm.qwen35.state import AttentionState
     # Pinned BlockPool removes block0 as its null block. Scheduler asserts this
     # invariant independently. Only its first128-token kernel page is read here.
-    for leaf in runner._live_state_root.target.values():
+    for leaf in [*runner._live_state_root.target.values(),runner._live_state_root.draft]:
         if isinstance(leaf,AttentionState):
             for tensor in leaf.numerical_tensors():tensor[0].zero_()
 
@@ -90,6 +90,7 @@ def target_only(runner,native,*args,**kwargs):
     kwargs.pop("cudagraph_runtime_mode",None)
     kwargs["force_attention"]=False
     draft=runner.drafter
-    runner.drafter=None;runner._pd_idle_graph=True
+    if not getattr(runner,"_pd_mtp_enabled",False):runner.drafter=None
+    runner._pd_idle_graph=True
     try:return native(runner,*args,**kwargs)
     finally:runner.drafter=draft;runner._pd_idle_graph=False

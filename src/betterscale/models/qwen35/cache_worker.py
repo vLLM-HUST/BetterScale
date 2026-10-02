@@ -18,9 +18,12 @@ from betterscale.live.runtime.host_state import (
 
 
 class CacheWorker:
-    def __init__(self, runner, host_bytes):
+    def __init__(self, runner, host_bytes, *, max_transfers=2, waiter_initializer=None):
         from vllm.distributed import get_tensor_model_parallel_rank
 
+        if type(max_transfers) is not int or max_transfers < 1:
+            raise ValueError("positive State transfer concurrency required")
+        self.max_transfers = max_transfers
         self.runner = runner
         self.rank = get_tensor_model_parallel_rank()
         self.backend = TorchHostStateBackend(memory_budget_bytes=host_bytes)
@@ -29,7 +32,8 @@ class CacheWorker:
             kind: torch.npu.Stream(device=runner.device) for kind in ("store", "load")
         }
         self.waiters = ThreadPoolExecutor(
-            max_workers=2, thread_name_prefix="state-cache"
+            max_workers=max_transfers, thread_name_prefix="state-cache",
+            initializer=waiter_initializer
         )
         self.verify = {}
         self.states = tuple(
@@ -118,6 +122,8 @@ class CacheWorker:
                 torch.npu.set_device(self.runner.device)
                 transfer.result()
                 command["_transfer_bytes"] = transfer.byte_length
+                if hasattr(transfer,"phase_seconds"):
+                    command["_transfer_phases"] = dict(transfer.phase_seconds)
                 if kind == "store":
                     self.verify[key] = was_verify
                 else:
@@ -138,6 +144,8 @@ class CacheWorker:
         receipt.update(rank=self.rank, error=error)
         if "_transfer_bytes" in command:
             receipt["transfer_bytes"] = command["_transfer_bytes"]
+        if "_transfer_phases" in command:
+            receipt["transfer_phases"] = command["_transfer_phases"]
         with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as channel:
             channel.settimeout(30)
             channel.sendto(json.dumps(receipt).encode(), command["endpoint"])

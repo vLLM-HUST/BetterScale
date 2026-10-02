@@ -54,8 +54,10 @@ class PageTransfer:
 
 
 class PageStateStore:
-    def __init__(self, *, memory_budget_bytes):
-        self.backend = _CopyBackend(memory_budget_bytes=memory_budget_bytes)
+    def __init__(self, *, memory_budget_bytes, enqueue_copies=None):
+        self.backend = _CopyBackend(
+            memory_budget_bytes=memory_budget_bytes, enqueue_copies=enqueue_copies
+        )
         self.manifests = {}
         self.references = {}
         self.pending = set()

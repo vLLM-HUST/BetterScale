@@ -32,6 +32,18 @@ def compact_padding(metadata):
     return result
 
 
+def idle_metadata(metadata, tokens):
+    """Runtime idle EP member: read the reserved null page, never write KV."""
+    result = copy.copy(metadata)
+    result.slot_mapping.fill_(-1)
+    result.actual_seq_lengths_q = [1, tokens] if tokens > 1 else [1]
+    result.seq_lens_list = [1, 0] if tokens > 1 else [1]
+    result.num_actual_tokens = 1
+    result._mtp_device_seq_lens = torch.zeros_like(metadata._mtp_device_seq_lens)
+    result._mtp_device_seq_lens[0] = 1
+    return result
+
+
 def bind_device_lengths(metadata, common):
     # AscendMetadata.seq_lens is a CPU mirror in this pinned builder, despite
     # its name. Preserve the CommonAttentionMetadata device plane explicitly.
@@ -119,6 +131,10 @@ def install():
                 )
                 cpu = runner.input_batch.block_table[gid].get_cpu_tensor()
                 key = kw["num_input_tokens"], runner._owned_bank, step
+                if getattr(runner, "_pd_idle_graph", False):
+                    m = idle_metadata(m, kw["num_input_tokens"])
+                    metadata[layer] = m
+                    cpu = cpu.clone().zero_()
                 plan_metadata = compact_padding(m)
                 owned_attention = cp.enabled(key[0]) or (step > 0 and cp.enabled(3))
                 if owned_attention and getattr(runner, "_owned_capture_bank", None) is not None:

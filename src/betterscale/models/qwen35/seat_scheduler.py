@@ -81,6 +81,9 @@ class LiveStateScheduler(AsyncScheduler):
                 incremental=self.vllm_config.additional_config.get(
                     "state_cache_incremental", False
                 ),
+                max_pending=self.vllm_config.additional_config.get(
+                    "state_cache_max_pending"
+                ),
             )
             install()
         self.cache_policy = None

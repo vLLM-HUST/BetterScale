@@ -18,8 +18,9 @@ class Scheduler(BaseScheduler):
         # source; keep native lookahead allocation and runner startup unchanged.
         if self.kv_cache_manager.block_pool.null_block.block_id!=0:
             raise RuntimeError("Idle graph requires the reserved null FA block0")
-        self.num_spec_tokens=0
-        self._spec_token_placeholders=[]
+        if not self.vllm_config.additional_config.get("pd_mtp",False) or self.vllm_config.parallel_config.data_parallel_size==1:
+            self.num_spec_tokens=0
+            self._spec_token_placeholders=[]
 
 class Worker(BaseWorker):
     def __init__(self, vllm_config, *args, **kwargs):
@@ -40,6 +41,7 @@ class Worker(BaseWorker):
 
     def compile_or_warm_up_model(self):
         result=super().compile_or_warm_up_model()
+        self.model_runner._pd_mtp_enabled=bool(self.vllm_config.additional_config.get("pd_mtp",False))
         if self._pd_distributed:
             from idle_graph import initialize_null_page
             initialize_null_page(self.model_runner)

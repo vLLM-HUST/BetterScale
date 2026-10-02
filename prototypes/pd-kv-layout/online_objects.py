@@ -8,6 +8,8 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor, wait
 import hashlib
 import json
+import os
+import time
 import urllib.error
 import urllib.request
 from aiohttp import web
@@ -30,6 +32,10 @@ class Objects:
         # upload sockets must not lock out unrelated completed-page GET/HEAD.
         self.uploads=asyncio.Semaphore(4)
         self.downloads=asyncio.Semaphore(4)
+        self.recorder=None
+        if os.environ.get("BETTERSCALE_PD_TIMING_DIR"):
+            from online_timing import Recorder
+            self.recorder=Recorder("objects")
 
     def inspect(self,key):
         raw=self.store.get("online-manifest:"+identity(key))
@@ -94,35 +100,50 @@ class Objects:
 
     async def route(self,request):
         key=request.match_info["key"]
+        points=[("begin",time.perf_counter_ns())];size=0;success=False
+        def mark(name):points.append((name,time.perf_counter_ns()))
         try:
             identity(key)
             if request.method=="PUT":
                 async with self.uploads:
-                    data=await request.read()
-                    prepared=await asyncio.to_thread(self.prepare_write,key,data)
+                    mark("upload-admitted")
+                    data=await request.read();size=len(data);mark("body-read")
+                    prepared=await asyncio.to_thread(self.prepare_write,key,data);mark("prepared")
                     async with self.lock:
-                        receipt=await asyncio.to_thread(self.commit_write,key,prepared)
+                        mark("store-admitted")
+                        receipt=await asyncio.to_thread(self.commit_write,key,prepared);mark("committed")
+                success=True
                 return web.json_response(receipt)
             if request.method=="HEAD":
-                async with self.lock:await asyncio.to_thread(self.inspect,key)
+                async with self.lock:
+                    mark("store-admitted")
+                    await asyncio.to_thread(self.inspect,key);mark("inspected")
+                success=True
                 return web.Response()
             async with self.downloads:
+                mark("download-admitted")
                 async with self.lock:
-                    parts=await asyncio.to_thread(self.read_parts,key)
-                data=await asyncio.to_thread(self.assemble,parts)
+                    mark("store-admitted")
+                    parts=await asyncio.to_thread(self.read_parts,key);mark("parts-read")
+                data=await asyncio.to_thread(self.assemble,parts);size=len(data);mark("assembled")
                 response=web.StreamResponse(headers={"Content-Type":"application/octet-stream",
                     "Content-Length":str(len(data))})
                 await response.prepare(request)
-                await response.write(data);await response.write_eof()
+                await response.write(data);await response.write_eof();mark("sent");success=True
                 return response
         except KeyError:
             raise web.HTTPNotFound()
         except ValueError as exc:
             raise web.HTTPBadRequest(text=str(exc))
+        finally:
+            if self.recorder:
+                mark("end")
+                self.recorder.record("object-service",method=request.method,key=key,
+                    bytes=size,success=success,points=points)
 
 
 class PeerObjectSink:
-    def __init__(self, urls):
+    def __init__(self, urls, *, max_transfers=1):
         from urllib.parse import urlsplit
         if len(urls)!=2 or len(set(urls))!=2:raise ValueError("Two distinct replica endpoints required")
         for url in urls:
@@ -130,8 +151,10 @@ class PeerObjectSink:
             if (p.scheme!="http" or p.hostname not in ("10.244.1.16","10.244.2.32")
                     or p.port not in (55581,55586) or p.path or p.query or p.username or p.password):
                 raise ValueError("Unqualified private object endpoint")
+        if type(max_transfers) is not int or not 1<=max_transfers<=20:
+            raise ValueError("Replica concurrency must fit qualified resident capacity")
         self.urls=tuple(urls)
-        self.puts=ThreadPoolExecutor(max_workers=2,thread_name_prefix="state-replica")
+        self.puts=ThreadPoolExecutor(max_workers=2*max_transfers,thread_name_prefix="state-replica")
 
     def request(self,url,key,method="GET",data=None):
         request=urllib.request.Request(url+"/objects/"+identity(key),data=data,method=method)

@@ -182,9 +182,13 @@ class TorchHostStateBackend:
     stream has waited on the caller-selected copy stream.
     """
 
-    def __init__(self, *, memory_budget_bytes: int) -> None:
+    def __init__(self, *, memory_budget_bytes: int, enqueue_copies=None) -> None:
         if type(memory_budget_bytes) is not int or memory_budget_bytes <= 0:
             raise ValueError("host State memory budget must be positive")
+        # The injected submitter only enqueues on the caller's current stream.
+        # Completion, storage ownership and failure quarantine remain here.
+        if enqueue_copies is not None:
+            self._enqueue_copies = enqueue_copies
         self._memory_budget_bytes = memory_budget_bytes
         self._committed_bytes = 0
         self._reserved_bytes = 0

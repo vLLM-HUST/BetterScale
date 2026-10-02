@@ -27,7 +27,8 @@ def options(kind,instance):
                  data_parallel_address="127.0.0.1",data_parallel_rpc_port=layout["rpc_port"],
                  disable_log_stats=True)
     value["additional_config"].update(state_cache_host_bytes=128<<30,
-        state_cache_incremental=True,state_cache_control_rpc=True,state_cache_policy=False)
+        state_cache_incremental=True,state_cache_control_rpc=True,state_cache_policy=False,
+        state_cache_max_pending=20,pd_mtp=os.environ.get("BETTERSCALE_PD_MTP")=="1")
     profile_dir=os.environ.get("BETTERSCALE_PD_PROFILE_DIR")
     if profile_dir:
         value["profiler_config"]=dict(profiler="torch",torch_profiler_dir=profile_dir,
@@ -96,9 +97,10 @@ async def run(kind,instance,pipe):
         capacities=[await model.engine_core._call_utility_async("pd_online_cache",{"kind":"capacity"},
             engine=model.engine_core.core_engines[i]) for i in range(layout["dp"])]
         pipe.send(("ready","ready",dict(capacities=capacities,kind=kind,instance=instance,layout=layout,
-            context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=True,
+            context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=not value["additional_config"]["pd_mtp"],
             object_audit=os.environ.get("BETTERSCALE_PD_VERIFY_OBJECTS")=="1",
-            state_wire="zstd-resident-v1" if os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT")=="1" else "raw-v2")))
+            state_wire=("mtp-prefix-" if value["additional_config"]["pd_mtp"] else "")+
+                ("zstd-resident-v1" if os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT")=="1" else "raw-v2"))))
         while True:
             tag,op,args=await asyncio.to_thread(pipe.recv)
             if op=="stop":

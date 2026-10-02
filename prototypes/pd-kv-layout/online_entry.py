@@ -12,7 +12,7 @@ if os.environ.get("BETTERSCALE_PD_TIMING_DIR"):
 qwen35.STATE_SCHEDULER="online_entry.Scheduler"
 
 
-def cache_command(core, command):
+def _cache_command(core, command):
     # Calling snapshot initializes the native completion inbox and drains it on
     # this same Core thread. No controller thread mutates scheduler structures.
     core.state_cache({"kind":"snapshot"})
@@ -25,7 +25,6 @@ def cache_command(core, command):
     if kind in ("snapshot","wait","cancel","drop"):
         return core.state_cache(command)
     if kind=="describe":return asdict(c.host[command["key"]])
-    if c.pending:return None
     if kind=="store_match":
         for seat in core.scheduler.residents.seats:
             if (seat.cache_salt==command["salt"] and seat.tokens==tuple(command["tokens"])
@@ -61,6 +60,12 @@ def cache_command(core, command):
     raise ValueError("Unqualified online cache command")
 
 
+def cache_command(core, command):
+    from betterscale.models.qwen35.cache_actions import CacheBusy
+    try:return _cache_command(core,command)
+    except CacheBusy:return None
+
+
 class Scheduler(BaseScheduler):
     def __init__(self,*args,**kwargs):
         from vllm.v1.engine.core import EngineCoreProc
@@ -89,7 +94,8 @@ class Worker(BaseWorker):
         begin=time.perf_counter_ns()
         result=super().execute_model(scheduler_output)
         self._pd_timing.record("worker-dispatch",begin_ns=begin,
-            scheduled=dict(scheduler_output.num_scheduled_tokens))
+            scheduled=dict(scheduler_output.num_scheduled_tokens),
+            drafts={rid:len(ids) for rid,ids in scheduler_output.scheduled_spec_decode_tokens.items()})
         return result
 
 
@@ -100,15 +106,20 @@ class Worker(BaseWorker):
         from online_objects import PeerObjectSink
         import os,json
         runner=self.model_runner;root=runner._live_state_root
-        worker=CacheWorker(runner,128<<20)
+        concurrency=self.vllm_config.additional_config["state_cache_max_pending"]
+        from state_numa import initializer
+        worker=CacheWorker(runner,128<<20,max_transfers=concurrency,
+                           waiter_initializer=initializer(runner.device.index))
+        mtp=self.vllm_config.additional_config.get("pd_mtp",False)
         controls={id(root.continuation.selection),id(root.conv_selection),id(root.remaining_outputs)}
         worker.states=tuple((name,state) for name,state in root.named_states()
-                            if name.startswith("target.") or id(state) in controls)
-        if len(worker.states)!=83:raise RuntimeError("Unexpected target State closure")
+                            if name.startswith("target.") or (mtp and name.startswith("draft.")) or id(state) in controls)
+        if len(worker.states)!=(85 if mtp else 83):raise RuntimeError("Unexpected target State closure")
         # A transferred full conv window retains its selector. Treating it as a
         # prior decode normalizes on bulk prefill; selector1 is an identity copy.
         worker.verify=defaultdict(lambda:True)
-        sink=PeerObjectSink(json.loads(os.environ["BETTERSCALE_PD_OBJECT_URLS"]))
+        sink=PeerObjectSink(json.loads(os.environ["BETTERSCALE_PD_OBJECT_URLS"]),
+                            max_transfers=concurrency)
         namespace=f"qwen35-target-state-v2/tp2/head{worker.rank}"
         compression=os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT","0")
         if compression not in ("0","1"):raise ValueError("Invalid resident wire compression flag")
@@ -116,8 +127,15 @@ class Worker(BaseWorker):
             from online_codec import ResidentWireSink
             sink=ResidentWireSink(sink)
             namespace=f"qwen35-target-state-v3-zstd-resident/tp2/head{worker.rank}"
+        batch_dma=os.environ.get("BETTERSCALE_PD_BATCH_DMA","0")
+        if batch_dma not in ("0","1"):raise ValueError("Invalid State batch DMA flag")
+        enqueue_copies=None
+        if batch_dma=="1":
+            import vllm_ascend.vllm_ascend_C
+            from betterscale.models.qwen35.state_dma import enqueue as enqueue_copies
         worker.page_backend=ObjectStateTransport(
-            sink,namespace,
+            sink,namespace,max_transfers=concurrency,enqueue_copies=enqueue_copies,
             verify=os.environ.get("BETTERSCALE_PD_VERIFY_OBJECTS")=="1")
+        if mtp:worker.page_backend.namespace="mtp-prefix-v1/"+worker.page_backend.namespace
         runner._state_cache_worker=worker
         return result

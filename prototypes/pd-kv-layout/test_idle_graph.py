@@ -47,3 +47,24 @@ def test_idle_preserves_native_graph_dispatch_and_restores_on_error():
 def test_startup_capture_is_unchanged():
     r=NS(drafter=object())
     assert target_only(r,lambda r,*a,**kw:kw,1,is_graph_capturing=True)==dict(is_graph_capturing=True)
+
+
+def test_idle_mtp_keeps_drafter_for_peer_collectives():
+    draft=object()
+    r=NS(_pd_target_only_ready=True,_pd_mtp_enabled=True,drafter=draft,input_batch=NS(num_reqs=0))
+    def native(r,*a,**kw):
+        assert r._pd_idle_graph and r.drafter is draft
+        return "participated"
+    assert target_only(r,native,3)=="participated"
+    assert r.drafter is draft and not r._pd_idle_graph
+
+
+def test_idle_draft_metadata_masks_writes_without_changing_device_feedback():
+    from betterscale.models.qwen35.draft_fia import idle_metadata
+    original=NS(slot_mapping=torch.arange(16),actual_seq_lengths_q=[3,6],
+        seq_lens_list=[2048,4096],_mtp_device_seq_lens=torch.tensor([2048,4096]))
+    result=idle_metadata(original,16)
+    assert result.actual_seq_lengths_q==[1,16] and result.seq_lens_list==[1,0]
+    assert result._mtp_device_seq_lens.tolist()==[1,0]
+    assert original._mtp_device_seq_lens.tolist()==[2048,4096]
+    assert (original.slot_mapping==-1).all()

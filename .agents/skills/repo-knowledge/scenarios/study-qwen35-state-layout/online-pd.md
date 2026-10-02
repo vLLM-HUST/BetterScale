@@ -7,13 +7,14 @@ nonexistent newer branch or repeat naive whole-checkpoint profiling.
 
 ## Resume after the October2 online campaign
 
-Latest qualified source:1850d72, frozen as online-stream-v6-source on hw86/hw81;
-branch codex/pd-incremental-online. Model/kernel capsules remain online-v2-P/D.
-Read [the final measured envelope](#final-measured-envelope--2026-10-02)
-before quoting throughput, cadence or production readiness. Both hosts are
-retired to8 idle NPUs after completed work; use fresh runtime output paths
-when restarting, not a persisted directory whose DRAM Store was destroyed.
-The earlier sections preserve the qualification trail, not newer launch advice.
+Current branch codex/pd-incremental-online carries concurrency/DMA work after
+57affb0; hw86 is the active development checkout. The latest bounded native gate is online-dma-v1
+gate2, not a full workload throughput claim. Enter the **Device-bandwidth**
+and **DRAM fast-path correction** sections near the end for the current frontier.
+Model/kernel capsules remain online-v2-P/D. MTP is explicitly deferred.
+The older online-stream-v6 and concurrent-v1 campaigns remain comparison
+evidence, not the new DRAM-first connector. Both model services are stopped;
+use fresh output paths on restart, never stale DRAM manifests.
 
 ## Accepted execution boundary
 
@@ -569,3 +570,275 @@ stream-v6*; /workspace/swe-workloads/stream-v6-{rate0.2,rate0.3,profile}.
 Final code, launchers, accepted pool/plans and measured artifacts are preserved
 outside the Documents repository. Stop after the model/State workload drains;
 both hosts' v6-cleanup receipts confirm8 idle NPUs.
+
+
+## Concurrent State handoff gate — October2, in progress
+
+Fletcher selected removal of owner-wide State serialization and restoration of
+MTP as the next two gaps. Do not interpret the earlier282.8tokens/s target-only
+point as the16-card compute ceiling.
+
+The isolated `online-concurrent-v1-{P,D}-package` capsules overlay only the
+native cache seams on online-v2. Native arithmetic, pins, kernel payloads and
+target-only execution are unchanged. `online-concurrent-v1-source` freezes the
+matching prototype. Admission permits20 pending operations/owner, but preserves
+per-seat writer/I/O fences, shared-object conflicts, host-byte admission and TP
+quorum. Staging uses exclusive bounded lanes; an uncertain DMA quarantines its
+lane and fails queued waiters, rather than recycling its storage. Coordinator
+maintenance locks end after admission/dispatch, not after DMA/replica ACK.
+P admission now reserves actual pages and at most16 execution seats/instance;
+it no longer imposes an unrelated four-request cap.
+
+`hw86-online-concurrent-v1-gate/summary.json`:16 independent sessions, two
+turns,1024-token initial prompts and128 then8 output tokens;31seconds rounded.
+Both P's four instances and D's four owners observed peak_pending=4. All
+post-H2D object bytes matched, all TP completions retired, no pending I/O or
+owned seats remained at the terminal assertions. This is concurrency/lifetime
+and transfer-byte evidence, not a full model-quality or saturated throughput
+claim. CPU concurrency suite58passed; the following MTP idle-wrapper tests
+bring the focused suite to64passed, but do not qualify MTP hardware.
+
+The next MTP capsule is explicitly experimental. Target-only wire omits the
+drafter's one FA layer. Restoring the native full-prefix drafter without either
+hydrating that layer or giving it an explicit restricted-context protocol is
+invalid; it would read uninitialized draft history. The conservative first
+gate restores P-side draft-prefix computation and transfers that FA layer in a
+distinct `mtp-prefix-` wire namespace, then uses native MTP2 on D. It is not
+the desired eventual P-no-drafter/D-local-bootstrap optimization. Do not label
+this design as already qualified or silently substitute approximate draft
+history for the baseline. No active-generation sealed-page backup claim.
+
+
+Concurrent-v1's matched arrival-plan0.3/300s replay is valid:365 requests,
+309 in-window/56 drained,0 failures/missed due,284.2533total tokens/s,
+TTFT P9510.4044s, wall411.807s. Earlier serialized v6 at the same arrival plan
+was278.430tokens/s and14.273s; this small throughput difference is not evidence
+of a saturated speedup. Worker receipts across the gate/replay (not an isolated
+steady-state/device window) show mean live target-only decode rows2.02–2.45 per
+D group, far below16. Core cache admission/describe P95 stays below123ms,
+whereas wait P95 reaches7.403s on P and6.450s on D. These waits mix transfer and
+service queueing; they are not measured PCIe or wire times.
+
+`hw86-online-concurrent-v1-quality3` passes24 real-chat code retrievals and8
+exact warm/cold continuations. Both turns use the known code's token count as
+the terminal budget, then append a valid new chat turn. Preserve earlier
+fixtures:quality1 passed a Transformers BatchEncoding rather than IDs and
+failed before generation;quality2 forced32 output tokens after the chat EOS,
+creating malformed/partially repeated text in later prompts. Its post-EOS
+divergences and truncated-code answers (also present in the independent cold
+oracle) are not a State parity pass/failure oracle. Do not relabel them as
+proven rounding. Render the template with tokenize=False then encode explicitly;
+do not trim a represented recurrent frontier backwards just to repair a fixture.
+
+Both concurrent-v1 services/frontend exit0 and all16 NPUs are released before
+the next capsule. MTP-v1 fails before weight loading: native Worker.__init__
+does not yet own model_runner. Set the experimental runtime flag only after
+compile_or_warm_up_model, when the runner exists; v2 changes that seam. Neither
+v1 startup failure nor v2 preparation is MTP acceptance.
+
+A separate CPU DRAM fixture on explicit loopback55051,
+`object-concurrent-native2`, compares8 unique32MiB objects/concurrency level.
+Prehashed commit throughput C1/2/4/8:1103/1026/1049/836MiB/s;
+detached chunk reads1149/1400/1695/1697MiB/s with exact reconstructed bytes.
+This bounded observation does not prove shared-client thread safety for all
+operations or production protocol correctness. It gives no reason to remove
+the Store lock blindly: write scaling is absent. Earlier native1 reused payloads
+across levels, so later writes were dedup hits and its write speedup is invalid.
+The next useful localization is whole object encode/hash/HTTP/queue service,
+not extrapolation from that deduplicated microbenchmark.
+
+### Device-bandwidth qualification (2026-10-02; MTP deferred)
+
+Fletcher requires approximately **20 GB/s per direction simultaneously**, not a
+20 GB/s aggregate. Decimal GB/s below. Earlier ~1.7 GiB/s object reads measured
+CPU Store throughput, not PCIe. No model services run during these probes.
+
+Pinned independent DMA rings (128 MiB x 4, 8 GiB/direction/sample, one warmup,
+three samples, exact all-byte checks), CANN 9.1.0 / torch_npu 2.10.0.post4:
+
+- Card 0, NUMA 6: H2D 26.08, D2H 28.29, duplex 25.61/direction.
+- Eight simultaneous cards, nearest-node binding: H2D 25.83–25.94 and D2H
+  28.28–28.48, but duplex **15.57–18.09/card/direction**.
+- Pair 0+2 sharing NUMA 6: duplex 15.67/16.52; pair 0+1 on separate nodes:
+  25.61/25.36. Moving card 2 CPU/memory to adjacent same-socket node 7 yields
+  19.47/19.03. This implicates shared locality resources, not a proven hardware
+  ceiling or uniquely identified memory-controller limit.
+- Eight-card CPU/memory binding `[6,0,7,1,4,2,5,3]` (device order 0..7), instead
+  of `[6,0,6,0,4,2,4,2]`, yields duplex
+  `[19.74,19.34,19.33,18.90,19.68,19.57,19.16,19.01]`, all exact. Both CPU and
+  memory binding changed; this does not isolate memory alone. A candidate
+  placement, not yet qualified with compute or production allocator ownership.
+
+Artifacts under /workspace/betterscale-pd-runtime: hw86-duplex-dma-numa6.json,
+hw86-duplex-all8/, hw86-duplex-same-node/, hw86-duplex-different-node/,
+hw86-duplex-split-memory/, hw86-duplex-all8-split-memory/. The cohort uses
+per-repeat barriers; source duplex_dma_probe.py. Do not extrapolate single-card
+peak to the full host.
+
+Actual TorchHostStateBackend synthetic TP2 geometry: 83 target/control lanes,
+116,572,172 useful bytes/transfer, four disjoint seats/direction, 32 transfers;
+allocation, selection, completion and release included; no codec/Store/model.
+State_dma_probe.py uses distinct logical-block values and exact restore checks.
+One 2048-token allocator block has 16 contiguous kernel pages; arbitrary
+128-token fragmentation is a separate worst-case, not current allocation.
+
+- Ordinary copies: D2H 22.73, H2D 24.24, duplex 13.80.
+- First probe-only batched adapter: 24.37 / 23.67 / 19.54.
+- Owned injected adapter with validation: 23.59 / 22.96 / 18.90, exact,
+  hw86-state-dma-batch-owned.json. Host submit/wait is not device-event timing.
+
+Reuse pinned native _C_ascend.swap_blocks_batch. The optional submitter in
+models/qwen35/state_dma.py keeps completion/events/quarantine in host_state and
+page_state. PageStateStore's event-free inner backend must remain inside its
+batch event; standalone restore/audit still owns a real event. Online flag
+BETTERSCALE_PD_BATCH_DMA=1 is opt-in, **not online-qualified yet**. Focused CPU
+address, injection/audit and existing state-protocol suite: 54 passed.
+
+Native Store pointer probe (64 MiB x 4 registered pinned buffers, unique keys,
+local CPU/TCP DRAM, no HTTP/hash/codec/device DMA): PUT 1.779, GET 6.124 GB/s;
+four Python threads 1.769 / 6.037, no fix. Exact bytes; artifacts
+hw86-store-pointer-numa6/ and hw86-store-pointer-parallel-numa6/.
+Installed non-CUDA 0.3.13.post1 is a wheel, not a local fork build. Store remains
+unresolved; never remove integrity/lifetime fences merely for a faster number.
+
+### DRAM fast-path correction and new primitive (2026-10-02)
+
+Fletcher explicitly rejected treating HTTP object-service concurrency as the
+solution: device State lands in DRAM first; incremental peer replication and
+future disk demotion are background work. Required State readiness still gates
+its own consumer. Do not make token output or native decode rotation wait for
+object-service/disk acknowledgement. Do not replace D2H by P recomputation on
+the current evidence. Existing tests use DRAM only; there is no disk I/O to blame.
+MTP remains deferred.
+
+The audited online-dma-v1 gate2 passed 16 sessions/all owners, 31.487s, with
+batch DMA and unchanged wire path. Gate1 was a launcher context mismatch
+(missing BETTERSCALE_PD_CONTEXT=262144), before model admission, not corruption.
+Per-rank host phase medians in gate2: D load get .9755s, decode .1624s,
+H2D submit .0052s/wait .0047s; D store submit .0098s/wait .0063s, encode .2599s,
+put 3.4613s. Device events were not used for these host durations. D object's
+PUT upload-admission queue p50 1.1629s; Store commit p50 .0367s. Thus widening
+semaphores is not a substitute for removing the indirect payload path.
+
+The subsequent online-supply-v2 HTTP-concurrency candidate was **aborted during
+startup after Fletcher's correction**, not qualified. Its source archive is
+historical only. The concurrency-knob edit was removed from working source.
+D TERM released devices but left startup actor/node hung; after 120s, verified
+owned remnants were killed. All16 cards returned idle. NUMA staging and codec
+work remain optional/unqualified online rather than discarded.
+
+Cold Store PUT diagnostics: each256MiB batch incurs ~65,536 minor faults,
+1.756GB/s. Prefill1.5GiB of test-owned objects then remove them, using the same
+2GiB segment: ~0 faults, PUT4.960GB/s; GET6.194GB/s remains similar. This isolates
+first-touch cost but does not solve the remaining copy path. Source fork
+c992ba75 transfer_task.cpp has one MemcpyWorkerPool worker; do not assume the
+installed wheel is binary-identical without verifying its build identity.
+
+The wire codec now joins memoryviews once rather than materializing every lane
+and rejoining full payloads. Decode copies directly from the wire buffer into
+owned host storage, no bytes-slice/bytearray copies. 95,607,470-byte CPU resident
+fixture, exact wire parity: encode190.74→63.92ms, decode46.94→21.44ms. This remains
+CPU/allocation-limited and is only an interim codec improvement, not the desired
+DRAM direct path. Seven dtype/ownership tests plus focused tests pass.
+
+state_numa.py binds State completion threads only (not compute threads or the
+shared Store segment), with an explicit physical-device mapping and visibility
+translation. hw81 PCI map matches hw86. Linux set_mempolicy maxnode is padded to
+the mask word width; node+1 returned EINVAL in this environment. A child
+numactl --show confirmed bind policy/CPU144–167/memory node6. Do not claim this
+places existing cached allocations or provides the final cache arena design.
+
+shared_dram_probe.py proves the necessary shared-memory primitive on hw81:
+16MiB memfd MAP_SHARED, NUMA6 first-touch, aclrtHostRegister succeeds, and native
+Ascend batch DMA performs exact H2D/D2H. A second independent process on card1
+maps the same FD, registers it, reads the bytes through H2D, writes a new pattern
+through D2H, and the parent sees exactly that pattern in its existing mapping.
+Both unregister successfully. Registration took6.60/9.07ms, so it must be
+amortized with reused registered regions, not done per request. This is no
+throughput, eviction, distributed lease, or production qualification.
+Artifacts hw81-shared-dram-capability.json and hw81-shared-dram-cross-process*
+under runtime; Mooncake reference source uses the same HostRegister primitive.
+
+Borrow before writing another LRU: mooncake-hust c992ba75 already contains
+LocalHotCache (local_hot_cache.h/.cpp), memfd-backed shared segments, refcounted
+hot-cache acquire/release and stale-fill generation guards. DummyClient
+get_buffer can return a shared hot-cache pointer with RAII release; ordinary
+RealClient get_buffer allocates and copies. The public mount_segment(path,...)
+can mount MAP_SHARED file-backed global segments. Put-session APIs reserve and
+publish native Store objects but do not yet expose a qualified externally-DMA-
+written buffer lease. Assess these seams; never bypass eviction/lease fencing
+by dereferencing a raw replica address or copying an expired descriptor.
+
+
+### Native shared-cache seam and split completion qualification
+
+The installed CPU wheel is mooncake-transfer-engine-non-cuda0.3.13.post1.
+Reference fork source c992ba75 is not established as binary-identical.
+store_shared_hot_probe.py, hw86-store-shared-hot2: first16MiB get_buffer
+acquisition16.24ms via writable fallback; next three182/168/169us point into
+the same read-only shared hot-cache memfd, all bytes exact. These are lease
+acquisition times, NOT transfer throughput. Retain each BufferHandle through
+DMA and drop all handles before closing DummyClient/native service.
+BufferHandle ptr()/size() are methods; BufferLease ptr/size are properties.
+The first probe accidentally retained a handle past shutdown and aborted;
+this was a probe ownership bug, not corruption of the successful read.
+
+BufferPool(dummy) fails in the installed wheel: “requires a store configured
+with a local buffer”, even after setup_dummy(64MiB,...). Reference BufferPool
+accesses the base client_buffer_allocator_ directly; DummyClient overrides
+allocate_client_buffer through RPC but does not populate that allocator.
+Its prewarm() is a no-op in the reference source. Do not assume a ready
+pre-touched/reused shared staging pool from this API. The failed hot3 experiment
+is preserved outside Git; the probe source now exercises only its qualified
+read seam. Native hot cache also creates a second copy over Store backing,
+not automatically the desired single full node-wide LRU.
+
+CacheActions now has an opt-in two_phase_store protocol, disabled by default
+and NOT wired into model workers/online launch. A staged receipt means the
+rank's entire selected snapshot has safely left the device and has owned DRAM
+lifetime independent of the device. TP staged quorum releases device I/O and
+extra backup pins; committed quorum separately publishes the remotely usable
+checkpoint. Final ACK must not inspect or mutate a seat reused after staging.
+Per-rank commit may arrive before the other rank stages, but never before its
+own staged receipt. Cancellation and post-stage replication failure do not
+double-free or touch a new seat incarnation. No network ACK or disk durability
+is implied by staged. 43 cache-actions/incremental CPU tests pass, including
+quorum, reused-seat, duplicate/stale/error receipts and cancelled backup pins.
+This is the scheduler half only; do not enable until the connector and rank
+worker provide owned bounded DRAM leases and both completion receipts.
+
+Read-only shared mapping is a concrete NPU compatibility gap, not yet a native
+hot-cache H2D solution: hw81 memfd PROT_READ registration returns107017 with
+ACL_HOST_REGISTER_MAPPED; using the header's ACL_HOST_REGISTER_READONLY (8)
+returns207000 on this910B2/CANN9.1 setup. Both bounded probes retired cleanly.
+Writable MAP_SHARED remains the previously exact-qualified primitive. Do not
+advertise DummyClient hot-cache pointers as DMA-ready or silently make an
+immutable mapping writable. A writable registered staging arena or an explicit
+native cache adapter with equivalent ownership protection is still needed.
+Artifacts hw81-shared-dram-readonly* and hw81-shared-dram-readonly-flag8*.
+An additional52 focused DMA/codec/NUMA/object/coordinator CPU tests pass.
+
+
+The narrow existing write allocator is MooncakeHostMemAllocator.alloc/free,
+not BufferPool(dummy). It uses ShmHelper shared memfd storage; register_buffer
+maps it into the native service, and DummyClient put_from/get_into use the
+shared address path. hw86-store-shared-stage4 qualified three16MiB patterned
+CPU roundtrips with one reused registration and explicit unregister/free.
+
+native_dram_staging.py now composes that allocator into a bounded reusable
+slot ring (temporary staging only, no per-worker full LRU). Writer -> draining
+-> sealed -> sending -> released; DMA and replica failures quarantine instead
+of reuse. Background pointer PUT retains its slot through ACK. Close rejects
+active leases and failed teardown cannot masquerade as success on retry.
+Four CPU lifetime tests pass. hw86-store-shared-ring5 passes the real CPU ring.
+
+hw86-store-shared-ring-npu6: on card0, NUMA6 first-touch, a32MiB arena with two
+16MiB slots is registered once with Store and CANN. Three distinct patterns
+go NPU D2H -> sealed staging -> background native Store PUT -> pointer GET into
+staging -> NPU H2D, every byte exact; drain, unregister and free succeed and
+all cards return idle. Store calls take about10-15ms per16MiB in this small
+cold fixture, NOT a saturation benchmark. This establishes direct pointer
+lifetime compatibility, not20GB/s, State-layout packing or live PD wiring.
+Remaining integration: State lanes into preallocated frames without byte
+serialization, separate rank staged/committed receipts, one node-wide DRAM
+cache/replica readiness, and bounded load-side native pointer ingress.

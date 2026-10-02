@@ -36,9 +36,13 @@ async def run(args):
                 (args.output/"exact-context.json").write_text(json.dumps(edge,indent=2))
             snapshots=[await c.cache("D",i,{"kind":"snapshot"}) for i in range(4)]
             assert all(not s["pending"] and all(x["owner"] is None and x["io_owner"] is None for x in s["seats"]) for s in snapshots)
+            p_snapshots=[await c.cache("P",i,{"kind":"snapshot"}) for i in range(4)]
+            assert all(not s["pending"] for s in p_snapshots)
+            if args.require_concurrent:
+                assert all(s["peak_pending"]>1 for s in snapshots+p_snapshots), "State concurrency not exercised"
             with c.directory.transaction() as db:
                 assert db.execute("SELECT COUNT(*) FROM sessions WHERE owner!=? OR active!=0",("P",)).fetchone()[0]==0
-            summary=dict(ok=True,seconds=time.perf_counter()-started,first=first,second=second,snapshots=snapshots)
+            summary=dict(ok=True,seconds=time.perf_counter()-started,first=first,second=second,snapshots=snapshots,p_snapshots=p_snapshots)
             (args.output/"summary.json").write_text(json.dumps(summary,indent=2))
             print(json.dumps({k:summary[k] for k in ("ok","seconds")}),flush=True)
         finally:await c.close()
@@ -49,6 +53,7 @@ if __name__=="__main__":
     p.add_argument("--d",default="http://10.244.2.32:55586")
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--exact-context",action="store_true")
+    p.add_argument("--require-concurrent",action="store_true")
     p.add_argument("--label",default="online-"+uuid.uuid4().hex[:12])
     p.add_argument("--sessions",type=int,choices=(4,8,16,32,64),default=4)
     p.add_argument("--prompt",type=int,default=1024)

@@ -33,19 +33,16 @@ class Admission:
             self.free+=count;self.slots+=1;self.condition.notify_all()
 
 class Coordinator:
-    def __init__(self,path,p_url,d_url,trace=None,*,p_per_instance=4,same_host_d=False):
+    def __init__(self,path,p_url,d_url,trace=None,*,p_per_instance=16,same_host_d=False):
         self.directory=Directory(path);self.urls=(p_url,d_url);self.trace=trace
         self.same_host_d=same_host_d
         self.inflight={};self.generated={};self.tasks=set();self.failure=None;self.client=None;self.lock=None
-        self.p_available=asyncio.Queue()
         self.p_affinity={}
-        if type(p_per_instance) is not int or not 1<=p_per_instance<=4:
-            raise ValueError("P pipeline admits one to four requests per TP2 instance")
-        # Include compute, warm and backup in this bound. Four requests fit both
-        # R20 and the measured full-context KV budget; a finished request waiting
-        # for its backup cannot be evicted by an unbounded new arrival stream.
-        for _ in range(p_per_instance):
-            for i in range(4):self.p_available.put_nowait(i)
+        if type(p_per_instance) is not int or not 1<=p_per_instance<=16:
+            raise ValueError("P pipeline admits one to sixteen requests per TP2 instance")
+        self.p_limit=p_per_instance
+        self.p_admission=[Admission(seats=p_per_instance) for _ in range(4)]
+        self.p_changed=asyncio.Condition()
         self.maintenance={(kind,i):asyncio.Lock() for kind in ("P","D") for i in range(4)}
         self.admission=[Admission() for _ in range(4)]
         self.sink=PeerObjectSink(self.urls)
@@ -65,27 +62,39 @@ class Coordinator:
                     or len(h["actors"])!=count or any(not a["alive"] or a["quarantined"] for a in h["actors"])):
                 raise RuntimeError("Online node topology/context mismatch")
             wire_versions.update(a["info"].get("state_wire","raw-v2") for a in h["actors"])
+            if kind=="P":
+                capacities=[a["info"]["capacities"] for a in h["actors"]]
+                if any(len(cs)!=1 or cs[0]["block_size"]!=2048 or cs[0]["max_requests"]!=16 for cs in capacities):
+                    raise RuntimeError("Unexpected P capacity receipt")
+                self.p_admission=[Admission(cs[0]["free_blocks"],min(self.p_limit,cs[0]["max_requests"])) for cs in capacities]
             if kind=="D":
                 capacities=h["actors"][0]["info"]["capacities"]
                 if len(capacities)!=4 or any(c["block_size"]!=2048 or c["max_requests"]!=16 for c in capacities):
                     raise RuntimeError("Unexpected owner capacity")
                 self.admission=[Admission(c["free_blocks"],c["max_requests"]) for c in capacities]
-        if len(wire_versions)!=1 or not wire_versions<={"raw-v2","zstd-resident-v1"}:
+        if len(wire_versions)!=1 or not wire_versions<={"raw-v2","zstd-resident-v1","mtp-prefix-raw-v2","mtp-prefix-zstd-resident-v1"}:
             raise RuntimeError("P/D State wire version mismatch")
         return self
 
-    async def acquire_p(self,session):
-        # Prefer a returning session's weak device pages without waiting for a
-        # busy instance. Drain/requeue ready permits without yielding: public
-        # Queue operations, and at most16 permits, not another scheduler loop.
-        available=[await self.p_available.get()]
-        while not self.p_available.empty():available.append(self.p_available.get_nowait())
-        preferred=self.p_affinity.get(session)
-        chosen=preferred if preferred in available else available[0]
-        available.remove(chosen)
-        for instance in available:self.p_available.put_nowait(instance)
-        self.p_affinity[session]=chosen
-        return chosen
+    async def acquire_p(self,session,tokens=1):
+        count=math.ceil((tokens+2)/2048)
+        if count>max(a.blocks for a in self.p_admission):
+            raise ValueError("Request exceeds P KV budget")
+        async with self.p_changed:
+            def eligible():
+                return [i for i,a in enumerate(self.p_admission) if a.slots>0 and a.free>=count]
+            await self.p_changed.wait_for(eligible)
+            choices=eligible();preferred=self.p_affinity.get(session)
+            chosen=preferred if preferred in choices else min(choices,
+                key=lambda i:self.p_admission[i].seats-self.p_admission[i].slots)
+            a=self.p_admission[chosen];a.free-=count;a.slots-=1
+            self.p_affinity[session]=chosen
+            return chosen,count
+
+    async def release_p(self,index,count):
+        async with self.p_changed:
+            a=self.p_admission[index];a.free+=count;a.slots+=1
+            self.p_changed.notify_all()
 
     async def cache(self,kind,index,command):
         peer=self.p if kind=="P" else self.d
@@ -109,18 +118,18 @@ class Coordinator:
         async with self.maintenance[kind,index]:
             await self.prepare(kind,index,dict(kind="adopt",checkpoint=checkpoint))
             op=await self.prepare(kind,index,dict(kind="load_match",key=checkpoint["key"]))
-            return op if isinstance(op,dict) else await self.cache(kind,index,dict(kind="wait",operation=op))
+        return op if isinstance(op,dict) else await self.cache(kind,index,dict(kind="wait",operation=op))
 
     async def save(self,kind,index,tokens,salt):
         async with self.maintenance[kind,index]:
             key=uuid.uuid4().hex
             op=await self.prepare(kind,index,dict(kind="store_match",tokens=tokens,salt=salt,key=key))
-            receipt=await self.cache(kind,index,dict(kind="wait",operation=op))
-            checkpoint=await self.cache(kind,index,dict(kind="describe",key=key))
-            data=json.dumps(checkpoint,separators=(",",":")).encode()
-            manifest=hashlib.sha256(data).hexdigest()
-            await asyncio.to_thread(self.sink.put,manifest,data)
-            return manifest,checkpoint,receipt
+        receipt=await self.cache(kind,index,dict(kind="wait",operation=op))
+        checkpoint=await self.cache(kind,index,dict(kind="describe",key=key))
+        data=json.dumps(checkpoint,separators=(",",":")).encode()
+        manifest=hashlib.sha256(data).hexdigest()
+        await asyncio.to_thread(self.sink.put,manifest,data)
+        return manifest,checkpoint,receipt
 
     async def submit(self,session,prompt,n,*,on_tokens=None,output_ready=False):
         if self.failure:raise RuntimeError(self.failure)
@@ -149,7 +158,7 @@ class Coordinator:
 
     async def turn(self,session,prompt,n,future,generated,on_tokens):
         started=time.perf_counter();owner=owner_for(session);events=[]
-        reserved=None;p_instance=None
+        reserved=None;p_instance=None;p_reserved=None
         async def generate(peer,instance,**args):
             if on_tokens is None:return await peer.rpc(instance,"generate",**args)
             from online_stream import generate as streamed
@@ -184,7 +193,7 @@ class Coordinator:
             # Bound complete D footprint before creating source work. P workers
             # remain shared; independent owners and in-flight turns are online.
             if n>1:reserved=await self.admission[owner].acquire(len(prompt)+n)
-            p_instance=await self.acquire_p(session)
+            p_instance,p_reserved=await self.acquire_p(session,len(prompt)+1)
             if self.failure:raise RuntimeError(self.failure)
             try:self.directory.create(session,IDENTITY,"P")
             except sqlite3.IntegrityError:pass
@@ -207,7 +216,7 @@ class Coordinator:
             events.append(dict(stage="P",instance=p_instance,cached=value["cached"],save=saved,
                                elapsed=time.perf_counter()-started))
             self.directory.publish(lease,manifest,"P" if n==1 else f"D{owner}")
-            self.p_available.put_nowait(p_instance);p_instance=None
+            await self.release_p(p_instance,p_reserved);p_instance=None
             if n>1:
                 lease=self.directory.claim(session,f"D{owner}",IDENTITY)
                 loaded=await self.load("D",owner,cp)
@@ -230,7 +239,7 @@ class Coordinator:
             for task in self.tasks:
                 if task is not asyncio.current_task():task.cancel()
         finally:
-            if p_instance is not None:self.p_available.put_nowait(p_instance)
+            if p_instance is not None and not self.failure:await self.release_p(p_instance,p_reserved)
             if reserved is not None and not self.failure:await self.admission[owner].release(reserved)
 
     async def close(self):

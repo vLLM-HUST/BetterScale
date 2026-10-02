@@ -7,18 +7,18 @@ and shared installed runtimes remain unchanged.
 
 ## Current-version boundary (2026-10-02)
 
-Keep `idle(core)` for Core admission/mutation in this version. Numerical,
-exact-byte and ownership/lifetime correctness are the acceptance boundary;
-online load/unload and fine-grained frontend/network pipelining are deferred.
-This conservative gate does not imply that online block transfers inherently
-require global DP idle. Integrating generation/fence-aware online operations
-is separate work, not a reason to relax the current gate ad hoc.
+The newer online path integrates incremental State and cadence-independent
+maintenance RPCs; it does **not** require global DP idle or artificial compute
+waves. Older idle(core) probes below remain historical qualification evidence.
+Enter [online-pd](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/online-pd.md)
+for current pins, gates, throughput limits and the DRAM-first transfer frontier.
 
-The related `codex/qwen35-incremental-cache` branch at `2dac92c` contains
-incremental host backup and sparse device restore work; it was located, not
-merged or qualified with this PD path. See the repo-knowledge
-[resume entry](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/pd-storage.md)
-for exact source pointers and evidence boundaries.
+native_dram_staging.py is a bounded reusable staging-ring prototype over
+MooncakeHostMemAllocator, not another full session cache. Local DMA drain and
+background Store commit have different lifetimes. store_shared_hot_probe.py
+qualifies its optional native NPU roundtrip; this is not yet the live PD backend.
+Two-phase CacheActions is likewise opt-in and not enabled in the online launcher.
+MTP work is parked; target-only remains the qualified execution boundary.
 
 ## Question and scope
 

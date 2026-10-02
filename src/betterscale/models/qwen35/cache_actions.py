@@ -12,6 +12,10 @@ from .resident_leases import Offer
 from .cache_pages import PageResidency, page_keys
 
 
+class CacheBusy(ValueError):
+    """Recoverable admission refusal; no device or host ownership changed."""
+
+
 @dataclass(frozen=True)
 class Checkpoint:
     key: str
@@ -29,7 +33,10 @@ class Pending:
     pinned_blocks: object | None = None
     cancelled: bool = False
     ranks: set[int] = field(default_factory=set)
+    staged_ranks: set[int] = field(default_factory=set)
+    device_released: bool = False
     transfer_bytes: dict[int, int] = field(default_factory=dict)
+    transfer_phases: dict[int, dict] = field(default_factory=dict)
     completion: Future = field(default_factory=Future)
 
 
@@ -43,6 +50,8 @@ class CacheActions:
         resident_bytes,
         block_bytes,
         incremental=False,
+        max_pending=None,
+        two_phase_store=False,
     ):
         if ranks not in (1, 2) or host_bytes <= 0:
             raise ValueError(
@@ -55,7 +64,16 @@ class CacheActions:
         self.resident_bytes, self.block_bytes = resident_bytes, block_bytes
         self.host_bytes = host_bytes
         self.endpoint = None
+        if max_pending is None and incremental:
+            max_pending = 1
+        if max_pending is not None and (
+            type(max_pending) is not int or not 1 <= max_pending <= len(scheduler.residents.seats)
+        ):
+            raise ValueError("cache transaction capacity must fit resident seats")
+        self.max_pending = max_pending
+        self.two_phase_store = two_phase_store
         self.pending = {}
+        self.peak_pending = 0
         self.host = {}
         self.outbox = []
         self.sequence = 0
@@ -67,9 +85,21 @@ class CacheActions:
             else None
         )
 
+    def _admit(self, checkpoint=None):
+        if self.max_pending is not None and len(self.pending) >= self.max_pending:
+            raise CacheBusy("cache transaction capacity is still in flight")
+        if checkpoint is None:
+            return
+        pages = set(checkpoint.pages)
+        for pending in self.pending.values():
+            other = pending.checkpoint
+            if checkpoint.key == other.key or (pages and pages.intersection(other.pages)):
+                # Keep a per-object fence through TP quorum. Independent
+                # sessions proceed; a shared producer, reader or drop waits.
+                raise CacheBusy("shared State object has an operation in flight")
+
     def _seat(self, index):
-        if self.pages is not None and self.pending:
-            raise ValueError("incremental cache transaction is still in flight")
+        self._admit()
         seat = self.scheduler.residents.seats[index]
         if (
             seat.owner is not None
@@ -82,10 +112,7 @@ class CacheActions:
     def _queue(self, kind, checkpoint, seat=None, *, blocks=None, retain=False):
         if self.failed or self.endpoint is None:
             raise RuntimeError("maintenance unavailable or failed")
-        if self.pages is not None and self.pending:
-            # The initial page-object protocol has one bounded transaction;
-            # sharing cannot borrow a producer/drop still awaiting rank quorum.
-            raise ValueError("incremental cache transaction is still in flight")
+        self._admit(checkpoint)
         self.sequence += 1
         command = dict(
             operation=self.sequence,
@@ -101,11 +128,14 @@ class CacheActions:
             endpoint=self.endpoint,
             host_bytes=self.host_bytes,
         )
+        if kind == "store" and self.two_phase_store:
+            command["two_phase_store"] = True
         if checkpoint.pages:
             command["pages"] = list(checkpoint.pages)
         if seat:
             seat.io_owner = self.sequence
         self.pending[self.sequence] = Pending(command, checkpoint)
+        self.peak_pending = max(self.peak_pending, len(self.pending))
         self.outbox.append(command)
         return self.sequence
 
@@ -161,6 +191,7 @@ class CacheActions:
         if any(p.checkpoint.key == key for p in self.pending.values()):
             raise ValueError("checkpoint has another pending operation")
         checkpoint = self.host[key]
+        self._admit(checkpoint)
         seat = self._seat(index)
         manager = self.scheduler.kv_cache_manager
         # Capacity refusal changes neither victim identity nor block ownership.
@@ -195,8 +226,7 @@ class CacheActions:
         return self.resident_bytes + len(set(keys) - held) * self.block_bytes
 
     def _checkpoint(self, key, tokens, salt, count):
-        if self.pages is not None and self.pending:
-            raise ValueError("incremental cache transaction is still in flight")
+        self._admit()
         if (
             count
             != (len(tokens) - 2 + self.scheduler.block_size)
@@ -216,6 +246,7 @@ class CacheActions:
             self.resident_bytes + count * self.block_bytes,
             pages,
         )
+        self._admit(checkpoint)
         held = {cp.key: cp for cp in self.host.values()}
         held.update((p.checkpoint.key, p.checkpoint) for p in self.pending.values())
         held[key] = checkpoint
@@ -260,10 +291,33 @@ class CacheActions:
             for p in self.pending.values()
         )
 
+    def _release_store_device(self, pending):
+        """Only a complete local DRAM snapshot quorum retires device ownership.
+
+        The caller still owns the DRAM leases until replication completion.
+        Host publication is separate and must not happen here.
+        """
+        command = pending.command
+        seat = self.scheduler.residents.seats[command["seat"]]
+        if seat.epoch != command["epoch"] or seat.io_owner != command["operation"]:
+            self.failed = "resident changed while cache I/O owned it"
+            raise RuntimeError(self.failed)
+        if not pending.cancelled and not command["retain"]:
+            self.scheduler._release_resident_blocks(seat.blocks)
+            seat.tokens, seat.cache_salt, seat.blocks = (), None, None
+            seat.epoch += 1
+        if pending.pinned_blocks is not None:
+            self.scheduler._release_resident_blocks(pending.pinned_blocks)
+            pending.pinned_blocks = None
+        seat.io_owner = None
+        pending.device_released = True
+
     def receive(self, receipt):
         number, rank = receipt["operation"], receipt["rank"]
         pending = self.pending.get(number)
-        if pending is None or rank not in self.ranks or rank in pending.ranks:
+        phase = receipt.get("phase", "committed")
+        seen = pending.staged_ranks if pending and phase == "staged" else (pending.ranks if pending else set())
+        if pending is None or rank not in self.ranks or rank in seen:
             self.failed = "unknown, duplicate or foreign-rank cache completion"
             raise RuntimeError(self.failed)
         command = pending.command
@@ -274,9 +328,23 @@ class CacheActions:
         ):
             self.failed = receipt.get("error") or "stale cache completion"
             raise RuntimeError(self.failed)  # no release on unknown DMA lifetime
+        two_phase = command.get("two_phase_store", False)
+        if phase not in ("staged", "committed") or (phase == "staged" and not two_phase):
+            self.failed = "unexpected cache completion phase"
+            raise RuntimeError(self.failed)
+        if phase == "staged":
+            pending.staged_ranks.add(rank)
+            if pending.staged_ranks == self.ranks:
+                self._release_store_device(pending)
+            return
+        if two_phase and rank not in pending.staged_ranks:
+            self.failed = "replica completion precedes local staging"
+            raise RuntimeError(self.failed)
         pending.ranks.add(rank)
         if "transfer_bytes" in receipt:
             pending.transfer_bytes[rank] = receipt["transfer_bytes"]
+        if "transfer_phases" in receipt:
+            pending.transfer_phases[rank] = receipt["transfer_phases"]
         if pending.ranks != self.ranks:
             return
         seat = (
@@ -284,20 +352,15 @@ class CacheActions:
             if command["seat"] is not None
             else None
         )
-        if seat and (seat.epoch != command["epoch"] or seat.io_owner != number):
+        if seat and not pending.device_released and (seat.epoch != command["epoch"] or seat.io_owner != number):
             self.failed = "resident changed while cache I/O owned it"
             raise RuntimeError(self.failed)
         kind, checkpoint = command["kind"], pending.checkpoint
         if kind == "store":
             if not pending.cancelled:
                 self.host[checkpoint.key] = checkpoint
-                if not command["retain"]:
-                    self.scheduler._release_resident_blocks(seat.blocks)
-                    seat.tokens, seat.cache_salt, seat.blocks = (), None, None
-                    seat.epoch += 1
-            if pending.pinned_blocks is not None:
-                self.scheduler._release_resident_blocks(pending.pinned_blocks)
-            seat.io_owner = None
+            if not pending.device_released:
+                self._release_store_device(pending)
         elif kind == "load":
             if self.pages is not None:
                 self.pages.remember(checkpoint.pages, seat.blocks.blocks[0])
@@ -319,6 +382,7 @@ class CacheActions:
                 cancelled=pending.cancelled,
                 ranks=sorted(pending.ranks),
                 transfer_bytes_per_rank=dict(pending.transfer_bytes),
+                transfer_phases_per_rank=dict(pending.transfer_phases),
                 restored_pages=len(command.get("missing", command["blocks"]))
                 if kind == "load"
                 else 0,
@@ -352,6 +416,8 @@ class CacheActions:
             ],
             allocated_host_bytes=self.allocated_host_bytes,
             pending=list(self.pending),
+            peak_pending=self.peak_pending,
+            max_pending=self.max_pending,
             completed=list(self.completed),
             seats=[
                 dict(

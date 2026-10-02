@@ -16,7 +16,7 @@ from betterscale.models.qwen35.cache_pages import page_keys
 from betterscale.models.qwen35.resident_leases import ResidentLeases
 
 
-def setup(pages=100):
+def setup(pages=100, max_pending=None):
     from vllm.v1.core.block_pool import BlockPool
 
     pool = BlockPool(num_gpu_blocks=pages + 1, enable_caching=True, hash_block_size=128)
@@ -33,7 +33,7 @@ def setup(pages=100):
     )
     s.residents = ResidentLeases(3, release_blocks=release)
     c = CacheActions(
-        s, 2, 1 << 28, resident_bytes=64, block_bytes=128, incremental=True
+        s, 2, 1 << 28, resident_bytes=64, block_bytes=128, incremental=True, max_pending=max_pending
     )
     c.endpoint = "/unused"
     s.cache_actions = c
@@ -412,3 +412,145 @@ def test_automatic_restore_waits_for_native_execution_capacity(incremental, stre
     with policy.runnable():
         assert len(c.pending) == 1
         assert not s.waiting
+
+
+def parallel_fixture():
+    s,c,pool=setup(8,max_pending=3)
+    a,b=s.residents.seats[:2]
+    blocks=a.blocks.blocks[0]
+    a.blocks=s.kv_cache_manager.create_kv_cache_blocks((blocks[:4],))
+    b.blocks=s.kv_cache_manager.create_kv_cache_blocks((blocks[4:],))
+    a.tokens=tuple(range(513));a.cache_salt="A"
+    b.tokens=tuple(range(100,613));b.cache_salt="B";b.epoch=4;b.fence=7
+    return s,c,pool
+
+
+def test_independent_transactions_complete_out_of_order_and_overlap_restore():
+    s,c,pool=parallel_fixture()
+    a=c.store(0,"A");b=c.store(1,"B")
+    assert len(c.pending)==2 and pool.get_num_free_blocks()==0
+    c.receive(receipt(c,b,1))
+    assert not c.host and s.residents.seats[1].io_owner==b
+    c.receive(receipt(c,b,0))
+    assert list(c.host)==["B"] and pool.get_num_free_blocks()==4
+    load=c.load("B",2)
+    assert len(c.pending)==2 and c.pending[load].command["missing"]==[]
+    done(c,load)
+    assert s.residents.seats[2].tokens==tuple(range(100,613))
+    assert s.residents.seats[0].io_owner==a
+    done(c,a)
+    assert set(c.host)=={"A","B"} and pool.get_num_free_blocks()==4
+
+
+def test_shared_pages_wait_before_any_residency_mutation():
+    from betterscale.models.qwen35.cache_actions import CacheBusy
+    s,c,pool=parallel_fixture();a,b=s.residents.seats[:2]
+    b.tokens=a.tokens;b.cache_salt=a.cache_salt
+    n=c.store(0,"A");before=(b.epoch,b.blocks,dict(c.pages.by_key),c.sequence)
+    with pytest.raises(CacheBusy,match="shared State"):
+        c.store(1,"B")
+    assert (b.epoch,b.blocks,dict(c.pages.by_key),c.sequence)==before
+    assert b.io_owner is None and pool.get_num_free_blocks()==0
+    done(c,n);done(c,c.store(1,"B"))
+    assert len(c.host)==2 and pool.get_num_free_blocks()==8
+
+
+def test_cancelled_store_drops_only_its_objects_with_unrelated_transfer_pending():
+    s,c,pool=parallel_fixture()
+    a=c.store(0,"A");b=c.store(1,"B");c.cancel(a)
+    done(c,a)
+    drop=next(n for n in c.pending if n!=b)
+    assert c.pending[drop].command["kind"]=="drop" and s.residents.seats[0].blocks
+    done(c,drop)
+    assert not c.host and s.residents.seats[1].io_owner==b
+    done(c,b)
+    assert set(c.host)=={"B"} and pool.get_num_free_blocks()==4
+
+
+def test_failed_rank_quarantines_exact_transaction_pins():
+    s,c,pool=parallel_fixture()
+    a=c.store(0,"A");b=c.store(1,"B")
+    bad=receipt(c,a,0);bad["error"]="DMA uncertain"
+    with pytest.raises(RuntimeError,match="DMA uncertain"):c.receive(bad)
+    done(c,b)
+    assert a in c.pending and s.residents.seats[0].io_owner==a
+    assert "A" not in c.host and "B" in c.host and pool.get_num_free_blocks()==4
+    with pytest.raises(RuntimeError,match="failed"):c.load("B",2)
+
+
+def test_staging_quorum_retires_device_but_not_remote_checkpoint():
+    s, c, pool = setup(4, max_pending=3)
+    c.two_phase_store = True
+    n = c.store(0, "A")
+    c.receive(receipt(c, n, 0, phase="staged"))
+    assert s.residents.seats[0].io_owner == n and pool.get_num_free_blocks() == 0
+    # Rank 0 may commit before rank 1 finishes staging; no early TP release.
+    c.receive(receipt(c, n, 0))
+    assert s.residents.seats[0].io_owner == n
+    c.receive(receipt(c, n, 1, phase="staged"))
+    assert s.residents.seats[0].io_owner is None
+    assert pool.get_num_free_blocks() == 4 and "A" not in c.host
+    assert not c.pending[n].completion.done()
+    # The seat is reused while remote replication is still pending. An old
+    # completion must neither validate against nor modify the new incarnation.
+    seat = s.residents.seats[0]
+    blocks = pool.get_new_blocks(4)
+    seat.blocks = s.kv_cache_manager.create_kv_cache_blocks((tuple(blocks),))
+    seat.tokens, seat.epoch, seat.io_owner = (991, 992), 99, 777
+    c.receive(receipt(c, n, 1))
+    assert "A" in c.host
+    assert (seat.tokens, seat.epoch, seat.io_owner) == ((991, 992), 99, 777)
+    assert pool.get_num_free_blocks() == 0
+
+
+@pytest.mark.parametrize("cancel_before_stage", [True, False])
+def test_two_phase_backup_releases_extra_pins_once_on_stage(cancel_before_stage):
+    s, c, pool = setup(4)
+    c.two_phase_store = True
+    seat = s.residents.seats[0]
+    blocks = seat.blocks
+    n = c.backup(0, "A", seat.tokens, None, blocks)
+    assert all(b.ref_cnt == 2 for b in blocks.blocks[0])
+    if cancel_before_stage:
+        c.cancel(n)
+    for rank in (1, 0):
+        c.receive(receipt(c, n, rank, phase="staged"))
+    assert all(b.ref_cnt == 1 for b in blocks.blocks[0])
+    assert seat.io_owner is None and seat.tokens
+    if not cancel_before_stage:
+        c.cancel(n)
+    done(c, n)
+    assert all(b.ref_cnt == 1 for b in blocks.blocks[0])
+    assert "A" not in c.host
+
+
+@pytest.mark.parametrize("failure", ["duplicate", "epoch", "foreign", "error", "early_commit"])
+def test_invalid_staged_receipts_preserve_device_pins(failure):
+    s, c, pool = setup(4)
+    c.two_phase_store = True
+    n = c.store(0, "A")
+    c.receive(receipt(c, n, 0, phase="staged"))
+    bad = receipt(c, n, 1, phase="staged")
+    if failure == "duplicate": bad["rank"] = 0
+    elif failure == "epoch": bad["epoch"] += 1
+    elif failure == "foreign": bad["rank"] = 2
+    elif failure == "error": bad["error"] = "DMA drain failed"
+    else: bad["phase"] = "committed"
+    with pytest.raises(RuntimeError):
+        c.receive(bad)
+    assert pool.get_num_free_blocks() == 0
+    assert s.residents.seats[0].io_owner == n and "A" not in c.host
+
+
+def test_replication_failure_after_stage_does_not_recycle_new_seat():
+    s, c, pool = setup(4)
+    c.two_phase_store = True
+    n = c.store(0, "A")
+    for rank in (0, 1):
+        c.receive(receipt(c, n, rank, phase="staged"))
+    seat = s.residents.seats[0]
+    seat.epoch, seat.io_owner = 99, 777
+    with pytest.raises(RuntimeError, match="remote failed"):
+        c.receive(receipt(c, n, 0, error="remote failed"))
+    assert (seat.epoch, seat.io_owner) == (99, 777)
+    assert "A" not in c.host and n in c.pending
