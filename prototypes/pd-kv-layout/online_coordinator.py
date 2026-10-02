@@ -54,7 +54,9 @@ class Coordinator:
         self.p_limit=p_per_instance
         self.p_admission=[Admission(seats=p_per_instance) for _ in range(4)]
         self.p_changed=asyncio.Condition()
-        self.maintenance={(kind,i):asyncio.Lock() for kind in ("P","D") for i in range(4)}
+        # Bound control traffic, not transaction lifetime: release this lock
+        # after each atomic Core admission attempt, including a busy response.
+        self.admission_calls={(kind,i):asyncio.Lock() for kind in ("P","D") for i in range(4)}
         self.admission=[Admission() for _ in range(4)]
         self.sink=PeerObjectSink(self.urls)
         self.rank_private=False
@@ -192,15 +194,17 @@ class Coordinator:
     async def prepare(self,kind,index,command):
         deadline=time.monotonic()+300
         while True:
-            value=await self.cache(kind,index,command)
+            async with self.admission_calls[kind,index]:
+                value=await self.cache(kind,index,command)
             if value is not None:return value
             if time.monotonic()>deadline:raise TimeoutError("State admission/frontier deadline")
             await asyncio.sleep(.02)
 
     async def load(self,kind,index,checkpoint):
-        async with self.maintenance[kind,index]:
-            await self.prepare(kind,index,dict(kind="adopt",checkpoint=checkpoint))
-            op=await self.prepare(kind,index,dict(kind="load_match",key=checkpoint["key"]))
+        # Core atomically selects/reserves the seat. A busy transaction retries
+        # independently; never hold an owner mutex while waiting on its state.
+        await self.prepare(kind,index,dict(kind="adopt",checkpoint=checkpoint))
+        op=await self.prepare(kind,index,dict(kind="load_match",key=checkpoint["key"]))
         return op if isinstance(op,dict) else await self.cache(kind,index,dict(kind="wait",operation=op))
 
     async def read_manifest(self,manifest):
@@ -221,18 +225,16 @@ class Coordinator:
         checkpoint=json.loads(row[0])
         for kind,index in (("P",row[1]),("D",row[2])):
             if index is None:continue
-            async with self.maintenance[kind,index]:
-                op=await self.prepare(kind,index,dict(kind="drop",key=checkpoint["key"]))
+            op=await self.prepare(kind,index,dict(kind="drop",key=checkpoint["key"]))
             await self.cache(kind,index,dict(kind="wait",operation=op))
         with self.directory.transaction() as db:
             db.execute("DELETE FROM rank_manifests WHERE id=?",(manifest,))
 
     async def save(self,kind,index,tokens,salt,*,peer_group=None,on_device_released=None):
-        async with self.maintenance[kind,index]:
-            key=uuid.uuid4().hex
-            command=dict(kind="store_match",tokens=tokens,salt=salt,key=key)
-            if self.rank_private:command["peer_group"]=peer_group
-            op=await self.prepare(kind,index,command)
+        key=uuid.uuid4().hex
+        command=dict(kind="store_match",tokens=tokens,salt=salt,key=key)
+        if self.rank_private:command["peer_group"]=peer_group
+        op=await self.prepare(kind,index,command)
         if on_device_released is not None and kind=="D" and self.d_device_release:
             device=await self.cache(kind,index,dict(kind="wait_device",operation=op))
             if (device.get("kind")!="store" or device.get("device_released") is not True
@@ -257,8 +259,7 @@ class Coordinator:
         if self.rank_private:
             if peer_group is not None:
                 peer_kind="D" if kind=="P" else "P"
-                async with self.maintenance[peer_kind,peer_group]:
-                    await self.prepare(peer_kind,peer_group,dict(kind="adopt",checkpoint=checkpoint))
+                await self.prepare(peer_kind,peer_group,dict(kind="adopt",checkpoint=checkpoint))
             p_owner=index if kind=="P" else peer_group
             d_owner=index if kind=="D" else peer_group
             with self.directory.transaction() as db:

@@ -429,3 +429,40 @@ def test_local_device_quorum_releases_permit_while_replication_is_pending(tmp_pa
         assert validate("D",dict(instance=0,op="cache",args=dict(owner=0,
             command=dict(kind="wait_device",operation=7))))[1]=="cache"
     asyncio.run(run())
+
+
+
+@pytest.mark.parametrize("action",["load","save"])
+def test_busy_state_admission_does_not_lock_out_independent_session(tmp_path,action):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"independent.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        blocked=asyncio.Event();other=asyncio.Event()
+        async def cache(kind,index,command):
+            op=command["kind"]
+            if op=="adopt":return True
+            if op in ("load_match","store_match"):
+                label=command.get("salt",command.get("key"))
+                if label=="A" and not other.is_set():
+                    blocked.set();return None
+                if label=="B":other.set()
+                return dict(already_resident=True) if op=="load_match" else 7
+            if op=="wait":return dict(kind="store",cancelled=False,ranks=[0,1])
+            if op=="describe":return dict(key=command["key"],tokens=[1,2],salt="s")
+            raise AssertionError(op)
+        class Sink:
+            def put(self,*args):pass
+        c.cache=cache;c.sink=Sink()
+        async def request(label):
+            if action=="load":return await c.load("D",0,dict(key=label))
+            return await c.save("D",0,[1,2],label)
+        first=asyncio.create_task(request("A"))
+        await asyncio.wait_for(blocked.wait(),1)
+        second=asyncio.create_task(request("B"))
+        try:
+            await asyncio.wait_for(asyncio.gather(first,second),.3)
+            assert other.is_set()
+        finally:
+            for task in (first,second):task.cancel()
+            await asyncio.gather(first,second,return_exceptions=True)
+    asyncio.run(run())
