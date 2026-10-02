@@ -1231,3 +1231,16 @@ kernel process the actual tail plus native dummy proposal slots, retaining
 candidate selection instead of executing an inappropriate bulk recurrence.
 Ten focused CPU tests pass; simultaneous-arrival hardware qualification is
 pending. Do not call v8 a successful concurrent or256K MTP qualification.
+
+online-rank-v9 removes the graph assertion and all16 concurrent4K requests emit
+128 outputs, but checkpoint commit stalls. D owner2's saved snapshot has no
+pending DMA/readers, and the non-first resident frontiers have been invalidated;
+only the first request's terminal checkpoint was stored. Source Frontier.advance
+still assumes every prompt-phase draft slot invalidates identity: the same native
+Q3/-1,-1 tail admission advances cursor by3 instead of the one accepted real tail.
+The candidate adds one narrow frontier case: exactly one prompt token remains,
+query minus draft slots equals1, and raw sampled output is exactly one token.
+Only that selected token advances the frontier; bulk/unknown draft cases still
+invalidate.26 resident/frontier and D-policy CPU tests pass. v9 was stopped after
+the stable stall, before warm or256K phases; preserve it as FAILED qualification.
+Hardware verification of the paired role/frontier interpretation remains pending.

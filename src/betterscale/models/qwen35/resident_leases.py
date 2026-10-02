@@ -177,8 +177,17 @@ class Frontier:
         if self.cursor < self.prompt_length:
             # Intermediate prefill sampling is discarded; actual next prompt
             # tokens supply the draft lookahead through the baseline boundary hook.
-            self.cursor += query_tokens
-            if self.cursor > self.prompt_length or draft_tokens:
+            # Native async admission may pad the sole restored prompt tail
+            # with dummy draft slots when joining an existing decode wave.
+            # Only its one accepted target token advances selected State.
+            tail_bootstrap = (
+                self.cursor == self.prompt_length - 1
+                and draft_tokens > 0
+                and query_tokens - draft_tokens == 1
+                and len(sampled) == 1
+            )
+            self.cursor += query_tokens - (draft_tokens if tail_bootstrap else 0)
+            if self.cursor > self.prompt_length or (draft_tokens and not tail_bootstrap):
                 self.known = False
                 return
             if self.cursor == self.prompt_length:
