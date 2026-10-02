@@ -68,9 +68,10 @@ def owner_for(config, tp_rank, logical_device, mapping, visible):
 
 
 class RankRuntime:
-    def __init__(self, pool, receiver, replica, control, transport):
+    def __init__(self, pool, receiver, replica, control, transport, host_arena=None):
         self.pool, self.receiver, self.replica = pool, receiver, replica
         self.control, self.transport = control, transport
+        self.host_arena = host_arena
 
     def release(self, key):
         # Receiver owns incoming operation receipts as well as checkpoint refs.
@@ -92,6 +93,8 @@ class RankRuntime:
                 raise RuntimeError("private State checkpoints not retired")
         self.control.close()
         self.pool.close()
+        if self.host_arena is not None:
+            self.host_arena.close()
 
 
 def build(runner, worker, config):
@@ -108,6 +111,9 @@ def build(runner, worker, config):
     budget = config["state_cache_host_bytes"]
     if type(budget) is not int or not 0 < budget <= 128 << 30:
         raise ValueError("invalid private rank host budget")
+    arena_mode = os.environ.get("BETTERSCALE_PD_PINNED_ARENA", "0")
+    if arena_mode not in ("0", "1"):
+        raise ValueError("invalid private pinned arena flag")
     def construct():
         bind_thread(physical, node)
         torch.npu.set_device(runner.device)
@@ -118,10 +124,21 @@ def build(runner, worker, config):
         from rank_peer_control import RankControl
         from rank_state_transport import RankStateTransport
         TransferEngine = transfer_engine()
+        arena = None
+        if arena_mode == "1":
+            from rank_pinned_arena import RankPinnedArena
+            # Reserve before publishing the rank listener/ready receipt.
+            arena = RankPinnedArena(budget, node)
+            print(json.dumps(dict(stage="rank-pinned-arena-ready", owner=owner,
+                                  **arena.stats())), flush=True)
         def allocate(size):
             torch.npu.set_device(runner.device)
             try:
-                return torch.empty(size, dtype=torch.uint8, pin_memory=True)
+                return arena(size) if arena is not None else torch.empty(
+                    size, dtype=torch.uint8, pin_memory=True)
+            except MemoryError:
+                # A bounded arena miss has no uncertain driver allocation.
+                raise
             except Exception:
                 # Never retry, empty a process-global allocator, or replace
                 # pinned memory with a slower pageable/shared tier here.
@@ -156,7 +173,7 @@ def build(runner, worker, config):
         transport = RankStateTransport(
             pool, f"qwen35-{wire}-private-v1/tp2/head{worker.rank}", submit,
             replica.replicate, verify=os.environ.get("BETTERSCALE_PD_VERIFY_OBJECTS") == "1")
-        runtime = RankRuntime(pool, receiver, replica, control, transport)
+        runtime = RankRuntime(pool, receiver, replica, control, transport, arena)
         transport.release_checkpoint = runtime.release
         return runtime
     with ThreadPoolExecutor(1, thread_name_prefix="rank-state-init") as builder:

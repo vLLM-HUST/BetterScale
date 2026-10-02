@@ -13,16 +13,24 @@ from state_dma_probe import qwen35_lanes
 from store_shared_hot_probe import NpuStageDriver
 
 
-def run(output):
+def run(output, arena_node=None):
     if output.exists():
         raise ValueError("preserve prior evidence")
     torch.set_num_threads(8)
+    if arena_node is not None:
+        from state_numa import bind_thread
+        bind_thread(0,arena_node)
     driver=NpuStageDriver(0,0)
     states,residents,pages=qwen35_lanes(0,resident_count=2,page_count=32)
     plan=FramePlan.build([(name,state,tuple(range(16)) if state.domain is pages else (0,))
                          for name,state in states])
-    pool=RankStatePool(("D",0,0),512<<20,
-                      lambda size:torch.empty(size,dtype=torch.uint8,pin_memory=True))
+    arena=None
+    allocate=lambda size:torch.empty(size,dtype=torch.uint8,pin_memory=True)
+    if arena_node is not None:
+        from rank_pinned_arena import RankPinnedArena
+        arena=RankPinnedArena(512<<20,arena_node)
+        allocate=arena
+    pool=RankStatePool(("D",0,0),512<<20,allocate)
     rows=[]
     select=HostStateSelection((HostStateDomainSelection(residents,(0,)),
                                HostStateDomainSelection(pages,tuple(range(16)))))
@@ -71,7 +79,9 @@ def run(output):
                          h2d_GB_s=plan.payload_bytes/load_seconds/1e9))
     for turn in range(3):transport.release(str(turn))
     pool.close()
-    receipt=dict(scope="RankStateTransport final private DRAM objects;83 lanes; post-H2D audit; local replica stub, no Store/network/model",
+    arena_stats=arena.stats() if arena is not None else None
+    if arena is not None:arena.close()
+    receipt=dict(arena=arena_stats,scope="RankStateTransport final private DRAM objects;83 lanes; post-H2D audit; local replica stub, no Store/network/model",
                  results=rows)
     output.write_text(json.dumps(receipt,indent=2));print(json.dumps(receipt),flush=True)
 
@@ -79,4 +89,6 @@ def run(output):
 if __name__=="__main__":
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output",type=Path,required=True)
-    run(parser.parse_args().output)
+    parser.add_argument("--arena-node",type=int,help="opt-in pre-reserved private VMM arena on this NUMA node")
+    args=parser.parse_args()
+    run(args.output,args.arena_node)

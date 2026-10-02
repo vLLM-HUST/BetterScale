@@ -132,6 +132,8 @@ class Worker(BaseWorker):
                     objects=len(runtime.pool.objects),checkpoints=len(runtime.pool.groups),
                     referenced=len(runtime.pool.references),
                     readers=sum(x.readers for x in runtime.pool.objects.values()))
+            if runtime.host_arena is not None:
+                row["host_arena"]=runtime.host_arena.stats()
         return row
 
     def pd_object_audit(self,enabled):

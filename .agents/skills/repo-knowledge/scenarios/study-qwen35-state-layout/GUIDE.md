@@ -1,5 +1,9 @@
 # Study native Qwen3.5 state layout
 
+For **rank-private pinned allocation failures, physical DRAM capacity or DMA
+registration alternatives**, read [rank-pinned-capacity.md](rank-pinned-capacity.md)
+before another pressure run or allocator experiment.
+
 For **incremental cache integration and cadence-independent online PD**, read
 [online-pd.md](online-pd.md) before reusing the older idle-gated path.
 

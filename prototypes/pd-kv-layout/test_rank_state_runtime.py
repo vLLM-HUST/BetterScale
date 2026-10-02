@@ -72,3 +72,15 @@ def test_native_engine_identity_is_fenced_and_path_survives_spawn(monkeypatch):
     module.__file__="/usr/local/lib/mooncake/engine.so"
     with pytest.raises(RuntimeError,match="unqualified Mooncake"):
         transfer_engine()
+
+
+def test_close_releases_arena_only_after_all_pool_objects_retire():
+    events = []
+    pool = SimpleNamespace(lock=Lock(), groups={}, close=lambda: events.append("pool"))
+    replica = SimpleNamespace(lock=Lock(), registered={}, quarantined=[])
+    runtime = RankRuntime(pool, None, replica,
+        SimpleNamespace(close=lambda: events.append("control")),
+        SimpleNamespace(quarantined=[]),
+        SimpleNamespace(close=lambda: events.append("arena")))
+    runtime.close()
+    assert events == ["control", "pool", "arena"]

@@ -54,7 +54,10 @@ def options(kind,instance):
                  data_parallel_size=layout["dp"],data_parallel_size_local=layout["dp"],
                  data_parallel_address="127.0.0.1",data_parallel_rpc_port=layout["rpc_port"],
                  disable_log_stats=True)
-    value["additional_config"].update(state_cache_host_bytes=128<<30,
+    host_gib=int(os.environ.get("BETTERSCALE_PD_STATE_HOST_GIB","128"))
+    if not 1<=host_gib<=128:
+        raise ValueError("rank host State budget must be1..128GiB")
+    value["additional_config"].update(state_cache_host_bytes=host_gib<<30,
         state_cache_incremental=True,state_cache_control_rpc=True,state_cache_policy=False,
         state_cache_max_pending=20,pd_mtp=os.environ.get("BETTERSCALE_PD_MTP")=="1")
     if kind=="D":
