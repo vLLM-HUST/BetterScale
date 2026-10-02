@@ -24,6 +24,9 @@ def forward_core(self, mixed_qkv, b, a, core_attn_out):
 
 
 def before_init(worker, config):
+    from .moe_overlap import configure as configure_moe_overlap
+
+    configure_moe_overlap(config)
     from .service_metadata import MTPFrame, SPEC_CAPACITIES
     from betterscale.patches.qwen_gdn import publication, graphs
     from vllm_ascend.ops.gdn_attn_builder import (
