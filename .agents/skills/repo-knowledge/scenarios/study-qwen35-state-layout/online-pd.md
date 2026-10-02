@@ -401,3 +401,47 @@ profile and return-path analysis separate. Evidence is hw86-online-stream-v4-
 front/control.jsonl, gate/summary.json, audit-disabled.json and the immutable
 /workspace/swe-workloads/stream-v4-rate0.2 artifacts. The next0.5/300s point
 and a separate bounded16-card real-workload profile are not yet qualified.
+
+
+## Offered-load knee and real16-card profile — 2026-10-02
+
+The same v4 system at0.5 new sessions/s for300s remains protocol-valid:
+150 sessions,433 requests,314 in-window,119 drained,0 failed/missed,
+wall417.479s. Total output230.55 tokens/s; TTFT P9547.692s. This offered
+load is queue-heavy, not higher useful throughput. Do not continue blindly
+to rate1.0. The earlier0.2 point is a useful lower-load reference, not a
+saturation optimum.
+
+TTFT is the first token emitted by P, before P-to-D handoff. It does not
+describe that handoff's pause. Across all successful drained requests, v4
+rate0.2 E2E median/P9511.852/43.354s; per-request average inter-token time
+(after first token, including handoff) median/P9554.897/175.841ms. At0.5
+those are48.262/101.483s and136.447/313.970ms. Output lengths differ and
+these are per-request distributions, not token-weighted device cadence.
+
+A separate90s/rate0.5 real replay captures all16 NPUs after30s, for12s;
+all five actor start/stop receipts succeed, eight raw profiles per host.
+Its throughput is diagnostic only. Receipt: online-stream-v4-profile-
+receipt.json; raw hw86/hw81-online-stream-v4-profile; workload stream-v4-
+profile. Native DP0/device0 has375 graph replays. Only105 real attention
+slot-map anchors exist: a6.59s gap between those anchors contains dummy
+participation and is NOT a6.59s decode step.
+
+analyze_online_device now additionally correlates CANN replay connection IDs
+to device TASK envelopes, including dummy waves, rather than calling host
+API intervals device cadence. All375 launches have two correlated device
+records. Device0 replay start intervals median22.821ms/P9572.696ms,
+envelope median15.654ms, intervening gap median6.887ms. Two intervals exceed
+100ms, max1004ms; globally idle demand can contribute, so gaps are not proved
+host overhead. P0/device0 has only two replay/prefill events in this window:
+P is sparsely supplied, not demonstrated compute-saturated. Raw remaining
+ranks are retained; do not present one exported D rank as all-rank statistics.
+
+c608372 batches up to64 already-ready Actor pipe messages per executor
+wakeup, preserving per-tag order, bounded delivery and fail-closed behavior.
+CPU tests cover burst bounds, interleaved tags, prior replies before EOF,
+error quarantine, and output-before-backup. Node arrival/send timestamps
+split the same-host D return path into actor-to-node, node queue and network/
+coordinator phases. This candidate is frozen as online-stream-v5-source;
+the audited gate and identical rate0.2 comparison are pending. No numerical,
+State ownership, model pins or kernel changes accompany this output-path cut.

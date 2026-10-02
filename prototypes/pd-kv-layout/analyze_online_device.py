@@ -17,6 +17,16 @@ def analyze(path):
         replay=c.execute("""select count(*) from CANN_API a join STRING_IDS s on a.name=s.id
             where s.value='aclmdlRIExecuteAsync'""").fetchone()[0]
         device=[r[0] for r in c.execute("select distinct deviceId from TASK")]
+        # The CANN replay correlation reaches device launch/envelope records
+        # even when this owner is dummy and has no attention slot-map anchor.
+        # Do not use host API start timestamps as device cadence.
+        graph=c.execute("""
+            select a.connectionId,min(t.startNs),max(t.endNs),count(*)
+            from CANN_API a join STRING_IDS s on a.name=s.id
+            join TASK t using(connectionId)
+            where s.value='aclmdlRIExecuteAsync' and t.endNs>t.startNs
+            group by a.connectionId order by min(t.startNs)
+        """).fetchall()
     anchors=[a for a,b,op,stream in rows if op=="_compute_slot_mapping_kernel"]
     groups=collections.defaultdict(list)
     windows=[collections.defaultdict(list) for _ in anchors[:-1]]
@@ -34,7 +44,16 @@ def analyze(path):
             cycle_ms=window/1e6,compute_ms=union_ns(compute)/1e6,
             communication_ms=union_ns(comm)/1e6,
             uncovered_ms=(window-union_ns(compute+comm))/1e6))
-    return dict(path=str(path),devices=device,replays=replay,anchors=len(anchors),
+    graph_cycles=[(b[1]-a[1])/1e6 for a,b in zip(graph,graph[1:])]
+    graph_summary=dict(correlated_replays=len(graph),
+        device_records_per_replay=sorted({r[3] for r in graph}),
+        cycle_ms=distribution(graph_cycles) if graph_cycles else {},
+        envelope_ms=distribution([(r[2]-r[1])/1e6 for r in graph]) if graph else {},
+        gap_ms=distribution([(b[1]-a[2])/1e6 for a,b in zip(graph,graph[1:])]) if graph_cycles else {},
+        cycles_over100ms=sum(v>100 for v in graph_cycles),
+        max_cycle_ms=max(graph_cycles,default=None),
+        scope="Device envelope correlated to CANN replay; includes idle-owner participation. Gaps may include globally idle workload, not just scheduling overhead.")
+    return dict(path=str(path),devices=device,replays=replay,anchors=len(anchors),graph_device=graph_summary,
         cycles={k:dict(count=len(v),**{field:distribution([r[field] for r in v]) for field in v[0]})
                 for k,v in groups.items()},
         scope="Slot mapping anchors require a real attention request; dummy ranks have no such anchors. Coverage is interval union, not FLOP utilization. Communication includes waits; uncovered is not proved host overhead.")
