@@ -29,6 +29,14 @@ def options(kind,instance):
     value["additional_config"].update(state_cache_host_bytes=128<<30,
         state_cache_incremental=True,state_cache_control_rpc=True,state_cache_policy=False,
         state_cache_max_pending=20,pd_mtp=os.environ.get("BETTERSCALE_PD_MTP")=="1")
+    private = os.environ.get("BETTERSCALE_PD_RANK_PRIVATE", "0")
+    if private not in ("0", "1"):
+        raise ValueError("Invalid private rank backend flag")
+    if private == "1":
+        if value["additional_config"]["pd_mtp"] or os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT", "0") != "0":
+            raise ValueError("private rank qualification requires target-only uncompressed State")
+        value["additional_config"].update(pd_rank_private=True, pd_rank_role=kind,
+            pd_rank_instance=instance, state_cache_two_phase_store=True)
     profile_dir=os.environ.get("BETTERSCALE_PD_PROFILE_DIR")
     if profile_dir:
         value["profiler_config"]=dict(profiler="torch",torch_profiler_dir=profile_dir,
@@ -99,8 +107,9 @@ async def run(kind,instance,pipe):
         pipe.send(("ready","ready",dict(capacities=capacities,kind=kind,instance=instance,layout=layout,
             context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=not value["additional_config"]["pd_mtp"],
             object_audit=os.environ.get("BETTERSCALE_PD_VERIFY_OBJECTS")=="1",
-            state_wire=("mtp-prefix-" if value["additional_config"]["pd_mtp"] else "")+
-                ("zstd-resident-v1" if os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT")=="1" else "raw-v2"))))
+            state_wire=("rank-private-v1" if value["additional_config"].get("pd_rank_private") else
+                ("mtp-prefix-" if value["additional_config"]["pd_mtp"] else "")+
+                ("zstd-resident-v1" if os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT")=="1" else "raw-v2")))))
         while True:
             tag,op,args=await asyncio.to_thread(pipe.recv)
             if op=="stop":

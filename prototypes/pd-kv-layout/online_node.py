@@ -32,7 +32,14 @@ def validate(kind,body):
         c=args["command"]
         fields={"capacity":set(),"snapshot":set(),"wait":{"operation"},"describe":{"key"},"drop":{"key"},
                 "store_match":{"tokens","salt","key"},"adopt":{"checkpoint"},"load_match":{"key"}}
-        if not isinstance(c,dict) or c.get("kind") not in fields or set(c)!={"kind"}|fields[c["kind"]]:raise ValueError("Bad cache command")
+        if not isinstance(c,dict) or c.get("kind") not in fields:
+            raise ValueError("Bad cache command")
+        expected={"kind"}|fields[c["kind"]]
+        if c["kind"]=="store_match" and "peer_group" in c:
+            expected=expected|{"peer_group"}
+            if c["peer_group"] is not None and (type(c["peer_group"]) is not int or not 0<=c["peer_group"]<4):
+                raise ValueError("Bad private peer group")
+        if set(c)!=expected:raise ValueError("Bad cache command")
         if "key" in c and (not isinstance(c["key"],str) or not 1<=len(c["key"])<=128):raise ValueError("Bad key")
         if "operation" in c and (type(c["operation"]) is not int or c["operation"]<1):raise ValueError("Bad operation")
         if c["kind"]=="store_match":
@@ -106,13 +113,23 @@ def main():
         try:return await handler(request)
         except web.HTTPException:raise
         except (ValueError,KeyError,TypeError) as exc:raise web.HTTPBadRequest(text=str(exc))
-    from dram_store_fixture import dram_store
-    with dram_store(args.output/"store",55401,segment_bytes=args.cache_gib<<30) as stores:
-        node=Node(args,stores[0]);objects=Objects(stores[0])
+    import os
+    from contextlib import nullcontext
+    private=os.environ.get("BETTERSCALE_PD_RANK_PRIVATE","0")
+    if private not in ("0","1"):raise ValueError("Invalid private rank backend flag")
+    if private=="1":
+        context=nullcontext([None])
+    else:
+        from dram_store_fixture import dram_store
+        context=dram_store(args.output/"store",55401,segment_bytes=args.cache_gib<<30)
+    with context as stores:
+        node=Node(args,stores[0])
+        objects=None if private=="1" else Objects(stores[0])
         app=web.Application(client_max_size=LIMIT,middlewares=[boundary])
         app.router.add_get("/health",node.health)
-        app.router.add_get("/objects/{key}",objects.route)
-        app.router.add_put("/objects/{key}",objects.route)
+        if objects is not None:
+            app.router.add_get("/objects/{key}",objects.route)
+            app.router.add_put("/objects/{key}",objects.route)
         app.router.add_post("/rpc",node.rpc)
         app.router.add_post("/generate",node.generate)
         app.on_startup.append(node.start);app.on_cleanup.append(node.close)

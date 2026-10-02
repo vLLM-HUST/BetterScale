@@ -56,6 +56,7 @@ class Coordinator:
         self.maintenance={(kind,i):asyncio.Lock() for kind in ("P","D") for i in range(4)}
         self.admission=[Admission() for _ in range(4)]
         self.sink=PeerObjectSink(self.urls)
+        self.rank_private=False
 
     async def start(self):
         self.lock=open(self.directory.path+".controller.lock","a")
@@ -86,8 +87,15 @@ class Coordinator:
                 if len(capacities)!=4 or any(c["block_size"]!=2048 or c["max_requests"]!=16 for c in capacities):
                     raise RuntimeError("Unexpected owner capacity")
                 self.admission=[Admission(c["free_blocks"],c["max_requests"]) for c in capacities]
-        if len(wire_versions)!=1 or not wire_versions<={"raw-v2","zstd-resident-v1","mtp-prefix-raw-v2","mtp-prefix-zstd-resident-v1"}:
+        if len(wire_versions)!=1 or not wire_versions<={"raw-v2","zstd-resident-v1","mtp-prefix-raw-v2","mtp-prefix-zstd-resident-v1","rank-private-v1"}:
             raise RuntimeError("P/D State wire version mismatch")
+        self.rank_private=wire_versions=={"rank-private-v1"}
+        if self.rank_private:
+            if not self.sticky_owners:
+                raise ValueError("private rank State requires sticky placement")
+            with self.directory.transaction() as db:
+                db.execute("CREATE TABLE IF NOT EXISTS rank_manifests("
+                           "id TEXT PRIMARY KEY, payload BLOB NOT NULL, p_owner INTEGER, d_owner INTEGER)")
         return self
 
     async def acquire_p(self,session,tokens=1):
@@ -177,15 +185,52 @@ class Coordinator:
             op=await self.prepare(kind,index,dict(kind="load_match",key=checkpoint["key"]))
         return op if isinstance(op,dict) else await self.cache(kind,index,dict(kind="wait",operation=op))
 
-    async def save(self,kind,index,tokens,salt):
+    async def read_manifest(self,manifest):
+        if not self.rank_private:
+            return json.loads(await asyncio.to_thread(self.sink.get,manifest))
+        with self.directory.transaction() as db:
+            row=db.execute("SELECT payload FROM rank_manifests WHERE id=?",(manifest,)).fetchone()
+        if row is None:raise KeyError("private checkpoint metadata missing")
+        if hashlib.sha256(row[0]).hexdigest()!=manifest:
+            raise ValueError("private checkpoint metadata checksum mismatch")
+        return json.loads(row[0])
+
+    async def retire_manifest(self,manifest):
+        if not self.rank_private:return
+        with self.directory.transaction() as db:
+            row=db.execute("SELECT payload,p_owner,d_owner FROM rank_manifests WHERE id=?",(manifest,)).fetchone()
+        if row is None:raise KeyError("private checkpoint retirement metadata missing")
+        checkpoint=json.loads(row[0])
+        for kind,index in (("P",row[1]),("D",row[2])):
+            if index is None:continue
+            async with self.maintenance[kind,index]:
+                op=await self.prepare(kind,index,dict(kind="drop",key=checkpoint["key"]))
+            await self.cache(kind,index,dict(kind="wait",operation=op))
+        with self.directory.transaction() as db:
+            db.execute("DELETE FROM rank_manifests WHERE id=?",(manifest,))
+
+    async def save(self,kind,index,tokens,salt,*,peer_group=None):
         async with self.maintenance[kind,index]:
             key=uuid.uuid4().hex
-            op=await self.prepare(kind,index,dict(kind="store_match",tokens=tokens,salt=salt,key=key))
+            command=dict(kind="store_match",tokens=tokens,salt=salt,key=key)
+            if self.rank_private:command["peer_group"]=peer_group
+            op=await self.prepare(kind,index,command)
         receipt=await self.cache(kind,index,dict(kind="wait",operation=op))
         checkpoint=await self.cache(kind,index,dict(kind="describe",key=key))
         data=json.dumps(checkpoint,separators=(",",":")).encode()
         manifest=hashlib.sha256(data).hexdigest()
-        await asyncio.to_thread(self.sink.put,manifest,data)
+        if self.rank_private:
+            if peer_group is not None:
+                peer_kind="D" if kind=="P" else "P"
+                async with self.maintenance[peer_kind,peer_group]:
+                    await self.prepare(peer_kind,peer_group,dict(kind="adopt",checkpoint=checkpoint))
+            p_owner=index if kind=="P" else peer_group
+            d_owner=index if kind=="D" else peer_group
+            with self.directory.transaction() as db:
+                db.execute("INSERT INTO rank_manifests VALUES(?,?,?,?)",
+                           (manifest,data,p_owner,d_owner))
+        else:
+            await asyncio.to_thread(self.sink.put,manifest,data)
         return manifest,checkpoint,receipt
 
     async def submit(self,session,prompt,n,*,on_tokens=None,output_ready=False):
@@ -216,6 +261,7 @@ class Coordinator:
     async def turn(self,session,prompt,n,future,generated,on_tokens):
         started=time.perf_counter();owner=owner_for(session);events=[]
         reserved=None;p_instance=None;p_reserved=None
+        retired=[]
         async def generate(peer,instance,**args):
             if on_tokens is None:return await peer.rpc(instance,"generate",**args)
             from online_stream import generate as streamed
@@ -257,7 +303,8 @@ class Coordinator:
             lease=self.directory.claim(session,"P",IDENTITY)
             salt="online:"+session
             if lease.base:
-                cp=json.loads(await asyncio.to_thread(self.sink.get,lease.base))
+                cp=await self.read_manifest(lease.base)
+                retired.append(lease.base)
                 if prompt[:len(cp["tokens"])]==cp["tokens"]:
                     loaded=await self.load("P",p_instance,cp)
                     events.append(dict(stage="P-load",receipt=loaded))
@@ -269,21 +316,27 @@ class Coordinator:
             value=await generate(self.p,p_instance,owner=0,tokens=prompt,salt=salt,n=1)
             tokens=value["full_tokens"];prompt_cached=value["cached"]
             if n==1:output_complete(tokens,prompt_cached)
-            manifest,cp,saved=await self.save("P",p_instance,tokens,salt)
+            save_args={"peer_group":self.d_affinity.get(session) if n==1 else owner} if self.rank_private else {}
+            manifest,cp,saved=await self.save("P",p_instance,tokens,salt,**save_args)
             events.append(dict(stage="P",instance=p_instance,cached=value["cached"],save=saved,
                                elapsed=time.perf_counter()-started))
             self.directory.publish(lease,manifest,"P" if n==1 else f"D{owner}")
             await self.release_p(p_instance,p_reserved);p_instance=None
             if n>1:
+                retired.append(manifest)
                 lease=self.directory.claim(session,f"D{owner}",IDENTITY)
                 loaded=await self.load("D",owner,cp)
                 value=await generate(self.d,0,owner=owner,tokens=tokens,salt=salt,n=n-1)
                 tokens=value["full_tokens"]
                 output_complete(tokens,prompt_cached)
-                manifest,cp,saved=await self.save("D",owner,tokens,salt)
+                save_args={"peer_group":self.p_affinity[session]} if self.rank_private else {}
+                manifest,cp,saved=await self.save("D",owner,tokens,salt,**save_args)
                 self.directory.publish(lease,manifest,"P")
                 events.append(dict(stage="D",owner=owner,cached=value["cached"],load=loaded,
                     save=saved,request_id=value["request_id"],actor_start_ns=value["start_ns"],arrivals=value["arrivals"],elapsed=time.perf_counter()-started))
+            if self.rank_private:
+                for obsolete in dict.fromkeys(retired):
+                    await self.retire_manifest(obsolete)
             if self.trace:self.trace(dict(op="turn-committed",session=session,owner=owner,
                 start=started,end=time.perf_counter(),events=events))
             if not future.done():future.set_result(dict(session=session,owner=owner,

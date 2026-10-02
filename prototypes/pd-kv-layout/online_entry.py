@@ -30,6 +30,11 @@ def _cache_command(core, command):
             if (seat.cache_salt==command["salt"] and seat.tokens==tuple(command["tokens"])
                     and seat.owner is None and seat.io_owner is None
                     and seat.fence<=core.scheduler.processed_step_seq):
+                if core.vllm_config.additional_config.get("pd_rank_private", False):
+                    if "peer_group" not in command:
+                        raise ValueError("private State store requires explicit peer placement")
+                    core.model_executor.collective_rpc(
+                        "pd_rank_peer", args=(command["key"], command["peer_group"]))
                 return c.store(seat.index,command["key"])
         return None
     if kind=="adopt":
@@ -76,6 +81,14 @@ class Scheduler(BaseScheduler):
 
 
 class Worker(BaseWorker):
+    def pd_rank_peer(self, key, peer_group):
+        from betterscale.live.runtime.host_state import HostStateKey
+        if not isinstance(key, str) or not 1 <= len(key) <= 128:
+            raise ValueError("invalid private checkpoint key")
+        runtime = self.model_runner._pd_rank_runtime
+        runtime.replica.set_peer(HostStateKey(key, 1), peer_group)
+        return dict(owner=runtime.pool.owner, key=key, peer_group=peer_group)
+
     def pd_object_audit(self,enabled):
         if type(enabled) is not bool:raise ValueError("Audit mode must be boolean")
         worker=self.model_runner._state_cache_worker
@@ -118,6 +131,14 @@ class Worker(BaseWorker):
         # A transferred full conv window retains its selector. Treating it as a
         # prior decode normalizes on bulk prefill; selector1 is an identity copy.
         worker.verify=defaultdict(lambda:True)
+        if self.vllm_config.additional_config.get("pd_rank_private", False):
+            from rank_state_runtime import build
+            config = dict(self.vllm_config.additional_config)
+            config["pd_rank_dp"] = self.vllm_config.parallel_config.data_parallel_rank
+            runner._pd_rank_runtime = build(runner, worker, config)
+            worker.page_backend = runner._pd_rank_runtime.transport
+            runner._state_cache_worker = worker
+            return result
         sink=PeerObjectSink(json.loads(os.environ["BETTERSCALE_PD_OBJECT_URLS"]),
                             max_transfers=concurrency)
         namespace=f"qwen35-target-state-v2/tp2/head{worker.rank}"

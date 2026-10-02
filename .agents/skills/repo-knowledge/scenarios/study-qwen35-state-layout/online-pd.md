@@ -995,3 +995,29 @@ rank_peer_control.py and rank_replicator.py replace gate-file handshakes with bo
 rank-rpc-v1-D/P/result.json is a combined real RankStateTransport + RankReplicator + RankReplicaReceiver + control RPC + native TCP TE gate on hw86/hw81. Three83-lane samples are exact, including untouched rows and post-H2D audit. Local D ready15.9–18.6ms precedes committed309–342ms; P H2D5.82–6.22ms and audit D2H4.46–4.47ms. No shared memory, Store, disk, gate-file payload handshake, model forward or fabricated decode step. Lifecycle/control CPU tests subsequently cover checkpoint-scoped delayed ACK replay and release-hook cleanup. This still is NOT the16-card model/online-load qualification.
 
 Next integration boundary: worker factory must construct private pools/listeners on the State NUMA thread and set an explicit per-checkpoint peer route via the TP-local control path before store. Use the receiver release hook; wire incoming checkpoint adoption/retirement with Core host metadata rather than silently dropping backend refs underneath it. The coordinator's tiny checkpoint manifests no longer need the node object service. Keep source/peer publication and both TP acknowledgements distinct from the earlier device-local staged quorum. Existing model/kernel capsules and pins remain unchanged until a fresh candidate is staged and qualified.
+
+### Private online wiring candidate after c06eec1
+
+Opt-in BETTERSCALE_PD_RANK_PRIVATE=1 selects rank_state_runtime.py rather than
+ObjectStateTransport. Runtime construction, native TE and the receiving listener
+start on an explicitly NUMA-bound State thread; per-rank buffers use private
+torch pinned allocation. Physical placement must match P instance/D DP owner
+and TP rank. Candidate is target-only, uncompressed, with unchanged model pins.
+
+Core sets each checkpoint's explicit opposite-side owner through a TP-local
+pd_rank_peer utility before store. CacheActions receives the two-phase flag:
+local staged quorum releases device state independently of final peer quorum.
+The coordinator accepts rank-private-v1 only with sticky placement and matching
+P/D wire versions. Small checkpoint metadata lives in its SQLite directory;
+private nodes do not start Store or expose legacy object endpoints.
+
+After full source/peer completion, recipient Core adopts metadata. Once the new
+session generation is published, obsolete boundary checkpoints are dropped
+through both owning Cores and their rank receiver release hooks, then metadata
+is retired. This bounds superseded versions and preserves shared page refs.
+It is not yet pressure-driven eviction of the latest inactive session checkpoint
+or recovery after process/host loss; neither is claimed as qualified LRU/HA.
+CPU tests include two sticky turns (D then P-only), no legacy object service,
+peer-index validation, publish-before-retirement, route cleanup and topology.
+75 targeted CPU tests pass. The runtime factory and complete16-card model path
+remain UNQUALIFIED until a frozen candidate hardware gate succeeds.
