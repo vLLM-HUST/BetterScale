@@ -1384,3 +1384,30 @@ replay calls,3600 FA and9000 GDN tasks (MTP2). Interior295 DEVICE cycle periods:
 median39.261ms/P9544.670ms/max48.334ms while profiler active. Retain the
 distinction from the whole-run host dispatch median32.8ms. Artifact:
 online-rank-v13-device-cadence.json plus the adjacent native profile DB.
+
+
+### Full-C32 supply after HTTP admission fix (2026-10-03 CST)
+
+v16 freezes cb5437b controller with unchanged v15 C32/R40/44GiB D and v12 P.
+128 warm sessions x4096 outputs pass TP byte-audit/lifecycle gate74.3633s;
+all eight ranks reach32 live rows. Full-row HOST dispatch median42.62–42.71ms,
+P9543.71–44.76ms; rare maxima66–83ms, not an every-step<50ms guarantee.
+The common50.9914s steady full-row interval emits459259 accepted tokens:
+9006.60/s total,1125.82/s per D chip,562.91/s per all16 chips.
+Whole gate including P/handoff/drain:524288/74.3633=7050.36/s.
+This repeated-token synthetic workload accepts2.99999 tokens/chunk with MTP2;
+it proves full-C32 supply, NOT natural SWE goodput or a general MTP acceptance rate.
+Artifacts: online-rank-v16-{host-cadence,supply-rate}.json and
+online-rank-v16-warm-supply/{summary.json,control-events.jsonl} under runtime.
+
+Before the v17 real-SWE replay, no frontend/benchmark was active. Exact idle
+scheduler host-key snapshots enumerated492 P and128 D task-owned checkpoints;
+all owners/I/O owners were null and pending empty. Native drop/wait TP quorum
+retired each key; all16 rank pools then reported zero bytes/objects/readers.
+Historical experiment SQLite files are evidence only, no longer resumable
+against those evicted checkpoints. New frontend uses a fresh database.
+Pinned Torch allocator stays warm/reusable; this is explicit fixture cleanup,
+NOT pressure LRU or a production miss/recompute solution. Before/after reset,
+memory and audit-disabled receipts use online-rank-v17-* runtime paths.
+v17 runs real SWE1.0/300 with C32/R40/44GiB and256 client connections,
+unchanged P C16/R20/24.25GiB, object audit off and D host timing on.
