@@ -58,6 +58,7 @@ class Coordinator:
         self.admission=[Admission() for _ in range(4)]
         self.sink=PeerObjectSink(self.urls)
         self.rank_private=False
+        self.d_device_release=False
 
     async def start(self):
         self.lock=open(self.directory.path+".controller.lock","a")
@@ -89,6 +90,7 @@ class Coordinator:
                     raise RuntimeError("Unexpected P capacity receipt")
                 self.p_admission=[Admission(cs[0]["free_blocks"],min(self.p_limit,cs[0]["max_requests"])) for cs in capacities]
             if kind=="D":
+                self.d_device_release=h["actors"][0]["info"].get("state_device_release",False) is True
                 capacities=h["actors"][0]["info"]["capacities"]
                 if len(capacities)!=4 or any(c["block_size"]!=2048 or c["max_requests"] not in (16,32,48,64,80) for c in capacities):
                     raise RuntimeError("Unexpected owner capacity")
@@ -184,7 +186,7 @@ class Coordinator:
         if self.trace:
             self.trace(dict(op="cache-control",kind=kind,index=index,action=command["kind"],
                             operation=command.get("operation"),start=start,end=time.perf_counter(),
-                            receipt=result if command["kind"]=="wait" else None))
+                            receipt=result if command["kind"] in ("wait","wait_device") else None))
         return result
 
     async def prepare(self,kind,index,command):
@@ -231,12 +233,19 @@ class Coordinator:
             command=dict(kind="store_match",tokens=tokens,salt=salt,key=key)
             if self.rank_private:command["peer_group"]=peer_group
             op=await self.prepare(kind,index,command)
+        if on_device_released is not None and kind=="D" and self.d_device_release:
+            device=await self.cache(kind,index,dict(kind="wait_device",operation=op))
+            if (device.get("kind")!="store" or device.get("device_released") is not True
+                    or device.get("operation")!=op or device.get("ranks")!=[0,1]):
+                raise RuntimeError("Missing local TP device-release quorum")
+            await on_device_released()
+            on_device_released=None
         receipt=await self.cache(kind,index,dict(kind="wait",operation=op))
         # Full TP store completion is a conservative device-release fence.
         # Manifest publication, peer metadata adoption and old-version retirement
         # own host references, not D execution permits. Do not hold those permits
-        # through unrelated metadata queues. A later local-staging receipt can
-        # move this fence earlier without weakening checkpoint commit semantics.
+        # through unrelated metadata queues. Older nodes lack wait_device and
+        # conservatively release here, never before successful TP completion.
         if on_device_released is not None:
             if (receipt.get("kind")!="store" or receipt.get("cancelled")
                     or receipt.get("ranks")!=[0,1]):
@@ -390,7 +399,7 @@ class Coordinator:
                     await self.release_d(owner,reserved)
                     reserved=None
                     if self.trace:self.trace(dict(op="D-device-released",session=session,
-                        owner=owner,end=time.perf_counter(),fence="TP-store-committed"))
+                        owner=owner,end=time.perf_counter(),fence="TP-local-staged" if self.d_device_release else "TP-store-committed"))
                 manifest,cp,saved=await self.save("D",owner,tokens,salt,
                     on_device_released=release_device,**save_args)
                 self.directory.publish(lease,manifest,"P")

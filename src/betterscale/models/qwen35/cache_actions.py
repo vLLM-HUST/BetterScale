@@ -38,6 +38,7 @@ class Pending:
     transfer_bytes: dict[int, int] = field(default_factory=dict)
     transfer_phases: dict[int, dict] = field(default_factory=dict)
     completion: Future = field(default_factory=Future)
+    device_completion: Future = field(default_factory=Future)
 
 
 class CacheActions:
@@ -311,6 +312,10 @@ class CacheActions:
             pending.pinned_blocks = None
         seat.io_owner = None
         pending.device_released = True
+        if not command["retain"] and not pending.cancelled:
+            pending.device_completion.set_result(dict(
+                operation=command["operation"], kind="store",
+                device_released=True, ranks=sorted(self.ranks)))
 
     def receive(self, receipt):
         number, rank = receipt["operation"], receipt["rank"]
@@ -380,6 +385,7 @@ class CacheActions:
                 operation=number,
                 kind=kind,
                 cancelled=pending.cancelled,
+                retained=command["retain"],
                 ranks=sorted(pending.ranks),
                 transfer_bytes_per_rank=dict(pending.transfer_bytes),
                 transfer_phases_per_rank=dict(pending.transfer_phases),
@@ -392,6 +398,20 @@ class CacheActions:
         del self.pending[number]
         if kind == "store" and pending.cancelled:
             self._queue("drop", checkpoint)
+
+    def device_result(self, number):
+        """Store's local TP release fence; never a host-publication receipt."""
+        if number in self.pending:
+            pending = self.pending[number]
+            if (pending.command["kind"] != "store" or pending.command["retain"]
+                    or pending.cancelled):
+                raise ValueError("device release requires a non-retaining store")
+            return pending.device_completion
+        receipt = self.result(number)
+        if receipt["kind"] != "store" or receipt["retained"] or receipt["cancelled"]:
+            raise ValueError("device release requires a non-retaining store")
+        return dict(operation=number, kind="store", device_released=True,
+                    ranks=receipt["ranks"])
 
     def result(self, number):
         if number in self.pending:

@@ -155,7 +155,7 @@ async def run(kind,instance,pipe):
             engine=model.engine_core.core_engines[i]) for i in range(layout["dp"])]
         max_calls=rpc_capacity(capacities)
         pipe.send(("ready","ready",dict(capacities=capacities,kind=kind,instance=instance,layout=layout,
-            context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=not value["additional_config"]["pd_mtp"],
+            state_device_release=all(c.get("device_release",False) for c in capacities),context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=not value["additional_config"]["pd_mtp"],
             object_audit=os.environ.get("BETTERSCALE_PD_VERIFY_OBJECTS")=="1",
             state_wire=(("rank-private-mtp-prefix-v1" if value["additional_config"]["pd_mtp"] else "rank-private-v1")
                 if value["additional_config"].get("pd_rank_private") else

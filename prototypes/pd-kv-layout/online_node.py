@@ -34,7 +34,7 @@ def validate(kind,body):
         if not isinstance(args,dict) or set(args)!={"owner","command"}:raise ValueError("Bad cache RPC")
         if type(args["owner"]) is not int or not 0<=args["owner"]<(1 if kind=="P" else 4):raise ValueError("Bad owner")
         c=args["command"]
-        fields={"capacity":set(),"snapshot":set(),"wait":{"operation"},"describe":{"key"},"drop":{"key"},
+        fields={"capacity":set(),"snapshot":set(),"wait":{"operation"},"wait_device":{"operation"},"describe":{"key"},"drop":{"key"},
                 "store_match":{"tokens","salt","key"},"adopt":{"checkpoint"},"load_match":{"key"}}
         if not isinstance(c,dict) or c.get("kind") not in fields:
             raise ValueError("Bad cache command")

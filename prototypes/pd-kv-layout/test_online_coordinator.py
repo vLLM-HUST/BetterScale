@@ -397,3 +397,35 @@ def test_missing_store_quorum_keeps_device_permit(tmp_path,receipt):
         with pytest.raises(RuntimeError,match="quorum"):
             await c.save("D",0,[1,2],"s",on_device_released=release)
     asyncio.run(run())
+
+
+
+def test_local_device_quorum_releases_permit_while_replication_is_pending(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"staged.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        c.d_device_release=True
+        staged=asyncio.Event();committed=asyncio.Event();released=[]
+        async def prepare(*args):return 7
+        async def cache(kind,index,command):
+            if command["kind"]=="wait_device":
+                await staged.wait()
+                return dict(operation=7,kind="store",device_released=True,ranks=[0,1])
+            if command["kind"]=="wait":
+                assert released==["device"]
+                await committed.wait()
+                return dict(kind="store",cancelled=False,ranks=[0,1])
+            return dict(key="key",tokens=[1,2],salt="s")
+        class Sink:
+            def put(self,*args):pass
+        c.prepare=prepare;c.cache=cache;c.sink=Sink()
+        async def release():released.append("device")
+        task=asyncio.create_task(c.save("D",0,[1,2],"s",on_device_released=release))
+        await asyncio.sleep(0);assert not released
+        staged.set();await asyncio.sleep(0)
+        assert released==["device"] and not task.done()
+        committed.set();await task
+        assert released==["device"]
+        assert validate("D",dict(instance=0,op="cache",args=dict(owner=0,
+            command=dict(kind="wait_device",operation=7))))[1]=="cache"
+    asyncio.run(run())

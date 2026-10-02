@@ -529,6 +529,7 @@ def test_invalid_staged_receipts_preserve_device_pins(failure):
     s, c, pool = setup(4)
     c.two_phase_store = True
     n = c.store(0, "A")
+    device = c.device_result(n)
     c.receive(receipt(c, n, 0, phase="staged"))
     bad = receipt(c, n, 1, phase="staged")
     if failure == "duplicate": bad["rank"] = 0
@@ -538,6 +539,7 @@ def test_invalid_staged_receipts_preserve_device_pins(failure):
     else: bad["phase"] = "committed"
     with pytest.raises(RuntimeError):
         c.receive(bad)
+    assert not device.done()
     assert pool.get_num_free_blocks() == 0
     assert s.residents.seats[0].io_owner == n and "A" not in c.host
 
@@ -554,3 +556,30 @@ def test_replication_failure_after_stage_does_not_recycle_new_seat():
         c.receive(receipt(c, n, 0, error="remote failed"))
     assert (seat.epoch, seat.io_owner) == (99, 777)
     assert "A" not in c.host and n in c.pending
+
+
+
+def test_local_device_future_precedes_host_publication_and_survives_completion():
+    s,c,pool=setup(4,max_pending=3)
+    c.two_phase_store=True
+    n=c.store(0,"A")
+    device=c.device_result(n)
+    c.receive(receipt(c,n,0,phase="staged"))
+    assert not device.done()
+    c.receive(receipt(c,n,1,phase="staged"))
+    expected=dict(operation=n,kind="store",device_released=True,ranks=[0,1])
+    assert device.result()==expected and not c.result(n).done()
+    assert "A" not in c.host and pool.get_num_free_blocks()==4
+    done(c,n)
+    assert c.device_result(n)==expected and "A" in c.host
+
+
+def test_device_fence_rejects_retaining_backup_and_nonstore():
+    s,c,pool=setup(4)
+    seat=s.residents.seats[0]
+    n=c.backup(0,"A",seat.tokens,None,seat.blocks)
+    with pytest.raises(ValueError,match="non-retaining"):c.device_result(n)
+    done(c,n)
+    with pytest.raises(ValueError,match="non-retaining"):c.device_result(n)
+    drop=c.drop("A")
+    with pytest.raises(ValueError,match="non-retaining"):c.device_result(drop)

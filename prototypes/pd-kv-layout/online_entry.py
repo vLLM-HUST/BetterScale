@@ -21,9 +21,10 @@ def _cache_command(core, command):
     if kind=="capacity":
         scheduler=core.scheduler;pool=scheduler.kv_cache_manager.block_pool
         return dict(block_size=scheduler.block_size,free_blocks=pool.get_num_free_blocks(),
-                    max_requests=scheduler.max_num_running_reqs,context_limit=core.vllm_config.model_config.max_model_len)
+                    device_release=hasattr(c,"device_result"),max_requests=scheduler.max_num_running_reqs,context_limit=core.vllm_config.model_config.max_model_len)
     if kind in ("snapshot","wait","cancel","drop"):
         return core.state_cache(command)
+    if kind=="wait_device":return c.device_result(command["operation"])
     if kind=="describe":return asdict(c.host[command["key"]])
     if kind=="store_match":
         for seat in core.scheduler.residents.seats:
