@@ -20,4 +20,4 @@ export VLLM_PLUGINS=ascend,ascend_model,ascend_model_loader,ascend_kv_connector
 export MTP_TOKENS=2 MTP_GDN_LAYOUT_FUSION=1 BETTERSCALE_MTP_GREEDY=1 BETTERSCALE_GDN_SMALL_COPIES=1 MTP_PROFILE=0
 export BETTERSCALE_MODEL_PATH="${BETTERSCALE_MODEL_PATH:-/workspace/models/Qwen3.5-35B-A3B}"
 unset HCCL_DETERMINISTIC
-exec "$root/venv/bin/python" "$source_dir/naive_pool_node.py" "$@"
+exec "$root/venv/bin/python" "$source_dir/${BETTERSCALE_PD_NODE_ENTRY:-naive_pool_node.py}" "$@"

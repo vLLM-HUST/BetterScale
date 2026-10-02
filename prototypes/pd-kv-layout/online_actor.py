@@ -1,0 +1,146 @@
+"""Multiplex independent native requests and owner-local State control.
+
+One pipe reader, tagged replies, bounded callers. Native AsyncLLM remains the
+only model scheduler; utility futures complete from actual TP DMA receipts.
+"""
+import asyncio
+import json
+import os
+import traceback
+import uuid
+from pathlib import Path
+
+
+def options(kind,instance):
+    from pool_topology import placement
+    from pd_model_probe import prepare_worker,engine_options
+    from pd_limits import context_limit,state_budget
+    layout=placement(kind,instance)
+    prepare_worker(kind,native_async=True)
+    value=engine_options(kind=="P")
+    import online_entry
+    os.environ.update(ASCEND_RT_VISIBLE_DEVICES=layout["devices"],HCCL_IF_BASE_PORT=str(layout["hccl_port"]))
+    value.update(worker_cls="online_entry.Worker",scheduler_cls="online_entry.Scheduler",
+                 max_model_len=context_limit(),kv_cache_memory_bytes=state_budget(),
+                 data_parallel_size=layout["dp"],data_parallel_size_local=layout["dp"],
+                 data_parallel_address="127.0.0.1",data_parallel_rpc_port=layout["rpc_port"],
+                 disable_log_stats=True)
+    value["additional_config"].update(state_cache_host_bytes=128<<30,
+        state_cache_incremental=True,state_cache_control_rpc=True,state_cache_policy=False)
+    return value,layout
+
+
+async def run(kind,instance,pipe):
+    value,layout=options(kind,instance)
+    from vllm import SamplingParams
+    from vllm.sampling_params import RequestOutputKind
+    from vllm.engine.arg_utils import AsyncEngineArgs
+    from vllm.v1.engine.async_llm import AsyncLLM
+    model=AsyncLLM.from_engine_args(AsyncEngineArgs(**value))
+    tasks=set();failed=False
+    async def call(tag,op,args):
+        nonlocal failed
+        try:
+            owner=args["owner"]
+            if type(owner) is not int or not 0<=owner<layout["dp"]:raise ValueError("Bad owner")
+            if op=="generate":
+                import time
+                result=None;arrivals=[];started=time.perf_counter_ns()
+                async for item in model.generate(
+                    dict(prompt_token_ids=args["tokens"],cache_salt=args["salt"]),
+                    SamplingParams(temperature=0,max_tokens=args["n"],ignore_eos=True,
+                                   output_kind=RequestOutputKind.CUMULATIVE),
+                    uuid.uuid4().hex,data_parallel_rank=owner):
+                    result=item
+                    arrivals.append((len(item.outputs[0].token_ids),time.perf_counter_ns()))
+                ids=list(result.outputs[0].token_ids)
+                if len(ids)!=args["n"]:raise RuntimeError("Incomplete generation")
+                answer=dict(token_ids=ids,full_tokens=list(result.prompt_token_ids)+ids,
+                            cached=result.num_cached_tokens,start_ns=started,arrivals=arrivals)
+            elif op=="cache":
+                answer=await model.engine_core._call_utility_async("pd_online_cache",args["command"],
+                    engine=model.engine_core.core_engines[owner])
+            else:raise ValueError("Unknown operation")
+            pipe.send((tag,"ok",answer))
+        except BaseException:
+            failed=True
+            pipe.send((tag,"error",traceback.format_exc()))
+    try:
+        capacities=[await model.engine_core._call_utility_async("pd_online_cache",{"kind":"capacity"},
+            engine=model.engine_core.core_engines[i]) for i in range(layout["dp"])]
+        pipe.send(("ready","ready",dict(capacities=capacities,kind=kind,instance=instance,layout=layout,
+            context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=True)))
+        while True:
+            tag,op,args=await asyncio.to_thread(pipe.recv)
+            if op=="stop":
+                await asyncio.gather(*tasks)
+                pipe.send((tag,"ok",None));break
+            if failed or len(tasks)>=160:
+                pipe.send((tag,"error","Actor failed closed or capacity exceeded"));continue
+            task=asyncio.create_task(call(tag,op,args));tasks.add(task)
+            task.add_done_callback(tasks.discard)
+    finally:
+        model.shutdown();pipe.close()
+
+
+def worker(kind,instance,pipe):
+    os.setsid()
+    asyncio.run(run(kind,instance,pipe))
+
+
+class Actor:
+    def __init__(self,kind,instance):
+        import multiprocessing as mp
+        context=mp.get_context("spawn")
+        self.pipe,child=context.Pipe()
+        self.process=context.Process(target=worker,args=(kind,instance,child),name=f"online-{kind}{instance}")
+        self.process.start();child.close()
+        self.pending={};self.quarantined=False;self.info=None;self.reader=None
+
+    async def ready(self):
+        tag,status,info=await asyncio.wait_for(asyncio.to_thread(self.pipe.recv),1200)
+        if (tag,status)!=("ready","ready"):raise RuntimeError(str(info))
+        self.info=info;self.reader=asyncio.create_task(self.receive())
+        return info
+
+    async def receive(self):
+        try:
+            while True:
+                tag,status,value=await asyncio.to_thread(self.pipe.recv)
+                future=self.pending.pop(tag)
+                if status!="ok":raise RuntimeError(value)
+                if not future.done():future.set_result(value)
+        except BaseException as error:
+            self.quarantined=True
+            # Include the just-removed failing caller, not only remaining tags.
+            if "future" in locals() and not future.done():future.set_exception(RuntimeError(str(error)))
+            for f in self.pending.values():
+                if not f.done():f.set_exception(RuntimeError(str(error)))
+            self.pending.clear()
+
+    async def call(self,op,args):
+        if self.quarantined or not self.process.is_alive():raise RuntimeError("Actor unavailable")
+        if len(self.pending)>=160:raise RuntimeError("Actor request bound exceeded")
+        tag=uuid.uuid4().hex;future=asyncio.get_running_loop().create_future();self.pending[tag]=future
+        self.pipe.send((tag,op,args))
+        try:return await asyncio.wait_for(asyncio.shield(future),1800)
+        except BaseException:
+            self.quarantined=True
+            raise
+
+    async def close(self):
+        import signal
+        if self.process.is_alive() and not self.quarantined:
+            try:await asyncio.wait_for(self.call("stop",{}),60)
+            except Exception:pass
+        await asyncio.to_thread(self.process.join,60)
+        if self.process.is_alive():
+            if os.getpgid(self.process.pid)!=self.process.pid:raise RuntimeError("Foreign actor process group")
+            os.killpg(self.process.pid,signal.SIGTERM)
+            await asyncio.to_thread(self.process.join,20)
+        if self.process.is_alive():
+            os.killpg(self.process.pid,signal.SIGKILL)
+            await asyncio.to_thread(self.process.join,10)
+        self.pipe.close()
+        if self.reader:
+            self.reader.cancel();await asyncio.gather(self.reader,return_exceptions=True)

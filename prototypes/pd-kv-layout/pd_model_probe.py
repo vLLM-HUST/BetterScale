@@ -13,6 +13,7 @@ def prepare_worker(role,*,native_async=False):
  is_p=role=='P';rank=0 if is_p or role=='D' else int(role[1:])
  package=ROOT/('candidate-package-6-no-draft' if is_p else 'candidate-package-8-fia-padding')
  if not is_p and os.environ.get('BETTERSCALE_PD_D_PACKAGE'):package=Path(os.environ['BETTERSCALE_PD_D_PACKAGE'])
+ if is_p and os.environ.get("BETTERSCALE_PD_P_PACKAGE"):package=Path(os.environ["BETTERSCALE_PD_P_PACKAGE"])
  runtime=ROOT/('owned-runtime' if is_p else 'ep6-runtime')
  sys.path[:0]=[str(package),str(runtime)]
  os.environ['PYTHONPATH']=f'{package}:{runtime}:'+os.environ.get('PYTHONPATH','')

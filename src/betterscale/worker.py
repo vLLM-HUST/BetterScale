@@ -57,3 +57,18 @@ class Worker(NPUWorker):
         if hook is not None:
             hook(self)
         return result
+
+    def execute_model(self, scheduler_output, *args, **kwargs):
+        commands = getattr(scheduler_output, "cache_commands", ())
+        if commands:
+            from .models.qwen35.cache_worker import execute_actions
+
+            execute_actions(self.model_runner, commands)
+        return super().execute_model(scheduler_output, *args, **kwargs)
+
+    def state_cache_actions(self, commands):
+        """TP-local maintenance dispatch; never enters an EP model wave."""
+        from .models.qwen35.cache_worker import execute_actions
+
+        execute_actions(self.model_runner, commands)
+        return dict(enqueued=len(commands))
