@@ -49,3 +49,26 @@ def test_profile_control_is_bounded():
     assert validate("D",dict(instance=0,op="profile",args=dict(owner=0,start=True)))[1]=="profile"
     for args in (dict(owner=1,start=True),dict(owner=0,start=1),dict(owner=0,start=True,path="/tmp/arbitrary")):
         with pytest.raises(ValueError):validate("D",dict(instance=0,op="profile",args=args))
+
+
+@pytest.mark.parametrize("d_version,accepted",[("zstd-resident-v1",True),("raw-v2",False)])
+def test_wire_version_mismatch_fails_before_admission(tmp_path,monkeypatch,d_version,accepted):
+    import online_coordinator as module
+    from pd_limits import context_limit
+    class Peer:
+        def __init__(self,url,*args):self.kind="P" if "1.16" in url else "D"
+        async def health(self):
+            kind=self.kind
+            info=dict(state_wire="zstd-resident-v1" if kind=="P" else d_version,
+                capacities=[dict(block_size=2048,max_requests=16,free_blocks=1044)]*4)
+            return dict(ready=True,kind=kind,context_limit=context_limit(),
+                actors=[dict(alive=True,quarantined=False,info=info)]*(4 if kind=="P" else 1))
+    monkeypatch.setattr(module,"Peer",Peer)
+    async def run():
+        c=module.Coordinator(tmp_path/"directory.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        try:
+            if accepted:assert await c.start() is c
+            else:
+                with pytest.raises(RuntimeError,match="wire version"):await c.start()
+        finally:await c.close()
+    asyncio.run(run())

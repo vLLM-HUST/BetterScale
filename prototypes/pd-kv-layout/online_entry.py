@@ -99,9 +99,16 @@ class Worker(BaseWorker):
         # A transferred full conv window retains its selector. Treating it as a
         # prior decode normalizes on bulk prefill; selector1 is an identity copy.
         worker.verify=defaultdict(lambda:True)
+        sink=PeerObjectSink(json.loads(os.environ["BETTERSCALE_PD_OBJECT_URLS"]))
+        namespace=f"qwen35-target-state-v2/tp2/head{worker.rank}"
+        compression=os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT","0")
+        if compression not in ("0","1"):raise ValueError("Invalid resident wire compression flag")
+        if compression=="1":
+            from online_codec import ResidentWireSink
+            sink=ResidentWireSink(sink)
+            namespace=f"qwen35-target-state-v3-zstd-resident/tp2/head{worker.rank}"
         worker.page_backend=ObjectStateTransport(
-            PeerObjectSink(json.loads(os.environ["BETTERSCALE_PD_OBJECT_URLS"])),
-            f"qwen35-target-state-v2/tp2/head{worker.rank}",
+            sink,namespace,
             verify=os.environ.get("BETTERSCALE_PD_VERIFY_OBJECTS")=="1")
         runner._state_cache_worker=worker
         return result

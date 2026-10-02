@@ -86,7 +86,8 @@ async def run(kind,instance,pipe):
         capacities=[await model.engine_core._call_utility_async("pd_online_cache",{"kind":"capacity"},
             engine=model.engine_core.core_engines[i]) for i in range(layout["dp"])]
         pipe.send(("ready","ready",dict(capacities=capacities,kind=kind,instance=instance,layout=layout,
-            context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=True)))
+            context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=True,
+            state_wire="zstd-resident-v1" if os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT")=="1" else "raw-v2")))
         while True:
             tag,op,args=await asyncio.to_thread(pipe.recv)
             if op=="stop":

@@ -58,16 +58,20 @@ class Coordinator:
                 raise RuntimeError("Unfinished ownership requires explicit recovery")
         self.client=aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1860))
         self.p,self.d=[Peer(url,self.client,self.trace) for url in self.urls]
+        wire_versions=set()
         for peer,kind,count in ((self.p,"P",4),(self.d,"D",1)):
             h=await peer.health()
             if (not h["ready"] or h["kind"]!=kind or h["context_limit"]!=context_limit()
                     or len(h["actors"])!=count or any(not a["alive"] or a["quarantined"] for a in h["actors"])):
                 raise RuntimeError("Online node topology/context mismatch")
+            wire_versions.update(a["info"].get("state_wire","raw-v2") for a in h["actors"])
             if kind=="D":
                 capacities=h["actors"][0]["info"]["capacities"]
                 if len(capacities)!=4 or any(c["block_size"]!=2048 or c["max_requests"]!=16 for c in capacities):
                     raise RuntimeError("Unexpected owner capacity")
                 self.admission=[Admission(c["free_blocks"],c["max_requests"]) for c in capacities]
+        if len(wire_versions)!=1 or not wire_versions<={"raw-v2","zstd-resident-v1"}:
+            raise RuntimeError("P/D State wire version mismatch")
         return self
 
     async def acquire_p(self,session):
