@@ -33,8 +33,9 @@ class Admission:
             self.free+=count;self.slots+=1;self.condition.notify_all()
 
 class Coordinator:
-    def __init__(self,path,p_url,d_url,trace=None,*,p_per_instance=4):
+    def __init__(self,path,p_url,d_url,trace=None,*,p_per_instance=4,same_host_d=False):
         self.directory=Directory(path);self.urls=(p_url,d_url);self.trace=trace
+        self.same_host_d=same_host_d
         self.inflight={};self.generated={};self.tasks=set();self.failure=None;self.client=None;self.lock=None
         self.p_available=asyncio.Queue()
         self.p_affinity={}
@@ -148,8 +149,22 @@ class Coordinator:
         async def generate(peer,instance,**args):
             if on_tokens is None:return await peer.rpc(instance,"generate",**args)
             from online_stream import generate as streamed
-            return await streamed(peer,instance,on_tokens,**args)
+            delays=[]
+            def progress(item):
+                if peer is self.d and self.same_host_d:
+                    delays.append((time.perf_counter_ns()-item["arrival_ns"])/1e6)
+                on_tokens(item)
+            result=await streamed(peer,instance,progress,**args)
+            if self.trace and delays:
+                ordered=sorted(delays)
+                self.trace(dict(op="D-stream-return",session=session,owner=owner,
+                    request_id=result["request_id"],same_host=True,chunks=len(delays),
+                    p50_ms=ordered[len(ordered)//2],p95_ms=ordered[int((len(ordered)-1)*.95)],
+                    max_ms=ordered[-1],scope="actor yield to coordinator token callback; not device cadence"))
+            return result
         def output_complete(tokens,cached):
+            if self.trace:self.trace(dict(op="output-ready",session=session,owner=owner,
+                start=started,end=time.perf_counter(),prompt_tokens=len(prompt),output_tokens=n))
             if not generated.done():generated.set_result(dict(session=session,owner=owner,
                 token_ids=tokens[len(prompt):],full_tokens=tokens,cached=cached,
                 seconds=time.perf_counter()-started))
@@ -191,6 +206,8 @@ class Coordinator:
                 self.directory.publish(lease,manifest,"P")
                 events.append(dict(stage="D",owner=owner,cached=value["cached"],load=loaded,
                     save=saved,request_id=value["request_id"],actor_start_ns=value["start_ns"],arrivals=value["arrivals"],elapsed=time.perf_counter()-started))
+            if self.trace:self.trace(dict(op="turn-committed",session=session,owner=owner,
+                start=started,end=time.perf_counter(),events=events))
             if not future.done():future.set_result(dict(session=session,owner=owner,
                 token_ids=tokens[len(prompt):],full_tokens=tokens,trace=events,seconds=time.perf_counter()-started))
         except BaseException as error:

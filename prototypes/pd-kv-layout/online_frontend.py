@@ -94,7 +94,9 @@ def main():
     a=p.parse_args();a.output.mkdir(parents=True,exist_ok=False)
     with (a.output/"control.jsonl").open("w",buffering=1) as log:
         def trace(value):log.write(json.dumps(value,separators=(",",":"))+"\n")
-        coordinator=Coordinator(a.output/"sessions.sqlite",a.p_url,a.d_url,trace)
+        from urllib.parse import urlsplit
+        coordinator=Coordinator(a.output/"sessions.sqlite",a.p_url,a.d_url,trace,
+            same_host_d=urlsplit(a.d_url).hostname==a.bind)
         web.run_app(application(coordinator,a.model,set(a.peer)|{a.bind,"127.0.0.1"}),
             host=a.bind,port=a.port,access_log=None,handler_cancellation=False)
 
