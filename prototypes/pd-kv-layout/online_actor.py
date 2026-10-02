@@ -27,6 +27,11 @@ def options(kind,instance):
                  disable_log_stats=True)
     value["additional_config"].update(state_cache_host_bytes=128<<30,
         state_cache_incremental=True,state_cache_control_rpc=True,state_cache_policy=False)
+    profile_dir=os.environ.get("BETTERSCALE_PD_PROFILE_DIR")
+    if profile_dir:
+        value["profiler_config"]=dict(profiler="torch",torch_profiler_dir=profile_dir,
+            torch_profiler_with_stack=False,torch_profiler_record_shapes=False,
+            torch_profiler_with_memory=False,ignore_frontend=True)
     return value,layout
 
 
@@ -45,18 +50,24 @@ async def run(kind,instance,pipe):
             if type(owner) is not int or not 0<=owner<layout["dp"]:raise ValueError("Bad owner")
             if op=="generate":
                 import time
-                result=None;arrivals=[];started=time.perf_counter_ns()
+                result=None;arrivals=[];started=time.perf_counter_ns();request_id=uuid.uuid4().hex
                 async for item in model.generate(
                     dict(prompt_token_ids=args["tokens"],cache_salt=args["salt"]),
                     SamplingParams(temperature=0,max_tokens=args["n"],ignore_eos=True,
                                    output_kind=RequestOutputKind.CUMULATIVE),
-                    uuid.uuid4().hex,data_parallel_rank=owner):
+                    request_id,data_parallel_rank=owner):
                     result=item
                     arrivals.append((len(item.outputs[0].token_ids),time.perf_counter_ns()))
                 ids=list(result.outputs[0].token_ids)
                 if len(ids)!=args["n"]:raise RuntimeError("Incomplete generation")
                 answer=dict(token_ids=ids,full_tokens=list(result.prompt_token_ids)+ids,
-                            cached=result.num_cached_tokens,start_ns=started,arrivals=arrivals)
+                            cached=result.num_cached_tokens,start_ns=started,arrivals=arrivals,request_id=request_id)
+            elif op=="profile":
+                if not os.environ.get("BETTERSCALE_PD_PROFILE_DIR"):
+                    raise ValueError("Profiler disabled for this node")
+                if args["start"]:await model.start_profile(f"{kind}{instance}")
+                else:await model.stop_profile()
+                answer=dict(kind=kind,instance=instance,started=args["start"])
             elif op=="cache":
                 answer=await model.engine_core._call_utility_async("pd_online_cache",args["command"],
                     engine=model.engine_core.core_engines[owner])

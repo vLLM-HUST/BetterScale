@@ -41,3 +41,11 @@ def test_prefill_affinity_reuses_ready_permit_but_never_waits_for_busy_owner(tmp
         assert await asyncio.wait_for(c.acquire_p("busy"),.1)==1
         assert c.p_available.qsize()==1
     asyncio.run(run())
+
+
+def test_profile_control_is_bounded():
+    from online_node import validate
+    import pytest
+    assert validate("D",dict(instance=0,op="profile",args=dict(owner=0,start=True)))[1]=="profile"
+    for args in (dict(owner=1,start=True),dict(owner=0,start=1),dict(owner=0,start=True,path="/tmp/arbitrary")):
+        with pytest.raises(ValueError):validate("D",dict(instance=0,op="profile",args=args))

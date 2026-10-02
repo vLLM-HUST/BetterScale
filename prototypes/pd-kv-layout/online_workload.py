@@ -29,6 +29,21 @@ async def run(args):
             if counts[owner]<args.sessions//4:names.append(name);counts[owner]+=1
             if len(names)==args.sessions:break
         start=time.perf_counter()
+        async def capture():
+            await asyncio.sleep(args.profile_delay)
+            peers=[(c.p,i) for i in range(4)]+[(c.d,0)]
+            began=False
+            try:
+                # All native core utilities, not fabricated inference rounds.
+                receipts=await asyncio.gather(*(peer.rpc(i,"profile",owner=0,start=True) for peer,i in peers))
+                began=True
+                (args.output/"profile-start.json").write_text(json.dumps(dict(seconds=time.perf_counter()-start,receipts=receipts)))
+                await asyncio.sleep(args.profile_seconds)
+            finally:
+                if began:
+                    receipts=await asyncio.gather(*(peer.rpc(i,"profile",owner=0,start=False) for peer,i in peers))
+                    (args.output/"profile-stop.json").write_text(json.dumps(dict(seconds=time.perf_counter()-start,receipts=receipts)))
+        profiler=asyncio.create_task(capture()) if args.profile_seconds else None
         async def session(index,name):
             await asyncio.sleep(index*args.stagger)
             length=(4096,32768)[index%2]
@@ -45,6 +60,7 @@ async def run(args):
         try:
             await asyncio.gather(*(session(i,name) for i,name in enumerate(names)))
             elapsed=time.perf_counter()-start
+            if profiler:await profiler
             snapshots=[await c.cache("D",i,{"kind":"snapshot"}) for i in range(4)]
             assert all(not s["pending"] and all(x["owner"] is None and x["io_owner"] is None for x in s["seats"]) for s in snapshots)
             with c.directory.transaction() as db:
@@ -63,7 +79,11 @@ async def run(args):
                          note="Actor arrival intervals are not device step timings; no TTFT is inferred from final RPC.")
             (args.output/"summary.json").write_text(json.dumps(summary,indent=2))
             print(json.dumps({k:v for k,v in summary.items() if k!="snapshots"}),flush=True)
-        finally:await c.close()
+        finally:
+            if profiler and not profiler.done():
+                profiler.cancel()
+                await asyncio.gather(profiler,return_exceptions=True)
+            await c.close()
 
 
 if __name__=="__main__":
@@ -75,6 +95,8 @@ if __name__=="__main__":
     p.add_argument("--turns",type=int,default=2)
     p.add_argument("--tokens",type=int,default=512)
     p.add_argument("--stagger",type=float,default=.3)
+    p.add_argument("--profile-seconds",type=float,default=0)
+    p.add_argument("--profile-delay",type=float,default=15)
     args=p.parse_args()
-    if args.turns<1 or args.tokens<2 or args.tokens>512 or args.stagger<0:p.error("Invalid workload bound")
+    if not 0<=args.profile_seconds<=30 or args.profile_delay<0 or args.turns<1 or args.tokens<2 or args.tokens>512 or args.stagger<0:p.error("Invalid workload bound")
     asyncio.run(run(args))

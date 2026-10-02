@@ -171,7 +171,7 @@ class Coordinator:
                 manifest,cp,saved=await self.save("D",owner,tokens,salt)
                 self.directory.publish(lease,manifest,"P")
                 events.append(dict(stage="D",owner=owner,cached=value["cached"],load=loaded,
-                    save=saved,arrivals=value["arrivals"],elapsed=time.perf_counter()-started))
+                    save=saved,request_id=value["request_id"],actor_start_ns=value["start_ns"],arrivals=value["arrivals"],elapsed=time.perf_counter()-started))
             if not future.done():future.set_result(dict(session=session,owner=owner,
                 token_ids=tokens[len(prompt):],full_tokens=tokens,trace=events,seconds=time.perf_counter()-started))
         except BaseException as error:

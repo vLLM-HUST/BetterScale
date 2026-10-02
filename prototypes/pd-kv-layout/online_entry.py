@@ -4,6 +4,11 @@ from collections import defaultdict
 from pool_state_entry import Scheduler as BaseScheduler, Worker as BaseWorker
 from betterscale.models import qwen35
 
+import os
+if os.environ.get("BETTERSCALE_PD_TIMING_DIR"):
+    from online_timing import install_core
+    install_core()
+
 qwen35.STATE_SCHEDULER="online_entry.Scheduler"
 
 
@@ -66,6 +71,19 @@ class Scheduler(BaseScheduler):
 
 
 class Worker(BaseWorker):
+    def execute_model(self,scheduler_output):
+        if not os.environ.get("BETTERSCALE_PD_TIMING_DIR"):
+            return super().execute_model(scheduler_output)
+        import time
+        from online_timing import Recorder
+        if not hasattr(self,"_pd_timing"):self._pd_timing=Recorder("worker")
+        begin=time.perf_counter_ns()
+        result=super().execute_model(scheduler_output)
+        self._pd_timing.record("worker-dispatch",begin_ns=begin,
+            scheduled=dict(scheduler_output.num_scheduled_tokens))
+        return result
+
+
     def compile_or_warm_up_model(self):
         result=super().compile_or_warm_up_model()
         from betterscale.models.qwen35.cache_worker import CacheWorker

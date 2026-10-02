@@ -17,6 +17,10 @@ def validate(kind,body):
     if op=="generate":
         if not isinstance(args,dict) or set(args)!={"owner","tokens","salt","n"}:raise ValueError("Bad generation")
         validate_rpc(kind,dict(instance=instance,op="generate_batch",args={"items":[args]}))
+    elif op=="profile":
+        if (not isinstance(args,dict) or set(args)!={"owner","start"}
+                or type(args["owner"]) is not int or args["owner"]!=0
+                or type(args["start"]) is not bool):raise ValueError("Bad profile RPC")
     elif op=="cache":
         if not isinstance(args,dict) or set(args)!={"owner","command"}:raise ValueError("Bad cache RPC")
         if type(args["owner"]) is not int or not 0<=args["owner"]<(1 if kind=="P" else 4):raise ValueError("Bad owner")
