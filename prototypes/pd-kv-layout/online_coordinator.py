@@ -125,30 +125,37 @@ class Coordinator:
             self.p_affinity[session]=chosen
             return chosen,count
 
-    async def acquire_d(self,session,tokens):
-        if not self.sticky_owners:
-            owner=owner_for(session)
-            return owner,await self.admission[owner].acquire(tokens)
+    def route_d(self,session,tokens):
+        """Choose a sticky host-cache destination, never reserve device resources."""
         count=math.ceil((tokens+2)/2048)
-        if count>max(a.blocks for a in self.admission):
-            raise ValueError("Request exceeds D KV budget")
+        if not self.sticky_owners:
+            chosen=owner_for(session)
+        elif session in self.d_affinity:
+            chosen=self.d_affinity[session]
+        else:
+            choices=[i for i,a in enumerate(self.admission) if a.blocks>=count]
+            if not choices:raise ValueError("Request exceeds D KV budget")
+            chosen=min(choices,key=lambda i:(self.admission[i].slots<=0,
+                -self.admission[i].free,
+                self.admission[i].seats-self.admission[i].slots,
+                sum(owner==i for owner in self.d_affinity.values())))
+            with self.directory.transaction() as db:
+                db.execute("INSERT INTO rank_placements(session,d_owner) VALUES(?,?) "
+                           "ON CONFLICT(session) DO UPDATE SET d_owner=excluded.d_owner",(session,chosen))
+            self.d_affinity[session]=chosen
+        if count>self.admission[chosen].blocks:
+            raise ValueError("Request exceeds sticky D owner KV budget")
+        return chosen
+
+    async def acquire_d(self,session,tokens):
+        chosen=self.route_d(session,tokens)
+        if not self.sticky_owners:
+            return chosen,await self.admission[chosen].acquire(tokens)
+        count=math.ceil((tokens+2)/2048)
         async with self.d_changed:
-            owner=self.d_affinity.get(session)
-            if owner is not None and count>self.admission[owner].blocks:
-                raise ValueError("Request exceeds sticky D owner KV budget")
-            def eligible():
-                owner=self.d_affinity.get(session)
-                return [i for i,a in enumerate(self.admission)
-                        if (owner is None or i==owner) and a.slots>0 and a.free>=count]
-            await self.d_changed.wait_for(eligible)
-            chosen=min(eligible(),key=lambda i:(-self.admission[i].free,
-                self.admission[i].seats-self.admission[i].slots))
-            if session not in self.d_affinity:
-                with self.directory.transaction() as db:
-                    db.execute("INSERT INTO rank_placements(session,d_owner) VALUES(?,?) "
-                               "ON CONFLICT(session) DO UPDATE SET d_owner=excluded.d_owner",(session,chosen))
-                self.d_affinity[session]=chosen
-            a=self.admission[chosen];a.free-=count;a.slots-=1
+            a=self.admission[chosen]
+            await self.d_changed.wait_for(lambda:a.slots>0 and a.free>=count)
+            a.free-=count;a.slots-=1
             return chosen,count
 
     async def release_d(self,index,count):
@@ -239,6 +246,7 @@ class Coordinator:
         if (not isinstance(session,str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}",session)
                 or not isinstance(prompt,list) or not prompt or any(type(t) is not int or not 0<=t<248320 for t in prompt)
                 or type(n) is not int or not 1<=n<=context_limit() or len(prompt)+n>context_limit()):raise ValueError("Invalid request")
+        submitted=time.perf_counter()
         if session in self.inflight:
             generated=self.generated[session]
             if not generated.done():raise Conflict("Session already generating")
@@ -249,7 +257,12 @@ class Coordinator:
             if session in self.inflight:raise Conflict("Session admission raced")
         # Outputs may already be delivered while their State commit still owns
         # a permit. Backpressure ingress, not device cadence, at the fixed bound.
+        session_ready=time.perf_counter()
         await self.request_slots.acquire()
+        admitted=time.perf_counter()
+        if self.trace:self.trace(dict(op="ingress-admitted",session=session,
+            start=submitted,end=admitted,session_commit_wait=session_ready-submitted,
+            permit_wait=admitted-session_ready,inflight=len(self.inflight)))
         try:
             if self.failure:raise RuntimeError(self.failure)
             if session in self.inflight:raise Conflict("Session admission raced")
@@ -303,10 +316,15 @@ class Coordinator:
                 token_ids=tokens[len(prompt):],full_tokens=tokens,cached=cached,
                 seconds=time.perf_counter()-started))
         try:
-            # Bound complete D footprint before creating source work. P workers
-            # remain shared; independent owners and in-flight turns are online.
-            if n>1:owner,reserved=await self.acquire_d(session,len(prompt)+n)
+            # Routing fixes the host-cache destination, not a device reservation.
+            # The bounded ingress permit owns the queued checkpoint until commit;
+            # State pools separately bound actual bytes. P does not wait for D.
+            if n>1:owner=self.route_d(session,len(prompt)+n)
             p_instance,p_reserved=await self.acquire_p(session,len(prompt)+1)
+            p_admitted=time.perf_counter()
+            if self.trace:self.trace(dict(op="owner-admitted",session=session,owner=owner,
+                p_instance=p_instance,start=started,end=p_admitted,
+                p_wait=p_admitted-started))
             if self.failure:raise RuntimeError(self.failure)
             try:self.directory.create(session,IDENTITY,"P")
             except sqlite3.IntegrityError:pass
@@ -323,7 +341,12 @@ class Coordinator:
                     # to overwrite immutable versions of the old prefix.
                     salt="online:"+uuid.uuid4().hex
             if lease.base and "cp" in locals() and prompt[:len(cp["tokens"])]==cp["tokens"]:salt=cp["salt"]
+            p_generate_start=time.perf_counter()
             value=await generate(self.p,p_instance,owner=0,tokens=prompt,salt=salt,n=1)
+            if self.trace:self.trace(dict(op="P-first-token",session=session,
+                instance=p_instance,start=p_generate_start,end=time.perf_counter(),
+                prior_state_seconds=p_generate_start-p_admitted,
+                prompt_tokens=len(prompt),cached=value["cached"]))
             tokens=value["full_tokens"];prompt_cached=value["cached"]
             if n==1:output_complete(tokens,prompt_cached)
             save_args={"peer_group":self.d_affinity.get(session) if n==1 else owner} if self.rank_private else {}
@@ -333,6 +356,10 @@ class Coordinator:
             self.directory.publish(lease,manifest,"P" if n==1 else f"D{owner}")
             await self.release_p(p_instance,p_reserved);p_instance=None
             if n>1:
+                queued=time.perf_counter()
+                owner,reserved=await self.acquire_d(session,len(prompt)+n)
+                if self.trace:self.trace(dict(op="D-queue-admitted",session=session,
+                    owner=owner,start=queued,end=time.perf_counter()))
                 retired.append(manifest)
                 lease=self.directory.claim(session,f"D{owner}",IDENTITY)
                 loaded=await self.load("D",owner,cp)

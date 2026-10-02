@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 import asyncio
 import pytest
 from online_coordinator import Admission
@@ -124,7 +125,6 @@ def test_prefill_admission_uses_available_pages_not_four_request_cap(tmp_path):
 
 def test_owner_admission_lock_does_not_cover_transfer_completion(tmp_path):
     from online_coordinator import Coordinator
-    from types import SimpleNamespace
     async def run():
         c=Coordinator(tmp_path/"d.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
         release=asyncio.Event();both=asyncio.Event();waiting=[];number=0
@@ -262,4 +262,46 @@ def test_cancelled_ingress_wait_does_not_leak_or_create_state(tmp_path):
         c.failure="failed closed"
         retry=asyncio.create_task(c.submit("retry",[1],1))
         with pytest.raises(RuntimeError,match="failed closed"):await retry
+    asyncio.run(run())
+
+
+def test_routing_does_not_reserve_or_wait_for_device_capacity(tmp_path):
+    from online_coordinator import Coordinator
+    c=Coordinator(tmp_path/"route.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+    c.admission=[Admission(100,1) for _ in range(4)]
+    for a in c.admission:a.slots=0;a.free=0
+    owners=[c.route_d(f"s{i}",4096) for i in range(8)]
+    assert owners==[0,1,2,3,0,1,2,3]
+    assert all(a.slots==0 and a.free==0 for a in c.admission)
+    assert c.route_d("s0",4096)==0
+
+
+def test_prefill_finishes_and_releases_p_before_waiting_for_d(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"queue.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        c.rank_private=True
+        for a in c.admission:a.slots=0
+        saved=asyncio.Event()
+        class Peer:
+            async def rpc(self,instance,op,**args):
+                assert op=="generate"
+                return dict(full_tokens=args["tokens"]+[7],cached=0)
+        c.p=Peer()
+        async def save(kind,index,tokens,salt,**kwargs):
+            assert kind=="P" and kwargs["peer_group"]==c.d_affinity["queued"]
+            saved.set()
+            return "manifest",dict(tokens=tokens,salt=salt,key="key"),{}
+        c.save=save
+        loop=asyncio.get_running_loop()
+        future=loop.create_future();generated=loop.create_future()
+        task=asyncio.create_task(c.turn("queued",[1,2],2,future,generated,None))
+        await asyncio.wait_for(saved.wait(),1)
+        await asyncio.sleep(0)
+        assert not task.done() and not generated.done()
+        assert all(a.slots==16 for a in c.p_admission)
+        assert all(a.slots==0 and a.free==a.blocks for a in c.admission)
+        # Stop the test at the queued boundary without fabricating a D result.
+        task.cancel()
+        await task
     asyncio.run(run())
