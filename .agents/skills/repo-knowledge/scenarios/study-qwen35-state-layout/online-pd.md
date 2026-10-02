@@ -252,3 +252,58 @@ copied, not approximated from histogram bins. Plan arrival-gate-0.05-160.json
 uses8 sessions, constant0.05 sessions/s,160s, codex gaps, seed20261002.
 The profile's first-output gaps are synthetic completion-relative waits, not
 measured user think time. Large datasets and profiles stay outside Git.
+
+## Real online replay and object-service CPU bottleneck — 2026-10-02
+
+fd8ea9b (online-stream-v1-source), byte audit ON: the4-owner1K/64-output
+cold/warm lifecycle gate passed in34.313s. The official SWE arrival gate
+(rate0.05,160s,8 sessions) is valid:32 requests,0 failures,0 missed due,
+27 completed inside window plus5 drained. Window output46.30625 tokens/s
+across16 chips, TTFT P953.360s. This low-offer audited run is qualification,
+not a saturated throughput claim.
+
+2018d7b (online-stream-v2-source) moves PUT body receipt outside Store locking,
+with4 admitted bodies, audit OFF. Frozen rate0.2/300s plan: valid,60 new
+sessions,142 requests,0 failures/missed due;93 completed in window,49 drained;
+wall443.661s, window output63.07667 tokens/s total, TTFT P9546.648s.
+This is an overloaded diagnostic point, not acceptable-latency goodput.
+An artifact SCP overlapped the early window; do not claim a clean A/B speedup.
+Partial/drain phase receipts showed P-store median8.15s and D-store7.15s,
+versus P-load1.58s and D-load2.26s. Device request supply was sparse while
+many controller requests queued. A10s late-drain NIC sample is NOT a link
+ceiling (the two host samples were sequential).
+
+probe_online_objects.py isolates CPU Store/HTTP/network from model/DMA.
+Against the live v2 nodes,80MiB random opaque objects:
+local PUT0.498s/GET0.367s, peer PUT0.512s/GET0.410s.
+Four concurrent objects: local PUT180.5MiB/s, peer166.9MiB/s;
+GET262.4/271.4MiB/s. Each object has unique content to avoid dedup hits.
+They remain bounded LRU probe entries, not session checkpoints.
+
+The standalone object-cpu-stage-probe used a separate1GiB Mooncake fixture
+on explicit loopback55051 (closed afterward). Three80MiB direct Objects writes:
+0.229/0.234/0.234s, Store calls only0.068/0.076/0.065s.
+Reads0.239/0.223/0.218s, Store calls0.062/0.070/0.066s.
+cProfile totals: SHA2560.655s of1.334s, byte joins0.129s, write slicing/glue0.140s.
+This establishes unnecessary CPU serialization in the prototype, not a
+physical network limit or a Mooncake native throughput ceiling.
+
+548396a (online-stream-v3-source) prepares hashes/chunks outside the Store
+lock, serializes collision check plus commit, snapshots immutable bytes under
+the lock then assembles/verifies outside. Full-object SHA256 still validates
+all bytes/order; redundant per-chunk rehash on GET is removed. Four bounded
+download permits cover actual response sending, not only response creation.
+Object CPU tests8 pass including concurrent HTTP byte equality, conflicting
+versions, post-snapshot Store mutation, and failed publication. The wider
+preceding stream/idle/controller suite passed22 before the final HTTP fixture.
+The v3 real workload comparison is pending; do not infer a throughput gain
+from the design or CPU fixtures.
+
+Runtime evidence: stream-v2-object-probe.json, object-cpu-stage-probe/,
+hw86-online-stream-v{1,2}-{front,timing}, and /workspace/swe-workloads/
+stream-v1-gate and stream-v2-rate0.2. v3 services and same rate0.2 plan are
+launched by start-online-stream-v3.py; model/kernel capsules remain unchanged.
+The95MiB accepted source pool, empirical profile, plans and v1/v2 replay
+artifacts are archived outside Git. Node object service currently shares
+lifetime with the model host; CPU endpoint edits require expensive model
+restarts. This is iteration friction, not a reason to hot-patch live workers.
