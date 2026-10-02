@@ -13,8 +13,8 @@ async def run(args):
     with (args.output/"control-events.jsonl").open("w") as trace:
         def record(event):trace.write(json.dumps(event)+"\n");trace.flush()
         c=Coordinator(args.output/"directory.db",args.p,args.d,trace=record)
-        await c.start()
         try:
+            await c.start()
             names=[];counts=[0]*4
             for i in range(10000):
                 name=f"{args.label}-{i}";owner=owner_for(name)

@@ -218,3 +218,36 @@ Startup reservation discriminator and opt-in arena:
   P4GiB/rank for functional LRU qualification only. All16 early reservations
   succeeded. This is NOT the requested production DRAM budget or a peak
   throughput baseline; service readiness/model/pressure gates are still pending.
+
+## Native LRU qualification — October3
+
+online-rank-v28-gate-v1 completed successfully in65.174s with native capsule
+2e4e3cd, controller3e89a6b plus startup-cleanup-only probe edit. Both hosts use
+MTP2, D C48/R56/44GiB HBM, D24GiB private arena/rank; P4GiB/rank deliberately
+forces pressure. All16 native State audits were enabled.128 sessions at4K/128
+outputs followed by128 continuations of8 outputs: exact output counts, D cache
+handoff checks, post-H2D byte audits and sticky placements all pass. This is
+not a model-output identity comparison against unsegmented prefill.
+
+Automatic LRU performed240 evictions before cleanup;16 sessions remained cached.
+All128 continuations missed the host cache under the deliberate cyclic pressure
+and still completed. Peak State transactions P groups3/4/4/3, D groups3/3/3/3.
+Rank arena peak use0.725–0.835GiB. Explicit retirement of the gate's own sessions
+then returned all16 pool bytes/checkpoint counts and arena used bytes to0.
+
+Live frame sizes: resident95,608,332B, FA page23,071,424B, max_transfers20.
+Controller limits P1,062,377,676B/group and D18,242,246,860B/group conservatively
+include old-worker audit-scratch overlap and operating fragmentation headroom.
+Do not call the65s gate a throughput result or this P budget production-qualified.
+
+Artifacts: /workspace/betterscale-pd-runtime/online-rank-v28-gate-v1/
+(summary.json, control-events.jsonl, retired-memory.json), v28 health/launch/logs.
+The first v28-gate attempt omitted client BETTERSCALE_PD_CONTEXT=262144 and was
+rejected before model requests; use the v1 result. Probe startup now closes its
+client/controller even when that qualification check fails.
+
+After the gate, hw81 NUMA2 order9+ free supply measured13.23GiB while its4GiB
+arena was still reserved (online-rank-v28-P-buddy-after-gate.json). Capacity is
+time-dependent; the earlier7.35GiB is not a permanent quota. A smaller explicitly
+bounded full-context qualification can proceed, but target80%-DRAM reservation
+still needs physical-capacity repair/qualification rather than logical promises.
