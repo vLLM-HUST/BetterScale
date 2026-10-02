@@ -1411,3 +1411,23 @@ NOT pressure LRU or a production miss/recompute solution. Before/after reset,
 memory and audit-disabled receipts use online-rank-v17-* runtime paths.
 v17 runs real SWE1.0/300 with C32/R40/44GiB and256 client connections,
 unchanged P C16/R20/24.25GiB, object audit off and D host timing on.
+
+
+v17 actual SWE1.0/300 is VALID:1742 requests,1621 in-window/121 drain,
+zero failures/misses,402.124s wall,1633.8233 total output tokens/s,
+window TTFT P951.71698s. Client connection wait zero, dispatch P952.07ms.
+All-request post-P D admission P952.797s, P admission2.47ms, P compute432ms.
+This is not C32 saturation: no full32 waves, worker maxima20..27.
+First-minute mean live rows~1.4–1.5; final-minute measured owners~13–20.
+Whole-window mean~6.4–8.1 includes intentional arrival ramp/waiting pool.
+Host dispatch median37–40ms/P9590–95ms includes idle gaps and changing demand;
+do not reinterpret as full-row device latency. Before claiming a wider execution
+gain, increase offered load. v18 preserves the same nodes/controller, uses a fresh
+database and empty rank pools (native idle checkpoint retirement), then runs
+2 new sessions/s for240s from480 distinct pool trajectories, connections256.
+
+89cf440 also removes the next source-level160-RPC actor ceiling for future
+wider nodes. Both pipe ends derive max(160,2*sum(native max_requests)+32)
+from the native capacity receipt, leaving execution and State admission independent.
+24 actor/controller CPU tests pass, including320 held callers plus control and
+rejection at the finite derived bound. This change is not in live v15 D nodes.
