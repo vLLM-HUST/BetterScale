@@ -1355,3 +1355,10 @@ native CPU fixture's missing cache_actions=None (object.__new__ fixture had
 skipped this existing constructor field). Five isolated capacity cases cover
 16..80 graph keys, complete per-row CP partitioning, padding and resident
 defaults; these are not substitutes for full-row device/cold/warm gates.
+
+v14 C32/R40/44GiB reaches model/graph setup but fails backend construction:
+RankReplicaReceiver explicitly admits max_pending<=20; tying that independent
+transport limit to E+4 supplied36. Keep State max_pending20, separate from
+execution/residency, rather than silently widening transfer admission. v14 is
+FAILED startup, not a C32 numerical/throughput gate. The next candidate changes
+only this configuration back to the already-qualified transport bound.

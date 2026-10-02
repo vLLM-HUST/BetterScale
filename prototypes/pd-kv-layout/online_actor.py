@@ -43,7 +43,7 @@ def options(kind,instance):
                  disable_log_stats=True)
     value["additional_config"].update(state_cache_host_bytes=128<<30,
         state_cache_incremental=True,state_cache_control_rpc=True,state_cache_policy=False,
-        state_cache_max_pending=max(20,EXECUTION+4),pd_mtp=os.environ.get("BETTERSCALE_PD_MTP")=="1")
+        state_cache_max_pending=20,pd_mtp=os.environ.get("BETTERSCALE_PD_MTP")=="1")
     if kind=="D":
         seats=int(os.environ.get("BETTERSCALE_PD_D_RESIDENT_SEATS",str(max(20,EXECUTION+4))))
         if not max(20,EXECUTION)<=seats<=96:
