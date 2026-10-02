@@ -10,6 +10,10 @@ from collections import OrderedDict
 from dataclasses import dataclass
 
 
+class HostCapacityError(ValueError):
+    """Request cannot fit even a cold turn; no numerical writer was admitted."""
+
+
 def page_count(tokens):
     return (tokens-2+2048)//2048
 
@@ -58,9 +62,11 @@ class HostCache:
                         raise ValueError("host admission requires empty, physically reserved rank pools")
                     shape=(geometry["resident_frame_bytes"],geometry["page_frame_bytes"])
                     shapes.add(shape)
-                    # Audit restore uses one scratch object per active transfer.
-                    # Keep that independent of the persistent checkpoint ledger.
-                    scratch=geometry["max_transfers"]*((max(shape)+63)//64*64)
+                    # Older qualified workers retain the preceding scratch
+                    # until the next allocation: one resident then page frames.
+                    # Cover that overlap too, independently of persistent State.
+                    resident,page=((n+63)//64*64 for n in shape)
+                    scratch=geometry["max_transfers"]*max(resident+page,2*page)
                     # Operational fragmentation headroom, not a mathematical
                     # guarantee for an arbitrary variable-size arena workload.
                     budget=arena["reserved_bytes"]*4//5-scratch
@@ -102,6 +108,8 @@ class HostCache:
     async def acquire(self,session,prompt,n):
         owners=(("P",self.c.p_affinity[session]),)
         if session in self.c.d_affinity:owners+=(("D",self.c.d_affinity[session]),)
+        if any(self.peak(None,prompt,n)>self.limits[o] for o in owners):
+            raise HostCapacityError("one turn exceeds reserved host-cache capacity")
         while True:
             self.changed.clear()
             if self.c.failure:raise RuntimeError(self.c.failure)
@@ -116,7 +124,7 @@ class HostCache:
                 self.entries[session]=Entry(owners,entry.checkpoint if entry else {},peak,True)
                 return
             if entry is None and any(peak>self.limits[o] for o in owners):
-                raise ValueError("one turn exceeds reserved host-cache capacity")
+                raise HostCapacityError("one turn exceeds reserved host-cache capacity")
             # A queued host waiter has not claimed a numerical writer or P seat.
             # It may lose an idle cache copy and then prefill its complete prompt.
             victim=next((s for s,e in self.entries.items()

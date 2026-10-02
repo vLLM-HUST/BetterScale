@@ -84,6 +84,10 @@ class RankStateTransport:
                             wait=self.submit(desc,True,stream);wait_copy("audit",wait)
                             actual=hashlib.sha256((ctypes.c_uint8*plan.byte_length).from_address(scratch.pointer)).digest()
                             if actual!=expected:raise RuntimeError("post-H2D rank State mismatch")
+                            # Audit DMA is complete. Do not keep the prior
+                            # object's scratch alive across the next allocation.
+                            scratch=None
+                            del buffer
                         lease.close()
                     moved+=plan.payload_bytes
                 except BaseException:

@@ -14,6 +14,7 @@ from naive_pd_coordinator import Peer,owner_for
 from online_objects import PeerObjectSink
 from session import Directory,Conflict
 from pd_limits import context_limit
+from online_host_cache import HostCapacityError
 
 IDENTITY="qwen35-online-target-v2"
 
@@ -498,6 +499,12 @@ class Coordinator:
                 start=started,end=time.perf_counter(),events=events))
             if not future.done():future.set_result(dict(session=session,owner=owner,
                 token_ids=tokens[len(prompt):],full_tokens=tokens,trace=events,seconds=time.perf_counter()-started))
+        except HostCapacityError as error:
+            # Host admission precedes every numerical lease and device permit.
+            # An oversized request is not an uncertain transfer/node failure.
+            for f in (future,generated):
+                if not f.done():f.set_exception(error)
+            if self.trace:self.trace(dict(op="host-cache-rejected",session=session,error=str(error)))
         except BaseException as error:
             self.fail_closed(error)
         finally:

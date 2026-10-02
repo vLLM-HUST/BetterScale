@@ -203,3 +203,18 @@ Startup reservation discriminator and opt-in arena:
   online_probe --require-host-evictions checks automatic LRU activity, while
   --retire-all retires only its known fixture sessions and verifies all16 rank
   pool/arena usage returns to0. Neither option qualifies peak performance.
+
+- A follow-on audit-lifetime check found Python retained the prior scratch buffer
+  while allocating the next page frame. Successful audits now release it
+  immediately after the completion/hash fence; failed/uncertain copies still
+  quarantine their buffers. The controller conservatively budgets the old
+  resident-to-page/page-to-page overlap too, so older qualified worker capsules
+  remain covered.72 targeted tests pass.
+- An oversized cold turn is now a request-local HostCapacityError before any
+  numerical writer or device permit, not a reason to kill unrelated sessions.
+  It is checked before evicting cached State. Such rejected workload requests
+  still invalidate an end-to-end benchmark; never hide them in a throughput rate.
+- online-rank-v28 native capsule2e4e3cd deliberately reserves D24GiB/rank and
+  P4GiB/rank for functional LRU qualification only. All16 early reservations
+  succeeded. This is NOT the requested production DRAM budget or a peak
+  throughput baseline; service readiness/model/pressure gates are still pending.

@@ -133,3 +133,19 @@ def test_eviction_started_while_ingress_waits_is_also_fenced(tmp_path):
         assert await evict and await submit
         await c.close()
     asyncio.run(run())
+
+
+def test_oversized_host_admission_rejects_only_that_request(tmp_path):
+    from online_host_cache import HostCapacityError
+    from types import SimpleNamespace
+    async def run():
+        c,_,_=fixture(tmp_path)
+        async def acquire(*args):raise HostCapacityError("test capacity")
+        c.host_cache=SimpleNamespace(acquire=acquire,changed=asyncio.Event())
+        with pytest.raises(HostCapacityError):
+            await c.submit("s",[1,2],2)
+        await asyncio.sleep(0)
+        assert c.failure is None and not c.inflight and not c.host_waiters
+        assert c.request_slots._value==128
+        await c.close()
+    asyncio.run(run())

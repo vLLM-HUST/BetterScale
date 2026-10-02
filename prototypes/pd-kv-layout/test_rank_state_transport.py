@@ -70,3 +70,18 @@ def test_partial_enqueue_failure_keeps_source_reader_pinned():
     t.release("A")
     with pytest.raises(RuntimeError):pool.close()
     assert pool.objects[t.object_id("a")].readers==1
+
+
+def test_completed_audit_scratch_is_not_held_into_next_object_allocation():
+    import weakref
+    states,pool,t,select=setup()
+    t.transfer("A",states,{"a":select(0),"b":select(1)},store=True,stream=None).result()
+    refs=[weakref.ref(item.buffer) for item in pool.objects.values()]
+    allocate=pool.allocate
+    def bounded(size):
+        assert sum(ref() is not None for ref in refs)==2
+        result=allocate(size);refs.append(weakref.ref(result));return result
+    pool.allocate=bounded
+    t.transfer("A",states,{"a":select(2),"b":select(3)},store=False,stream=None).result()
+    assert sum(ref() is not None for ref in refs)==2
+    t.release("A");pool.close()
