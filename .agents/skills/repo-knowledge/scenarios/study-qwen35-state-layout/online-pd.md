@@ -1244,3 +1244,58 @@ Only that selected token advances the frontier; bulk/unknown draft cases still
 invalidate.26 resident/frontier and D-policy CPU tests pass. v9 was stopped after
 the stable stall, before warm or256K phases; preserve it as FAILED qualification.
 Hardware verification of the paired role/frontier interpretation remains pending.
+
+### MTP v10 qualified envelope and ingress pressure (2026-10-03 CST)
+
+beb9c43 source plus --mtp overlays on online-v2 capsules passes v10 gate1:
+16 concurrent4K sessions128+8 outputs, TP byte audits and exact262144 context,
+61.830s. A separate16-session cold/warm code-retrieval oracle reproduces all
+expected five-digit codes; not a general numerical parity claim. D-only graph
+capture reports0.42GiB/rank. After gates D freeHBM24.291–24.318GiB/rank;
+P only0.954–0.998GiB. Larger D budgets must remain role-local.
+
+rank-v10-rate1.0 is VALID: fixed300sessions/300s,1666 requests,1506 completed
+within window and160 drained, zero failures/missed due requests; wall408.441s.
+Window output1512.8533tokens/s total16chips (94.5533/chip including P).
+Window-completed-request TTFTP95=11.5914s; all1666 including drain has a higher
+tail and is a different denominator. All trajectories remain incomplete by
+the finite-window dispatch policy, not failed requests.
+
+The client connection queue P95 is2.0723s; individual worst TTFT requests
+exceed20s even with zero connection wait. D actor-to-coordinator per-request
+return P95 values have median11.86ms and95th-percentile19.27ms, not seconds.
+Source acquires a D seat/page reservation BEFORE P admission/computation.
+Existing traces cannot separate D admission from P admission/compute exactly.
+Do not label this an ingress CPU bottleneck or a proved D-seat bottleneck yet.
+A frontend-only diagnostic adds session-commit/global-permit, D/P admission,
+and P-generation timestamps, with16 coordinator tests passing; v10 model and
+State capacities remain unchanged for the replay.
+
+Fletcher authorizes raising D resident seats and execution concurrency under
+State budget and roughly50ms step, rather than treating E16/R20 as a ceiling.
+Candidate role-local D budget and configurable R20..80 are source-only; E16
+metadata/graph/native-kernel boundaries still require coherent extension.
+Capacity work is temporarily deferred to isolate the TTFT cause first.
+
+The diagnostic repeat rank-v10-ingress-rate1.0 is VALID:1653 requests,
+1495 in-window/158 drained, zero failures/misses,1493.25total tokens/s,
+window TTFTP95=11.6127s, wall411.681s. Across all admitted requests,
+D pre-reservation wait P95=11.459s/max18.076s; P admission P95~1ms;
+P generation P95=.362s, pre-generation State work P95=.772s;
+global permit wait P95=1.224s, same-session commit wait P95=0.
+These stage percentiles are not additive and include the drain population.
+This isolates a dominant scheduling wait, not ingress CPU exhaustion.
+
+Fletcher corrected the contract: P calculation must not acquire D device
+resources. cf8397a separates route_d (sticky host-cache destination, no State
+seat/page decrement) from acquire_d after P checkpoint publication and release.
+The bounded128 in-flight transactions also bound queued handoffs; rank pools
+retain independent byte budgets. Queue state is a committed host checkpoint,
+not a D device seat. D resources are acquired just before load/generate.
+18 coordinator tests include all-D-full routing without resource decrements
+and P completing/releasing while D admission is blocked. The frontend-only
+v11 uses cf8397a with unchanged beb9c43 worker capsules/E16/R20/24.25GiB.
+16-way4K/128+8 concurrent cold/warm gate passes8.933s (audit remains off).
+The same1.0/300 replay is running; no improved throughput claim yet.
+Check D first-token gap and queue wait as well as TTFT: earlier P first-token
+delivery alone does not prove higher service throughput or lower total latency.
