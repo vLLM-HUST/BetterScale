@@ -225,13 +225,23 @@ class Coordinator:
         with self.directory.transaction() as db:
             db.execute("DELETE FROM rank_manifests WHERE id=?",(manifest,))
 
-    async def save(self,kind,index,tokens,salt,*,peer_group=None):
+    async def save(self,kind,index,tokens,salt,*,peer_group=None,on_device_released=None):
         async with self.maintenance[kind,index]:
             key=uuid.uuid4().hex
             command=dict(kind="store_match",tokens=tokens,salt=salt,key=key)
             if self.rank_private:command["peer_group"]=peer_group
             op=await self.prepare(kind,index,command)
         receipt=await self.cache(kind,index,dict(kind="wait",operation=op))
+        # Full TP store completion is a conservative device-release fence.
+        # Manifest publication, peer metadata adoption and old-version retirement
+        # own host references, not D execution permits. Do not hold those permits
+        # through unrelated metadata queues. A later local-staging receipt can
+        # move this fence earlier without weakening checkpoint commit semantics.
+        if on_device_released is not None:
+            if (receipt.get("kind")!="store" or receipt.get("cancelled")
+                    or receipt.get("ranks")!=[0,1]):
+                raise RuntimeError("Missing successful TP store-release quorum")
+            await on_device_released()
         checkpoint=await self.cache(kind,index,dict(kind="describe",key=key))
         data=json.dumps(checkpoint,separators=(",",":")).encode()
         manifest=hashlib.sha256(data).hexdigest()
@@ -375,7 +385,14 @@ class Coordinator:
                 tokens=value["full_tokens"]
                 output_complete(tokens,prompt_cached)
                 save_args={"peer_group":self.p_affinity[session]} if self.rank_private else {}
-                manifest,cp,saved=await self.save("D",owner,tokens,salt,**save_args)
+                async def release_device():
+                    nonlocal reserved
+                    await self.release_d(owner,reserved)
+                    reserved=None
+                    if self.trace:self.trace(dict(op="D-device-released",session=session,
+                        owner=owner,end=time.perf_counter(),fence="TP-store-committed"))
+                manifest,cp,saved=await self.save("D",owner,tokens,salt,
+                    on_device_released=release_device,**save_args)
                 self.directory.publish(lease,manifest,"P")
                 events.append(dict(stage="D",owner=owner,cached=value["cached"],load=loaded,
                     save=saved,request_id=value["request_id"],actor_start_ns=value["start_ns"],arrivals=value["arrivals"],elapsed=time.perf_counter()-started))

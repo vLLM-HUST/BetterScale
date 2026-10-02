@@ -350,3 +350,50 @@ def test_full_128_generation_connections_do_not_starve_state_control(tmp_path,mo
             await asyncio.gather(*tasks,return_exceptions=True)
             await c.close();await runner.cleanup()
     asyncio.run(run())
+
+
+
+def test_store_releases_device_before_manifest_work_but_not_before_quorum(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"device-release.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        committed=asyncio.Event();metadata=asyncio.Event();released=[]
+        async def prepare(kind,index,command):return 7
+        async def cache(kind,index,command):
+            if command["kind"]=="wait":
+                await committed.wait()
+                return dict(kind="store",cancelled=False,ranks=[0,1])
+            assert command["kind"]=="describe"
+            assert released==["device"]
+            await metadata.wait()
+            return dict(key="key",tokens=[1,2],salt="s")
+        class Sink:
+            def put(self,*args):pass
+        c.prepare=prepare;c.cache=cache;c.sink=Sink()
+        async def release():released.append("device")
+        task=asyncio.create_task(c.save("D",0,[1,2],"s",on_device_released=release))
+        await asyncio.sleep(0)
+        assert not released
+        committed.set()
+        await asyncio.sleep(0)
+        assert released==["device"] and not task.done()
+        metadata.set();await task
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("receipt",[
+    dict(kind="store",cancelled=False,ranks=[0]),
+    dict(kind="store",cancelled=True,ranks=[0,1]),
+    dict(kind="load",cancelled=False,ranks=[0,1]),
+])
+def test_missing_store_quorum_keeps_device_permit(tmp_path,receipt):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"no-release.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        async def prepare(*args):return 1
+        async def cache(*args):return receipt
+        async def release():raise AssertionError("must not release")
+        c.prepare=prepare;c.cache=cache
+        with pytest.raises(RuntimeError,match="quorum"):
+            await c.save("D",0,[1,2],"s",on_device_released=release)
+    asyncio.run(run())
