@@ -1,5 +1,8 @@
 # Study native Qwen3.5 state layout
 
+For **incremental cache integration and cadence-independent online PD**, read
+[online-pd.md](online-pd.md) before reusing the older idle-gated path.
+
 For **dual-host P4 / DP4TP2EP8 PD and the 256K follow-on**, read
 [dual-host-pd.md](dual-host-pd.md) first.
 

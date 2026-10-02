@@ -12,7 +12,7 @@ import struct
 
 import torch
 
-from .host_state import HostStateKey
+from .host_state import HostStateKey, TorchHostStateBackend
 from .page_state import PageStateStore
 
 
@@ -119,6 +119,10 @@ class ObjectStateTransport:
         self.sink, self.namespace = sink, namespace
         self.verify = verify
         self.staging = PageStateStore(memory_budget_bytes=staging_bytes)
+        # PageStateStore._CopyBackend deliberately has no per-object event: its
+        # batch wrapper supplies that event. Standalone restore/audit must use
+        # the ordinary backend, whose handle owns a real completion event.
+        self.restore_backend = TorchHostStateBackend(memory_budget_bytes=staging_bytes)
         self.quarantined = []
 
     def object_id(self, identity):
@@ -156,18 +160,18 @@ class ObjectStateTransport:
                         self.staging.release(local)
                     else:
                         data = self.sink.get(remote)
-                        decode_snapshot(data, self.staging.backend, local, states, selection)
-                        transfer = self.staging.backend.restore(states, local, selection, stream=stream)
+                        decode_snapshot(data, self.restore_backend, local, states, selection)
+                        transfer = self.restore_backend.restore(states, local, selection, stream=stream)
                         transfer.result()
                         moved += transfer.byte_length
-                        self.staging.backend.release(local)
+                        self.restore_backend.release(local)
                         if self.verify:
-                            audit = self.staging.backend.offload(states, local, selection, stream=stream)
+                            audit = self.restore_backend.offload(states, local, selection, stream=stream)
                             audit.result()
-                            actual = encode_snapshot(self.staging.backend._snapshots[local])
+                            actual = encode_snapshot(self.restore_backend._snapshots[local])
                             if actual != data:
                                 raise RuntimeError("Post-H2D State object byte mismatch")
-                            self.staging.backend.release(local)
+                            self.restore_backend.release(local)
                 except BaseException:
                     # Leave uncertain storage reachable through this transport.
                     # The caller fails its TP receipt and retains device pins.

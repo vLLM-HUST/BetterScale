@@ -54,3 +54,20 @@ def test_failed_publication_retains_staging_not_success():
     with pytest.raises(IOError):
         backend.transfer(HostStateKey("A",1),states,{"a":select(0)},store=True,stream=None).result()
     assert backend.quarantined and backend.staging.committed_bytes==16
+
+
+def test_standalone_restore_and_audit_wait_for_their_own_events(monkeypatch):
+    states,t,select=fixture();sink=Sink();transport=ObjectStateTransport(sink,"model/head0",verify=True)
+    transport.transfer(HostStateKey("A",1),states,{"a":select(0)},store=True,stream=None).result()
+    expected=t[0].clone();t[3].zero_();waits=[]
+    backend=transport.restore_backend
+    original=backend._enqueue_copies
+    class Deferred:
+        def __init__(self,copy):self.copy=copy
+        def synchronize(self):waits.append(True);self.copy()
+    def enqueue(lanes,payloads,*,to_host,stream):
+        return Deferred(lambda:original(lanes,payloads,to_host=to_host))
+    monkeypatch.setattr(backend,"_copy_lanes",enqueue)
+    transport.transfer(HostStateKey("A",1),states,{"a":select(3)},store=False,stream=None).result()
+    assert torch.equal(t[3],expected) and len(waits)==2
+    assert backend.committed_bytes==0 and not backend._inflight
