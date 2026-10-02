@@ -307,3 +307,68 @@ The95MiB accepted source pool, empirical profile, plans and v1/v2 replay
 artifacts are archived outside Git. Node object service currently shares
 lifetime with the model host; CPU endpoint edits require expensive model
 restarts. This is iteration friction, not a reason to hot-patch live workers.
+
+## Lossless resident-wire candidate and audit switching — 2026-10-02
+
+The v3 rate0.2/300s replay is valid:60 sessions,173 requests,0 failures/missed
+due,131 completed in window and42 drained; wall400.817s. Output98.65 tokens/s
+total across16 chips, TTFT P9529.359s. This improves the preceding diagnostic
+point but remains queue-heavy; neither point establishes acceptable-latency
+production goodput or a repeated A/B effect size.
+
+The same opaque80MiB object probe on v3 shows four-way local/peer PUT201.8/
+227.8MiB/s, GET515.0/527.1MiB/s. Single local/peer PUT0.538/0.490s,
+GET0.279/0.332s. Removing CPU work from Store locking helps concurrent reads
+especially; do not claim the memory/network hardware limit from this wrapper.
+
+A sampled real committed resident object in that v3 replay is95,608,332 bytes
+(63 lanes: target GDN and controls). Zstd level1 gives30,167,980 bytes in
+0.117s, decode0.143s, exact bytes; zlib1 takes1.679s to encode, so is rejected.
+A20,974,006-byte dense page shrinks only to16,540,219 with zstd, costing about
+0.059s each direction; dense compression is not selected. These are bounded
+single-object observations, not a universal compression ratio. Original State
+bytes were not archived; immutable object keys and conditions are recorded in
+stream-v3-lossless-probe.json. In this target-only baseline many candidate
+lanes are zero; do not extrapolate this gain to active MTP.
+
+Use the established python-zstandard binding rather than importing a large
+Arrow dependency or maintaining custom C bindings. Pinned0.25.0, BSD-3-Clause,
+installed ONLY in /workspace/pd-kv-layout-results/store-cpu-venv on both hosts.
+The cp312 manylinux2014_aarch64 wheel is5,063,012 bytes; its PyPI SHA256 is
+6dffecc361d079bb48d7caef5d673c88c8988d3d33fb74ab95b7ee6da42652ea.
+The wheel and receipt are backed up locally; model Python/pins/kernels were
+not replaced. requirements-wire.txt is an optional prototype dependency list.
+Primary references: [release](https://pypi.org/project/zstandard/0.25.0/) and
+[decoder contracts](https://python-zstandard.readthedocs.io/en/latest/decompressor.html).
+
+online_codec.ResidentWireSink wraps the existing sink without changing State
+lanes, checkpoint/DMA fences, or ObjectStateTransport. Only objects>=64MiB that
+shrink to<=60% are encoded; dense pages remain raw. Standard Zstd frames carry
+content size and checksum. Each call has a separate codec context (not shared
+across threads). Before decompression, validate embedded content/window size,
+no dictionary, checksum, and wire budget; reject trailing frames/bytes.
+max_output_size alone is not the known-content-size allocation boundary.
+CPU tests cover exact compressed/raw roundtrips, corruption/truncation,
+oversized/unknown frames, trailing data, and opaque replica repair. The actual
+Python binding reproduces the real resident sample exactly:30,167,984 bytes
+with checksum, encode0.124s/decode0.126s (stream-v3-resident-wire-codec.json).
+
+Set BETTERSCALE_PD_COMPRESS_RESIDENT=1 for the optional path. Its namespace is
+qwen35-target-state-v3-zstd-resident/tp2/headN, distinct from raw producers.
+Node readiness advertises state_wire; Coordinator rejects a P/D mismatch.
+Reported CacheActions transfer_bytes remain logical DMA bytes, not compressed
+network bytes. This optimization reduces CPU Store/wire work, not PCIe copies.
+
+d79dd4c is frozen as online-stream-v4-source. Both nodes launch with compression
+and byte audit ON. start-online-stream-v4.py first runs the4-owner1K/64 cold/
+warm gate. Only after it passes does a private audit RPC disable verification.
+The setter rejects any in-flight worker I/O, never launches a model wave, and
+collects all16 rank receipts (previous=True,enabled=False) before starting the
+unaudited rate0.2 run. This avoids reloading16 models just to switch an audit.
+The hardware/compressed workload result is still pending here.
+
+The v4 frontend also retains output-ready and checkpoint-committed boundaries.
+D-stream-return measures actor-yield to coordinator callback only when D and
+frontend share the explicit bind address; no cross-host monotonic comparison.
+It is return-path latency, not device cadence. Actor arrivals remain in committed
+turn receipts for joining the native Core/worker observer where useful.
