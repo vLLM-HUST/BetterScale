@@ -28,6 +28,7 @@ class Objects:
         # Bound received bodies independently of Store serialization. Slow
         # upload sockets must not lock out unrelated completed-page GET/HEAD.
         self.uploads=asyncio.Semaphore(4)
+        self.downloads=asyncio.Semaphore(4)
 
     def inspect(self,key):
         raw=self.store.get("online-manifest:"+identity(key))
@@ -39,36 +40,56 @@ class Objects:
             if self.store.get_size(name)!=n: raise KeyError(key)
         return manifest
 
-    def read(self,key):
+    def read_parts(self,key):
+        # Caller serializes Store access. Returned bytes are detached from Store
+        # lifetime, so assembly/integrity work needs no Store lock.
         manifest=self.inspect(key);chunks=[]
         for name,n in manifest["chunks"]:
             data=self.store.get(name)
             if not isinstance(data,bytes) or len(data)!=n:raise KeyError(key)
-            if name!="online-chunk:"+hashlib.sha256(data).hexdigest():raise ValueError("Object chunk corrupted")
             chunks.append(data)
+        return manifest,chunks
+
+    @staticmethod
+    def assemble(parts):
+        manifest,chunks=parts
         data=b"".join(chunks)
+        # One full-object digest covers every byte and its order. Rehashing
+        # every chunk here duplicates this check without stronger integrity.
         if hashlib.sha256(data).hexdigest()!=manifest["digest"]:raise ValueError("Object corrupted")
         return data
 
-    def write(self,key,data):
+    def read(self,key):
+        return self.assemble(self.read_parts(key))
+
+    @staticmethod
+    def prepare_write(key,data):
         identity(key)
         if not 0<len(data)<=LIMIT:raise ValueError("Object too large")
-        digest=hashlib.sha256(data).hexdigest()
-        # Existing logical identity is immutable even if its chunks were evicted.
-        old=self.store.get("online-manifest:"+key)
-        if isinstance(old,bytes) and old and json.loads(old)["digest"]!=digest:
-            raise ValueError("Immutable State version collision")
-        chunks=[]
+        digest=hashlib.sha256(data).hexdigest();chunks=[]
         for begin in range(0,len(data),CHUNK):
-            chunk=data[begin:begin+CHUNK];name="online-chunk:"+hashlib.sha256(chunk).hexdigest()
+            chunk=data[begin:begin+CHUNK]
+            chunks.append(("online-chunk:"+hashlib.sha256(chunk).hexdigest(),chunk))
+        manifest=json.dumps(dict(size=len(data),digest=digest,
+            chunks=[(name,len(chunk)) for name,chunk in chunks])).encode()
+        return chunks,manifest,dict(bytes=len(data),digest=digest)
+
+    def commit_write(self,key,prepared):
+        chunks,manifest,receipt=prepared
+        # Identity check and all Store mutations remain one serialized commit.
+        old=self.store.get("online-manifest:"+key)
+        if isinstance(old,bytes) and old and json.loads(old)["digest"]!=receipt["digest"]:
+            raise ValueError("Immutable State version collision")
+        for name,chunk in chunks:
             if self.store.get_size(name)!=len(chunk):
                 rc=self.store.put(name,chunk)
                 if rc!=0:raise RuntimeError(f"Object put failed: {rc}")
-            chunks.append((name,len(chunk)))
-        manifest=json.dumps(dict(size=len(data),digest=digest,chunks=chunks)).encode()
         rc=self.store.put("online-manifest:"+key,manifest)
         if rc!=0:raise RuntimeError(f"Manifest put failed: {rc}")
-        return dict(bytes=len(data),digest=digest)
+        return receipt
+
+    def write(self,key,data):
+        return self.commit_write(key,self.prepare_write(key,data))
 
     async def route(self,request):
         key=request.match_info["key"]
@@ -77,15 +98,22 @@ class Objects:
             if request.method=="PUT":
                 async with self.uploads:
                     data=await request.read()
+                    prepared=await asyncio.to_thread(self.prepare_write,key,data)
                     async with self.lock:
-                        receipt=await asyncio.to_thread(self.write,key,data)
+                        receipt=await asyncio.to_thread(self.commit_write,key,prepared)
                 return web.json_response(receipt)
-            async with self.lock:
-                if request.method=="HEAD":
-                    await asyncio.to_thread(self.inspect,key)
-                    return web.Response()
-                data=await asyncio.to_thread(self.read,key)
-                return web.Response(body=data,content_type="application/octet-stream")
+            if request.method=="HEAD":
+                async with self.lock:await asyncio.to_thread(self.inspect,key)
+                return web.Response()
+            async with self.downloads:
+                async with self.lock:
+                    parts=await asyncio.to_thread(self.read_parts,key)
+                data=await asyncio.to_thread(self.assemble,parts)
+                response=web.StreamResponse(headers={"Content-Type":"application/octet-stream",
+                    "Content-Length":str(len(data))})
+                await response.prepare(request)
+                await response.write(data);await response.write_eof()
+                return response
         except KeyError:
             raise web.HTTPNotFound()
         except ValueError as exc:

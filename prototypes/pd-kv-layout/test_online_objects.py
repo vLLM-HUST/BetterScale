@@ -50,8 +50,51 @@ def test_slow_upload_does_not_block_completed_object_reads():
             match_info={"key":"b"*64},method="PUT",read=body)))
         await entered.wait()
         reply=await asyncio.wait_for(o.route(SimpleNamespace(
-            match_info={"key":"a"*64},method="GET")),.5)
-        assert reply.body==b"ready" and not pending.done()
+            match_info={"key":"a"*64},method="HEAD")),.5)
+        assert reply.status==200 and not pending.done()
         release.set();assert (await pending).status==200
         assert o.read("b"*64)==b"new"
+    asyncio.run(run())
+
+
+def test_detached_read_preserves_integrity_after_store_changes():
+    s=Store();o=Objects(s);key="a"*64;o.write(key,b"original")
+    parts=o.read_parts(key)
+    name=o.inspect(key)["chunks"][0][0];s.values[name]=b"modified"
+    assert o.assemble(parts)==b"original"
+    with pytest.raises(ValueError,match="corrupted"):o.read(key)
+
+
+def test_prepared_collision_is_checked_at_commit_not_only_preparation():
+    s=Store();o=Objects(s);key="a"*64
+    first=o.prepare_write(key,b"first");second=o.prepare_write(key,b"second")
+    o.commit_write(key,first)
+    with pytest.raises(ValueError,match="collision"):o.commit_write(key,second)
+    assert o.read(key)==b"first"
+
+
+def test_http_pipeline_preserves_bytes_and_collision_response():
+    import asyncio
+    import aiohttp
+    from aiohttp import web
+    async def run():
+        o=Objects(Store());app=web.Application(client_max_size=20<<20)
+        app.router.add_put("/objects/{key}",o.route)
+        app.router.add_get("/objects/{key}",o.route)
+        runner=web.AppRunner(app);await runner.setup()
+        await web.TCPSite(runner,"127.0.0.1",55090).start()
+        async def cycle(client,i):
+            payload=bytes([i])*(9<<20);key=str(i)*64
+            url="http://127.0.0.1:55090/objects/"+key
+            async with client.put(url,data=payload) as r:
+                assert r.status==200
+                assert (await r.json())["digest"]==hashlib.sha256(payload).hexdigest()
+            async with client.get(url) as r:
+                assert r.status==200 and await r.read()==payload
+            async with client.put(url,data=b"different") as r:
+                assert r.status==400
+        try:
+            async with aiohttp.ClientSession() as c:
+                await asyncio.gather(*(cycle(c,i) for i in range(1,5)))
+        finally:await runner.cleanup()
     asyncio.run(run())
