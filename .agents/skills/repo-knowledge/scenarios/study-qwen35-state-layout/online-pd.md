@@ -1301,3 +1301,15 @@ Check D first-token gap and queue wait as well as TTFT: earlier P first-token
 delivery alone does not prove higher service throughput or lower total latency.
 
 The first v11 full replay is INVALID at152.5s:575completed/26failed,153sessions. D first failure is aclrtMallocHostWithCfg207001 in PID3995840, propagated from State cache completion; later Gloo disconnects are consequential. This reused the v10 worker processes after two300-session replays plus gates, retaining previous sessions. Do not attribute this to queue semantics or claim a throughput improvement. Clean-process v12 reruns cf8397a with identical v10 numerical capsules/E16/R20/24.25GiB and audit off, isolating accumulated cache residency. The latest-checkpoint pressure-LRU gap remains real; fresh-run isolation is not a production fix.
+
+Fletcher's cache policy correction: keep rank-private NUMA-local pinned pools;
+do NOT add an intermediate pageable-DRAM tier. Target aggregate pinned-cache
+budget is80% of available machine DRAM, apportioned by actual NUMA capacity
+with system/transfer reserve. Disk capacity is insufficient here, so disk
+writeback is deferred. This is target policy, not a successful pin-capacity
+qualification. Current runtime still caps each rank at128GiB logical payload,
+and Torch pinned bucket reservation can exceed payload. LRU must preserve
+readers/writers/DMA lifetimes; evicting the last cached checkpoint without disk
+requires a real miss/re-prefill path, never a dangling manifest hit.
+The v11 failure plog identifies a128MiB allocation, drvRetCode6, drvDevId0.
+That alone does not establish total DRAM exhaustion or an immutable pin limit.
