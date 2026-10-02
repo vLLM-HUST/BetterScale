@@ -568,3 +568,51 @@ def test_new_p_route_balances_host_seats_and_pages_without_reserving(tmp_path):
     assert c.route_p("idle",4096)==0  # Host still decides with equal compute.
     with pytest.raises(ValueError,match="P KV budget"):
         c.route_p("oversized",2048*101)
+
+
+def test_committed_future_before_cleanup_callback_accepts_successor(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"callback.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        second=asyncio.Event();finish=asyncio.Event();old=[];new=[]
+        async def turn(session,prompt,n,future,generated,on_tokens):
+            if len(prompt)==1:
+                old.append(future);generated.set_result("first");future.set_result("first")
+                # No event-loop yield since commit: cleanup is only scheduled.
+                assert await c.submit(session,[1,2],1,output_ready=True)=="second"
+                assert c.inflight[session] is new[0]
+                assert c.request_slots._value==127
+                c.release_completed(session,old[0])  # A late callback is harmless.
+                assert c.inflight[session] is new[0] and c.request_slots._value==127
+                second.set()
+            else:
+                new.append(future);generated.set_result("second")
+                await finish.wait();future.set_result("second")
+        c.turn=turn
+        assert await c.submit("s",[1],1,output_ready=True)=="first"
+        await asyncio.wait_for(second.wait(),1)
+        finish.set();await asyncio.gather(*c.tasks);await asyncio.sleep(0)
+        assert not c.inflight and not c.generated and c.request_slots._value==128
+    asyncio.run(run())
+
+
+def test_two_successors_waiting_one_commit_cannot_both_claim(tmp_path):
+    from online_coordinator import Coordinator,Conflict
+    async def run():
+        c=Coordinator(tmp_path/"successors.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        finish=asyncio.Event();release=asyncio.Event();started=[]
+        async def turn(session,prompt,n,future,generated,on_tokens):
+            started.append(prompt);generated.set_result(len(prompt))
+            await (finish if len(prompt)==1 else release).wait()
+            future.set_result(len(prompt))
+        c.turn=turn
+        assert await c.submit("s",[1],1,output_ready=True)==1
+        a=asyncio.create_task(c.submit("s",[1,2],1,output_ready=True))
+        b=asyncio.create_task(c.submit("s",[1,3],1,output_ready=True))
+        await asyncio.sleep(0);finish.set()
+        results=await asyncio.gather(a,b,return_exceptions=True)
+        assert sum(isinstance(x,Conflict) for x in results)==1
+        assert sum(x==2 for x in results)==1 and len(started)==2
+        release.set();await asyncio.gather(*c.tasks);await asyncio.sleep(0)
+        assert not c.inflight and c.request_slots._value==128
+    asyncio.run(run())

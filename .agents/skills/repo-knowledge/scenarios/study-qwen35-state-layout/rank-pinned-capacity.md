@@ -360,3 +360,34 @@ Artifacts: online-rank-v31-gate/, online-rank-v31-analysis.json and
 from378c85d only in knowledge. v31 native endpoints can be reused only after
 all old Directory manifests are explicitly retired with both TP quorums and
 all16 rank counters reach0; a new empty frontend is not cache cleanup.
+
+
+## v32 invalid: settled-request callback race
+
+The9ff8865 controller passed a32-session cold/continuation gate (12.546s,
+byte audits on, all16 pools retired), then real SWE failed one request at227.5s:
+Conflict: Session admission raced.2188 other requests committed normally;
+frontend stayed healthy. v32 is INVALID, no headline throughput/TTFT result.
+This is a coordinator lifecycle race, not a State-byte mismatch or permission
+for more numerical error. A completed commit Future can remain in inflight
+until its scheduled done callback runs. Awaiting an already-done Future does
+not yield, so an immediate successor was falsely rejected.
+
+release_completed now removes/releases only when the map still holds that
+exact Future. Both the completion callback and the successor invoke this
+idempotently. A late old callback cannot erase the new writer or release its
+permit. Deterministic regression reproduces the exact old Conflict against
+9ff8865, passes on the fix, and a second test ensures two simultaneous
+successors still cannot both claim.101 coordinator/ledger/retirement/wiring
+CPU tests pass. Real workload requalification remains required.
+
+retire_online_cache.py avoids repeated full-model reloads between controller-only
+experiments: STOP the matching frontend, pass its existing output directory
+(frontend DB is sessions.sqlite, unlike online_probe's directory.db), preserve
+its controller lock and normal two-replica/TP drop fences, then require all16
+rank pool/arena bytes/checkpoints to reach0. It refuses missing DBs, unfinished
+owners and a live controller lock (three CPU safety tests). Never invent an
+empty Directory to attach to populated pools or drop arbitrary worker keys.
+An initial hand-written cleanup mistakenly opened directory.db and retired
+nothing; the residual-byte assertion caught it. Correct existing sessions.sqlite
+retirement then removed276 v31 cache entries and verified all16 pools empty.

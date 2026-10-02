@@ -355,6 +355,16 @@ class Coordinator:
             await asyncio.to_thread(self.sink.put,manifest,data)
         return manifest,checkpoint,receipt
 
+    def release_completed(self,session,future):
+        """Retire one settled request, even before its scheduled callback runs."""
+        if not future.done():raise RuntimeError("cannot release an unsettled request")
+        # An old callback must not remove its successor or release its permit.
+        if self.inflight.get(session) is future:
+            self.inflight.pop(session);self.generated.pop(session,None)
+            self.request_slots.release()
+            if self.host_cache:self.host_cache.changed.set()
+        if not future.cancelled():future.exception()
+
     async def submit(self,session,prompt,n,*,on_tokens=None,output_ready=False):
         if self.failure:raise RuntimeError(self.failure)
         if (not isinstance(session,str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}",session)
@@ -367,7 +377,9 @@ class Coordinator:
             if not generated.done():raise Conflict("Session already generating")
             # A completed response may be followed immediately by another turn.
             # Wait only this session's commit, never the global DP wave.
-            await asyncio.shield(self.inflight[session])
+            previous=self.inflight[session]
+            await asyncio.shield(previous)
+            self.release_completed(session,previous)
             if self.failure:raise RuntimeError(self.failure)
             if session in self.inflight:raise Conflict("Session admission raced")
         # Outputs may already be delivered while their State commit still owns
@@ -386,12 +398,7 @@ class Coordinator:
             future=asyncio.get_running_loop().create_future();self.inflight[session]=future
             generated=asyncio.get_running_loop().create_future();self.generated[session]=generated
             generated.add_done_callback(lambda value:None if value.cancelled() else value.exception())
-            def done(value):
-                self.inflight.pop(session,None);self.generated.pop(session,None)
-                self.request_slots.release()
-                if self.host_cache:self.host_cache.changed.set()
-                if not value.cancelled():value.exception()
-            future.add_done_callback(done)
+            future.add_done_callback(lambda value:self.release_completed(session,value))
             task=asyncio.create_task(self.turn(session,list(prompt),n,future,generated,on_tokens));self.tasks.add(task)
             task.add_done_callback(self.tasks.discard)
         except BaseException:
