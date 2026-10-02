@@ -74,3 +74,15 @@ def test_listener_preflight_rejects_ephemeral_overlap_before_model_start(monkeyp
     import pytest
     with pytest.raises(ValueError,match="ephemeral"):
         preflight("127.0.0.1")
+
+
+def test_preflight_import_does_not_need_model_package():
+    import subprocess
+    import sys
+    from pathlib import Path
+    folder=str(Path(__file__).parent)
+    code=("import sys; sys.path.insert(0,"+repr(folder)+"); "
+          "from rank_peer_control import preflight; "
+          "assert 'betterscale' not in sys.modules; "
+          "assert 'torch' not in sys.modules")
+    subprocess.run([sys.executable,"-I","-c",code],check=True)

@@ -2,12 +2,12 @@
 import json
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from threading import BoundedSemaphore,Thread
-from betterscale.live.runtime.host_state import HostStateKey
 
 LIMIT=64<<10
 
 
 def checkpoint(value):
+    from betterscale.live.runtime.host_state import HostStateKey
     if (not isinstance(value,list) or len(value)!=2 or not isinstance(value[0],str)
             or not 1<=len(value[0])<=128 or type(value[1]) is not int or value[1]<1):
         raise ValueError("invalid checkpoint incarnation")
