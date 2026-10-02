@@ -391,3 +391,26 @@ empty Directory to attach to populated pools or drop arbitrary worker keys.
 An initial hand-written cleanup mistakenly opened directory.db and retired
 nothing; the residual-byte assertion caught it. Correct existing sessions.sqlite
 retirement then removed276 v31 cache entries and verified all16 pools empty.
+
+
+## v33 callback fix passes real SWE; routing is not a peak claim
+
+Native378c85d/v31 endpoints, controller84d233f, unchanged P32/32/12/48 and
+D32GiB arenas, C48/R56/44GiB/MTP2. v33 SWE2/s240s VALID:2345 requests,
+2122 window/223 drained,0 failures/misses and2345 State commits.2450.80 tokens/s
+aggregate; TTFT P95 5.928s; last60s D yield4044.35/s,2.826 accepted/chunk.
+P per-group permit wait P95 3.29/5.78/.000033/1.08s, compared with v31's
+6.37/.99/.00043/10.05s. Large-pool skew is reduced, not eliminated; host-byte
+admission P95 2.808s and541 evictions. Do not claim a stable overall latency
+improvement over v31 (4.932s TTFT). Native cadence remains unprofiled/unresolved.
+The fixture regression fails against old9ff8865 with exactly Session admission
+raced, while the fix's101 focused tests pass. No sleeps or relaxed ownership.
+
+retire_online_cache.py exercised against v32 and v33 stopped frontends:
+260 and250 cached sessions retired respectively; all16 pools/arenas reach0.
+The native endpoints were safely reused for a v34 profiled4/s240s pressure run,
+frozen1024 pool/plan,1024 client connections to avoid the previous512 transport
+queue becoming the first bottleneck. Same source/budgets; D-only8s capture
+scheduled near190s. Its result is pending and will be labeled profiler-perturbed.
+Artifacts remain online-rank-v33-analysis.json, online-rank-v33-retired-memory.json
+and /workspace/swe-workloads/rank-v33-rate2.0/; v32's invalid result is retained.
