@@ -302,3 +302,29 @@ GiB by node0..7 was27.46,44.76,4.66,107.70,13.66,74.28,75.02,60.93 while
 12GiB/node remained reserved. Thus the bounded next candidate32/32/12/48 uses
 available NUMA capacity without retrying the weak node2 at24/48GiB. Physical
 availability is time-dependent; stop on startup failure rather than fallback.
+
+
+## Unequal P pools, native gate and SWE — v30
+
+Native/controller378c85d: P budgets32/32/12/48GiB per rank reserved successfully,
+D24GiB unchanged.256 cold4K turns +256 continuations +exact256K gate passed
+in121.277s,165 LRU evictions,128 continuation host hits; all16 pools retired to0.
+SWE2/s240s then completed VALID:2208 requests (1951 window/257 drained),
+0 failures/misses and2208 State commits,2172.05 aggregate accepted tokens/s,
+TTFT P95 14.174s. Host admission P95 fell22.12→4.563s;890 evictions and1109 P
+loads. All four D host ledgers now reach their17GiB operating ceiling. P peaks
+20.66/21.11/6.73/28.28GiB, below group limits. Last60s D mean rows13.47–18.46;
+host dispatch median50.37–50.95ms/P95 91.28–95.82ms, NOT device timings.
+owner-admitted duration includes earlier host admission and identifies both
+D owner and p_instance; do not mislabel it pure P permit wait or group by D
+owner to diagnose P skew. Full-session completion is not required by this
+bounded arrival plan: unfinished session chains after drain are expected;
+all requests actually submitted must succeed/commit.
+
+Artifacts: online-rank-v30-gate/, online-rank-v30-analysis.json,
+online-rank-v30-D-buddy.json under /workspace/betterscale-pd-runtime;
+/workspace/swe-workloads/rank-v30-rate2.0/. A next scalar D32GiB startup is
+bounded by measured minimum free order9+9.99GiB (node2) plus its existing24GiB
+reservation to be released. Other nodes have21.55–101.05GiB free order9+.
+This is a candidate, not yet a32GiB native capacity qualification. Keep P
+budgets and execution fixed for the comparison; do not infer80%-DRAM success.
