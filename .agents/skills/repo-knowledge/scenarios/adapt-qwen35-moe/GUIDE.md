@@ -517,3 +517,15 @@ stack name alone cannot diagnose MTP. Full-MTP9.1 remains a separate gate.
 Read the prototype's exact source boundaries before reconstructing the overlay;
 do not repeat the four failed historical-source startups or import the entire
 parent PD branch to obtain this small overlap patch.
+
+Follow-up owned-draft controls restore parent3e93c777's `draft_fia.py` only in
+the hw112 overlay: actual MTP and32 FULL captures execute, but exact cross-arm
+parity fails, and serial repeated C16 output also varies2/16. The four-request
+warm/cold/uninterrupted gate fails at suffix12 identically with MTP serial,
+MTP overlap **and target-only serial**; all three arms have identical IDs and
+selected-token logprobs on that probe. Warm=cold, not uninterrupted. Therefore
+this cannot be called an MTP-specific or overlap-caused continuity bug from
+these data. The previous target-only cross-arm gate remains a bounded pass,
+not independent continuation acceptance. See the prototype's failed receipts;
+do not publish its MTP throughput, weaken tolerances, or repeat the parent
+success claim on this different EP/historical-source composition.

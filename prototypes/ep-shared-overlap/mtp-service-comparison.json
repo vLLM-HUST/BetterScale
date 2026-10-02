@@ -1,0 +1,188 @@
+{
+  "parity_passed": false,
+  "scope": "TP2/EP2 MTP, short-prompt C16; not SWE, continuity or multi-DP qualification",
+  "numerical_checks": [
+    {
+      "file": "-qualification/case0.json",
+      "rows": 1,
+      "exact_rows": 1,
+      "first_differences": [
+        null
+      ],
+      "max_logprob_delta": 0.0
+    },
+    {
+      "file": "-qualification/case1.json",
+      "rows": 1,
+      "exact_rows": 0,
+      "first_differences": [
+        24
+      ],
+      "max_logprob_delta": null
+    },
+    {
+      "file": "-qualification/case2.json",
+      "rows": 1,
+      "exact_rows": 1,
+      "first_differences": [
+        null
+      ],
+      "max_logprob_delta": 0.0
+    },
+    {
+      "file": "-qualification/profile-batch.json",
+      "rows": 16,
+      "exact_rows": 16,
+      "first_differences": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "max_logprob_delta": null
+    },
+    {
+      "file": "-measure/repeat0.json",
+      "rows": 16,
+      "exact_rows": 16,
+      "first_differences": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "max_logprob_delta": null
+    },
+    {
+      "file": "-measure/repeat1.json",
+      "rows": 16,
+      "exact_rows": 14,
+      "first_differences": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        382,
+        382,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "max_logprob_delta": null
+    },
+    {
+      "file": "-measure/repeat2.json",
+      "rows": 16,
+      "exact_rows": 14,
+      "first_differences": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        382,
+        null,
+        null,
+        null,
+        null,
+        null,
+        503,
+        null,
+        null,
+        null,
+        null
+      ],
+      "max_logprob_delta": null
+    }
+  ],
+  "arms": [
+    {
+      "capsule": "/workspace/overlap-swe/ep-mtp-owned-serial1",
+      "samples": [
+        {
+          "repeat": 0,
+          "seconds": 5.66621842328459,
+          "output_tokens": 8192,
+          "output_tps": 1445.7614211157195,
+          "output_tps_per_chip": 722.8807105578597
+        },
+        {
+          "repeat": 1,
+          "seconds": 5.731301439926028,
+          "output_tokens": 8192,
+          "output_tps": 1429.3437687524129,
+          "output_tps_per_chip": 714.6718843762064
+        },
+        {
+          "repeat": 2,
+          "seconds": 5.533634005114436,
+          "output_tokens": 8192,
+          "output_tps": 1480.401485249762,
+          "output_tps_per_chip": 740.200742624881
+        }
+      ],
+      "median_output_tps": 1445.7614211157195,
+      "profile": []
+    },
+    {
+      "capsule": "/workspace/overlap-swe/ep-mtp-owned-early1",
+      "samples": [
+        {
+          "repeat": 0,
+          "seconds": 5.66248887963593,
+          "output_tokens": 8192,
+          "output_tps": 1446.7136579218686,
+          "output_tps_per_chip": 723.3568289609343
+        },
+        {
+          "repeat": 1,
+          "seconds": 5.606134514324367,
+          "output_tokens": 8192,
+          "output_tps": 1461.256411002702,
+          "output_tps_per_chip": 730.628205501351
+        },
+        {
+          "repeat": 2,
+          "seconds": 5.754468617960811,
+          "output_tokens": 8192,
+          "output_tps": 1423.5893083909054,
+          "output_tps_per_chip": 711.7946541954527
+        }
+      ],
+      "median_output_tps": 1446.7136579218686,
+      "profile": []
+    }
+  ],
+  "median_output_change_percent": 0.0658640348429218
+}

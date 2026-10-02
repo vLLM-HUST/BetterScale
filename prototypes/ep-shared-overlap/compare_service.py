@@ -9,6 +9,7 @@ p = argparse.ArgumentParser(description=__doc__)
 p.add_argument('reference', type=Path, help='Server capsule; sibling -qualification/-measure')
 p.add_argument('candidate', type=Path)
 p.add_argument('--output', type=Path, required=True)
+p.add_argument('--mtp', action='store_true', help='MTP arms: retain raw profiles; target-only graph selector does not apply')
 a = p.parse_args()
 
 
@@ -35,8 +36,9 @@ for suffix, names in [('-qualification', ['case0.json', 'case1.json', 'case2.jso
                   for v, w in zip(x['logprobs']['token_logprobs'],
                                   y['logprobs']['token_logprobs'])]
         checks.append(dict(file=suffix + '/' + name, rows=len(ref),
-                           exact_rows=sum(exact), max_logprob_delta=max(deltas, default=None)))
-        assert all(exact), checks[-1]
+                           exact_rows=sum(exact),
+                           first_differences=[next((i for i, (u, v) in enumerate(zip(x['token_ids'], y['token_ids'])) if u != v), None) for x, y in zip(ref, got)],
+                           max_logprob_delta=max(deltas, default=None) if all(exact) else None))
 
 
 def profile(root):
@@ -80,10 +82,12 @@ for root in (a.reference, a.candidate):
     samples = read(root, '-measure', 'summary.json')['samples']
     arms.append(dict(capsule=str(root), samples=samples,
         median_output_tps=statistics.median(s['output_tps'] for s in samples),
-        profile=profile(root)))
-result = dict(scope='TP2/EP2 target-only, short-prompt C16; not SWE, MTP or multi-DP qualification',
+        profile=[] if a.mtp else profile(root)))
+result = dict(parity_passed=all(c['rows'] == c['exact_rows'] for c in checks), scope=('TP2/EP2 MTP, short-prompt C16; not SWE, continuity or multi-DP qualification' if a.mtp else 'TP2/EP2 target-only, short-prompt C16; not SWE, MTP or multi-DP qualification'),
     numerical_checks=checks, arms=arms,
     median_output_change_percent=(arms[1]['median_output_tps']/arms[0]['median_output_tps'] - 1)*100)
 a.output.write_text(json.dumps(result, indent=2) + '\n')
 print(json.dumps(dict(numerical_checks=checks,
                      median_output_change_percent=result['median_output_change_percent'])))
+
+assert result['parity_passed'], 'Cross-arm token gate failed; diagnostic evidence retained in output'

@@ -230,3 +230,53 @@ this failure to shared experts; a full-MTP comparison requires a separately
 qualified draft baseline. The owned server exited and both devices are idle.
 The small `overlap-mtp-baseline-failure-20261003.tgz` companion local archive
 preserves the launch, actual response and complete failure stack.
+
+### Owned-draft control: execution restored, correctness still not qualified
+
+The next isolated overlay additionally replaces only
+`models/qwen35/draft_fia.py` with parent3e93c777's file. This is an explicit
+post-staging copy, **not** a change to the packaged mainline draft path or the
+previous target-only measurement. `ep-mtp-owned-{serial,early}1` both complete
+all three cold requests and the C16 profiling batch; actual serial counters are
+1448 draft steps,2896 proposals,2831 accepted tokens. Both capture32 FULL graphs.
+
+The exact cross-arm gate fails:4097-input case first differs at output24;
+serial ties comma/` string`, candidate prefers ` string` by0.25logit. C16 profile
+outputs16/16 match; the three timed batches match16/16,14/16,14/16. Critically,
+**serial versus itself** (identical prompts/fresh salts) also matches only14/16
+between batches0/1; early's batches0/2 match14/16. This proves baseline output
+variability exists; it does not prove that every cross-arm difference is harmless
+or exclude an additional overlap effect. The failed gate remains failed.
+`compare_service.py` now writes diagnostic evidence before rejecting parity;
+its existing target-only comparison still passes. MTP timings in the companion
+JSON are diagnostic only (median1445.76/1446.71 outputtokens/s), not a score.
+
+`continuation_service.py` is the parent's exact warm/cold/uninterrupted probe,
+with only the served model name and default port changed. Both MTP arms have
+identical IDs and selected-token logprobs on all four requests, but both fail
+the continuity invariant: warm=cold, while both differ from uninterrupted at
+suffix token12 (global76). Prefix64 matches; warm cached4475, cold cached0.
+There is no EOS among the first64 tokens. The warm branch prefers ` red` by6
+logits; uninterrupted ties ` text`/` red`. Do not label the full discrepancy
+proven benign rounding.
+
+A final same-overlay **target-only serial** control, `ep-target-continuity1`,
+has exactly the same IDs and selected-token logprobs on all four requests and
+fails the identical continuity check. Thus this observation is **not isolated
+to speculative execution or overlap**. It also does not invalidate the earlier
+cross-arm target-only parity: that was a different, explicitly bounded gate.
+The parent repository's passing no-EP target continuation cannot be silently
+substituted for this TP2/EP2/historical-source combination. Stop performance
+publication here until the baseline's continuation behavior is understood or
+an accepted baseline is supplied; no numerical guard/tolerance was weakened.
+
+For the future DP2/TP2 gate, preserve the native non-SP backend marker
+`all2all_backend=flashinfer_all2allv`. An explicit custom Worker skips the
+platform's auto-Worker fixup. The core `use_sequence_parallel_moe` predicate
+requires DP>1, so the absent marker does **not** explain this DP1 failure; do
+not "fix" or rerun DP1 merely on that hypothesis. It matters at the four-card
+boundary. No hw86/hw81 operation occurred.
+
+`overlap-mtp-controls-20261003.tgz` in the same local artifact directory preserves
+both MTP arms' raw/parsed profiles, all outputs and failures, the final target-only
+control and its exact overlay. These three services exited and the pair is idle.
