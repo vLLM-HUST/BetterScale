@@ -842,3 +842,15 @@ lifetime compatibility, not20GB/s, State-layout packing or live PD wiring.
 Remaining integration: State lanes into preallocated frames without byte
 serialization, separate rank staged/committed receipts, one node-wide DRAM
 cache/replica readiness, and bounded load-side native pointer ingress.
+
+
+native_state_frame.py is the next bounded packing primitive: only JSON metadata
+is serialized; typed State payload views point directly into the existing
+registered arena. Existing DMA descriptors scatter/gather physical rows into
+that frame, avoiding the full-payload encode/decode assembly. CPU tests verify
+mixed bool/BF16/FP32/I64, reordered rows, legacy wire decoder compatibility and
+pre-H2D metadata rejection. hw86-store-state-frame7 qualifies three native
+card0/Store roundtrips of the mixed-dtype498-byte frame, including unaligned
+lane offsets; all selected State bytes match. This tiny test proves addressing,
+NOT realistic State capacity, bandwidth, untargeted-row guards or live wiring.
+Source is a prototype; borrowed frame views must not outlive their arena lease.

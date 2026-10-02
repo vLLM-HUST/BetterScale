@@ -58,13 +58,62 @@ class NpuStageDriver:
             event.record(self.stream)
         return event
 
-    def produce(self, pointer, value): return self.copy(pointer,True,value)
-    def consume(self, pointer): return self.copy(pointer,False,0)
+    def produce(self, lease, value): return self.copy(lease.pointer,True,value)
+    def consume(self, lease): return self.copy(lease.pointer,False,0)
     def assert_value(self, value): assert bool((self.tensor.cpu() == value).all())
     def synchronize(self): self.stream.synchronize()
 
 
-def main(out, staging=False, npu=None):
+
+class NpuFrameDriver(NpuStageDriver):
+    """Mixed dtype / noncontiguous row State frames, not bandwidth measurement."""
+    def __init__(self, device):
+        super().__init__(device, 0)
+        from types import SimpleNamespace as S
+        from native_state_frame import FramePlan
+        torch = self.torch
+        self.states = []
+        for name,dtype,width in [("a",torch.bool,3),("b",torch.bfloat16,5),
+                                 ("c",torch.float32,7),("d",torch.int64,2)]:
+            tensor=torch.empty((4,width),dtype=dtype,device=f"npu:{device}")
+            state=S(tensor=tensor,storage_dtype=dtype,block_shape=(width,),
+                physical_blocks_per_logical_block=1,leading_physical_blocks=0,
+                logical_block_bytes=width*tensor.element_size())
+            self.states.append((name,state))
+        self.export = FramePlan.build([(n,s,(2,0)) for n,s in self.states])
+        self.restore = FramePlan.build([(n,s,(1,3)) for n,s in self.states])
+        self.size = self.export.byte_length
+
+    def produce(self, lease, value):
+        torch = self.torch
+        self.expected = {}
+        with torch.npu.stream(self.stream):
+            for name,state in self.states:
+                cpu=torch.arange(state.tensor.numel()).reshape(state.tensor.shape)+value
+                if state.storage_dtype == torch.bool: cpu=cpu%2
+                cpu=cpu.to(state.storage_dtype)
+                self.expected[name]=cpu[[2,0]].clone()
+                state.tensor.copy_(cpu)
+            args=self.export.copy_descriptors(lease,to_host=True)
+            torch.ops._C_ascend.swap_blocks_batch(*args,1)
+            event=torch.npu.Event();event.record(self.stream)
+        return event
+
+    def consume(self, lease):
+        torch = self.torch
+        with torch.npu.stream(self.stream):
+            for _,state in self.states:state.tensor.zero_()
+            args=self.restore.copy_descriptors(lease,to_host=False)
+            torch.ops._C_ascend.swap_blocks_batch(*args,0)
+            event=torch.npu.Event();event.record(self.stream)
+        return event
+
+    def assert_value(self, value):
+        for name,state in self.states:
+            assert self.torch.equal(state.tensor.cpu()[[1,3]],self.expected[name])
+
+
+def main(out, staging=False, npu=None, state_frame=False):
     out=Path(out)
     out.mkdir(exist_ok=False)
     with socket.socket() as reservation:reservation.bind(("127.0.0.1",55206))
@@ -113,7 +162,8 @@ def main(out, staging=False, npu=None):
                     from native_dram_staging import NativeDramStaging
                     size = 16 << 20
                     if npu is not None:
-                        driver = NpuStageDriver(npu, size)
+                        driver = NpuFrameDriver(npu) if state_frame else NpuStageDriver(npu, size)
+                        size = driver.size
                     arena = NativeDramStaging(dummy,slot_bytes=size,slots=2,
                                               allocator=MooncakeHostMemAllocator(),
                                               register_device=driver.register if driver else None,
@@ -122,7 +172,7 @@ def main(out, staging=False, npu=None):
                     for i in range(3):
                         lease = arena.acquire(size)
                         if driver:
-                            event = driver.produce(lease.pointer, 41+i)
+                            event = driver.produce(lease, 41+i)
                             lease.seal(event.synchronize)
                         else:
                             ctypes.memset(lease.pointer, 41+i, size)
@@ -137,9 +187,10 @@ def main(out, staging=False, npu=None):
                         rc = dummy.get_into("direct-stage-"+str(i), reader.pointer, size)
                         get_seconds = time.perf_counter()-start
                         assert rc == size, rc
-                        assert ctypes.string_at(reader.pointer, size) == bytes([41+i])*size
+                        if not state_frame:
+                            assert ctypes.string_at(reader.pointer, size) == bytes([41+i])*size
                         if driver:
-                            event = driver.consume(reader.pointer)
+                            event = driver.consume(reader)
                             reader.seal(event.synchronize)
                             driver.assert_value(41+i)
                         else:
@@ -148,7 +199,7 @@ def main(out, staging=False, npu=None):
                         cycles.append(dict(put_seconds=put_seconds,get_seconds=get_seconds))
                     staging_result = dict(exact=True,cycles=cycles,mapping=mapping_for(arena.base),
                                           fixed_reused_buffer=True,bytes=size,arena_bytes=arena.total_bytes,
-                                          device=npu,npu_roundtrip_exact=driver is not None)
+                                          device=npu,npu_roundtrip_exact=driver is not None,state_frame=state_frame)
                     arena.close()
                 result=dict(scope="native shared-cache/read and optional shared staging; no model or throughput qualification",
                             exact=True,reads=observations,staging=staging_result)
@@ -172,6 +223,8 @@ if __name__=="__main__":
     parser.add_argument("--output",required=True,type=Path)
     parser.add_argument("--staging",action="store_true")
     parser.add_argument("--npu",type=int)
+    parser.add_argument("--state-frame",action="store_true")
     args=parser.parse_args()
     if args.npu is not None and not args.staging:parser.error("--npu requires --staging")
-    main(args.output,args.staging,args.npu)
+    if args.state_frame and args.npu is None:parser.error("--state-frame requires --npu")
+    main(args.output,args.staging,args.npu,args.state_frame)
