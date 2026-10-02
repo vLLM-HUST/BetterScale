@@ -1145,3 +1145,15 @@ D-only graph opt-in and --mtp capsule overlay (state_address/draft_fia), retaini
 P-side draft-prefix computation for a correct first baseline. This is not yet
 hardware-qualified and is not the eventual P-no-drafter optimization. The next
 GC pressure gate still runs target-only with mixed graph policy unchanged.
+
+A bounded real pinned-allocator GC gate (rank-pinned-gc-gate.json/.py in runtime,
+hw86 device0/NUMA6) cycles1000 unique96MiB resident versions beside one20MiB
+referenced page. All resident allocations reuse one address; logical pool remains
+20MiB, then zero after final drop. Allocator allocated_bytes.current remains
+160MiB (power-of-two buckets), then zero after host_empty_cache. In this no-DMA
+gate, active_bytes.current instead accumulates to134251282432 and does not reset
+on empty_cache despite physical address reuse and two actual host allocations.
+Treat that active counter as unreliable physical residency evidence for this
+lifecycle; retain allocated_bytes/counts plus pool refs/address evidence. The
+counter's exact runtime accounting cause is unresolved. This gate qualifies
+bounded allocator reuse, NOT concurrent model/TE/DMA pressure or the prior OOM.
