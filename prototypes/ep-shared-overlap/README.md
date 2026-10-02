@@ -219,3 +219,14 @@ contains the final executed overlay/native payload, raw/parsed profiles, actual
 responses, manifests, scripts and failed-run logs (no model weights/venv/cache).
 Two existing adapter/config CPU regression tests pass on the staged pinned
 runtime; new comparator has been exercised on both real retained capsules.
+
+A final **MTP-enabled serial control**, `ep-mtp-serial3`, uses the same repaired
+target overlay with only the target-only cut removed.257+64 passes;4097 fails
+specifically in `llm_base_proposer._propose → run_draft → draft_fia.Runnable`,
+native FIA `fd=1 blocks=9 cap=3 q=[1,3] kv=[4097,0]`. Unlike the earlier ambiguous
+wrapper stack, this is direct evidence of the remaining historical draft-route
+migration gap. Overlap is disabled. Do not weaken the FD/grid guard or attribute
+this failure to shared experts; a full-MTP comparison requires a separately
+qualified draft baseline. The owned server exited and both devices are idle.
+The small `overlap-mtp-baseline-failure-20261003.tgz` companion local archive
+preserves the launch, actual response and complete failure stack.
