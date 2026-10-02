@@ -47,6 +47,7 @@ def analyze(timing,control,*,start=None,end=None):
             host_dispatch_interval_ms=quantiles([(b-a)/1e6 for a,b in zip(begins,begins[1:])]))
     groups=defaultdict(list);transfer=defaultdict(list);seen=set()
     counts=Counter();request_phases=defaultdict(list);host_peaks=defaultdict(int)
+    host_end={};p_waits=defaultdict(list);sender_tokens=sender_chunks=0
     if control:
         for x in records(control):
             op=x.get("op");counts[op]+=1
@@ -57,7 +58,21 @@ def analyze(timing,control,*,start=None,end=None):
                 for field in ("session_commit_wait","permit_wait"):
                     request_phases[field].append(x[field])
             if op=="host-cache-admitted":
+                host_end[x["session"]]=x["end"]
                 for owner,used in x["used"].items():host_peaks[owner]=max(host_peaks[owner],used)
+            if op=="owner-admitted" and "p_instance" in x:
+                prior=host_end.pop(x["session"],None)
+                wait=x.get("p_permit_wait")
+                if wait is None and prior is not None:wait=x["end"]-prior
+                if wait is not None:p_waits[x["p_instance"]].append(wait)
+            if op=="turn-committed" and start is not None and end is not None:
+                for event in x["events"]:
+                    if event["stage"]!="D":continue
+                    previous=0
+                    for count,now in event["arrivals"]:
+                        delta=count-previous;previous=count
+                        if start<=now/1e9<end:
+                            sender_tokens+=delta;sender_chunks+=delta>0
             if op=="cache-control":
                 groups[x["kind"]+"-"+x["action"]].append(x["end"]-x["start"])
                 receipt=x.get("receipt") or {}
@@ -67,6 +82,13 @@ def analyze(timing,control,*,start=None,end=None):
                     for rank,values in receipt.get("transfer_phases_per_rank",{}).items():
                         for phase,seconds in values.items():
                             transfer[x["kind"]+"-"+receipt["kind"]+":"+phase].append(seconds)
+    result["p_permit_wait_seconds_by_instance"]={k:quantiles(v) for k,v in p_waits.items()}
+    if start is not None and end is not None:
+        if end<=start:raise ValueError("positive measurement window required")
+        result["sender_window"]=dict(accepted_tokens=sender_tokens,
+            tokens_per_second=sender_tokens/(end-start),
+            accepted_per_positive_chunk=sender_tokens/sender_chunks if sender_chunks else None,
+            scope="D actor yield timestamps in worker window, not client goodput or device cadence; requires committed/drained cohort")
     result["control_counts"]=dict(counts)
     result["request_phase_seconds"]={k:quantiles(v) for k,v in request_phases.items()}
     result["host_reservation_peak_bytes"]=dict(host_peaks)

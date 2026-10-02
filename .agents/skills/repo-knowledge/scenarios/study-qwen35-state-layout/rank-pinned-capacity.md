@@ -328,3 +328,35 @@ bounded by measured minimum free order9+9.99GiB (node2) plus its existing24GiB
 reservation to be released. Other nodes have21.55–101.05GiB free order9+.
 This is a candidate, not yet a32GiB native capacity qualification. Keep P
 budgets and execution fixed for the comparison; do not infer80%-DRAM success.
+
+
+## D32GiB qualification and remaining P placement skew — v31
+
+Same378c85d native capsule, scalar D32GiB and unchanged P32/32/12/48 all
+reserved.128 cold/continuation gate with byte audits passed35.244s, all16
+pools retired to0. Full256K geometry was unchanged and already gated in v30.
+SWE2/s240s VALID:2312 requests (2101 window/211 drained),0 failures/misses,
+all2312 commits.2366.65 aggregate tokens/s; TTFT P95 4.932s; host admission P95
+1.263s;482 evictions. Last60s D actor-yield throughput4106.57 tokens/s,
+accepted2.825 per positive chunk. Host dispatch mean rows18.81–20.49,
+median46.85–48.31ms/P95 84.73–92.00ms, still NOT device-step measurements.
+Both P and D ledgers reach their respective operating limits. Node2 physical
+scarcity still precludes describing this as80% DRAM capacity.
+
+P-only permit wait must subtract host admission, group by p_instance not owner.
+v31 P0/P1/P2/P3 turn counts637/611/270/794 and wait P95 6.37/.99/.00043/10.05s.
+v30 showed the same skew:588/602/233/785 turns,11.26/7.64/.00036/18.53s.
+Host-only normalized placement sends more work to larger pools despite equal
+P compute capacity. The next controller candidate chooses new P sessions by
+max(host occupancy, projected seat occupancy, projected device-page occupancy),
+retaining sticky placement and reserving no resources during routing.99 CPU
+coordinator/ledger/wiring/retirement tests pass; performance effect pending.
+The analyzer now reports P-only wait separately and counts accepted D yield
+deltas in the explicit window, without calling those client goodput or native
+cadence. Native profile remains necessary for the<50ms device-step objective.
+
+Artifacts: online-rank-v31-gate/, online-rank-v31-analysis.json and
+/workspace/swe-workloads/rank-v31-rate2.0/. Controller source800f1e9 differs
+from378c85d only in knowledge. v31 native endpoints can be reused only after
+all old Directory manifests are explicitly retired with both TP quorums and
+all16 rank counters reach0; a new empty frontend is not cache cleanup.

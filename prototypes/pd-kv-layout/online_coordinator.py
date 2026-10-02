@@ -130,8 +130,16 @@ class Coordinator:
         count=math.ceil((tokens+2)/2048)
         choices=[i for i,a in enumerate(self.p_admission) if a.blocks>=count]
         if not choices:raise ValueError("Request exceeds P KV budget")
-        chosen=min(choices,key=lambda i:(self.host_cache.load("P",i),-self.p_admission[i].free,
-            sum(owner==i for owner in self.p_affinity.values())))
+        def pressure(i):
+            a=self.p_admission[i]
+            host=self.host_cache.load("P",i)
+            # A larger host cache is not a faster prefill engine. Route new
+            # sessions by their busiest capacity domain; do not reserve or
+            # wait for either device here, and never move a sticky session.
+            return (max(host,(a.seats-a.slots+1)/a.seats,
+                        (a.blocks-a.free+count)/a.blocks),host,-a.free,
+                    sum(owner==i for owner in self.p_affinity.values()))
+        chosen=min(choices,key=pressure)
         with self.directory.transaction() as db:
             db.execute("INSERT INTO rank_placements(session,p_owner) VALUES(?,?) "
                        "ON CONFLICT(session) DO UPDATE SET p_owner=excluded.p_owner",(session,chosen))
@@ -438,11 +446,12 @@ class Coordinator:
                 finally:self.host_waiters.discard(session)
                 if self.trace:self.trace(dict(op="host-cache-admitted",session=session,
                     start=host_started,end=time.perf_counter(),**self.host_cache.snapshot()))
+            p_wait_started=time.perf_counter()
             p_instance,p_reserved=await self.acquire_p(session,len(prompt)+1)
             p_admitted=time.perf_counter()
             if self.trace:self.trace(dict(op="owner-admitted",session=session,owner=owner,
                 p_instance=p_instance,start=started,end=p_admitted,
-                p_wait=p_admitted-started))
+                p_wait=p_admitted-started,p_permit_wait=p_admitted-p_wait_started))
             if self.failure:raise RuntimeError(self.failure)
             try:self.directory.create(session,IDENTITY,"P")
             except sqlite3.IntegrityError:pass

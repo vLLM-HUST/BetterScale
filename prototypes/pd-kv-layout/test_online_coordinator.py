@@ -548,3 +548,23 @@ def test_owner_control_window_pipelines_four_rpcs_but_stays_bounded(tmp_path):
             for task in tasks:task.cancel()
             await asyncio.gather(*tasks,return_exceptions=True)
     asyncio.run(run())
+
+
+def test_new_p_route_balances_host_seats_and_pages_without_reserving(tmp_path):
+    from online_coordinator import Coordinator
+    c=Coordinator(tmp_path/"p-route.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+    loads=[.1,.4,.8,.6]
+    c.host_cache=SimpleNamespace(load=lambda kind,i:loads[i])
+    c.p_admission=[Admission(100,16) for _ in range(4)]
+    c.p_admission[0].slots=0  # Largest free host pool, but compute saturated.
+    c.p_admission[1].free=0  # Seats free, but KV saturated.
+    before=[(a.free,a.slots) for a in c.p_admission]
+    assert c.route_p("new",4096)==3
+    assert [(a.free,a.slots) for a in c.p_admission]==before
+    loads[3]=1
+    assert c.route_p("new",4096)==3  # Returning sessions never migrate.
+    assert c.route_p("other",4096)==2
+    c.p_admission[0].slots=16
+    assert c.route_p("idle",4096)==0  # Host still decides with equal compute.
+    with pytest.raises(ValueError,match="P KV budget"):
+        c.route_p("oversized",2048*101)
