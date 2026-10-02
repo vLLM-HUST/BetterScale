@@ -134,6 +134,16 @@ class Worker(BaseWorker):
                     readers=sum(x.readers for x in runtime.pool.objects.values()))
             if runtime.host_arena is not None:
                 row["host_arena"]=runtime.host_arena.stats()
+                from native_state_frame import FramePlan
+                root=runner._live_state_root
+                span=2048//root.capacity.page_tokens
+                if span*root.capacity.page_tokens!=2048:raise ValueError("host frame page ratio")
+                shapes=[]
+                for domain,blocks in ((root.residents,(0,)),(root.pages,tuple(range(span)))):
+                    shapes.append(FramePlan.build([(name,state,blocks) for name,state in worker.states
+                                                   if state.domain is domain]).byte_length)
+                row["host_geometry"]=dict(resident_frame_bytes=shapes[0],
+                    page_frame_bytes=shapes[1],max_transfers=worker.max_transfers)
         return row
 
     def pd_object_audit(self,enabled):

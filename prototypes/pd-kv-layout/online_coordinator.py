@@ -4,6 +4,7 @@ import fcntl
 import hashlib
 import json
 import math
+import os
 import re
 import sqlite3
 import time
@@ -37,6 +38,7 @@ class Coordinator:
         self.directory=Directory(path);self.urls=(p_url,d_url);self.trace=trace
         self.same_host_d=same_host_d
         self.evictions={}
+        self.host_cache=None;self.host_waiters=set()
         self.inflight={};self.generated={};self.tasks=set();self.failure=None;self.client=None;self.lock=None
         self.request_slots=asyncio.Semaphore(128)
         self.sticky_owners=sticky_owners
@@ -112,7 +114,28 @@ class Coordinator:
             with self.directory.transaction() as db:
                 db.execute("CREATE TABLE IF NOT EXISTS rank_manifests("
                            "id TEXT PRIMARY KEY, payload BLOB NOT NULL, p_owner INTEGER, d_owner INTEGER)")
+        pressure=os.environ.get("BETTERSCALE_PD_HOST_PRESSURE","0")
+        if pressure not in ("0","1"):raise ValueError("invalid host pressure flag")
+        if pressure=="1":
+            if not self.rank_private:raise ValueError("host pressure requires private rank caches")
+            from online_host_cache import HostCache
+            self.host_cache=await HostCache.connect(self)
+            if self.trace:self.trace(dict(op="host-cache-admission-ready",**self.host_cache.snapshot()))
         return self
+
+    def route_p(self,session,tokens):
+        """Sticky host placement without reserving a P execution seat."""
+        if session in self.p_affinity:return self.p_affinity[session]
+        count=math.ceil((tokens+2)/2048)
+        choices=[i for i,a in enumerate(self.p_admission) if a.blocks>=count]
+        if not choices:raise ValueError("Request exceeds P KV budget")
+        chosen=min(choices,key=lambda i:(self.host_cache.load("P",i),-self.p_admission[i].free,
+            sum(owner==i for owner in self.p_affinity.values())))
+        with self.directory.transaction() as db:
+            db.execute("INSERT INTO rank_placements(session,p_owner) VALUES(?,?) "
+                       "ON CONFLICT(session) DO UPDATE SET p_owner=excluded.p_owner",(session,chosen))
+        self.p_affinity[session]=chosen
+        return chosen
 
     async def acquire_p(self,session,tokens=1):
         count=math.ceil((tokens+2)/2048)
@@ -150,7 +173,7 @@ class Coordinator:
         else:
             choices=[i for i,a in enumerate(self.admission) if a.blocks>=count]
             if not choices:raise ValueError("Request exceeds D KV budget")
-            chosen=min(choices,key=lambda i:(self.admission[i].slots<=0,
+            chosen=min(choices,key=lambda i:((self.host_cache.load("D",i) if self.host_cache else 0),self.admission[i].slots<=0,
                 -self.admission[i].free,
                 self.admission[i].seats-self.admission[i].slots,
                 sum(owner==i for owner in self.d_affinity.values())))
@@ -231,7 +254,7 @@ class Coordinator:
             op=await self.prepare(kind,index,dict(kind="drop",key=checkpoint["key"]))
             receipt=await self.cache(kind,index,dict(kind="wait",operation=op))
             if (receipt.get("operation")!=op or receipt.get("kind")!="drop"
-                    or receipt.get("cancelled") or receipt.get("ranks")!=[0,1]):
+                    or receipt.get("cancelled") is not False or receipt.get("ranks")!=[0,1]):
                 raise RuntimeError("Missing successful TP checkpoint-retirement quorum")
         with self.directory.transaction() as db:
             db.execute("DELETE FROM rank_manifests WHERE id=?",(manifest,))
@@ -246,7 +269,8 @@ class Coordinator:
         if not self.rank_private:raise ValueError("private cache eviction required")
         if self.failure:raise RuntimeError(self.failure)
         if session in self.evictions:return await asyncio.shield(self.evictions[session])
-        if session in self.inflight:raise Conflict("active session cannot be evicted")
+        if session in self.inflight and session not in self.host_waiters:
+            raise Conflict("active session cannot be evicted")
         with self.directory.transaction() as db:
             row=db.execute("SELECT epoch,owner,active,manifest FROM sessions WHERE id=?",(session,)).fetchone()
         if row is None or row[3] is None:return False
@@ -258,6 +282,7 @@ class Coordinator:
         try:
             await self.retire_manifest(row[3])
             self.directory.forget_idle(session,row[0],row[3])
+            if self.host_cache:self.host_cache.forgot(session)
             if self.trace:self.trace(dict(op="host-cache-evicted",session=session,
                 manifest=row[3],start=start,end=time.perf_counter()))
             fence.set_result(True)
@@ -350,6 +375,7 @@ class Coordinator:
             def done(value):
                 self.inflight.pop(session,None);self.generated.pop(session,None)
                 self.request_slots.release()
+                if self.host_cache:self.host_cache.changed.set()
                 if not value.cancelled():value.exception()
             future.add_done_callback(done)
             task=asyncio.create_task(self.turn(session,list(prompt),n,future,generated,on_tokens));self.tasks.add(task)
@@ -397,7 +423,15 @@ class Coordinator:
             # Routing fixes the host-cache destination, not a device reservation.
             # The bounded ingress permit owns the queued checkpoint until commit;
             # State pools separately bound actual bytes. P does not wait for D.
+            if self.host_cache:self.route_p(session,len(prompt)+1)
             if n>1:owner=self.route_d(session,len(prompt)+n)
+            if self.host_cache:
+                host_started=time.perf_counter()
+                self.host_waiters.add(session)
+                try:await self.host_cache.acquire(session,prompt,n)
+                finally:self.host_waiters.discard(session)
+                if self.trace:self.trace(dict(op="host-cache-admitted",session=session,
+                    start=host_started,end=time.perf_counter(),**self.host_cache.snapshot()))
             p_instance,p_reserved=await self.acquire_p(session,len(prompt)+1)
             p_admitted=time.perf_counter()
             if self.trace:self.trace(dict(op="owner-admitted",session=session,owner=owner,
@@ -459,6 +493,7 @@ class Coordinator:
             if self.rank_private:
                 for obsolete in dict.fromkeys(retired):
                     await self.retire_manifest(obsolete)
+            if self.host_cache:self.host_cache.finish(session,cp)
             if self.trace:self.trace(dict(op="turn-committed",session=session,owner=owner,
                 start=started,end=time.perf_counter(),events=events))
             if not future.done():future.set_result(dict(session=session,owner=owner,

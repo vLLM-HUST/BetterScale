@@ -165,3 +165,25 @@ Startup reservation discriminator and opt-in arena:
   and Directory generation are forgotten; partial failure fails closed.
   Sticky P/D placement survives.43 coordinator/wiring/eviction CPU tests pass.
   This is not yet an automatic LRU/capacity admission policy.
+
+- The first full-model arena launch (online-rank-v27,source3cebf35) was NOT
+  admitted: hw86 D8 and7/8 hw81 P ranks reserved24GiB each, but hw81 physical5 /
+  NUMA2 failed aclrtMallocPhysical207001 before readiness. Both owned node trees
+  stopped; no online workload result. NUMA2 had~1.7GiB MemFree and~224.7GiB
+  active+inactive file cache, with no order9+ blocks. Host MemAvailable~1.72TiB
+  does not imply readily allocatable local pinned capacity. Do not call this
+  a24GiB capacity qualification or silently fall back to a remote NUMA node.
+- BETTERSCALE_PD_HOST_PRESSURE=1 is a new opt-in coordinator path. It requires
+  empty physically reserved arenas and matching live P/D frame-size receipts.
+  Host admission reserves the old version plus P/D incremental resident/tail/
+  new-page bytes until old versions retire; P/D device permits stay independent.
+  Only idle or not-yet-admitted host waiters are LRU candidates; both TP copies
+  retire before the Directory forgets a cache generation. Sticky owners survive,
+  so later full prompts can recompute a miss. No disk or pageable tier is added.
+  The initial operating limit is80% of reserved arena minus audit scratch
+  (max_transfers times largest frame), not80% of system DRAM. The20% margin is
+  operational fragmentation headroom, NOT a proof against arbitrary arena
+  fragmentation. Existing variable-size allocator exhaustion still fails closed.
+ 95 CPU ledger/coordinator/wiring/eviction tests pass; model/LRU pressure
+  qualification is pending. A startup-reserved arena and this ledger are not
+  yet permission to present a high-pressure benchmark as valid.
