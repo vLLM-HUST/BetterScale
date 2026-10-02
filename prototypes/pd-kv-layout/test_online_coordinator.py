@@ -222,3 +222,44 @@ def test_existing_state_without_placement_is_not_rerouted_on_upgrade(tmp_path):
             with pytest.raises(RuntimeError,match="lacks sticky placement"):await c.start()
         finally:await c.close()
     asyncio.run(run())
+
+
+def test_output_ready_backup_does_not_reject_next_request_at_ingress_bound(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"bounded.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        commits={};started=[]
+        async def turn(session,prompt,n,future,generated,on_tokens):
+            started.append(session);commits[session]=asyncio.Event()
+            generated.set_result(session)
+            await commits[session].wait()
+            future.set_result(session)
+        c.turn=turn
+        assert len(await asyncio.gather(*(c.submit(str(i),[1],1,output_ready=True) for i in range(128))))==128
+        assert len(c.inflight)==128
+        waiting=asyncio.create_task(c.submit("next",[1],1,output_ready=True))
+        await asyncio.sleep(0)
+        assert not waiting.done() and "next" not in started
+        commits["0"].set()
+        assert await asyncio.wait_for(waiting,1)=="next"
+        assert len(c.inflight)==128
+        for e in commits.values():e.set()
+        await asyncio.gather(*c.tasks)
+        await asyncio.sleep(0)
+        assert not c.inflight and c.request_slots._value==128
+    asyncio.run(run())
+
+
+def test_cancelled_ingress_wait_does_not_leak_or_create_state(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"cancel.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        c.request_slots=asyncio.Semaphore(0)
+        waiting=asyncio.create_task(c.submit("wait",[1],1))
+        await asyncio.sleep(0);waiting.cancel()
+        with pytest.raises(asyncio.CancelledError):await waiting
+        assert not c.inflight and not c.tasks and c.request_slots._value==0
+        c.failure="failed closed"
+        retry=asyncio.create_task(c.submit("retry",[1],1))
+        with pytest.raises(RuntimeError,match="failed closed"):await retry
+    asyncio.run(run())

@@ -1157,3 +1157,39 @@ Treat that active counter as unreliable physical residency evidence for this
 lifecycle; retain allocated_bytes/counts plus pool refs/address evidence. The
 counter's exact runtime accounting cause is unresolved. This gate qualifies
 bounded allocator reuse, NOT concurrent model/TE/DMA pressure or the prior OOM.
+
+### GC hardware gate and bounded ingress frontier
+
+online-rank-v5 stopped before worker/model startup because the new preflight
+imported HostStateKey before the model capsule was on sys.path. d8cd599 makes
+that import local to checkpoint decoding; an isolated subprocess import test
+covers preflight without BetterScale/Torch. online-rank-v6 (d8cd599 source,
+unchanged13bd8e3 target-only capsules, full262144/24.25GiB, original mixed graphs)
+then passes the16-session4K/128+8 concurrent byte-audit gate in10.007s.
+
+The fresh-service1.0/300s replay is still INVALID: one request received a
+streaming error at239.496s;1063 others completed,240sessions launched before
+client fail-fast, wall346.673s. Both nodes stayed healthy, no host allocation
+failure, all admitted work drained. Reconstructed committed-turn intervals
+reach exactly128 in flight immediately before rejection. The old submit guard
+throws at128, while successful output responses can still retain their permit
+for background backup. The client discarded the server's specific error text,
+so the bound is strong source/trace evidence, not a retained exact error receipt.
+Do not publish a valid throughput from this run.
+
+After drain every pool has one checkpoint per sticky session (256 total per
+side, including16 gate sessions), zero readers. D private payload9.64–12.09GiB/
+rank and allocator allocated_bytes16.88–20.45GiB; P6.77–14.11GiB payload and
+11.70–24.76GiB allocated. No unreachable-version growth like the prior run is
+observed in this envelope; this is not an unlimited-duration/LRU proof.
+Before load D freeHBM is24,518,684,672bytes/rank at24.25GiB State, evidence for
+testing a larger D budget after small-graph/MTP qualification, not a certified
+maximum. Runtime online-rank-v6-memory-* receipts retain all ranks.
+
+Coordinator ingress now waits for a fixed128 transaction permit rather than
+rejecting the next request solely because outputs have outrun backup commit.
+It does not raise owner/device/State budgets. Permit survives output delivery
+until final commit, cancellation-before-admission creates no State, and failure
+is rechecked after waiting. Frontend traces bounded error type/text and in-flight
+count to avoid losing the next cause.26 targeted CPU tests pass; hardware
+qualification of the new ingress is pending with the next candidate.

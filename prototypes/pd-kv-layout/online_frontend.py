@@ -64,6 +64,10 @@ def application(coordinator,model,peers):
             # submit is shielded; backend generation/commit remains owned.
             raise
         except Exception as error:
+            if coordinator.trace:
+                coordinator.trace(dict(op="frontend-error",session=session,
+                    error_type=type(error).__name__,error=str(error)[:256],
+                    inflight=len(coordinator.inflight)))
             progress.detach()
             try:await send(dict(error=dict(message=str(error)[:256])))
             except ConnectionError:pass

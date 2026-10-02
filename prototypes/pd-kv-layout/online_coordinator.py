@@ -37,6 +37,7 @@ class Coordinator:
         self.directory=Directory(path);self.urls=(p_url,d_url);self.trace=trace
         self.same_host_d=same_host_d
         self.inflight={};self.generated={};self.tasks=set();self.failure=None;self.client=None;self.lock=None
+        self.request_slots=asyncio.Semaphore(128)
         self.sticky_owners=sticky_owners
         self.p_affinity={};self.d_affinity={}
         self.d_changed=asyncio.Condition()
@@ -246,16 +247,25 @@ class Coordinator:
             await asyncio.shield(self.inflight[session])
             if self.failure:raise RuntimeError(self.failure)
             if session in self.inflight:raise Conflict("Session admission raced")
-        if len(self.inflight)>=128:raise RuntimeError("Online request bound exceeded")
-        future=asyncio.get_running_loop().create_future();self.inflight[session]=future
-        generated=asyncio.get_running_loop().create_future();self.generated[session]=generated
-        generated.add_done_callback(lambda value:None if value.cancelled() else value.exception())
-        def done(value):
-            self.inflight.pop(session,None);self.generated.pop(session,None)
-            if not value.cancelled():value.exception()
-        future.add_done_callback(done)
-        task=asyncio.create_task(self.turn(session,list(prompt),n,future,generated,on_tokens));self.tasks.add(task)
-        task.add_done_callback(self.tasks.discard)
+        # Outputs may already be delivered while their State commit still owns
+        # a permit. Backpressure ingress, not device cadence, at the fixed bound.
+        await self.request_slots.acquire()
+        try:
+            if self.failure:raise RuntimeError(self.failure)
+            if session in self.inflight:raise Conflict("Session admission raced")
+            future=asyncio.get_running_loop().create_future();self.inflight[session]=future
+            generated=asyncio.get_running_loop().create_future();self.generated[session]=generated
+            generated.add_done_callback(lambda value:None if value.cancelled() else value.exception())
+            def done(value):
+                self.inflight.pop(session,None);self.generated.pop(session,None)
+                self.request_slots.release()
+                if not value.cancelled():value.exception()
+            future.add_done_callback(done)
+            task=asyncio.create_task(self.turn(session,list(prompt),n,future,generated,on_tokens));self.tasks.add(task)
+            task.add_done_callback(self.tasks.discard)
+        except BaseException:
+            self.request_slots.release()
+            raise
         return await asyncio.shield(generated if output_ready else future)
 
     async def turn(self,session,prompt,n,future,generated,on_tokens):
@@ -353,6 +363,7 @@ class Coordinator:
             if reserved is not None and not self.failure:await self.release_d(owner,reserved)
 
     async def close(self):
+        if self.failure is None:self.failure="Coordinator closed"
         for task in self.tasks:task.cancel()
         await asyncio.gather(*self.tasks,return_exceptions=True)
         if self.client:await self.client.close()
