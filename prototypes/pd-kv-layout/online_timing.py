@@ -17,6 +17,24 @@ class Recorder:
         self.count+=1
         if self.count%64==0:self.file.flush()
 
+
+def observe_method(owner,name,role,stage):
+    """Time a bound host call without awaiting or touching its result."""
+    original=getattr(owner,name)
+    if getattr(original,"_pd_timed_call",False):return
+    recorder=Recorder(role)
+    def observed(*args,**kwargs):
+        begin=time.perf_counter_ns()
+        fields={}
+        if name=="collective_rpc":
+            method=args[0] if args else kwargs.get("method")
+            fields["method"]=method if isinstance(method,str) else getattr(method,"__name__","callable")
+            fields["non_block"]=bool(kwargs.get("non_block",False))
+        try:return original(*args,**kwargs)
+        finally:recorder.record(stage,begin_ns=begin,**fields)
+    observed._pd_timed_call=True
+    setattr(owner,name,observed)
+
 class OutputQueue:
     def __init__(self,queue,recorder):
         self.queue,self.recorder=queue,recorder
@@ -41,6 +59,7 @@ def install_core():
     if getattr(EngineCoreProc,"_pd_timing_installed",False):return
     original=EngineCoreProc._process_engine_step
     def step(core):
+        observe_method(core.model_executor,"collective_rpc","core-rpc","executor-rpc")
         if not isinstance(core.output_queue,OutputQueue):
             core.output_queue=OutputQueue(core.output_queue,Recorder("core"))
         recorder=core.output_queue.recorder

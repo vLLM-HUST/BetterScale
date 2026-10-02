@@ -150,6 +150,11 @@ class Worker(BaseWorker):
         from online_objects import PeerObjectSink
         import os,json
         runner=self.model_runner;root=runner._live_state_root
+        if os.environ.get("BETTERSCALE_PD_TIMING_DIR"):
+            from online_timing import observe_method
+            observe_method(self,"state_cache_actions","worker-state","state-cache-actions")
+            observe_method(self.model_runner,"_sync_metadata_across_dp",
+                           "worker-metadata","dp-metadata")
         concurrency=self.vllm_config.additional_config["state_cache_max_pending"]
         from state_numa import initializer
         worker=CacheWorker(runner,128<<20,max_transfers=concurrency,
