@@ -1035,3 +1035,25 @@ retry that checkpoint. The correction pins the isolated CPU engine site before
 model/plugin imports, carries it into spawned workers and verifies module path.
 That site contains Mooncake/zstandard/pip only, no replacement Torch. No installed
 runtime or donor pin changes. Rerun from fresh services/output/SQLite directory.
+
+### First model-qualified private rank path — 0b6baec
+
+After the import fix, online-rank-v2-source plus unchanged13bd8e3 kernel/core
+capsules passed real P4 TP2 / D DP4TP2EP8 gates, all16 NPUs. Both nodes use
+private per-rank NUMA pinned pools and the CPU TransferEngine; no shared Store.
+This first qualification deliberately retains the short8192-context/8GiB
+device budget. Audit remains ON, MTP OFF.
+- online-rank-v2-gate1:4sessions,1K prompts,16 then8 outputs;4.021s complete.
+- online-rank-v2-gate2:16sessions,4K prompts,128 then8 outputs;9.346s complete.
+All four attention owners participate on each side, warm turns stay sticky,
+post-H2D checksums pass and output counts/frontiers are correct. Every P and D
+group reaches4simultaneous State transactions; all transfers drain. Only latest
+checkpoints remain per session after Core-mediated retirement (the second gate
+shares services with the first, hence5retained sessions/group, not a leak).
+These are audit-on lifecycle diagnostics, NOT saturated throughput or long-
+context production qualification. Byte readback is exact; greedy token equality
+between differently segmented execution is not claimed.
+Services stopped after these gates; next run explicitly sets
+BETTERSCALE_PD_CONTEXT=262144 (24.25GiB device State/rank) with fresh services
+and directory. Local evidence copies: online-rank-v2-hw86/hw81-evidence.tgz in
+the migration backup. Source, runtime pins, model capsules and task goal persist.
