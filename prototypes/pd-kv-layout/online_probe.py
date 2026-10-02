@@ -55,7 +55,7 @@ if __name__=="__main__":
     p.add_argument("--exact-context",action="store_true")
     p.add_argument("--require-concurrent",action="store_true")
     p.add_argument("--label",default="online-"+uuid.uuid4().hex[:12])
-    p.add_argument("--sessions",type=int,choices=(4,8,16,32,64),default=4)
+    p.add_argument("--sessions",type=int,choices=(4,8,16,32,64,128,192,256,320),default=4)
     p.add_argument("--prompt",type=int,default=1024)
     p.add_argument("--tokens",type=int,default=128)
     asyncio.run(run(p.parse_args()))
