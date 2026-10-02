@@ -5,6 +5,8 @@ submit(descriptors, to_host, stream): enqueue on an owned stream and return a
 real completion wait callable. The enclosing worker supplies device context.
 """
 from concurrent.futures import Future
+from collections import defaultdict
+import time
 import ctypes
 import hashlib
 import hmac
@@ -42,8 +44,9 @@ class CheckedReplicas:
 
 
 class NativeTransfer:
-    def __init__(self, run):
+    def __init__(self, run, phases):
         self.run = run
+        self.phase_seconds = phases
         self.lock = Lock()
         self.done = Future()
         self.byte_length = 0
@@ -60,9 +63,10 @@ class NativeTransfer:
 
 
 class NativeStateTransport:
-    # Ledger integration is CPU-tested, but keep the live gate CLOSED until
-    # the combined native DMA/replica/lease path has passed qualification.
-    supports_staged_receipts = False
+    # Combined83-lane NPU/dual-node/CRC/lease gate passes. The online launcher
+    # still opts in explicitly; this capability does not select a backend.
+    supports_staged_receipts = True
+    requires_complete_manifest = True
 
     def __init__(self, sink, arena, namespace, submit, *, leases, verify=False):
         if not namespace:raise ValueError("State namespace required")
@@ -89,41 +93,63 @@ class NativeStateTransport:
         view = (ctypes.c_uint8 * lease.size).from_address(lease.pointer)
         return hashlib.sha256(view).digest()
 
-    def transfer(self, key, states, objects, *, store, stream, on_staged=None):
+    def transfer(self, key, states, objects, *, store, stream, on_staged=None, manifest=None):
         states, objects = tuple(states), dict(objects)
+        manifest = tuple(objects) if manifest is None else tuple(manifest)
+        if len(set(manifest)) != len(manifest) or not set(objects).issubset(manifest):
+            raise ValueError("invalid complete checkpoint manifest")
         if on_staged is not None and not store:
             raise ValueError("only exports have a local staged completion")
+        phases=defaultdict(float)
+        def timed(name,fn,*args,**kwargs):
+            begin=time.perf_counter()
+            try:return fn(*args,**kwargs)
+            finally:phases[name]+=time.perf_counter()-begin
+        def wait_copy(name,wait):
+            timed(name+"_wait",wait)
+            elapsed=getattr(wait,"device_seconds",None)
+            if elapsed is not None:phases[name+"_device"]+=elapsed
         def run():
             replicas, moved = [], 0
+            all_keys = [self.object_id(k) for k in manifest]
+            all_exists = timed("ensure",self.leases.begin,key,all_keys)
+            presence = dict(zip(all_keys,all_exists))
             keys = [self.object_id(k) for k in objects]
-            exists = self.leases.begin(key,keys)
+            exists = [presence[k] for k in keys]
+            if store and any(not presence[k] for k in all_keys if k not in keys):
+                raise ValueError("missing source State object in complete checkpoint")
             if len(exists) != len(keys) or any(x not in (0,1) for x in exists):
                 raise RuntimeError("native State presence query failed")
-            if not store and not all(exists):
+            if not store and not all(all_exists):
                 raise KeyError("native State checkpoint missing a complete replica")
             for (identity,selection),remote,present in zip(objects.items(),keys,exists):
                 if store and present:continue
                 lanes = TorchHostStateBackend._select_lanes(states,selection)
-                plan = FramePlan.build(lanes)
-                lease = self.arena.acquire(plan.byte_length+32,timeout=None)
+                plan = timed("frame_plan",FramePlan.build,lanes)
+                lease = timed("staging_queue",self.arena.acquire,plan.byte_length+32,timeout=None)
                 try:
                     if store:
-                        wait = self.submit(plan.copy_descriptors(lease,to_host=True),True,stream)
-                        lease.seal(wait)
+                        desc=timed("descriptors",plan.copy_descriptors,lease,to_host=True)
+                        wait=timed("d2h_submit",self.submit,desc,True,stream)
+                        lease.seal(lambda:wait_copy("d2h",wait))
                         replicas.append(lease.replicate(remote))
                     else:
-                        if self.sink.get_into(remote,lease.pointer,lease.size) != lease.size:
+                        if timed("get",self.sink.get_into,remote,lease.pointer,lease.size) != lease.size:
                             raise RuntimeError("native State object missing or truncated")
                         body = (ctypes.c_uint8 * plan.byte_length).from_address(lease.pointer)
                         checksum = ctypes.string_at(lease.pointer+plan.byte_length,32)
-                        if not hmac.compare_digest(hashlib.sha256(body).digest(),checksum):
+                        if not hmac.compare_digest(timed("checksum",lambda:hashlib.sha256(body).digest()),checksum):
                             raise RuntimeError("native State frame checksum mismatch")
-                        expected = self.digest(lease) if self.verify else None
-                        wait = self.submit(plan.copy_descriptors(lease,to_host=False),False,stream)
-                        wait()
+                        desc=timed("descriptors",plan.copy_descriptors,lease,to_host=False)
+                        wait=timed("h2d_submit",self.submit,desc,False,stream)
+                        wait_copy("h2d",wait)
                         if self.verify:
-                            self.submit(plan.copy_descriptors(lease,to_host=True),True,stream)()
-                            if self.digest(lease) != expected:
+                            desc=timed("descriptors",plan.copy_descriptors,lease,to_host=True)
+                            wait=timed("audit_submit",self.submit,desc,True,stream)
+                            wait_copy("audit",wait)
+                            actual=timed("audit_checksum",lambda:hashlib.sha256(body).digest())
+                            if not hmac.compare_digest(actual,checksum) or ctypes.string_at(
+                                    lease.pointer+plan.byte_length,32)!=checksum:
                                 raise RuntimeError("post-H2D State frame byte mismatch")
                         lease.seal(lambda:None)
                         lease.discard()
@@ -145,7 +171,7 @@ class NativeStateTransport:
                 # already acknowledged in Store. All source DMA has retired.
                 on_staged(moved)
             for replica in replicas:
-                replica.result()
+                timed("replica_wait",replica.result)
             self.leases.check(key,complete=True)
             return moved
-        return NativeTransfer(run)
+        return NativeTransfer(run,phases)

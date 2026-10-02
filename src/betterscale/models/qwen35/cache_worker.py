@@ -113,6 +113,8 @@ class CacheWorker:
                     )
                 )
             stage_options = {}
+            if getattr(self.page_backend, "requires_complete_manifest", False):
+                stage_options["manifest"] = ("resident:" + command["key"], *command["pages"])
             if command.get("two_phase_store"):
                 stage_options["on_staged"] = lambda moved: self._staged(
                     command, key, was_verify, moved)

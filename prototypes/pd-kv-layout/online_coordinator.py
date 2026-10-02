@@ -33,11 +33,21 @@ class Admission:
             self.free+=count;self.slots+=1;self.condition.notify_all()
 
 class Coordinator:
-    def __init__(self,path,p_url,d_url,trace=None,*,p_per_instance=16,same_host_d=False):
+    def __init__(self,path,p_url,d_url,trace=None,*,p_per_instance=16,same_host_d=False,sticky_owners=True):
         self.directory=Directory(path);self.urls=(p_url,d_url);self.trace=trace
         self.same_host_d=same_host_d
         self.inflight={};self.generated={};self.tasks=set();self.failure=None;self.client=None;self.lock=None
-        self.p_affinity={}
+        self.sticky_owners=sticky_owners
+        self.p_affinity={};self.d_affinity={}
+        self.d_changed=asyncio.Condition()
+        if sticky_owners:
+            with self.directory.transaction() as db:
+                db.execute("CREATE TABLE IF NOT EXISTS rank_placements(session TEXT PRIMARY KEY,p_owner INTEGER,d_owner INTEGER)")
+                rows=list(db.execute("SELECT session,p_owner,d_owner FROM rank_placements"))
+                self.p_affinity={session:p for session,p,d in rows if p is not None}
+                self.d_affinity={session:d for session,p,d in rows if d is not None}
+            if any(type(i) is not int or not 0<=i<4 for i in (*self.p_affinity.values(),*self.d_affinity.values())):
+                raise ValueError("Invalid persisted attention owner")
         if type(p_per_instance) is not int or not 1<=p_per_instance<=16:
             raise ValueError("P pipeline admits one to sixteen requests per TP2 instance")
         self.p_limit=p_per_instance
@@ -53,6 +63,10 @@ class Coordinator:
         with self.directory.transaction() as db:
             if db.execute("SELECT 1 FROM sessions WHERE active!=0 OR owner!=? LIMIT 1",("P",)).fetchone():
                 raise RuntimeError("Unfinished ownership requires explicit recovery")
+            if self.sticky_owners and db.execute(
+                    "SELECT 1 FROM sessions s LEFT JOIN rank_placements p ON s.id=p.session "
+                    "WHERE s.manifest IS NOT NULL AND p.p_owner IS NULL LIMIT 1").fetchone():
+                raise RuntimeError("Existing session lacks sticky placement; explicit migration required")
         self.client=aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1860))
         self.p,self.d=[Peer(url,self.client,self.trace) for url in self.urls]
         wire_versions=set()
@@ -81,15 +95,58 @@ class Coordinator:
         if count>max(a.blocks for a in self.p_admission):
             raise ValueError("Request exceeds P KV budget")
         async with self.p_changed:
+            owner=self.p_affinity.get(session) if self.sticky_owners else None
+            if owner is not None and count>self.p_admission[owner].blocks:
+                raise ValueError("Request exceeds sticky P owner KV budget")
             def eligible():
-                return [i for i,a in enumerate(self.p_admission) if a.slots>0 and a.free>=count]
+                owner=self.p_affinity.get(session) if self.sticky_owners else None
+                return [i for i,a in enumerate(self.p_admission)
+                        if (owner is None or i==owner) and a.slots>0 and a.free>=count]
             await self.p_changed.wait_for(eligible)
             choices=eligible();preferred=self.p_affinity.get(session)
             chosen=preferred if preferred in choices else min(choices,
-                key=lambda i:self.p_admission[i].seats-self.p_admission[i].slots)
+                key=lambda i:(-self.p_admission[i].free,self.p_admission[i].seats-self.p_admission[i].slots))
+            if self.sticky_owners and session not in self.p_affinity:
+                # Placement precedes State creation. Changing this owner later
+                # requires an explicit migration, never a capacity-only reroute.
+                with self.directory.transaction() as db:
+                    db.execute("INSERT INTO rank_placements(session,p_owner) VALUES(?,?) "
+                               "ON CONFLICT(session) DO UPDATE SET p_owner=excluded.p_owner",(session,chosen))
             a=self.p_admission[chosen];a.free-=count;a.slots-=1
             self.p_affinity[session]=chosen
             return chosen,count
+
+    async def acquire_d(self,session,tokens):
+        if not self.sticky_owners:
+            owner=owner_for(session)
+            return owner,await self.admission[owner].acquire(tokens)
+        count=math.ceil((tokens+2)/2048)
+        if count>max(a.blocks for a in self.admission):
+            raise ValueError("Request exceeds D KV budget")
+        async with self.d_changed:
+            owner=self.d_affinity.get(session)
+            if owner is not None and count>self.admission[owner].blocks:
+                raise ValueError("Request exceeds sticky D owner KV budget")
+            def eligible():
+                owner=self.d_affinity.get(session)
+                return [i for i,a in enumerate(self.admission)
+                        if (owner is None or i==owner) and a.slots>0 and a.free>=count]
+            await self.d_changed.wait_for(eligible)
+            chosen=min(eligible(),key=lambda i:(-self.admission[i].free,
+                self.admission[i].seats-self.admission[i].slots))
+            if session not in self.d_affinity:
+                with self.directory.transaction() as db:
+                    db.execute("INSERT INTO rank_placements(session,d_owner) VALUES(?,?) "
+                               "ON CONFLICT(session) DO UPDATE SET d_owner=excluded.d_owner",(session,chosen))
+                self.d_affinity[session]=chosen
+            a=self.admission[chosen];a.free-=count;a.slots-=1
+            return chosen,count
+
+    async def release_d(self,index,count):
+        if not self.sticky_owners:return await self.admission[index].release(count)
+        async with self.d_changed:
+            a=self.admission[index];a.free+=count;a.slots+=1
+            self.d_changed.notify_all()
 
     async def release_p(self,index,count):
         async with self.p_changed:
@@ -192,7 +249,7 @@ class Coordinator:
         try:
             # Bound complete D footprint before creating source work. P workers
             # remain shared; independent owners and in-flight turns are online.
-            if n>1:reserved=await self.admission[owner].acquire(len(prompt)+n)
+            if n>1:owner,reserved=await self.acquire_d(session,len(prompt)+n)
             p_instance,p_reserved=await self.acquire_p(session,len(prompt)+1)
             if self.failure:raise RuntimeError(self.failure)
             try:self.directory.create(session,IDENTITY,"P")
@@ -240,7 +297,7 @@ class Coordinator:
                 if task is not asyncio.current_task():task.cancel()
         finally:
             if p_instance is not None and not self.failure:await self.release_p(p_instance,p_reserved)
-            if reserved is not None and not self.failure:await self.admission[owner].release(reserved)
+            if reserved is not None and not self.failure:await self.release_d(owner,reserved)
 
     async def close(self):
         for task in self.tasks:task.cancel()

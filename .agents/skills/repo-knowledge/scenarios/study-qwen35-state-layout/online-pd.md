@@ -8,10 +8,13 @@ nonexistent newer branch or repeat naive whole-checkpoint profiling.
 ## Resume after the October2 online campaign
 
 Current branch codex/pd-incremental-online carries concurrency/DMA work after
-57affb0; hw86 is the active development checkout. The latest bounded native gate is online-dma-v1
-gate2, not a full workload throughput claim. Enter the **Device-bandwidth**
+57affb0; hw86 is the active development checkout. The latest bounded State gate is the dual-native83-lane DRAM roundtrip; see
+**Shared DRAM registration performance boundary** below. The last model gate
+remains online-dma-v1 gate2; neither is a new workload throughput claim. Enter the **Device-bandwidth**
 and **DRAM fast-path correction** sections near the end for the current frontier.
-Model/kernel capsules remain online-v2-P/D. MTP is explicitly deferred.
+The active direction is now **Accepted correction: private rank-owned DRAM**,
+not the earlier shared-memory prototype. Model/kernel capsules remain
+online-v2-P/D. MTP is explicitly deferred.
 The older online-stream-v6 and concurrent-v1 campaigns remain comparison
 evidence, not the new DRAM-first connector. Both model services are stopped;
 use fresh output paths on restart, never stale DRAM manifests.
@@ -935,3 +938,44 @@ and complete readiness before final success. The live supports_staged_receipts
 flag remains FALSE pending a combined native State DMA/CRC/replica/lease gate
 and actual online-launch integration. The older isolated frame NPU gate did
 not exercise this newly composed ledger transport.
+
+
+## Shared DRAM registration performance boundary — October2
+
+The native two-phase backend now has a combined NPU/dual-Store/lease/checksum gate. native_state_gate.py uses the canonical83-lane TP2 fixture:116,572,172 payload bytes, one resident selection and16 kernel pages, three patterns. hw86 writes/restores; hw81 independently restores, including untouched rows. Both memory replicas must be COMPLETE; checksums precede H2D and post-H2D readback is exact. This qualifies explicit staged-receipt capability, not the online model wiring.
+
+Evidence: runtime native-shared-cluster-D2/state.json and P2 counterpart. D local-ready20–31ms versus dual-replica commit279–294ms; P restore290–337ms with audit. A subsequent20-slot run against512GiB/node interleaved native DRAM (native-online-v1-store-D/frame-phases.json) remains exact: local-ready24–28ms, commit282–299ms. Native get81–83ms, each SHA256 scan77–79ms, device copies18–24ms. No disk/model workload; do not attribute all delay to network or remove integrity checks.
+
+Matched one-card DMA probe: hw86 physical0, CPU/memory node6, same swap_blocks_batch/stream, preallocated buffers, eight copies/sample, four measured samples, full transferred-byte oracle. Runtime shared-dma-match.json / shared-dma-match2.log:
+- torch pinned contiguous H2D25.56/D2H27.96GB/s;83-lane24.90/26.92.
+- Mooncake writable memfd + aclrtHostRegister(MAPPED): contiguous6.53/6.51GB/s;83-lane6.31/6.31.
+This isolates an allocation/registration-path distinction without Store traffic. Geometry/network cannot explain it; the driver mechanism is not identified.
+
+Changed-hypothesis controls, not fixes:
+- HostRegisterV2(PINNED) succeeds, contiguous6.56/6.16; fragmented varies6–14GB/s (shared-dma-v2-pinned.json). Not qualified.
+- Local MADV_HUGEPAGE before first touch succeeds but smaps reports no ShmemPmdMapped pages. Actual memfd pages4KiB, all32768 pages on node6; DMA6.38/6.49 contiguous,6.38/6.41 fragmented (shared-dma-thp.json/.log). Advice is not proof of huge-page backing.
+Pinned allocation maps through /dev/davinci_manager. No global hugepage setting changed; host has no reserved hugetlb pool. All comparisons exact. Preserve known-fast pinned memory as comparison; fewer CPU copies alone do not justify losing most device bandwidth.
+
+Opt-in native_state_runtime.py initializes away from compute threads with explicit State NUMA policy. Native services currently use node-shared interleaved cache, not owner-local NUMA allocation. Full checkpoint manifests retain shared objects during sparse restores. Presence checks do not grant leases; fresh replica queries do. Master TTL must match the declared verified lower bound.
+
+
+## Accepted correction: private rank-owned DRAM, not shared memory
+
+Fletcher explicitly superseded the shared-memory cache route on October2. EP8 shares expert computation, not attention State ownership. Each session has one attention-group owner per side; TP2 ranks hold the corresponding State shards in their own NUMA-local pinned pools. P/D copies of the same shard are intentional; tiny replicated control fields do not imply a shared KV pool. Multiple P instances must not each keep a full replica. Common-prefix sharing, if later enabled across groups, needs explicit ownership rather than assuming all bytes are mathematically disjoint.
+
+The scheduler must carry P-owner, D-owner and TP-shard placement. Existing D owner_for(session) is stable; existing acquire_p may move P on capacity pressure and p_affinity is only in memory. That was safe with node-shared Store lookup, but is NOT sufficient for rank-local caches. Keep a warm session on its P owner, or explicitly migrate/fetch its required State before rerouting. Never turn an object-not-found on another rank into a cache hit. EP collectives remain untouched.
+
+Stopped the two shared native CPU services and removed the unqualified online factory wiring. Superseded factory/source is archived outside Git at runtime/native-shared-online-superseded-source.tgz and native_state_runtime_superseded.py. The tiny real factory startup/20-slot2.705GB teardown smoke passed, but is historical, not the selected route. Shared-frame/lease probes remain bounded evidence only. An already-running alias-D2D diagnostic failed with507001/SDMA; it was not repeated. Process exited and a fresh device0 context passed exact1024-element roundtrip. No device reset or global host setting change.
+
+New rank_state_pool.py is a bounded private immutable-object prototype. Device D2H writes its final owned host allocation; local seal needs a real completion, not replica ACK. Checkpoint refs and active readers separately prevent eviction; failed DMA quarantines bytes. CPU tests cover16 distinct owner pools, shared-page checkpoint refs, reader pinning, capacity, concurrent writes and failed DMA. The current gate remains synthetic, not online scheduling or model qualification. Retain two-phase completion, writer/page fencing and TP quorum from the earlier work; do not retain shared mapping merely to reuse its Store facade.
+
+
+### Rank-private continuation and sticky placement qualification
+
+User confirmed: choose owners only for a new session; every subsequent turn is sticky on both P and D. The coordinator now defaults to sticky_owners=True, persists independent P/D group assignments in SQLite rank_placements, chooses a new D owner from eligible groups by remaining KV capacity (not session hash), and waits on an occupied old owner without blocking unrelated groups. P uses the same capacity-aware first-choice/sticky rule. Legacy nonsticky routing is an explicit diagnostic option only. A request larger than its assigned owner's total budget fails explicitly rather than migrating or waiting forever. The scheduler owns session placement; TP shards stay inside that group.
+
+Private-pool evidence:
+- rank-state-gate2.json: real RankStateTransport,83-lane116.6MB objects, three patterns, exact known-value/untouched-row oracle and post-H2D audit. Final owned DRAM is sealed before replica callback; warmed local-ready10.6ms. D2H15.7GB/s and H2D20.1–20.4GB/s in this one-shot State path; this is NOT the25–28GB/s repeated-copy microbenchmark and NOT simultaneous bidirectional qualification. Network callback in this gate is a stub.
+- rank-transfer-v1-D/P/result.json: separate actual Mooncake TransferEngine CPU0.3.13.post1 clients, P2PHANDSHAKE/TCP, private torch pinned objects registered in their owning rank; no memfd or Store. D NPU→private DRAM→P private DRAM→P NPU, three complete83-lane samples, SHA256 before receiver commit and exact State/untouched-row checks. Transfer writes116.6MB in168/123/113ms (~0.69/0.95/1.03GB/s). This is cross-host TCP, not PCIe bandwidth. P H2D5.84–6.29ms. Ready/commit files are bounded external gate orchestration, NOT the online routing protocol. All registrations and processes retired after completion.
+
+rank_state_transport.py composes final host allocations with existing worker two-phase completion and complete manifests. Audit uses a separate scratch buffer so it cannot overwrite an immutable cached source with concurrent readers. Failed enqueue retains source/destination lifetimes; CPU tests cover this plus early local-ready, sparse manifest refs and identity hits. Online rank-address discovery, routed replication/fetch, incoming-object ownership/drop and model qualification remain unfinished. Do not launch it merely because standalone gates pass. MTP remains parked by later user instruction.

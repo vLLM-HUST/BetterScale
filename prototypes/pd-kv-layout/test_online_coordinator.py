@@ -33,7 +33,7 @@ def test_only_narrow_online_operations_admitted():
 def test_prefill_affinity_reuses_ready_permit_but_never_waits_for_busy_owner(tmp_path):
     from online_coordinator import Coordinator
     async def run():
-        c=Coordinator(tmp_path/"directory.db","http://10.244.1.16:55581","http://10.244.2.32:55586",p_per_instance=1)
+        c=Coordinator(tmp_path/"directory.db","http://10.244.1.16:55581","http://10.244.2.32:55586",p_per_instance=1,sticky_owners=False)
         c.p_affinity["warm"]=2
         assert (await c.acquire_p("warm"))[0]==2
         assert (await c.acquire_p("another"))[0]==0
@@ -144,4 +144,81 @@ def test_owner_admission_lock_does_not_cover_transfer_completion(tmp_path):
         await asyncio.wait_for(both.wait(),1)
         assert len(waiting)==2 and not a.done() and not b.done()
         release.set();await asyncio.gather(a,b)
+    asyncio.run(run())
+
+
+
+def test_sticky_owners_warm_owner_waits_and_survives_controller_recreation(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        path=tmp_path/"rank-local.db"
+        urls=("http://10.244.1.16:55581","http://10.244.2.32:55586")
+        c=Coordinator(path,*urls,p_per_instance=1,sticky_owners=True)
+        held=await c.acquire_p("warm",1)
+        waiter=asyncio.create_task(c.acquire_p("warm",1))
+        await asyncio.sleep(0)
+        assert not waiter.done()
+        other=await asyncio.wait_for(c.acquire_p("unrelated",1),1)
+        assert other[0]!=held[0]  # no global admission stall
+        await c.release_p(*held)
+        assert (await asyncio.wait_for(waiter,1))[0]==held[0]
+        reopened=Coordinator(path,*urls,p_per_instance=1,sticky_owners=True)
+        assert reopened.p_affinity["warm"]==held[0]
+        assert (await reopened.acquire_p("warm",1))[0]==held[0]
+    asyncio.run(run())
+
+
+
+def test_sticky_owners_new_d_uses_capacity_and_old_d_sticks(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        path=tmp_path/"d-owners.db"
+        urls=("http://10.244.1.16:55581","http://10.244.2.32:55586")
+        c=Coordinator(path,*urls,sticky_owners=True,p_per_instance=1)
+        c.admission=[Admission(n,1) for n in (100,200,300,400)]
+        first=await c.acquire_d("warm",4096)
+        assert first==(3,3)
+        second=await c.acquire_d("new",4096)
+        assert second==(2,3)
+        wait=asyncio.create_task(c.acquire_d("warm",4096))
+        await asyncio.sleep(0);assert not wait.done()
+        unrelated=await c.acquire_d("third",4096)
+        assert unrelated[0]==1
+        await c.release_d(*first)
+        assert await asyncio.wait_for(wait,1)==first
+        # P assignment must not overwrite the earlier D assignment in SQLite.
+        await c.acquire_p("warm",1)
+        reopened=Coordinator(path,*urls,sticky_owners=True)
+        assert reopened.d_affinity["warm"]==3
+        assert reopened.p_affinity["warm"]==c.p_affinity["warm"]
+        assert (await reopened.acquire_d("warm",4096))[0]==3
+    asyncio.run(run())
+
+
+
+def test_sticky_owner_cannot_silently_move_for_oversize_request(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"owner-budget.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        c.p_affinity["p"]=0;c.d_affinity["d"]=0
+        c.p_admission[0]=Admission(1,16);c.admission[0]=Admission(1,16)
+        with pytest.raises(ValueError,match="sticky P"):
+            await c.acquire_p("p",4096)
+        with pytest.raises(ValueError,match="sticky D"):
+            await c.acquire_d("d",4096)
+        assert c.p_affinity["p"]==c.d_affinity["d"]==0
+    asyncio.run(run())
+
+
+
+def test_existing_state_without_placement_is_not_rerouted_on_upgrade(tmp_path):
+    from online_coordinator import Coordinator,IDENTITY
+    async def run():
+        c=Coordinator(tmp_path/"old.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        c.directory.create("old",IDENTITY,"P")
+        lease=c.directory.claim("old","P",IDENTITY)
+        c.directory.publish(lease,"saved-manifest","P")
+        try:
+            with pytest.raises(RuntimeError,match="lacks sticky placement"):await c.start()
+        finally:await c.close()
     asyncio.run(run())

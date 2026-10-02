@@ -48,8 +48,8 @@ class FramePlan:
         return cls(lanes, struct.pack("<I",len(raw))+raw, offset)
 
     def views(self, lease, *, initialize):
-        if lease.size < self.byte_length or lease.state != "writing":
-            raise ValueError("frame needs an exclusive correctly sized staging writer")
+        if lease.size < self.byte_length or lease.state not in (("writing",) if initialize else ("writing", "sealed")):
+            raise ValueError("frame needs a live correctly sized writer or immutable reader")
         base = lease.pointer
         if initialize:
             ctypes.memmove(base,self.header,len(self.header))

@@ -11,6 +11,26 @@ from betterscale.live.runtime.host_state import (
     TorchHostStateBackend,HostStateKey,HostStateSelection,HostStateDomainSelection)
 
 
+def qwen35_lanes(device_index, resident_count=8, page_count=128):
+    device=f"npu:{device_index}";resident=object();pages=object();states=[]
+    def lane(name,shape,dtype,domain,count,span=1):
+        tensor=torch.empty((count*span,*shape),dtype=dtype,device=device)
+        for i in range(count):
+            tensor[i*span:(i+1)*span].fill_(len(states)+1+i)
+        states.append((name,NS(tensor=tensor,domain=domain,storage_dtype=dtype,
+            block_shape=shape,num_blocks=count,physical_blocks_per_logical_block=span,
+            leading_physical_blocks=0,
+            logical_block_bytes=span*__import__("math").prod(shape)*tensor.element_size())))
+    for i in range(30):
+        lane(f"target.gdn{i}.conv",(5,4096),torch.bfloat16,resident,resident_count)
+        lane(f"target.gdn{i}.recurrent",(16,128,128),torch.float32,resident,resident_count,3)
+    for i in range(10):
+        for part in ("key","value"):lane(f"target.fa{i}.{part}",(128,1,256),torch.bfloat16,pages,page_count)
+    for name in ("selection","conv_selection","remaining_outputs"):
+        lane(name,(),torch.int32,resident,resident_count)
+    return states,resident,pages
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--device",type=int,required=True)
@@ -22,22 +42,7 @@ def main():
     if args.batch:
         import vllm_ascend.vllm_ascend_C
         from betterscale.models.qwen35.state_dma import enqueue
-    device=f"npu:{args.device}";resident=object();pages=object();states=[]
-    def lane(name,shape,dtype,domain,count,span=1):
-        tensor=torch.empty((count*span,*shape),dtype=dtype,device=device)
-        for i in range(count):
-            tensor[i*span:(i+1)*span].fill_(len(states)+1+i)
-        states.append((name,NS(tensor=tensor,domain=domain,storage_dtype=dtype,
-            block_shape=shape,num_blocks=count,physical_blocks_per_logical_block=span,
-            leading_physical_blocks=0,
-            logical_block_bytes=span*__import__("math").prod(shape)*tensor.element_size())))
-    for i in range(30):
-        lane(f"target.gdn{i}.conv",(5,4096),torch.bfloat16,resident,8)
-        lane(f"target.gdn{i}.recurrent",(16,128,128),torch.float32,resident,8,3)
-    for i in range(10):
-        for part in ("key","value"):lane(f"target.fa{i}.{part}",(128,1,256),torch.bfloat16,pages,128)
-    for name in ("selection","conv_selection","remaining_outputs"):
-        lane(name,(),torch.int32,resident,8)
+    states,resident,pages=qwen35_lanes(args.device)
     def selection(seat):
         ids=tuple(seat+8*k for k in range(16)) if args.fragmented else tuple(range(seat*16,(seat+1)*16))
         return HostStateSelection((HostStateDomainSelection(resident,(seat,)),HostStateDomainSelection(pages,ids)))
