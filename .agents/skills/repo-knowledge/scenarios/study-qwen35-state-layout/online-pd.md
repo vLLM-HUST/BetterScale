@@ -1670,3 +1670,26 @@ CPU expensive, with no intermediate progress receipt. Own initializer PID570669
 was SIGSTOP'd after~17min (not killed) for uncontaminated v25 serving tests;
 resume it with SIGCONT after measurement. Do not forget this process or claim
 the1024 pool ready until its receipt says so.512 pool remains unchanged/usable.
+
+
+v25 frontend7b77d1b / unchanged v24 nodes0c1304d passes128x4K/128-output +
+warm8 gate27.629s, all16 byte audits. Fixtures retired to zero pools/readers,
+audits off. Same SWE2.0/240 and512 connections: VALID2352 requests,
+2135 window/217 drain, zero failures/misses, all2352 final commits.
+2440.4958 total tokens/s (+4.76% vs preceding v24 single replay), TTFT P95
+2.11528s vs3.35329s. This single comparison has allocator warming/order noise;
+do not promote4.76% into a guaranteed improvement.
+
+Same-session commit-wait P95 falls4.242→0.890s; request-permit P95 remains5.5us.
+Final60s mean live rows21.2–25.8, maximum32–36, sender sum4287.57tokens/s,
+accepted/chunk2.80–2.84. Cadence median54.8–55.7ms/P9596–100ms: more supply
+but latency target again missed. Native same-node data are in v24-D-timing;
+filter using v25 control timestamps. online-rank-v25-analysis.json is bounded
+to this window. Control mean in-flight D1.36–2.03/P1.51–2.26 per owner,
+below configured4. The artificial one-roundtrip ceiling is gone; actual
+service/cadence and stronger offered load now need investigation.
+
+Offline tokenizer PID570669 was resumed automatically after v25 drain; it
+remains healthy CPU-bound, pool1024 not yet ready. No initializer data were lost.
+The v22–v24 D evidence archive55404746 bytes is copied and size-verified locally;
+v24 follow-on attribution files written later are not in that archive yet.
