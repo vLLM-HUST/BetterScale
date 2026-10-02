@@ -474,3 +474,16 @@ replica PUTs, joining BOTH validated receipts even on one failure; it does
 not relax checkpoint publication quorum. CPU success/failure tests prove
 the caller cannot return while the other replica is still in flight.
 Hardware and full-load qualification of this next cut remain pending.
+
+
+DP1/device2's completed v4 export corroborates the all-wave cadence:
+376 correlated graph replays,336 real slot-map anchors, device-envelope
+start interval median22.704ms/P9573.968ms; five intervals>100ms, max1028ms.
+Use the final online-stream-v4-dp1-device2-summary.json. An msprof final-name
+DB appears BEFORE export completes and is incrementally populated: an early
+read falsely showed zero slot-map anchors. Wait for the exporter to exit
+successfully before analysis OR archiving; do not infer missing kernels from
+a still-written DB. The first hw86 archive was retained with an .incomplete
+suffix and was not delivered. Its replacement was created only after export
+completion. Final v3-v5 archives are backed up locally (hw86~895MB,
+hw81~11MB, SWE~0.95MB) and their full tar member streams were read successfully.
