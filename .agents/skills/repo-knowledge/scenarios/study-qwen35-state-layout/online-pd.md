@@ -1299,3 +1299,5 @@ v11 uses cf8397a with unchanged beb9c43 worker capsules/E16/R20/24.25GiB.
 The same1.0/300 replay is running; no improved throughput claim yet.
 Check D first-token gap and queue wait as well as TTFT: earlier P first-token
 delivery alone does not prove higher service throughput or lower total latency.
+
+The first v11 full replay is INVALID at152.5s:575completed/26failed,153sessions. D first failure is aclrtMallocHostWithCfg207001 in PID3995840, propagated from State cache completion; later Gloo disconnects are consequential. This reused the v10 worker processes after two300-session replays plus gates, retaining previous sessions. Do not attribute this to queue semantics or claim a throughput improvement. Clean-process v12 reruns cf8397a with identical v10 numerical capsules/E16/R20/24.25GiB and audit off, isolating accumulated cache residency. The latest-checkpoint pressure-LRU gap remains real; fresh-run isolation is not a production fix.
