@@ -492,3 +492,28 @@ and launchers: workspace `runs/operator-response/20260927-prefill-fairness-local
 compact result: `prototypes/prefill-fairness/qualification.json`. This closes
 bounded real mixed scheduling/correctness, not a C16 throughput/P95 comparison
 or advanced starvation guarantee; Conv PR5 remains separate.
+
+## Shared expert overlap: distinguish leaf and server evidence (October3)
+
+Enter `prototypes/ep-shared-overlap/README.md` before enabling multistream shared
+experts or repeating hw112 bring-up. The opt-in event adapter preserves native
+second-stage/combine/join/TP-reduction ordering; native donor default is off.
+DP2/TP1 and DP1/TP2 native leaf graph gates pass exact changing-input/routing
+parity and show6–8% wall-time improvement. Most benefit is the native stream;
+only the earlier first fence overlaps shared work with DP input gathering.
+
+**Real-model TP2/EP2/DP1 target-only C16 did not improve:** same-overlay AB
+median684.399→669.973 outputtokens/s (-2.11%), all67 compared request rows exact,
+three serial logprob sequences exact. Keep opt-in; no website/default claim.
+This topology has no DP gather/scatter to hide. A real TP2 multi-DP service gate
+needs at least four assigned cards; DP2/TP1 leaf evidence is not a substitute.
+
+Migration overlay traps are independent of overlap: new9.1 libraries require
+matching owned-FIA Q16 plan/build files, native-plan identity separation and
+parent3e93c777 target-padding translation. At full C16 native appends KV1 padding;
+positive KV is not a live-row test. Use the runner's proven row/token frontier,
+not a weakened planner bound. `draft_fia.Frame.prepare` wraps target too: its
+stack name alone cannot diagnose MTP. Full-MTP9.1 remains a separate gate.
+Read the prototype's exact source boundaries before reconstructing the overlay;
+do not repeat the four failed historical-source startups or import the entire
+parent PD branch to obtain this small overlap patch.

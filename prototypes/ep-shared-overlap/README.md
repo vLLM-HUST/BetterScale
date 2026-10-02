@@ -129,3 +129,93 @@ verified capability.
 
 A local evidence backup is retained outside Git at
 `/Users/fletcher-tian/Developer/BetterScale-ep-overlap-artifacts/overlap-evidence-20261003.tgz`.
+
+## Full-service continuation on CANN9.1 (qualification in progress)
+
+The subsequent `overlap-swe` experiment branches from public main852c106 rather
+than importing the parent PD development branch. Historical E16 source is
+`eee35fd6b50fca73385ad8f8af714fcd7e5c2684`; E36 is
+`96cd03a362b18d68ea1a1b1f7ada5633d9c5e60c`. Task-local launch/qualification
+helpers live here; raw capsules remain `/workspace/overlap-swe` on hw112.
+These are explicit experiments, not new packaged EP admission or leaderboard
+points. `ep_service_entry.py` changes only validation views for TP2/DP1/EP2;
+actual runner configuration remains EP-enabled. `target_only.py` is the parent
+PD diagnostic cut: it retains sampler feedback while skipping draft work, not
+an MTP memory optimization or MTP qualification.
+
+Do not combine old FIA Python planning with new native libraries. The accepted
+migration `candidate-package-4` supplies `qwen_fia/wave.py` and
+`context_parallel/{adapter,plan,prepare}.py` together with its native payload.
+`plan.py`'s Q16 bound changes derived workspace offsets; `prepare.py` has the
+CANN9.1 vendor syntax adaptation and disjoint Q16 zero/LSE scratch. The staging
+input `native/patches` includes these four files, not just `.so`/native.json.
+The old main Python rejected real target-prefill4097 at the native plan guard;
+restoring wave/adapter passed257/4097/8193 but a16-request wave then hit the old
+Q3 planning bound. Preserve failed `ep-serial2`, `ep-target-serial1/2` logs.
+`draft_fia.prepare` also wraps target attention: its stack name does not prove
+that a failure is in draft execution. No numerical guard is weakened here.
+
+The GDN host wrapper is rebuilt from historical E36 source with37-row admission;
+its9.1 build needs CANN include in `CPLUS_INCLUDE_PATH`. Pinned donor sources are
+unchanged. Only task-private Transformers5.14.1 and torch-npu post4 admission
+replace the historical runtime metadata; system packages stay untouched.
+
+The final target publication additionally restores **parent3e93c777's**
+`wave.py` and `context_parallel/adapter.py` (rather than candidate4's older two
+files). Native C16 appends a KV1 padding row; the parent's `target_metadata`
+proves the runner's live-row/token frontier before translating only padding to
+owned KV0. The Q16 plan/build/native files remain candidate4. Attempt
+`ep-target-serial3` failed on the missing translation, not a real17th request.
+The main tree's numerical attention source is **not** changed by this overlap
+branch; these explicit runtime migration changes stay in the experiment overlay.
+
+### Real-model TP2/EP2 target-only result
+
+`ep-target-serial4` versus `ep-target-early1` passed the same requests on the
+same frozen overlay/model/assigned pair. Three257/4097/8193-input,64-output
+requests have identical token IDs **and every selected-token logprob**. The
+16×256-token profiling batch and three16×512-token measured batches also have
+exactly matching output IDs for all64 request rows. This is bounded cross-arm
+parity, not independent full-model quality, long-context PD or MTP qualification.
+
+Unprofiled output tokens/s (whole two-card server):
+
+| Arm | Three fixed short-prompt C16 batches | Median |
+| --- | --- | ---: |
+| Serial |683.905,693.472,684.399|684.399|
+| Overlap |669.973,680.028,669.798|669.973|
+
+Candidate median is **2.11% lower** in this sequential pair. Do not assert
+statistical significance. Each batch is8192 output tokens, no synthetic MTP
+acceptance; draft forward is disabled explicitly. This is **not** a SWE point.
+Therefore no C1–C32 rerun, website update or unconditional default flip follows.
+The useful two-card leaf gain did not become an end-to-end gain here.
+
+Offline native profiler analysis is necessary: worker daemon processes collect
+but cannot export their traces. Run `torch_npu.profiler.profiler.analyse` in a
+separate non-daemon process after collection. The five captured waves include
+prefill/admission; do not average them as steady decode. `compare_service.py`
+selects complete40-layer/24-token graph occurrences by unique TP2 shared-matmul
+shapes, requiring120 shared matmuls and80 routed GMMs. Serial graph3 device span
+is20.386/20.484ms (ranks0/1); candidate20.772/20.745ms. Shared/routed-GMM time
+intersections are zero in both (both consume Cube resources); separate streams
+alone do not prove useful overlap. This DP1 topology has no DP gather/scatter
+window. Earlier DP2/TP1 leaf communication overlap remains valid evidence, not
+proof of a TP2 multi-DP server speedup.
+
+`service-comparison.json` binds all numerical checks, timings and profile spans.
+For the real target topology the next gate needs at least **four assigned cards,
+DP2/TP2/EP4**. hw112 exposes only two; parent hw86/hw81 are not authorized here.
+Keep the adapter opt-in pending that deployment gate. The CANN9.1 full-MTP
+composition and historical pure-TP2 SWE reproduction remain unqualified; do not
+silently relabel this target-only run as MTP2 or discard the original website
+measurements. The current SWE client has a different commit/runtime metadata,
+but canonicalizing only prepared tokenizer path/version reproduces the exact
+historical prepared-workload SHA8044561ffa1bb430bea8f778ef814d96649321e1a92654b95f64263b996d5e85.
+
+All owned services exited and both assigned devices returned idle. Local backup:
+`/Users/fletcher-tian/Developer/BetterScale-ep-overlap-artifacts/overlap-swe-evidence-20261003.tgz`
+contains the final executed overlay/native payload, raw/parsed profiles, actual
+responses, manifests, scripts and failed-run logs (no model weights/venv/cache).
+Two existing adapter/config CPU regression tests pass on the staged pinned
+runtime; new comparator has been exercised on both real retained capsules.

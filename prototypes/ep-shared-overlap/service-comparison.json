@@ -1,0 +1,168 @@
+{
+  "scope": "TP2/EP2 target-only, short-prompt C16; not SWE, MTP or multi-DP qualification",
+  "numerical_checks": [
+    {
+      "file": "-qualification/case0.json",
+      "rows": 1,
+      "exact_rows": 1,
+      "max_logprob_delta": 0.0
+    },
+    {
+      "file": "-qualification/case1.json",
+      "rows": 1,
+      "exact_rows": 1,
+      "max_logprob_delta": 0.0
+    },
+    {
+      "file": "-qualification/case2.json",
+      "rows": 1,
+      "exact_rows": 1,
+      "max_logprob_delta": 0.0
+    },
+    {
+      "file": "-qualification/profile-batch.json",
+      "rows": 16,
+      "exact_rows": 16,
+      "max_logprob_delta": null
+    },
+    {
+      "file": "-measure/repeat0.json",
+      "rows": 16,
+      "exact_rows": 16,
+      "max_logprob_delta": null
+    },
+    {
+      "file": "-measure/repeat1.json",
+      "rows": 16,
+      "exact_rows": 16,
+      "max_logprob_delta": null
+    },
+    {
+      "file": "-measure/repeat2.json",
+      "rows": 16,
+      "exact_rows": 16,
+      "max_logprob_delta": null
+    }
+  ],
+  "arms": [
+    {
+      "capsule": "/workspace/overlap-swe/ep-target-serial4",
+      "samples": [
+        {
+          "repeat": 0,
+          "seconds": 11.978264114819467,
+          "output_tokens": 8192,
+          "output_tps": 683.9054408447118,
+          "output_tps_per_chip": 341.9527204223559
+        },
+        {
+          "repeat": 1,
+          "seconds": 11.81302622705698,
+          "output_tokens": 8192,
+          "output_tps": 693.4717524995203,
+          "output_tps_per_chip": 346.73587624976017
+        },
+        {
+          "repeat": 2,
+          "seconds": 11.969633045606315,
+          "output_tokens": 8192,
+          "output_tps": 684.3985917351937,
+          "output_tps_per_chip": 342.19929586759685
+        }
+      ],
+      "median_output_tps": 684.3985917351937,
+      "profile": [
+        {
+          "rank": 0,
+          "model_id": "3",
+          "shared_matmuls": 120,
+          "routed_gmms": 80,
+          "device_span_ms": 20.3855,
+          "routed_gmm_intersection_us": 0,
+          "collective_intersection_us": 0,
+          "aiv_intersection_us": 1.25
+        },
+        {
+          "rank": 1,
+          "model_id": "3",
+          "shared_matmuls": 120,
+          "routed_gmms": 80,
+          "device_span_ms": 20.4835,
+          "routed_gmm_intersection_us": 0,
+          "collective_intersection_us": 0,
+          "aiv_intersection_us": 2.0
+        }
+      ]
+    },
+    {
+      "capsule": "/workspace/overlap-swe/ep-target-early1",
+      "samples": [
+        {
+          "repeat": 0,
+          "seconds": 12.227365056052804,
+          "output_tokens": 8192,
+          "output_tps": 669.9726361686394,
+          "output_tps_per_chip": 334.9863180843197
+        },
+        {
+          "repeat": 1,
+          "seconds": 12.04656068701297,
+          "output_tokens": 8192,
+          "output_tps": 680.0281186340219,
+          "output_tps_per_chip": 340.01405931701095
+        },
+        {
+          "repeat": 2,
+          "seconds": 12.230554332956672,
+          "output_tokens": 8192,
+          "output_tps": 669.7979320467666,
+          "output_tps_per_chip": 334.8989660233833
+        }
+      ],
+      "median_output_tps": 669.9726361686394,
+      "profile": [
+        {
+          "rank": 0,
+          "model_id": "3",
+          "shared_matmuls": 120,
+          "routed_gmms": 80,
+          "device_span_ms": 20.77225,
+          "routed_gmm_intersection_us": 0,
+          "collective_intersection_us": 0,
+          "aiv_intersection_us": 613.25
+        },
+        {
+          "rank": 0,
+          "model_id": "5",
+          "shared_matmuls": 120,
+          "routed_gmms": 80,
+          "device_span_ms": 21.399,
+          "routed_gmm_intersection_us": 0,
+          "collective_intersection_us": 0,
+          "aiv_intersection_us": 605.75
+        },
+        {
+          "rank": 1,
+          "model_id": "3",
+          "shared_matmuls": 120,
+          "routed_gmms": 80,
+          "device_span_ms": 20.745,
+          "routed_gmm_intersection_us": 0,
+          "collective_intersection_us": 0,
+          "aiv_intersection_us": 599.0
+        },
+        {
+          "rank": 1,
+          "model_id": "5",
+          "shared_matmuls": 120,
+          "routed_gmms": 80,
+          "device_span_ms": 21.395,
+          "routed_gmm_intersection_us": 0,
+          "collective_intersection_us": 0,
+          "aiv_intersection_us": 599.0
+        }
+      ]
+    }
+  ],
+  "median_output_change_percent": -2.1078295222641263
+}

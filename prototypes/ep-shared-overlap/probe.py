@@ -18,6 +18,7 @@ def main():
     p.add_argument("--profile", action="store_true")
     p.add_argument("--graph", action="store_true")
     p.add_argument("--full-forward", action="store_true")
+    p.add_argument("--no-ep", action="store_true")
     p.add_argument("--tp", type=int, choices=(1, 2), default=1)
     p.add_argument("--peer-tokens", type=int)
     p.add_argument("--iterations", type=int, default=30)
@@ -47,7 +48,7 @@ def main():
     local_tokens = counts[rank] if dp == 2 else a.tokens
     parallel = ParallelConfig(tensor_parallel_size=a.tp, data_parallel_size=dp,
         data_parallel_rank=rank // a.tp, data_parallel_size_local=dp,
-        distributed_executor_backend="external_launcher", enable_expert_parallel=True)
+        distributed_executor_backend="external_launcher", enable_expert_parallel=not a.no_ep)
     from transformers import Qwen3NextConfig
     config_dir = a.output / f"model-config-rank{rank}"
     hf = Qwen3NextConfig(hidden_size=2048, num_experts=256, num_experts_per_tok=8,
@@ -162,7 +163,7 @@ def main():
         a.output.mkdir(parents=True, exist_ok=True)
         (a.output / f"rank{rank}.json").write_text(json.dumps(dict(
             arm=a.arm, shape=list(result.shape), finite=True, wall_ms=wall_ms,
-            iterations=a.iterations, graph=a.graph, tp=a.tp, full_forward=a.full_forward,
+            iterations=a.iterations, graph=a.graph, tp=a.tp, ep=not a.no_ep, full_forward=a.full_forward,
             scope="native MoE leaf; full-engine qualification separate")))
         print("native MoE wiring ready", rank, a.arm, flush=True)
         destroy_ascend_model_parallel()
