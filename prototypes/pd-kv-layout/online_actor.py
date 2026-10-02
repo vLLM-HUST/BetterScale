@@ -68,6 +68,15 @@ async def run(kind,instance,pipe):
                 if len(ids)!=args["n"]:raise RuntimeError("Incomplete generation")
                 answer=dict(token_ids=ids,full_tokens=list(result.prompt_token_ids)+ids,
                             cached=result.num_cached_tokens,start_ns=started,arrivals=arrivals,request_id=request_id)
+            elif op=="audit":
+                rows=await asyncio.gather(*(model.engine_core._call_utility_async(
+                    "collective_rpc","pd_object_audit",None,(args["enabled"],),None,engine=e)
+                    for e in model.engine_core.core_engines))
+                answer=[row for group in rows for row in group]
+                expected=[(o,t) for o in range(layout["dp"]) for t in range(2)]
+                if (sorted((r["owner"],r["rank"]) for r in answer)!=expected
+                        or any(r["enabled"] is not args["enabled"] for r in answer)):
+                    raise RuntimeError("Incomplete audit-mode quorum")
             elif op=="profile":
                 if not os.environ.get("BETTERSCALE_PD_PROFILE_DIR"):
                     raise ValueError("Profiler disabled for this node")
@@ -87,6 +96,7 @@ async def run(kind,instance,pipe):
             engine=model.engine_core.core_engines[i]) for i in range(layout["dp"])]
         pipe.send(("ready","ready",dict(capacities=capacities,kind=kind,instance=instance,layout=layout,
             context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=True,
+            object_audit=os.environ.get("BETTERSCALE_PD_VERIFY_OBJECTS")=="1",
             state_wire="zstd-resident-v1" if os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT")=="1" else "raw-v2")))
         while True:
             tag,op,args=await asyncio.to_thread(pipe.recv)

@@ -72,3 +72,29 @@ def test_wire_version_mismatch_fails_before_admission(tmp_path,monkeypatch,d_ver
                 with pytest.raises(RuntimeError,match="wire version"):await c.start()
         finally:await c.close()
     asyncio.run(run())
+
+
+def test_audit_control_is_boolean_and_actor_wide():
+    assert validate("D",dict(instance=0,op="audit",args=dict(owner=0,enabled=False)))[1]=="audit"
+    for args in (dict(owner=1,enabled=False),dict(owner=0,enabled=0),dict(owner=0,enabled=True,extra=1)):
+        with pytest.raises(ValueError):validate("D",dict(instance=0,op="audit",args=args))
+
+
+def test_worker_audit_mode_changes_only_without_inflight_io():
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace as NS
+    tree=ast.parse(Path(__file__).with_name("online_entry.py").read_text())
+    cls=next(x for x in tree.body if isinstance(x,ast.ClassDef) and x.name=="Worker")
+    fn=next(x for x in cls.body if isinstance(x,ast.FunctionDef) and x.name=="pd_object_audit")
+    namespace={};exec(compile(ast.Module(body=[fn],type_ignores=[]),"audit-method","exec"),namespace)
+    method=namespace["pd_object_audit"]
+    cache=NS(inflight={1},rank=1,page_backend=NS(verify=True))
+    worker=NS(model_runner=NS(_state_cache_worker=cache),
+        vllm_config=NS(parallel_config=NS(data_parallel_rank=2)))
+    with pytest.raises(RuntimeError):method(worker,False)
+    assert cache.page_backend.verify is True
+    cache.inflight.clear()
+    assert method(worker,False)==dict(owner=2,rank=1,previous=True,enabled=False)
+    assert cache.page_backend.verify is False
+    with pytest.raises(ValueError):method(worker,1)

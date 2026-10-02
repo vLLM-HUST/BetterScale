@@ -17,6 +17,10 @@ def validate(kind,body):
     if op=="generate":
         if not isinstance(args,dict) or set(args)!={"owner","tokens","salt","n"}:raise ValueError("Bad generation")
         validate_rpc(kind,dict(instance=instance,op="generate_batch",args={"items":[args]}))
+    elif op=="audit":
+        if (not isinstance(args,dict) or set(args)!={"owner","enabled"}
+                or type(args["owner"]) is not int or args["owner"]!=0
+                or type(args["enabled"]) is not bool):raise ValueError("Bad audit RPC")
     elif op=="profile":
         if (not isinstance(args,dict) or set(args)!={"owner","start"}
                 or type(args["owner"]) is not int or args["owner"]!=0
@@ -79,6 +83,7 @@ class Node(BaseNode):
     async def rpc(self,request):
         instance,op,args=validate(self.args.kind,unpack(await request.read()))
         result=await self.actors[instance].call(op,args)
+        if op=="audit":self.actors[instance].info["object_audit"]=args["enabled"]
         return web.Response(body=pack(result),content_type="application/msgpack")
 
 

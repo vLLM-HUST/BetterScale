@@ -71,6 +71,15 @@ class Scheduler(BaseScheduler):
 
 
 class Worker(BaseWorker):
+    def pd_object_audit(self,enabled):
+        if type(enabled) is not bool:raise ValueError("Audit mode must be boolean")
+        worker=self.model_runner._state_cache_worker
+        if worker.inflight:raise RuntimeError("Cannot change audit during State I/O")
+        previous=worker.page_backend.verify
+        worker.page_backend.verify=enabled
+        return dict(owner=self.vllm_config.parallel_config.data_parallel_rank,
+                    rank=worker.rank,previous=previous,enabled=enabled)
+
     def execute_model(self,scheduler_output):
         if not os.environ.get("BETTERSCALE_PD_TIMING_DIR"):
             return super().execute_model(scheduler_output)
