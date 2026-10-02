@@ -13,6 +13,7 @@ from pathlib import Path
 import torch
 import torch_npu
 from rank_state_pool import RankStatePool
+from rank_replica_receiver import RankReplicaReceiver
 from native_state_frame import FramePlan
 from state_dma_probe import qwen35_lanes
 from store_shared_hot_probe import NpuStageDriver
@@ -45,8 +46,17 @@ def run(args):
         return begin.elapsed_time(end)/1000
     def digest(pointer):
         return hashlib.sha256((ctypes.c_uint8*plan.byte_length).from_address(pointer)).hexdigest()
+    receiver=RankReplicaReceiver(pool,engine) if args.role=="P" else None
+    peer_source=json.loads(args.peer.read_text()) if args.role=="P" else None
     for turn in range(3):
         key=str(turn);pool.retain(key,(key,))
+        if receiver is not None:
+            expected=peer_source["objects"][turn]
+            assert expected["key"]==key and expected["size"]==plan.byte_length
+            target=receiver.prepare(("D",0,0),key,key,plan.byte_length,expected["sha256"],f"{turn:032x}")
+            assert target["status"]=="write"
+            objects.append(dict(key=key,pointer=target["pointer"],size=target["size"]))
+            continue
         writer=pool.reserve(key,plan.byte_length)
         pointer=writer.pointer
         assert engine.register_memory(pointer,plan.byte_length)==0
@@ -58,13 +68,18 @@ def run(args):
             driver.synchronize()
             seconds=copy(plan.copy_descriptors(writer,to_host=True),True)
             writer.seal(lambda:None)
-            rows.append(dict(turn=turn,d2h_seconds=seconds,sha256=digest(pointer)))
+            checksum=digest(pointer);objects[-1]["sha256"]=checksum
+            rows.append(dict(turn=turn,d2h_seconds=seconds,sha256=checksum))
         else:
             # Hold each writer until the sender's explicit TE completion receipt.
             objects[-1]["writer"]=writer
     (args.output/"ready.json").write_text(json.dumps(dict(role=args.role,endpoint=endpoint,
         objects=[{k:v for k,v in x.items() if k!="writer"} for x in objects])))
     if args.role=="D":
+        deadline=time.monotonic()+180
+        while not args.peer.exists():
+            if time.monotonic()>deadline:raise TimeoutError("peer preparation missing")
+            time.sleep(.1)
         peer=json.loads(args.peer.read_text())
         assert peer["role"]=="P" and peer["endpoint"].startswith(HOSTS["P"]+":")
         for row,obj,target in zip(rows,objects,peer["objects"],strict=True):
@@ -84,7 +99,7 @@ def run(args):
         sender=json.loads((args.output/"commit.json").read_text())
         for turn,(obj,sent) in enumerate(zip(objects,sender,strict=True)):
             assert sent["turn"]==turn and digest(obj["pointer"])==sent["sha256"]
-            obj.pop("writer").seal(lambda:None)
+            assert receiver.commit(f"{turn:032x}")
             with torch.npu.stream(driver.stream):
                 for _,state in states:state.tensor.zero_()
             driver.synchronize()
@@ -101,7 +116,7 @@ def run(args):
         assert engine.unregister_memory(pointer)==0
     for turn in range(3):pool.drop(str(turn))
     pool.close()
-    receipt=dict(role=args.role,scope="private pinned rank pools + Mooncake TCP TE;83-lane NPU; no shared memory or Store; not online scheduling",
+    receipt=dict(role=args.role,scope="RankReplicaReceiver + private pinned pools + Mooncake TCP TE;83-lane NPU; file-orchestrated control, not online scheduling",
                  payload_bytes=plan.payload_bytes,results=rows)
     (args.output/"result.json").write_text(json.dumps(receipt,indent=2))
     print(json.dumps(receipt),flush=True)

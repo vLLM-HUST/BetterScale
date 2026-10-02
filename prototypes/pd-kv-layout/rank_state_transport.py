@@ -18,18 +18,18 @@ class RankStateTransport:
     supports_staged_receipts = True
     requires_complete_manifest = True
 
-    def __init__(self,pool,namespace,submit,replicate,*,verify=False):
+    def __init__(self,pool,namespace,submit,replicate,*,verify=False,release_checkpoint=None):
         if not namespace:raise ValueError("State namespace required")
         self.pool,self.namespace,self.submit,self.replicate=pool,namespace,submit,replicate
         self.verify=verify
+        self.release_checkpoint=release_checkpoint or pool.drop
         self.quarantined=[]
 
     def object_id(self,identity):
         return hashlib.sha256((self.namespace+"/rank-frame-v1\\0"+identity).encode()).hexdigest()
 
     def release(self,key):
-        with self.pool.lock:
-            if key in self.pool.groups:self.pool.drop(key)
+        self.release_checkpoint(key)
 
     def transfer(self,key,states,objects,*,store,stream,on_staged=None,manifest=None):
         states,objects=tuple(states),dict(objects)

@@ -18,6 +18,7 @@ class Object:
     generation: int
     state: str = "writing"
     readers: int = 0
+    digest: str | None = None
 
 
 class Writer:
@@ -141,7 +142,7 @@ class RankStatePool:
     def drop(self, checkpoint):
         with self.lock:
             self._healthy()
-            for key in self.groups.pop(checkpoint):
+            for key in self.groups.pop(checkpoint,()):
                 self.references[key] -= 1
                 if not self.references[key]:
                     del self.references[key]
