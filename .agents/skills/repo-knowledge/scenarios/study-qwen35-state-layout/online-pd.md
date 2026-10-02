@@ -1644,3 +1644,29 @@ full48-cadence}.json, gate/, D-timing/, front/, plus
 /workspace/swe-workloads/rank-v24-rate2.0/. Next pressure step keeps C48 and
 raises arrival rate; expand the distinct verified trajectory pool rather than
 recycle512 sessions or silently alter completion-relative delay semantics.
+
+
+v24 follow-on attribution: ingress wait P954.242s is same-session commit wait,
+not request-permit pressure (permit P955.8us/max75us). Final60s mean pipeline
+occupancy: P compute/restore9.64, P first token→D queue41.78, D admitted→actor
+46.76, actual D actor→output69.58, output→device release22.40, released→commit
+54.17 sessions. D H2D device median5.90ms/P957.07ms; no seconds-long DMA claim.
+These data are in online-rank-v24-{control-analysis,pipeline-occupancy,
+transfer-phases}.json.
+
+The per-owner ONE-attempt admission lock is busy92.3–92.8% of the final60s on
+all D owners (P57–63%). Core utility responses cost roughly a decode step,
+so serializing whole RPC roundtrips still imposes an admission cadence limit
+despite native free seats. Candidate controller allows FOUR in-flight attempts
+per owner using a semaphore, not unbounded polling; each attempt still releases
+its permit before busy backoff. Core atomic seat/page admission, shared-object
+fences and max_pending20 remain unchanged.36 controller/actor/timing tests pass,
+including four concurrent RPCs, bounded fifth and cancellation permit release.
+Hardware qualification pending. Nodes can stay v24; this is frontend-only.
+
+A1024-trajectory expansion is running offline against the verified cached first
+shard with the same tokenizer/context/order. It recompiles the512 prefix and is
+CPU expensive, with no intermediate progress receipt. Own initializer PID570669
+was SIGSTOP'd after~17min (not killed) for uncontaminated v25 serving tests;
+resume it with SIGCONT after measurement. Do not forget this process or claim
+the1024 pool ready until its receipt says so.512 pool remains unchanged/usable.

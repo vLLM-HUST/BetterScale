@@ -516,3 +516,35 @@ def test_worker_sets_private_peer_before_dispatching_store():
     assert calls==[("peer","k",2),("dispatch",commands)]
     with pytest.raises(ValueError,match="only to store"):
         worker.state_cache_actions([dict(kind="load",key="bad",peer_group=2)])
+
+
+def test_owner_control_window_pipelines_four_rpcs_but_stays_bounded(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"window.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        active=0;peak=0;arrived=asyncio.Event();release=asyncio.Event()
+        async def cache(kind,index,command):
+            nonlocal active,peak
+            active+=1;peak=max(peak,active)
+            if active==4:arrived.set()
+            try:
+                await release.wait()
+                return command["key"]
+            finally:active-=1
+        c.cache=cache
+        tasks=[asyncio.create_task(c.prepare("D",0,dict(kind="load_match",key=i))) for i in range(5)]
+        try:
+            await asyncio.wait_for(arrived.wait(),.3)
+            await asyncio.sleep(.01)
+            assert active==peak==4 and not any(t.done() for t in tasks)
+            tasks[0].cancel()
+            await asyncio.gather(tasks[0],return_exceptions=True)
+            await asyncio.sleep(.01)
+            assert active==4  # cancelled attempt returns its permit
+            release.set()
+            assert await asyncio.gather(*tasks[1:])==[1,2,3,4]
+            assert peak==4
+        finally:
+            for task in tasks:task.cancel()
+            await asyncio.gather(*tasks,return_exceptions=True)
+    asyncio.run(run())

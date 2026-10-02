@@ -54,9 +54,11 @@ class Coordinator:
         self.p_limit=p_per_instance
         self.p_admission=[Admission(seats=p_per_instance) for _ in range(4)]
         self.p_changed=asyncio.Condition()
-        # Bound control traffic, not transaction lifetime: release this lock
-        # after each atomic Core admission attempt, including a busy response.
-        self.admission_calls={(kind,i):asyncio.Lock() for kind in ("P","D") for i in range(4)}
+        # Bound in-flight control calls, not transaction lifetime. Core owns
+        # atomic offers/leases; one HTTP roundtrip per owner otherwise becomes
+        # a one-admission-per-model-step gate. Four calls pipeline that latency
+        # without removing the native max_pending20 or shared-object fences.
+        self.admission_calls={(kind,i):asyncio.Semaphore(4) for kind in ("P","D") for i in range(4)}
         self.admission=[Admission() for _ in range(4)]
         self.sink=PeerObjectSink(self.urls)
         self.rank_private=False
