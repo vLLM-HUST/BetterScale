@@ -911,3 +911,27 @@ a lost/expired lease. The configured master TTL must be explicit and verified;
 Python descriptor results omit TTL, so guessing it is not acceptable. A paused
 or failed renewal must not be silently “recovered” while claiming uninterrupted
 ownership. This is a proposed integration, not yet implemented or qualified.
+
+
+Lease-ledger implementation frontier: native_store_leases.py now scopes
+renewable native leases to checkpoint object-reference sets, shares sealed
+page references, acquires on publication before staging reuse, and stops
+renewing after the last checkpoint drop. TTL is a required verified launch
+input. Slow replies, expired protection intervals and missing held replicas
+fail sticky; no silent reacquisition across a gap. The renewal thread uses
+condition/deadline waits and must drain before closing its native query client.
+Four CPU lease tests plus two integrated transport tests pass.
+native-store-lease-ledger2 additionally holds an actual Store object past the
+initial2s TTL using the renewal thread: non-force remove remains -706 after3.2s;
+after checkpoint drop plus2.2s, remove succeeds. Both single/batch query gates
+also pass again. This is a CPU/native Store lifecycle proof, not a fault-recovery
+or model qualification.
+
+CheckedReplicas now requires the same ledger as NativeStateTransport: a
+successful pointer PUT acquires its eviction lease before the ring frees the
+slot. The transport registers/reuses immutable checkpoint manifests, keeps
+references until release(key), checks lease health before staged publication
+and complete readiness before final success. The live supports_staged_receipts
+flag remains FALSE pending a combined native State DMA/CRC/replica/lease gate
+and actual online-launch integration. The older isolated frame NPU gate did
+not exercise this newly composed ledger transport.

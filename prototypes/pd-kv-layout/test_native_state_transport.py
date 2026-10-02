@@ -6,6 +6,7 @@ import torch
 from native_state_frame import FramePlan
 from native_state_transport import NativeStateTransport,CheckedReplicas
 from native_dram_staging import NativeDramStaging
+from native_store_leases import NativeStoreLeases
 from test_native_dram_staging import Allocator
 from test_native_state_frame import fixture,copy_cpu
 from betterscale.live.runtime.host_state import HostStateSelection,HostStateDomainSelection
@@ -30,9 +31,10 @@ def setup():
     domain,states=fixture();sink=Sink()
     select=lambda i:HostStateSelection((HostStateDomainSelection(domain,(i,)),))
     size=FramePlan.build([(n,s,(0,)) for n,s in states]).byte_length+32
-    arena=NativeDramStaging(CheckedReplicas(sink,None),slot_bytes=size,slots=2,allocator=Allocator())
+    leases=NativeStoreLeases(lambda keys:set(keys)&set(sink.values),ttl_seconds=60,background=False)
+    arena=NativeDramStaging(CheckedReplicas(sink,None,leases),slot_bytes=size,slots=2,allocator=Allocator())
     def submit(args,to_host,stream):return lambda:copy_cpu(args)
-    transport=NativeStateTransport(sink,arena,"test",submit,verify=True)
+    transport=NativeStateTransport(sink,arena,"test",submit,leases=leases,verify=True)
     return states,sink,arena,transport,select
 
 
@@ -56,7 +58,9 @@ def test_local_completion_precedes_both_acks_and_source_reuse_is_safe():
     transport.transfer("B",states,{"a":select(0)},store=True,stream=None,
         on_staged=skipped.append).result()
     assert skipped==[0]
-    arena.close()
+    transport.release("A");transport.release("B")
+    assert not transport.leases.references
+    transport.leases.close();arena.close()
 
 
 def test_corrupt_body_is_rejected_before_any_device_write_and_failure_is_sticky():

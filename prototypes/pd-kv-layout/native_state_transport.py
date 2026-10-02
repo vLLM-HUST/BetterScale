@@ -22,8 +22,8 @@ class CheckedReplicas:
     """
     frame_integrity = True
 
-    def __init__(self, client, config):
-        self.client, self.config = client, config
+    def __init__(self, client, config, leases):
+        self.client, self.config, self.leases = client, config, leases
 
     def register_buffer(self, *args): return self.client.register_buffer(*args)
     def unregister_buffer(self, *args): return self.client.unregister_buffer(*args)
@@ -33,7 +33,12 @@ class CheckedReplicas:
         body = (ctypes.c_uint8 * (size-32)).from_address(pointer)
         digest = hashlib.sha256(body).digest()
         ctypes.memmove(pointer+size-32,digest,32)
-        return self.client.put_from(key,pointer,size,self.config)
+        rc = self.client.put_from(key,pointer,size,self.config)
+        if rc == 0:
+            # Store ACK alone is insufficient: acquire eviction protection
+            # before the arena can recycle this object's last staging copy.
+            self.leases.publish(key)
+        return rc
 
 
 class NativeTransfer:
@@ -55,15 +60,17 @@ class NativeTransfer:
 
 
 class NativeStateTransport:
-    # Keep the real worker gate CLOSED until native Store eviction leases span
-    # the entire multi-object staged/committed transaction. Unit fixtures do
-    # not evict, and small native gates fit wholly in DRAM; neither is that proof.
+    # Ledger integration is CPU-tested, but keep the live gate CLOSED until
+    # the combined native DMA/replica/lease path has passed qualification.
     supports_staged_receipts = False
 
-    def __init__(self, sink, arena, namespace, submit, *, verify=False):
+    def __init__(self, sink, arena, namespace, submit, *, leases, verify=False):
         if not namespace:raise ValueError("State namespace required")
         if not getattr(arena.store,"frame_integrity",False):
             raise ValueError("native State writes require checked replica facade")
+        if getattr(arena.store,"leases",None) is not leases:
+            raise ValueError("staging and checkpoint must share eviction lease ownership")
+        self.leases = leases
         self.sink, self.arena, self.namespace = sink, arena, namespace
         self.submit, self.verify = submit, verify
         self.quarantined = []
@@ -72,8 +79,10 @@ class NativeStateTransport:
         return hashlib.sha256((self.namespace+"/native-frame-v1\0"+identity).encode()).hexdigest()
 
     def release(self, key):
-        # Native node-wide Store owns cache eviction, not a worker manifest.
-        return None
+        # Core checkpoint/LRU metadata already owns the reference policy.
+        # Drop only this manifest's refs; shared sealed pages retain others.
+        with self.leases.condition:
+            if key in self.leases.groups:self.leases.drop(key)
 
     @staticmethod
     def digest(lease):
@@ -87,11 +96,13 @@ class NativeStateTransport:
         def run():
             replicas, moved = [], 0
             keys = [self.object_id(k) for k in objects]
-            exists = self.sink.batch_is_exist(keys) if store else [0]*len(keys)
+            exists = self.leases.begin(key,keys)
             if len(exists) != len(keys) or any(x not in (0,1) for x in exists):
                 raise RuntimeError("native State presence query failed")
+            if not store and not all(exists):
+                raise KeyError("native State checkpoint missing a complete replica")
             for (identity,selection),remote,present in zip(objects.items(),keys,exists):
-                if present:continue
+                if store and present:continue
                 lanes = TorchHostStateBackend._select_lanes(states,selection)
                 plan = FramePlan.build(lanes)
                 lease = self.arena.acquire(plan.byte_length+32,timeout=None)
@@ -128,11 +139,13 @@ class NativeStateTransport:
                         self.arena.condition.notify_all()
                     self.quarantined.append((key,states,stream,lease))
                     raise
+            self.leases.check(key)
             if store and on_staged is not None:
                 # Earlier objects are either still held by the staging ring or
                 # already acknowledged in Store. All source DMA has retired.
                 on_staged(moved)
             for replica in replicas:
                 replica.result()
+            self.leases.check(key,complete=True)
             return moved
         return NativeTransfer(run)
