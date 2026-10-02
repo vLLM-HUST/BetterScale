@@ -305,3 +305,48 @@ def test_prefill_finishes_and_releases_p_before_waiting_for_d(tmp_path):
         task.cancel()
         await task
     asyncio.run(run())
+
+
+def test_full_128_generation_connections_do_not_starve_state_control(tmp_path,monkeypatch):
+    from aiohttp import web
+    import online_coordinator as module
+    from pd_limits import context_limit
+    class Peer:
+        def __init__(self,url,*args):self.kind="P" if "1.16" in url else "D"
+        async def health(self):
+            kind=self.kind
+            info=dict(state_wire="raw-v2",capacities=[dict(block_size=2048,
+                max_requests=16 if kind=="P" else 32,free_blocks=2048)]*(1 if kind=="P" else 4))
+            return dict(ready=True,kind=kind,context_limit=context_limit(),
+                actors=[dict(alive=True,quarantined=False,info=info)]*(4 if kind=="P" else 1))
+    monkeypatch.setattr(module,"Peer",Peer)
+    async def run():
+        release=asyncio.Event();full=asyncio.Event();entered=0
+        async def hold(request):
+            nonlocal entered
+            entered+=1
+            if entered==128:full.set()
+            await release.wait()
+            return web.Response(text="done")
+        async def control(request):return web.Response(text="control")
+        app=web.Application();app.router.add_get("/hold",hold);app.router.add_get("/control",control)
+        runner=web.AppRunner(app);await runner.setup()
+        site=web.TCPSite(runner,"127.0.0.1",0);await site.start()
+        port=site._server.sockets[0].getsockname()[1]
+        c=module.Coordinator(tmp_path/"connections.db","http://10.244.1.16:55581","http://10.244.2.32:55586")
+        tasks=[]
+        try:
+            await c.start()
+            assert c.request_slots._value==256  # two bounded waves at C32x4
+            async def request(path):
+                async with c.client.get(f"http://127.0.0.1:{port}/{path}") as response:
+                    return await response.text()
+            tasks=[asyncio.create_task(request("hold")) for _ in range(128)]
+            await asyncio.wait_for(full.wait(),5)
+            assert await asyncio.wait_for(request("control"),1)=="control"
+            assert not any(t.done() for t in tasks)
+        finally:
+            release.set()
+            await asyncio.gather(*tasks,return_exceptions=True)
+            await c.close();await runner.cleanup()
+    asyncio.run(run())

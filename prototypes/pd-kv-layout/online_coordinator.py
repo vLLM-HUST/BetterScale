@@ -69,7 +69,12 @@ class Coordinator:
                     "SELECT 1 FROM sessions s LEFT JOIN rank_placements p ON s.id=p.session "
                     "WHERE s.manifest IS NOT NULL AND p.p_owner IS NULL LIMIT 1").fetchone():
                 raise RuntimeError("Existing session lacks sticky placement; explicit migration required")
-        self.client=aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=1860))
+        # Long generation streams share this client with State-control RPCs.
+        # aiohttp's default100 connections would silently cap wider D execution
+        # and starve loads behind generations. Work is already bounded by the
+        # admitted request permits and per-owner/State resource budgets.
+        self.client=aiohttp.ClientSession(connector=aiohttp.TCPConnector(limit=0),
+            timeout=aiohttp.ClientTimeout(total=1860))
         self.p,self.d=[Peer(url,self.client,self.trace) for url in self.urls]
         wire_versions=set()
         for peer,kind,count in ((self.p,"P",4),(self.d,"D",1)):
