@@ -280,3 +280,33 @@ boundary. No hw86/hw81 operation occurred.
 `overlap-mtp-controls-20261003.tgz` in the same local artifact directory preserves
 both MTP arms' raw/parsed profiles, all outputs and failures, the final target-only
 control and its exact overlay. These three services exited and the pair is idle.
+
+### Pure-TP2 secondary gate and current stopping boundary
+
+`tp-mtp-owned-serial1` selects the historical public TP2 Worker with EP disabled,
+keeping the same owned-draft overlay/runtime and real MTP. All three cold HTTP
+checks pass. Unlike EP2, its full warm/cold/uninterrupted4412+64 continuation
+**passes**, with cached4475 versus0. Prefix/warm/cold IDs match the EP control;
+only EP uninterrupted differs at global76. This narrows the observation to the
+experimental EP combination, not a universal MTP or migrated-TP2 failure, but
+neither identifies its numerical cause nor certifies general EP serving.
+
+The requested SWE path was then actually attempted: client695dd8b, canonical
+prepared workload, C2/60s, seed20260924, real MTP2,2 chips,262144 context.
+`tp-serial-swe-c2-valid` aborts after~13.9s in **draft** owned-FIA planning because
+a real query exceeds the compiled Q16 envelope (`plan.py` retains the stale
+error text "Only Q1..3"). This is not the cold-request/continuity gate and is
+not a measured leaderboard point. Do not filter the failing turn, disable MTP,
+change the prepared corpus, or enlarge only the Python guard to manufacture a
+score. The first client invocation omitted `/v1/completions` from its URL and
+failed before requests; its log is retained separately, not counted as a model
+failure. No900s point was launched after the real protocol failure.
+
+A SWE rerun now needs a separately qualified wider draft-attention baseline;
+that is more than turning on this expert-overlap patch. The primary multi-DP
+route still needs four assigned cards. Stop the optional campaign here rather
+than silently expanding it into a numerical-attention port. Four-card allocation
+was requested; no new allocation has arrived. Default remains off and website
+unchanged. `overlap-tp-swe-control-20261003.tgz` in the local artifact directory
+retains the full TP control, both client logs and protocol failure. The API server
+has exited and both assigned cards are idle.

@@ -529,3 +529,13 @@ these data. The previous target-only cross-arm gate remains a bounded pass,
 not independent continuation acceptance. See the prototype's failed receipts;
 do not publish its MTP throughput, weaken tolerances, or repeat the parent
 success claim on this different EP/historical-source composition.
+
+The same hw112 overlay's **pure TP2/MTP** continuation subsequently passes the
+complete invariant; the uninterrupted divergence above is confined to the EP
+control in this comparison. However the actual SWE C2/60s protocol aborts in
+draft planning on a real query beyond compiledQ16. Do not infer arbitrary SWE
+coverage from three cold requests or64-token continuation, and do not enlarge
+only the host guard. A wider qualified draft baseline is needed before rerunning
+the historical MTP leaderboard on this9.1 overlay; that optional attention port
+was not folded into the expert-overlap patch. Full logs and failed protocol
+capsule are retained in the prototype's named external archives.
