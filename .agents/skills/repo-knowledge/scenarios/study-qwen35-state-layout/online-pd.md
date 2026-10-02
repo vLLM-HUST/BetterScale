@@ -1468,3 +1468,26 @@ full TP store completion. Host replica/manifest commit still gates the next
 turn of that same session, not another session's released D seat.
 74 focused cache/controller/actor tests passed before the final capability
 receipt refinement; hardware qualification of local-staging admission is next.
+
+
+v19 conservative early-release replay is VALID:2059 requests,
+1775 in-window/284 drained, zero failures/misses,352.670s wall,
+1853.4667 total tokens/s, TTFT P956.47852s. All2059 turns contain one
+D-device-released receipt. It does NOT show a throughput gain over v18;
+correcting ownership alone has not resolved online cadence/control overhead.
+
+v20 freezes ab949e5 and stages a new D capsule with local device Future;
+D C32/R40/44GiB advertises state_device_release=true. Its first gate FAILS
+during initial P→D transfer, before qualifying local D release:
+P reports private State transfer failed:-1 / TCP WRITE ack EOF at18:48:13UTC.
+A concrete restart hazard: new D owner1/head1 endpoint10.244.2.32:16475
+reuses an address already opened/cached by still-live v12 P at17:59:59UTC.
+Seven other new endpoints log openSegment; this one does not. This strongly
+implicates stale cached TE segment/session identity across endpoint reuse,
+not a GDN or local-staging numerical failure. CPU wheel TransferEngine exposes
+no close/reset/remote-segment invalidation API through dir inspection.
+The failed native transfer quarantines its source as designed; do not retry
+in those processes or release uncertain lifetimes. Next qualification cold
+restarts both owned nodes and uses fresh task State/metadata. Coordinated
+restart is experimental recovery, NOT a production peer-incarnation fix.
+All v20 failed gate/log evidence is retained.
