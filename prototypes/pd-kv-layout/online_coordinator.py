@@ -33,11 +33,18 @@ class Admission:
             self.free+=count;self.slots+=1;self.condition.notify_all()
 
 class Coordinator:
-    def __init__(self,path,p_url,d_url,trace=None):
+    def __init__(self,path,p_url,d_url,trace=None,*,p_per_instance=4):
         self.directory=Directory(path);self.urls=(p_url,d_url);self.trace=trace
         self.inflight={};self.tasks=set();self.failure=None;self.client=None;self.lock=None
         self.p_available=asyncio.Queue()
-        for i in range(4):self.p_available.put_nowait(i)
+        self.p_affinity={}
+        if type(p_per_instance) is not int or not 1<=p_per_instance<=4:
+            raise ValueError("P pipeline admits one to four requests per TP2 instance")
+        # Include compute, warm and backup in this bound. Four requests fit both
+        # R20 and the measured full-context KV budget; a finished request waiting
+        # for its backup cannot be evicted by an unbounded new arrival stream.
+        for _ in range(p_per_instance):
+            for i in range(4):self.p_available.put_nowait(i)
         self.maintenance={(kind,i):asyncio.Lock() for kind in ("P","D") for i in range(4)}
         self.admission=[Admission() for _ in range(4)]
         self.sink=PeerObjectSink(self.urls)
@@ -62,9 +69,28 @@ class Coordinator:
                 self.admission=[Admission(c["free_blocks"],c["max_requests"]) for c in capacities]
         return self
 
+    async def acquire_p(self,session):
+        # Prefer a returning session's weak device pages without waiting for a
+        # busy instance. Drain/requeue ready permits without yielding: public
+        # Queue operations, and at most16 permits, not another scheduler loop.
+        available=[await self.p_available.get()]
+        while not self.p_available.empty():available.append(self.p_available.get_nowait())
+        preferred=self.p_affinity.get(session)
+        chosen=preferred if preferred in available else available[0]
+        available.remove(chosen)
+        for instance in available:self.p_available.put_nowait(instance)
+        self.p_affinity[session]=chosen
+        return chosen
+
     async def cache(self,kind,index,command):
         peer=self.p if kind=="P" else self.d
-        return await peer.rpc(index if kind=="P" else 0,"cache",owner=0 if kind=="P" else index,command=command)
+        start=time.perf_counter()
+        result=await peer.rpc(index if kind=="P" else 0,"cache",owner=0 if kind=="P" else index,command=command)
+        if self.trace:
+            self.trace(dict(op="cache-control",kind=kind,index=index,action=command["kind"],
+                            operation=command.get("operation"),start=start,end=time.perf_counter(),
+                            receipt=result if command["kind"]=="wait" else None))
+        return result
 
     async def prepare(self,kind,index,command):
         deadline=time.monotonic()+300
@@ -114,7 +140,7 @@ class Coordinator:
             # Bound complete D footprint before creating source work. P workers
             # remain shared; independent owners and in-flight turns are online.
             if n>1:reserved=await self.admission[owner].acquire(len(prompt)+n)
-            p_instance=await self.p_available.get()
+            p_instance=await self.acquire_p(session)
             if self.failure:raise RuntimeError(self.failure)
             try:self.directory.create(session,IDENTITY,"P")
             except sqlite3.IntegrityError:pass

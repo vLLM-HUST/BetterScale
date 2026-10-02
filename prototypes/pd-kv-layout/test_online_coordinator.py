@@ -28,3 +28,16 @@ def test_only_narrow_online_operations_admitted():
     for bad in (True,-1,4):
         body["args"]=dict(owner=bad,command=dict(kind="snapshot"))
         with pytest.raises(ValueError):validate("D",body)
+
+
+def test_prefill_affinity_reuses_ready_permit_but_never_waits_for_busy_owner(tmp_path):
+    from online_coordinator import Coordinator
+    async def run():
+        c=Coordinator(tmp_path/"directory.db","http://10.244.1.16:55581","http://10.244.2.32:55586",p_per_instance=1)
+        c.p_affinity["warm"]=2
+        assert await c.acquire_p("warm")==2
+        assert await c.acquire_p("another")==0
+        c.p_affinity["busy"]=2
+        assert await asyncio.wait_for(c.acquire_p("busy"),.1)==1
+        assert c.p_available.qsize()==1
+    asyncio.run(run())

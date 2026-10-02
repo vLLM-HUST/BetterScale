@@ -15,7 +15,7 @@ page/seat ownership and TP completion quorum remain necessary for each request.
 Fletcher explicitly corrected the empty-round framing; it is a risk of blindly
 reusing the old DP1 dispatch seam, not a desired architecture.
 
-## Current integration candidate (not hardware-qualified yet)
+## Current integration candidate and bounded qualification
 
 Branch `codex/pd-incremental-online`, first frozen candidate69159a9. Cache code
 is selectively adopted from2dac92c: CacheActions/PageResidency, policy, worker,
@@ -52,19 +52,46 @@ SQLite single-writer directory, fixed D owner and caller-cancellation fence.
 Per-owner seats and full-request page reservations bound D admission; frontend
 metadata is separate from worker data movement. No global DP drain is called.
 
-## First bounded gates and artifacts
+## Hardware gates and the event-lifetime correction
 
-52 CPU tests passed for adopted lifecycle gates, control-only dispatch,
-object bytes/geometry/failure quarantine and shared object publication. Additional
-admission and byte-audit tests are in `test_online_coordinator.py` and
-`test_qwen35_page_transport.py`. Exact post-H2D object readback is optional and
-must be disabled for performance measurements; do not include audit copies in
-claims about production transfer cost.
+The first69159a9 hardware gate failed closed at exact post-H2D readback.
+The integration incorrectly called PageStateStore's private batch-copy backend
+for a standalone restore: that backend relies on its outer batch fence and
+does not create a per-object event. This was not an accepted numerical drift.
+Commit cd21eeb uses ordinary TorchHostStateBackend for standalone restore/audit,
+waits its real event, then releases staging/publishes completion. A delayed-event
+CPU regression protects both restore and audit. Source D2H retains the correctly
+fenced PageStateStore batch path.
 
-Runtime roots on both machines remain `/workspace/betterscale-pd-runtime`.
-`online-v1-source` is frozen from69159a9; staged P/D packages overlay only the
-listed cache seams on the already qualified task capsules. All16 NPUs were
-checked idle before launch. hw81-online-v1 / hw86-online-v1 launchers use
-context262144,24.25GiB State/rank and512GiB DRAM Store/node, with byte audit on.
-The `hw86-online-v1-probe` gate is pending: four-owner cold/warm PD turns.
-Do not promote startup, CPU passes or submitted work to hardware qualification.
+Frozen online-v2-source/packages (cd21eeb) passed all16-card byte-audited gates:
+four-owner cold/warm1K, four-owner32K, eight-session4K, eight-session32K with
+bounded P pipelining, and four-owner261952-token cold/warm plus one exact262144
+context boundary. The last gate completed in243.762s; this is audit-on diagnostic
+wall time, not production latency. Each gate checks output counts, ownership,
+no pending D transfers and post-H2D object byte equality. It does not assert
+greedy IDs must be invariant across segmentation or batching.
+
+Artifacts are under /workspace/betterscale-pd-runtime on hw86:
+hw86-online-v2-probe2, hw86-online-v2-32k, hw86-online-v2-online8,
+hw86-online-v2-pipeline and hw86-online-v2-256k. P logs reside on hw81.
+The earlier v2-probe failure was a helper's off-by-one cached-token expectation;
+the corrected expectation is prompt length, with unique session IDs per campaign.
+
+The32K gate measured warm D load of one missing FA page plus boundary State,
+116572172 DMA bytes/rank, versus first load431144972 bytes/rank. These counts
+exclude audit copies and are not network-throughput measurements.
+
+P admission now permits up to four request lifetimes per TP2 instance, allowing
+compute while another request backs up. Returning sessions prefer their former
+P instance only when a permit is immediately available, retaining weak pages
+without imposing affinity waiting. Each owner's incremental transactions remain
+serialized, independently of compute. Neither optimization is a new model loop.
+
+56 CPU tests passed (lifecycle/control/object transport/admission/affinity).
+Runtime pins, kernels, E16/R20, context262144 and24.25GiB State/rank are preserved.
+Both node Stores use512GiB DRAM. Correctness services were stopped with all NPUs
+released; native resource_tracker reported four shared-memory cleanup warnings
+per host. Audit-off performance services use the same frozen v2 source/packages.
+online_workload.py is a bounded synthetic mixed4K/32K staggered closed-loop
+diagnostic, not an official SWE benchmark. Actor arrival intervals must not be
+reported as device step timings. Sixteen-card profiling is still pending.
