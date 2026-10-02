@@ -25,9 +25,12 @@ class Core(MixedCore):
         # The first service experiment deliberately uses the mixed core for all
         # capacities. Pure verification takes the small branch below; no chunk
         # work is recorded into its graph.
-        super().__init__(tokens, device)
+        decode = tokens in SPEC_CAPACITIES
+        # Verification keeps the shared metadata shape, but never executes H/O
+        # chunk kernels. Do not allocate an unused, narrower prefill workspace.
+        super().__init__(tokens, device, prefill=not decode)
         self.tokens = tokens
-        self.decode = tokens in SPEC_CAPACITIES
+        self.decode = decode
         self.mtp = True
         self.verify_ids = torch.zeros(EXECUTION + 1, dtype=torch.int64, device=device)
         self.accepted_source = None

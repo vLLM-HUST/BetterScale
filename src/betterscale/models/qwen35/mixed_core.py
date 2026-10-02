@@ -35,7 +35,7 @@ def restore_kernel(P, V, MAP, OUT, T: tl.constexpr, BLOCK: tl.constexpr):
 
 
 class MixedCore:
-    def __init__(self, capacity, device="npu"):
+    def __init__(self, capacity, device="npu", *, prefill=True):
         self.capacity = capacity
         self.shared_qkv_pack = (
             os.environ.get("BETTERSCALE_GDN_SMALL_COPIES", "0") == "1"
@@ -43,7 +43,8 @@ class MixedCore:
         self.layout_fusion = os.environ.get("MTP_GDN_LAYOUT_FUSION") == "1"
         self.width = WIDTH
         self.prefill = Metadata(
-            capacity, False, device, requests=EXECUTION, key_heads=8, value_heads=16
+            capacity, False, device, requests=EXECUTION, key_heads=8, value_heads=16,
+            initialize_engine=prefill
         )
         self.cu = torch.zeros(EXECUTION + 2, dtype=torch.int32, device=device)
         self.prefill_conv = torch.full((EXECUTION + 1, 1), -1, dtype=torch.int32, device=device)
@@ -128,6 +129,8 @@ class MixedCore:
         self.restore.copy_(torch.tensor(restore))
 
     def __call__(self, x, a, b, weight, log, bias, conv, state):
+        if self.prefill.engine is None:
+            raise RuntimeError("prefill disabled for verification-only core")
         # Both convolution roles consume the same immutable packed input.
         if self.shared_qkv_pack:
             x = x.contiguous()

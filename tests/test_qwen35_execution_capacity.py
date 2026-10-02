@@ -52,3 +52,29 @@ for filename,function in (("draft_fia.py","compact_padding"),("state_backend.py"
 """
     subprocess.run([sys.executable,"-c",program],cwd=repo,env=env,check=True,
                    capture_output=True,text=True,timeout=30)
+
+
+
+@pytest.mark.parametrize("rows",(16,32,48,64,80))
+def test_verification_metadata_does_not_initialize_prefill_kernels(rows):
+    from betterscale.patches.qwen_gdn.metadata import Metadata
+    import ast
+    from types import SimpleNamespace
+    meta=Metadata(3*rows,False,"cpu",requests=rows,key_heads=8,value_heads=16,
+                  initialize_engine=False)
+    assert meta.engine is None and meta.cu.numel()==rows+2
+    assert meta.max_requests==rows
+    # Execute the real Core constructor against a recording base: this pins the
+    # branch selection without initializing Triton/NPU in the CPU unit test.
+    source=Path("src/betterscale/models/qwen35/service_metadata.py")
+    tree=ast.parse(source.read_text())
+    cls=next(n for n in tree.body if isinstance(n,ast.ClassDef) and n.name=="Core")
+    init=next(n for n in cls.body if isinstance(n,ast.FunctionDef) and n.name=="__init__")
+    cls.body=[init]
+    class Base:
+        def __init__(self,tokens,device,*,prefill):self.prefill_initialized=prefill
+    scope=dict(MixedCore=Base,SPEC_CAPACITIES=(3*rows,),EXECUTION=rows,
+               torch=SimpleNamespace(zeros=lambda *a,**k:object(),int64=object()))
+    exec(compile(ast.Module(body=[cls],type_ignores=[]),str(source),"exec"),scope)
+    assert scope["Core"](3*rows,"cpu").prefill_initialized is False
+    assert scope["Core"](4096,"cpu").prefill_initialized is True

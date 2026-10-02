@@ -20,7 +20,8 @@ def chunk_rows(lengths, size, capacity, requests=8):
 
 class Metadata:
     def __init__(
-        self, tokens, decode, device, *, requests=8, key_heads=8, value_heads=24
+        self, tokens, decode, device, *, requests=8, key_heads=8, value_heads=24,
+        initialize_engine=True
     ):
         import torch
 
@@ -47,7 +48,7 @@ class Metadata:
             }
         )
         self.engine = None
-        if not decode:
+        if not decode and initialize_engine:
             import os
             from .runtime import Kernels
 

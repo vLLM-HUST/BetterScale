@@ -16,6 +16,7 @@ FILES=("worker.py", "models/qwen35/state_backend.py", "models/qwen35/state_slots
        'models/qwen35/device_metadata.py',
        'models/qwen35/device_slots.py',
        'models/qwen35/integration.py',
+       'patches/qwen_gdn/metadata.py',
        'patches/qwen_fia/wave.py',
        'patches/qwen_fia/context_parallel/plan.py',
        'patches/qwen_fia/context_parallel/adapter.py')
