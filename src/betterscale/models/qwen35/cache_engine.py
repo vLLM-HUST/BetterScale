@@ -1,5 +1,6 @@
 """Optional native EngineCore wakeup seam; leaves its batch queue untouched."""
 
+from collections import deque
 import json
 import queue
 import socket
@@ -47,6 +48,28 @@ class CompletionInbox:
         self.directory.cleanup()
 
 
+class ControlDispatch:
+    """Core-thread-only lazy RPC responses; never drain model work at admission."""
+
+    def __init__(self, executor):
+        self.executor = executor
+        self.pending = deque()
+
+    def send(self, commands):
+        self.pending.append(self.executor.collective_rpc(
+            "state_cache_actions", args=(commands,), non_block=True
+        ))
+
+    def reap(self, *, idle=False):
+        # Native model-result consumption drains earlier RPC responses in FIFO
+        # order. Do not use another thread: FutureWrapper's response queue is
+        # deliberately single-consumer. Fully idle cores have no model result
+        # to drive it, so consume control acknowledgements there explicitly.
+        while self.pending and (self.pending[0].done() or idle):
+            self.pending[0].result()  # surface worker errors, never discard them
+            self.pending.popleft()
+
+
 def install():
     from vllm.v1.engine import EngineCoreRequestType
     from vllm.v1.engine.core import EngineCoreProc
@@ -77,15 +100,26 @@ def install():
             if getattr(core.scheduler, "cache_control_rpc", False) and cache.outbox:
                 # TP-local command ordering is the producer fence, not a model
                 # forward. Enqueue only; completion arrives via the socket inbox.
-                commands = cache.take_commands()
-                core.model_executor.collective_rpc(
-                    "state_cache_actions", args=(commands,)
-                )
+                dispatch = getattr(core, "_state_cache_dispatch", None)
+                if dispatch is None:
+                    dispatch = core._state_cache_dispatch = ControlDispatch(core.model_executor)
+                dispatch.send(cache.take_commands())
+            reap(core)
         return cache
+
+    def reap(core):
+        dispatch = getattr(core, "_state_cache_dispatch", None)
+        if dispatch is not None:
+            dispatch.reap(idle=(
+                not core.batch_queue
+                and not getattr(core, "engines_running", False)
+                and not core.scheduler.has_requests()
+            ))
 
     def step(core):
         cache = progress(core)
         executed = original_step(core)
+        reap(core)
         core._state_cache_model_steps = getattr(
             core, "_state_cache_model_steps", 0
         ) + bool(executed)

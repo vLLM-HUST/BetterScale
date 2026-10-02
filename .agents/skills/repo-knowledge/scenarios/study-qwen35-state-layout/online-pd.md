@@ -1577,3 +1577,41 @@ pd-v13-v21-D-evidence.tgz (327267184 bytes) and pd-v12-v21-P-evidence.tgz.
 D archive includes the two DP0 native DBs, framework ranges, timing/control
 receipts and SWE results, excluding other ranks' large raw profiles and capsules.
 Full raw profiles remain remote; source is independently committed/pushed.
+
+## C48 online supply and control-RPC drain — 2026-10-03
+
+v23 C48/R56/44GiB with9b753e2 passes192x4K/2048-output plus warm8 in87.353s,
+all16 byte audits on. All eight D ranks really reach48 live rows; full48 host
+interval median51.72–51.77ms/P9553.43–54.83ms, so the50ms target is not met.
+Gate fixtures were explicitly retired to zero private-pool objects/readers,
+audits disabled, then real SWE2.0/240 ran with512 client connections (not256).
+
+v23 real replay VALID:2029requests,1744 window/285 drain, zero failures/misses,
+wall331.688s,1785.3583 total tokens/s, TTFT P955.46938s. No client connection
+queue. All2029 output-ready/device-release/turn-committed events completed.
+It is NOT a throughput gain. Final60s mean live rows by owner20.66/17.00/12.03/
+12.49, maximum33/24/18/19 (whole run); never full48. Final-minute host dispatch
+interval median64–66ms/P95110–121ms. This is still under-supplied online,
+not proof that configured C48 cannot execute.
+
+New observer spans distinguish the suspected control bubble: state_cache_actions
+worker execution median0.45–0.59ms/P950.86–1.37ms, but Core collective_rpc
+median28.6–30.4ms/P9572–76ms. Separate pd_rank_peer RPC median39–45ms.
+DP metadata wait median1.9–4.7ms/P9531–38ms. Observation artifact:
+online-rank-v23-observer-analysis.json; timing and control inputs retain the
+measurement bounds. These are host spans, not additive device-time attribution.
+
+Pinned MultiprocExecutor FutureWrapper.result drains all older response futures
+before its own. Synchronous State RPC therefore drains earlier model responses
+on the admission path. Candidate fix uses non_block=True and retains controls
+on the SAME Core thread; later native model-result consumption drains FIFO.
+Reap completed controls to surface errors; explicitly drain only when no native
+batch, no scheduler requests and no global DP wave. No response-consumer thread,
+no fabricated compute wave, no native batch-queue mutation. Fully idle maintenance
+still completes without compute. Sticky peer placement now travels in its store
+command and is applied before worker enqueue, removing the second RPC barrier.
+
+75 CPU tests pass, including actual native FutureWrapper FIFO behavior, idle
+drain, error propagation, placement-before-store, and existing ownership/TP gates.
+Hardware qualification of this candidate is still pending; v23 remains the
+pre-change evidence. Do not claim cadence or throughput improvement yet.

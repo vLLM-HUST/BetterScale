@@ -239,7 +239,15 @@ def test_dp_control_dispatch_does_not_create_model_wave(monkeypatch):
     core.scheduler, core.batch_queue = scheduler, deque()
     core.input_queue = queue.Queue()
     core.engines_running = False
-    core.model_executor = S(collective_rpc=lambda name, args: calls.append((name,args)))
+    from concurrent.futures import Future
+    def rpc(name, args, non_block):
+        assert non_block
+        calls.append((name,args))
+        future = Future()
+        future.set_result([dict(enqueued=len(args[0]))])
+        return future
+    scheduler.has_requests = lambda: False
+    core.model_executor = S(collective_rpc=rpc)
     assert not core.has_work()
     try:
         number = core.state_cache(dict(kind="store", seat=0, key="control"))
@@ -258,3 +266,50 @@ def test_dp_control_dispatch_does_not_create_model_wave(monkeypatch):
         assert scheduler.residents.seats[0].io_owner is None
     finally:
         core._state_cache_inbox.close()
+
+
+def test_control_dispatch_uses_native_lazy_fifo_without_draining_model():
+    from vllm.v1.executor.multiproc_executor import FutureWrapper
+    from betterscale.models.qwen35.cache_engine import ControlDispatch
+    responses, consumed = deque(), []
+    def future(label, error=None):
+        def consume():
+            consumed.append(label)
+            if error:
+                raise error
+            return label
+        return FutureWrapper(responses, consume)
+    model = future("prior-model")
+    def rpc(name, args, non_block):
+        assert name == "state_cache_actions" and non_block
+        return future("control")
+    dispatch = ControlDispatch(S(collective_rpc=rpc))
+    dispatch.send([{"operation": 1}])
+    dispatch.reap()
+    assert consumed == [] and not model.done()
+    next_model = future("next-model")
+    assert next_model.result() == "next-model"
+    assert consumed == ["prior-model", "control", "next-model"]
+    dispatch.reap()
+    assert not dispatch.pending
+
+
+def test_control_dispatch_idle_drains_without_model_and_surfaces_worker_failure():
+    from vllm.v1.executor.multiproc_executor import FutureWrapper
+    from betterscale.models.qwen35.cache_engine import ControlDispatch
+    responses, consumed = deque(), []
+    def rpc(name, args, non_block):
+        def consume():
+            consumed.append(args[0][0])
+            if args[0][0] == "bad":
+                raise RuntimeError("worker rejected control")
+            return "enqueued"
+        return FutureWrapper(responses, consume)
+    dispatch = ControlDispatch(S(collective_rpc=rpc))
+    dispatch.send(["good"])
+    dispatch.reap(idle=True)
+    assert consumed == ["good"] and not responses and not dispatch.pending
+    dispatch.send(["bad"])
+    with pytest.raises(RuntimeError, match="worker rejected"):
+        dispatch.reap(idle=True)
+    assert dispatch.pending  # fail closed, never silently discard an error

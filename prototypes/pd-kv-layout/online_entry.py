@@ -34,9 +34,15 @@ def _cache_command(core, command):
                 if core.vllm_config.additional_config.get("pd_rank_private", False):
                     if "peer_group" not in command:
                         raise ValueError("private State store requires explicit peer placement")
-                    core.model_executor.collective_rpc(
-                        "pd_rank_peer", args=(command["key"], command["peer_group"]))
-                return c.store(seat.index,command["key"])
+                    group = command["peer_group"]
+                    if group is not None and (type(group) is not int or not 0 <= group < 4):
+                        raise ValueError("invalid sticky peer group")
+                number = c.store(seat.index,command["key"])
+                if core.vllm_config.additional_config.get("pd_rank_private", False):
+                    # Placement travels in the SAME ordered worker command as
+                    # the store; no separate synchronous executor RPC barrier.
+                    c.pending[number].command["peer_group"] = group
+                return number
         return None
     if kind=="adopt":
         value=command["checkpoint"]
@@ -91,6 +97,14 @@ class Worker(BaseWorker):
         if decode_only:
             from decode_graph_policy import install
             install()
+
+    def state_cache_actions(self, commands):
+        for command in commands:
+            if "peer_group" in command:
+                if command["kind"] != "store":
+                    raise ValueError("peer placement belongs only to store")
+                self.pd_rank_peer(command["key"], command["peer_group"])
+        return super().state_cache_actions(commands)
 
     def pd_rank_peer(self, key, peer_group):
         from betterscale.live.runtime.host_state import HostStateKey

@@ -466,3 +466,53 @@ def test_busy_state_admission_does_not_lock_out_independent_session(tmp_path,act
             for task in (first,second):task.cancel()
             await asyncio.gather(first,second,return_exceptions=True)
     asyncio.run(run())
+
+
+def test_private_store_placement_joins_native_command_without_rpc():
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace as NS
+    tree=ast.parse(Path(__file__).with_name("online_entry.py").read_text())
+    fn=next(x for x in tree.body if isinstance(x,ast.FunctionDef) and x.name=="_cache_command")
+    namespace={}
+    exec(compile(ast.Module(body=[fn],type_ignores=[]),"cache-command","exec"),namespace)
+    pending={}
+    def store(seat,key):
+        pending[7]=NS(command=dict(kind="store",key=key))
+        return 7
+    cache=NS(store=store,pending=pending)
+    seat=NS(cache_salt="s",tokens=(1,2),owner=None,io_owner=None,fence=0,index=0)
+    core=NS(state_cache=lambda command:None,
+            scheduler=NS(cache_actions=cache,residents=NS(seats=[seat]),processed_step_seq=0),
+            vllm_config=NS(additional_config=dict(pd_rank_private=True)))
+    # No model_executor at all: placement must not perform a synchronous RPC.
+    command=dict(kind="store_match",salt="s",tokens=[1,2],key="k",peer_group=3)
+    assert namespace["_cache_command"](core,command)==7
+    assert pending[7].command["peer_group"]==3
+    for bad in (-1,4,True,"0"):
+        with pytest.raises(ValueError,match="peer group"):
+            namespace["_cache_command"](core,dict(command,peer_group=bad))
+
+
+def test_worker_sets_private_peer_before_dispatching_store():
+    import ast
+    from pathlib import Path
+    tree=ast.parse(Path(__file__).with_name("online_entry.py").read_text())
+    cls=next(x for x in tree.body if isinstance(x,ast.ClassDef) and x.name=="Worker")
+    method=next(x for x in cls.body if isinstance(x,ast.FunctionDef) and x.name=="state_cache_actions")
+    calls=[]
+    class Base:
+        def state_cache_actions(self,commands):
+            calls.append(("dispatch",commands))
+            return "enqueued"
+        def pd_rank_peer(self,key,group):
+            calls.append(("peer",key,group))
+    cls.body=[method];cls.bases=[ast.Name(id="Base",ctx=ast.Load())]
+    namespace={"Base":Base}
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[cls],type_ignores=[])),"worker-command","exec"),namespace)
+    worker=namespace["Worker"]()
+    commands=[dict(kind="store",key="k",peer_group=2),dict(kind="load",key="other")]
+    assert worker.state_cache_actions(commands)=="enqueued"
+    assert calls==[("peer","k",2),("dispatch",commands)]
+    with pytest.raises(ValueError,match="only to store"):
+        worker.state_cache_actions([dict(kind="load",key="bad",peer_group=2)])
