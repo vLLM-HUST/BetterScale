@@ -1313,3 +1313,13 @@ readers/writers/DMA lifetimes; evicting the last cached checkpoint without disk
 requires a real miss/re-prefill path, never a dangling manifest hit.
 The v11 failure plog identifies a128MiB allocation, drvRetCode6, drvDevId0.
 That alone does not establish total DRAM exhaustion or an immutable pin limit.
+
+Clean-process v12 passes1.0/300s:1689requests,1541in-window/148drained,
+zero failures/misses, wall411.116s;1565.3767total tokens/s and window TTFTP95
+1.69047s. All1689 stage populations: D queue wait P9514.049s/max23.782s,
+P admission P953ms, P generate P95.385s, pre-generation State P95.941s,
+global permit P951.209s. TTFT improved markedly because P is no longer blocked
+by D; throughput changes only modestly and queueing remains. Do not call this
+full service-capacity resolution. Memory-before/after receipts in runtime
+online-rank-v12-memory-*.json. Queue semantics are hardware-qualified within
+this bounded envelope; latest-checkpoint LRU and physical pin budgeting remain.
