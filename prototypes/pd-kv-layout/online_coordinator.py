@@ -35,7 +35,7 @@ class Admission:
 class Coordinator:
     def __init__(self,path,p_url,d_url,trace=None,*,p_per_instance=4):
         self.directory=Directory(path);self.urls=(p_url,d_url);self.trace=trace
-        self.inflight={};self.tasks=set();self.failure=None;self.client=None;self.lock=None
+        self.inflight={};self.generated={};self.tasks=set();self.failure=None;self.client=None;self.lock=None
         self.p_available=asyncio.Queue()
         self.p_affinity={}
         if type(p_per_instance) is not int or not 1<=p_per_instance<=4:
@@ -117,25 +117,42 @@ class Coordinator:
             await asyncio.to_thread(self.sink.put,manifest,data)
             return manifest,checkpoint,receipt
 
-    async def submit(self,session,prompt,n):
+    async def submit(self,session,prompt,n,*,on_tokens=None,output_ready=False):
         if self.failure:raise RuntimeError(self.failure)
         if (not isinstance(session,str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}",session)
                 or not isinstance(prompt,list) or not prompt or any(type(t) is not int or not 0<=t<248320 for t in prompt)
-                or type(n) is not int or not 1<=n<=512 or len(prompt)+n>context_limit()):raise ValueError("Invalid request")
-        if session in self.inflight:raise Conflict("Session already active")
+                or type(n) is not int or not 1<=n<=context_limit() or len(prompt)+n>context_limit()):raise ValueError("Invalid request")
+        if session in self.inflight:
+            generated=self.generated[session]
+            if not generated.done():raise Conflict("Session already generating")
+            # A completed response may be followed immediately by another turn.
+            # Wait only this session's commit, never the global DP wave.
+            await asyncio.shield(self.inflight[session])
+            if self.failure:raise RuntimeError(self.failure)
+            if session in self.inflight:raise Conflict("Session admission raced")
         if len(self.inflight)>=128:raise RuntimeError("Online request bound exceeded")
         future=asyncio.get_running_loop().create_future();self.inflight[session]=future
+        generated=asyncio.get_running_loop().create_future();self.generated[session]=generated
+        generated.add_done_callback(lambda value:None if value.cancelled() else value.exception())
         def done(value):
-            self.inflight.pop(session,None)
+            self.inflight.pop(session,None);self.generated.pop(session,None)
             if not value.cancelled():value.exception()
         future.add_done_callback(done)
-        task=asyncio.create_task(self.turn(session,list(prompt),n,future));self.tasks.add(task)
+        task=asyncio.create_task(self.turn(session,list(prompt),n,future,generated,on_tokens));self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
-        return await asyncio.shield(future)
+        return await asyncio.shield(generated if output_ready else future)
 
-    async def turn(self,session,prompt,n,future):
+    async def turn(self,session,prompt,n,future,generated,on_tokens):
         started=time.perf_counter();owner=owner_for(session);events=[]
         reserved=None;p_instance=None
+        async def generate(peer,instance,**args):
+            if on_tokens is None:return await peer.rpc(instance,"generate",**args)
+            from online_stream import generate as streamed
+            return await streamed(peer,instance,on_tokens,**args)
+        def output_complete(tokens,cached):
+            if not generated.done():generated.set_result(dict(session=session,owner=owner,
+                token_ids=tokens[len(prompt):],full_tokens=tokens,cached=cached,
+                seconds=time.perf_counter()-started))
         try:
             # Bound complete D footprint before creating source work. P workers
             # remain shared; independent owners and in-flight turns are online.
@@ -156,8 +173,9 @@ class Coordinator:
                     # to overwrite immutable versions of the old prefix.
                     salt="online:"+uuid.uuid4().hex
             if lease.base and "cp" in locals() and prompt[:len(cp["tokens"])]==cp["tokens"]:salt=cp["salt"]
-            value=await self.p.rpc(p_instance,"generate",owner=0,tokens=prompt,salt=salt,n=1)
-            tokens=value["full_tokens"]
+            value=await generate(self.p,p_instance,owner=0,tokens=prompt,salt=salt,n=1)
+            tokens=value["full_tokens"];prompt_cached=value["cached"]
+            if n==1:output_complete(tokens,prompt_cached)
             manifest,cp,saved=await self.save("P",p_instance,tokens,salt)
             events.append(dict(stage="P",instance=p_instance,cached=value["cached"],save=saved,
                                elapsed=time.perf_counter()-started))
@@ -166,8 +184,9 @@ class Coordinator:
             if n>1:
                 lease=self.directory.claim(session,f"D{owner}",IDENTITY)
                 loaded=await self.load("D",owner,cp)
-                value=await self.d.rpc(0,"generate",owner=owner,tokens=tokens,salt=salt,n=n-1)
+                value=await generate(self.d,0,owner=owner,tokens=tokens,salt=salt,n=n-1)
                 tokens=value["full_tokens"]
+                output_complete(tokens,prompt_cached)
                 manifest,cp,saved=await self.save("D",owner,tokens,salt)
                 self.directory.publish(lease,manifest,"P")
                 events.append(dict(stage="D",owner=owner,cached=value["cached"],load=loaded,
@@ -176,7 +195,7 @@ class Coordinator:
                 token_ids=tokens[len(prompt):],full_tokens=tokens,trace=events,seconds=time.perf_counter()-started))
         except BaseException as error:
             if self.failure is None:self.failure=str(error)
-            for f in self.inflight.values():
+            for f in (*self.inflight.values(),*self.generated.values()):
                 if not f.done():f.set_exception(RuntimeError("Online PD failed closed: "+str(error)))
             # Other admitted tasks are interrupted; no uncertain lease revoked.
             for task in self.tasks:

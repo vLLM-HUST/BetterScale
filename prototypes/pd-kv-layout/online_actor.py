@@ -50,14 +50,20 @@ async def run(kind,instance,pipe):
             if type(owner) is not int or not 0<=owner<layout["dp"]:raise ValueError("Bad owner")
             if op=="generate":
                 import time
-                result=None;arrivals=[];started=time.perf_counter_ns();request_id=uuid.uuid4().hex
+                result=None;arrivals=[];emitted=0;started=time.perf_counter_ns();request_id=uuid.uuid4().hex
                 async for item in model.generate(
                     dict(prompt_token_ids=args["tokens"],cache_salt=args["salt"]),
                     SamplingParams(temperature=0,max_tokens=args["n"],ignore_eos=True,
                                    output_kind=RequestOutputKind.CUMULATIVE),
                     request_id,data_parallel_rank=owner):
                     result=item
-                    arrivals.append((len(item.outputs[0].token_ids),time.perf_counter_ns()))
+                    now=time.perf_counter_ns()
+                    current=item.outputs[0].token_ids
+                    arrivals.append((len(current),now))
+                    if args.get("_stream") and len(current)>emitted:
+                        pipe.send((tag,"tokens",dict(token_ids=list(current[emitted:]),
+                            arrival_ns=now,request_id=request_id,cached=item.num_cached_tokens)))
+                        emitted=len(current)
                 ids=list(result.outputs[0].token_ids)
                 if len(ids)!=args["n"]:raise RuntimeError("Incomplete generation")
                 answer=dict(token_ids=ids,full_tokens=list(result.prompt_token_ids)+ids,
@@ -106,7 +112,7 @@ class Actor:
         self.pipe,child=context.Pipe()
         self.process=context.Process(target=worker,args=(kind,instance,child),name=f"online-{kind}{instance}")
         self.process.start();child.close()
-        self.pending={};self.quarantined=False;self.info=None;self.reader=None
+        self.pending={};self.progress={};self.quarantined=False;self.info=None;self.reader=None
 
     async def ready(self):
         tag,status,info=await asyncio.wait_for(asyncio.to_thread(self.pipe.recv),1200)
@@ -118,6 +124,11 @@ class Actor:
         try:
             while True:
                 tag,status,value=await asyncio.to_thread(self.pipe.recv)
+                if status=="tokens":
+                    callback=self.progress.get(tag)
+                    if callback is not None:callback(value)
+                    continue
+                self.progress.pop(tag,None)
                 future=self.pending.pop(tag)
                 if status!="ok":raise RuntimeError(value)
                 if not future.done():future.set_result(value)
@@ -129,10 +140,13 @@ class Actor:
                 if not f.done():f.set_exception(RuntimeError(str(error)))
             self.pending.clear()
 
-    async def call(self,op,args):
+    async def call(self,op,args,on_tokens=None):
         if self.quarantined or not self.process.is_alive():raise RuntimeError("Actor unavailable")
         if len(self.pending)>=160:raise RuntimeError("Actor request bound exceeded")
         tag=uuid.uuid4().hex;future=asyncio.get_running_loop().create_future();self.pending[tag]=future
+        if on_tokens is not None:
+            if op!="generate":raise ValueError("Only generation streams tokens")
+            self.progress[tag]=on_tokens;args=dict(args,_stream=True)
         self.pipe.send((tag,op,args))
         try:return await asyncio.wait_for(asyncio.shield(future),1800)
         except BaseException:

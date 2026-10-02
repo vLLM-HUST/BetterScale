@@ -57,7 +57,7 @@ def validate_rpc(kind,body):
             if not isinstance(item,dict) or set(item)!={"owner","tokens","salt","n"}:
                 raise ValueError("Invalid batch item")
             owner_salt(item);tokens(item["tokens"])
-            if (type(item["n"]) is not int or not 1<=item["n"]<=512
+            if (type(item["n"]) is not int or not 1<=item["n"]<=context_limit()
                     or len(item["tokens"])+item["n"]>context_limit() or item["salt"] in salts):
                 raise ValueError("Invalid request envelope/duplicate writer")
             salts.add(item["salt"]);counts[item["owner"]]+=1

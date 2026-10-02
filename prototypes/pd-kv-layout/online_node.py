@@ -47,6 +47,35 @@ class Node(BaseNode):
         self.ready=True
         (self.args.output/"ready.json").write_text(json.dumps(receipts,indent=2))
 
+    async def generate(self,request):
+        from online_stream import Progress
+        import struct
+        instance,op,args=validate(self.args.kind,unpack(await request.read()))
+        if op!="generate":raise ValueError("Only generation can stream")
+        progress=Progress()
+        async def run():
+            try:
+                value=await self.actors[instance].call(op,args,
+                    lambda value:progress.push(dict(kind="tokens",value=value)))
+                progress.push(dict(kind="done",value=value));progress.finish()
+            except BaseException as error:progress.fail(error)
+        task=asyncio.create_task(run())
+        response=web.StreamResponse(headers={"Content-Type":"application/octet-stream"})
+        try:
+            await response.prepare(request)
+            while (value:=await progress.read()) is not None:
+                data=pack(value)
+                await response.write(struct.pack("!I",len(data))+data)
+        except (ConnectionError,RuntimeError,asyncio.CancelledError):
+            # Do not turn network backpressure into native-model cancellation.
+            # This handler remains responsible for draining its generation.
+            progress.detach()
+            raise
+        finally:
+            await asyncio.shield(task)
+        await response.write_eof()
+        return response
+
     async def rpc(self,request):
         instance,op,args=validate(self.args.kind,unpack(await request.read()))
         result=await self.actors[instance].call(op,args)
@@ -77,6 +106,7 @@ def main():
         app.router.add_get("/objects/{key}",objects.route)
         app.router.add_put("/objects/{key}",objects.route)
         app.router.add_post("/rpc",node.rpc)
+        app.router.add_post("/generate",node.generate)
         app.on_startup.append(node.start);app.on_cleanup.append(node.close)
         web.run_app(app,host=args.bind,port=args.port,access_log=None,
                     shutdown_timeout=60,handler_cancellation=False)
