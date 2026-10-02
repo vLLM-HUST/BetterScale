@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import time
 from pd_model_probe import prepare_worker
-prepare_worker("D",native_async=True)
+if __name__=="__main__":prepare_worker("D",native_async=True)
 from online_entry import Worker as BaseWorker
 
 
