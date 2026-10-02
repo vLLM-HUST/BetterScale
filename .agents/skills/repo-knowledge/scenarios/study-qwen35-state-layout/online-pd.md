@@ -12,11 +12,15 @@ Read the October3 v24/v25 sections below and
 [the physical pinned-capacity frontier](rank-pinned-capacity.md) before reusing older gates. MTP2 is enabled and qualified; D is C48/R56/44GiB with
 decode-only graphs, P is four TP2 C16/R20 instances. The last valid SWE replay
 v25 achieved2440.5 aggregate accepted tokens/s, but the <50ms cadence goal
-remains unmet. v26 higher pressure FAILED pinned allocation; both native nodes
-are stopped. Its profile is diagnostic only. The current frontier is physical
-rank-private NUMA-local pinned capacity and safe cache pressure, not the earlier
-shared-memory/target-only prototypes. Do not reuse stale manifests or a failed
-TE endpoint incarnation. Historical sections below retain their own scopes.
+remains unmet. v26 higher pressure FAILED pinned allocation; its profile is
+diagnostic only. Startup-reserved private arenas and fenced idle LRU passed
+the16-rank v28 correctness gate at deliberately reduced P4GiB/D24GiB host
+budgets (240 automatic evictions; all pools retired to0). Full production
+physical capacity and higher-pressure performance remain unqualified. Read
+rank-pinned-capacity.md for the hw81 NUMA2 boundary and follow-on gates; inspect
+current launch receipts/health rather than inferring live process state here.
+Do not reuse stale manifests or a failed TE endpoint incarnation. Historical
+sections below retain their own scopes.
 
 ## Accepted execution boundary
 

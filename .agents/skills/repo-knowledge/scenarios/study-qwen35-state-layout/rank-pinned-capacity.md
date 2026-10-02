@@ -251,3 +251,11 @@ arena was still reserved (online-rank-v28-P-buddy-after-gate.json). Capacity is
 time-dependent; the earlier7.35GiB is not a permanent quota. A smaller explicitly
 bounded full-context qualification can proceed, but target80%-DRAM reservation
 still needs physical-capacity repair/qualification rather than logical promises.
+
+- v29 native candidate026d452 is prepared with P12GiB/D24GiB startup arenas and
+  D profiling enabled, same C48/R56/44GiB/MTP2 execution. The P increase is a
+  bounded full-context gate: current node2 high-order supply was13.23GiB while
+  the previous4GiB arena was still owned, rather than another blind retry of
+  the failed24/48GiB demand. It remains far below80% system DRAM. Both v28
+  process trees were stopped before starting new TE incarnations. Launch
+  receipts now record the explicit nonsecret settings; do not guess flags.
