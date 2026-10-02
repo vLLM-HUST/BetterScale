@@ -1491,3 +1491,17 @@ in those processes or release uncertain lifetimes. Next qualification cold
 restarts both owned nodes and uses fresh task State/metadata. Coordinated
 restart is experimental recovery, NOT a production peer-incarnation fix.
 All v20 failed gate/log evidence is retained.
+
+
+v21 cold-restarts both sides: fe0dd4f node/controller, v20 D capsule
+(ab949e5 overlay), newly staged fe0dd4f P capsule; D C32/R40/44GiB,
+P C16/R20/24.25GiB.128 concurrent4K/128-output + warm8 gate PASSES32.154s,
+all16 byte audits enabled, concurrent State exercised and final owners drained.
+All256 D releases use TP-local-staged; wait_device precedes full store quorum
+median1.049s/max2.582s. This qualifies the local release/commit separation for
+this bounded cold/warm gate, not a throughput or full-C32 occupancy claim.
+Receipts: online-rank-v21-device-release-gate.json and online-rank-v21-gate/.
+After explicit idle retirement of these128 fixture checkpoints and disabling
+audit on all16 ranks, v21 replays SWE2.0/240 with an8s native D capture at170s.
+Treat that replay as profiler-perturbed diagnostic, not an apples-to-apples
+unprofiled performance comparison.
