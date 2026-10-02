@@ -94,4 +94,105 @@ released; native resource_tracker reported four shared-memory cleanup warnings
 per host. Audit-off performance services use the same frozen v2 source/packages.
 online_workload.py is a bounded synthetic mixed4K/32K staggered closed-loop
 diagnostic, not an official SWE benchmark. Actor arrival intervals must not be
-reported as device step timings. Sixteen-card profiling is still pending.
+reported as device step timings. Sixteen-card profiling and boundary evidence follow below.
+
+
+## Online slowdown: output return versus D execution — 2026-10-02
+
+Fletcher correctly required separating device cadence from token arrival.
+Instrumented source cde4366 adds opt-in host receipts only: worker call boundaries,
+Core output enqueue, output-thread dequeue, and native request-ID/actor arrivals.
+No device synchronization or inference rounds are added by those receipts.
+Native input processing appends a suffix to request IDs; analysis requires one
+unambiguous match, not blind positional joining.
+
+The synthetic16-session, two-turn4K/32K workload (512 outputs/turn,0.3s stagger)
+passed lifecycle/output-count gates with audit off:
+- hw86-online-perf1-baseline:432.400s,37.89 output tokens/s;
+  actor one-token interval median17.239ms, P95=357.262ms.
+- hw86-online-perf1-profiled:333.768s,49.09 tokens/s. Despite its artifact name,
+  this is an UNPROFILED repeat: dynamic msprof attachment rejected all PIDs,
+  including one verified single-worker PID. Do not describe it as a capture.
+- hw86-online-perf2-observed:361.764s, with observer receipts and two bounded
+  native torch_npu/CANN captures. Do not use this as profiler-free performance.
+These are diagnostic all-turn timings, not official SWE scores or steady-state
+D-only throughput. Final turn completion includes D backup/publication; the
+prototype's generation RPC returns after the whole generation, not streamed
+HTTP token delivery.
+
+### Observed output boundary
+
+Across32 completed turns,16341 actor arrivals matched Core enqueue receipts.
+Each turn's Core-to-actor P95 was at most2.029ms. Representative slow-turn
+enqueue P95=450.186ms and actor interval P95=450.499ms agree; the hundreds-of-ms
+gap was already upstream of the output queue. Missing tail receipts from
+buffered process shutdown are not invented. This rules out that return segment
+as the dominant delay in this run, not every possible production frontend.
+
+### Native device and source evidence
+
+All16 NPUs have two raw captures. The first D window has ZERO graph replay
+calls on all8 cards. Devices4/5 (DP2) have no real-attention slot-mapping anchor;
+other active ranks show median device cycles about450–471ms. For device0:
+37 interior cycles, median454.527ms; non-HCCL compute interval union median
+11.350ms; HCCL interval union median369.550ms. HCCL includes synchronization
+waiting, not just link bytes. Category medians are not additive, and uncovered
+time is not proven host overhead.
+
+A later device0 window has479 aclmdlRIExecuteAsync calls. Its476 fast cycles
+have median23.386ms under profiling, versus16 slow cycles at472.359ms. Both
+classes have approximately12ms non-HCCL compute coverage: the large difference
+is not extra arithmetic. All four P instances execute real graph work in this
+later window (one or two replays per TP rank), confirming overlap-capable
+P/D operation rather than a D-only profile.
+
+The source mechanism is explicit:
+1. ep6_state_entry.idle_target_only forces CUDAGraphMode.NONE so idle EP
+   participants do target collectives without writing live resident State or
+   executing mismatched MTP collectives.
+2. The pinned Ascend _sync_metadata_across_dp reduces graph modes using
+   _post_process_cudagraph_mode, the minimum across DP.
+3. Therefore one idle owner downgrades the whole D EP machine to eager.
+   Native graph dispatch re-dispatches using that synchronized mode.
+
+A host-receipt cross-check (50ms nearest-start matching, not an exact collective
+ID join) found159/167 device0 host calls over100ms accompanied by fewer than
+four active owners;1317 fast calls had all four. The static mechanism plus
+native eager/replay contrast establish a concrete online occupancy-dependent
+degradation path. A controlled safe-idle-graph intervention has NOT yet been
+implemented or A/B qualified, so do not claim all residual latency explained.
+
+**Next owned performance boundary:** design a graph-compatible target-only idle
+participant that cannot mutate a resident session and preserves the exact EP
+collective sequence. Do not simply delete the NONE safety override, fabricate
+real requests, or couple State completion to model cadence. Recheck skew,
+empty-owner transitions, resident bytes/leases, and loaded-request admission.
+
+### Other measured latency and profiling reuse
+
+First baseline phase wait medians: P store8.085s, D load2.670s, D store7.256s,
+warm P load1.516s. These include shared-backend queueing, not pure PCIe or network
+transfer time. The object service serializes operations per node and currently
+holds its lock during PUT body reception; this is a separate, visible transfer
+critical path, not a proven explanation for decode graph-mode degradation.
+P generate RPC median0.238s (maximum5.032s); D generate median38.214s.
+The final reply waits for State backup; streaming output delivery and durable
+handoff completion need distinct latency metrics.
+
+Native profiler start/stop is an opt-in private control RPC, using upstream
+AsyncLLM/core/worker profiling. A daemon worker cannot run the automatic parser;
+raw capture succeeds and must be exported OFFLINE with msprof --export=on
+--type=db --output=PROF_PATH. Both captures retain raw data for every rank.
+Exported DBs cover all first-window D ranks, later D TP0/TP1 of DP0, and all P
+ranks/windows. The remaining later D DB exports were intentionally omitted:
+raw files remain, and repeating expensive exports would not change this
+diagnosis. Use analyze_online_device.py for any additional bounded DB, and
+analyze_online_boundaries.py for same-host output joins. Never identify host
+dispatch time as device cadence or sum overlapping stream durations.
+
+Artifacts: hw86-online-perf2-observed/{boundary-summary.json,
+device-summary-dp0.json,device-summary-first-all8.json}; raw/native profiles,
+timing receipts and launcher logs under the same runtime root on both hosts.
+All16 NPUs were released after capture (cleanup receipts8 idle/host).
+The observer/control CPU suite passed8 tests. Source, exact gates and profile
+evidence are backed up locally outside Documents; no model weights are copied.
