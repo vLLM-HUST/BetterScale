@@ -5,6 +5,16 @@ Enter for the follow-on to `dual-host-pd.md`. Fletcher clarified on2026-10-02:
 integrate, not an already completed cross-host connector. Do not wait for a
 nonexistent newer branch or repeat naive whole-checkpoint profiling.
 
+## Resume after the October2 online campaign
+
+Latest qualified source:1850d72, frozen as online-stream-v6-source on hw86/hw81;
+branch codex/pd-incremental-online. Model/kernel capsules remain online-v2-P/D.
+Read [the final measured envelope](#final-measured-envelope--2026-10-02)
+before quoting throughput, cadence or production readiness. Both hosts are
+retired to8 idle NPUs after completed work; use fresh runtime output paths
+when restarting, not a persisted directory whose DRAM Store was destroyed.
+The earlier sections preserve the qualification trail, not newer launch advice.
+
 ## Accepted execution boundary
 
 State pipeline and decode cadence are decoupled. The decode server continues
@@ -487,3 +497,75 @@ a still-written DB. The first hw86 archive was retained with an .incomplete
 suffix and was not delivered. Its replacement was created only after export
 completion. Final v3-v5 archives are backed up locally (hw86~895MB,
 hw81~11MB, SWE~0.95MB) and their full tar member streams were read successfully.
+
+
+## Final measured envelope — 2026-10-02
+
+1850d72 (v6, concurrent two-replica PUTs) passes the4-owner byte-audited cold/
+warm gate in10.670s, then all16 audit-disable receipts. Numerical kernels,
+State byte geometry, writer fences, graph policy and TP publication quorum
+are unchanged. Compression is lossless; this remains target-only.
+
+Unprofiled real SWE prefix replay,300s independent session-arrival windows:
+
+| New sessions/s | Sessions | Requests | In-window/drained | Total output tokens/s | TTFT P95 |
+| --- | --- | --- | --- | --- | --- |
+|0.2|60|296|264/32|282.847|4.303s|
+|0.3|90|361|307/54|278.430|14.273s|
+
+Both runs are valid,0 failures and0 missed due requests; drain wall times
+392.847/423.542s. Client connection queue is zero. No profiler, bulk SCP or
+offline DB exporter overlaps either replay. Returning sessions use actual
+generated token IDs. The window stops new turns then drains admitted ones:
+these are NOT completed whole long trajectories (completed_sessions=0).
+The differing continuation paths mean these are diagnostic offered-load
+points, not matched fixed-request A/B trials or a formal SLO goodput claim.
+
+Rate0.2 prompt median/P954846/14580 tokens, maximum23434; output median/P95
+131/1605. Rate0.3 prompt median/P953458/12791, maximum23434; output125/1234.
+Thus this campaign does NOT measure average100K-context production throughput,
+even though the pool includes longer trajectories and earlier separate gates
+cover262144. Do not extrapolate the measured compression ratio to active MTP.
+
+Rate0.2 E2E median/P959.693/43.761s; mean inter-token time per request
+(including P-to-D handoff) median/P9546.812/121.400ms. Rate0.3:
+20.456/59.206s and82.830/258.374ms. TTFT is the first P token, not first D
+token. In these points,0.2 has the better measured latency/throughput balance;
+neither a saturation optimum nor a user-selected SLA is established.
+
+Across657 unprofiled turns, per-request return-P95 median19.323ms/P9527.807ms,
+max single chunk79.324ms. Output-ready still precedes commit: post-output
+commit median3.116s/P9513.482s across the two loads, not billed to response
+completion. State wait RPC median/P95: P-store1.809/2.997s,
+D-store1.546/2.508s, P-load0.500/1.000s, D-load0.582/0.870s.
+These waits exclude some controller queueing and are not isolated wire times.
+
+A separate90s/rate0.5 diagnostic replay captures all16 ranks for12s after60s.
+It passes, with all five actor start/stop receipts and8 raw profiles/host.
+Export selection uses sender activity, not cherry-picked low device latency:
+DP1 had371 sender events (DP0/2/3:100/371/269). Its completed device2 DB
+passes SQLite quick_check, has378 graph replays and378 real attention anchors.
+Device-correlated replay interval median24.122ms/P9570.425ms/P9998.095ms;
+four intervals>100ms, max943.984ms. Graph envelope median17.605ms and
+inter-envelope gap median6.683ms. Short attention-anchored cycles have
+noncommunication coverage median11.834ms, communication (including waits)
+4.350ms and uncovered6.569ms. Do not sum separate quantiles or label all
+uncovered time CPU overhead; dispatch, globally idle demand, copies and
+communication need their own attribution. This is the latest real-load
+profile, not the earlier19.6ms isolated1K skew gate.
+
+Remaining frontier: core CacheActions intentionally admits ONE incremental
+transaction per attention owner, and coordinator maintenance holds that owner
+through its completion. Streaming output does not remove this State admission/
+handoff bottleneck. Removing it is a page-lifetime/publication protocol change,
+not deleting a mutex: pending producers, shared-page borrowing, cancellation,
+drop/eviction and TP failure quorum need new qualification. Active-generation
+sealed-page backup and MTP bootstrap also remain outside this campaign.
+No optimal-engine, HA/recovery or long100K capacity claim follows from this cut.
+
+Evidence: online-stream-v6-{performance-summary,state-wait-summary,
+device-summary,profile-receipt,export-selection}.json; hw86/hw81-online-
+stream-v6*; /workspace/swe-workloads/stream-v6-{rate0.2,rate0.3,profile}.
+Final code, launchers, accepted pool/plans and measured artifacts are preserved
+outside the Documents repository. Stop after the model/State workload drains;
+both hosts' v6-cleanup receipts confirm8 idle NPUs.
