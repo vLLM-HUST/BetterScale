@@ -10,7 +10,19 @@ def test_idle_masks_metadata_without_any_resident_access():
     blank_gdn(meta)
     assert torch.all(meta.verify_conv==-1) and torch.all(meta.verify.slots==-1)
     assert torch.all(meta.verify.accepted==1)
-    with pytest.raises(RuntimeError):blank_gdn(NS(decode=False))
+    meta.decode=False;meta.capacity=1024
+    meta.prefill_conv=torch.zeros(17,1,dtype=torch.int32)
+    meta.initial=torch.ones(17,dtype=torch.bool)
+    meta.prefill=NS(cu=torch.ones(18,dtype=torch.int64),
+        state=torch.ones(17,2,dtype=torch.int64),max_requests=16,
+        indices={64:torch.ones(31,2,dtype=torch.int64)})
+    meta.verify.cu=torch.zeros(18,dtype=torch.int32)
+    meta.restore=torch.zeros(1024,dtype=torch.int64)
+    blank_gdn(meta)
+    assert not meta.prefill.cu.any() and not meta.prefill.state.any()
+    assert torch.all(meta.prefill_conv==-1)
+    assert meta.verify.cu.tolist()==[0]+[1]*17
+    assert torch.all(meta.restore==1024)
 
 
 def test_idle_attention_uses_one_null_page_reader_without_mutating_original():

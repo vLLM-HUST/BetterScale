@@ -8,11 +8,23 @@ import copy
 
 
 def blank_gdn(meta):
-    if not meta.decode:
-        raise RuntimeError("Idle PD graph only qualifies decode capacity keys")
     meta.verify_conv.fill_(-1)
     meta.verify.slots.fill_(-1)
     meta.verify.accepted.fill_(1)
+    if not meta.decode:
+        # A peer can select a prefill bucket during its first target wave.
+        # Empty prefill rows never commit recurrent State; cold metadata avoids
+        # even reading a resident. Route every output to one defined-zero
+        # negative-slot verify token, not uninitialized empty-prefill storage.
+        meta.prefill_conv.fill_(-1)
+        meta.initial.zero_()
+        meta.prefill.cu.zero_()
+        meta.prefill.state.zero_()
+        for rows in meta.prefill.indices.values():
+            rows[:, 0].fill_(meta.prefill.max_requests)
+            rows[:, 1].zero_()
+        meta.verify.cu.fill_(1);meta.verify.cu[0]=0
+        meta.restore.fill_(meta.capacity)
 
 
 def attention_metadata(metadata,tokens):
