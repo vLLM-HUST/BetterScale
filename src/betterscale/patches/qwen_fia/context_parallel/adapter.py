@@ -3,6 +3,9 @@
 Worker admission and capture-key selection remain outside this adapter. Banked
 metadata publication remains owned by wave.Frame, including device feedback.
 """
+
+from betterscale.models.qwen35.execution_capacity import EXECUTION
+from betterscale.models.qwen35.count_policy import SPEC_CAPACITIES
 import ctypes
 import copy
 from itertools import accumulate
@@ -12,7 +15,7 @@ import struct
 
 from .plan import encode, schedule
 
-CAPACITIES = (3, 6, 12, 16, 24, 40, 48)
+CAPACITIES = tuple(sorted(set(SPEC_CAPACITIES) | {16}))
 _LIBRARY = None
 
 
@@ -31,7 +34,7 @@ def capture_metadata(metadata, tokens):
     queries = [hi-lo for lo,hi in zip([0]+ends,ends)]
     live = len(lengths) - int(lengths[-1] == 0)
     queries = [min(q,3) for q in queries[:live]]
-    if not 1 <= live <= 16 or any(q <= 0 for q in queries):
+    if not 1 <= live <= EXECUTION or any(q <= 0 for q in queries):
         raise ValueError('Unqualified disposable capture metadata')
     result = copy.copy(metadata)
     result.actual_seq_lengths_q = list(accumulate(queries))

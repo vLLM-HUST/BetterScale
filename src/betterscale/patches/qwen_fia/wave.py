@@ -211,7 +211,7 @@ def install(library, *, heads=12, kvheads=2, requests=9, tokens=2048):
                 self.device,
                 self._owned_ingress,
                 requests=requests,
-                context_parallel=(heads, kvheads, requests) == (8, 1, 17) and cp.enabled(tokens),
+                context_parallel=(heads, kvheads) == (8, 1) and cp.enabled(tokens),
             )
         frame = self._fia_frames[key]
         if frame.context_parallel and getattr(self, "_owned_capture_bank", None) is not None:

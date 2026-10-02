@@ -5,6 +5,8 @@ NPU path fuses addressing/publication in one kernel. The tensor reference below
 is retained for independent CPU checks of routing and inactive sentinels.
 """
 
+from .execution_capacity import EXECUTION
+
 import torch
 
 
@@ -62,7 +64,7 @@ def install():
     def core_init(core, tokens, device):
         original_core(core, tokens, device)
         # MTPFrame includes this field automatically in its banked pinned slab.
-        core.prefill_ids = torch.zeros(17, dtype=torch.int64, device=device)
+        core.prefill_ids = torch.zeros(EXECUTION + 1, dtype=torch.int64, device=device)
 
     Core.__init__ = core_init
     original_fill, original_publish = MTPFrame.fill_mtp, MTPFrame.publish

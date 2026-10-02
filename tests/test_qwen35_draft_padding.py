@@ -7,7 +7,7 @@ import pytest
 
 source=Path(__file__).resolve().parents[1]/'src/betterscale/models/qwen35/draft_fia.py'
 node=next(n for n in ast.parse(source.read_text()).body if isinstance(n,ast.FunctionDef) and n.name=='compact_padding')
-ns={'copy':copy}
+ns={'copy':copy, 'EXECUTION':16}
 exec(compile(ast.Module(body=[node],type_ignores=[]),str(source),'exec'),ns)
 compact=ns['compact_padding']
 

@@ -1,5 +1,7 @@
 """One device-authoritative slot publication; no acceptance/length readback."""
 
+from .execution_capacity import EXECUTION
+
 from vllm.triton_utils import triton, tl
 
 
@@ -23,8 +25,9 @@ def slots_kernel(
     BLOCK: tl.constexpr,
     DECODE: tl.constexpr,
     W: tl.constexpr,
+    ROWS: tl.constexpr,
 ):
-    row = tl.arange(0, 16)
+    row = tl.arange(0, ROWS)
     col = tl.arange(0, W)
     if DECODE:
         seq = tl.load(SEQ + row, row < N, other=1)
@@ -75,7 +78,7 @@ def slots_kernel(
 def publish_slots(meta):
     table, seq, block, pre, verify = meta.device_slot_source
     assert seq.device.type == "npu" and seq.is_contiguous()
-    assert table.stride(1) == 1 and 0 < meta.live <= 16
+    assert table.stride(1) == 1 and 0 < meta.live <= EXECUTION
     # Unused arguments are valid pointers; constexpr removes that entire branch.
     dummy = meta.verify_conv
     slots_kernel[(1,)](
@@ -97,5 +100,6 @@ def publish_slots(meta):
         block,
         meta.decode,
         triton.next_power_of_2(meta.width),
+        triton.next_power_of_2(EXECUTION),
         num_warps=4,
     )

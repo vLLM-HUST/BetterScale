@@ -4,15 +4,17 @@ D may execute only the uncomputed tail of an already-restored checkpoint plus
 native MTP proposals. P keeps the qualified mixed/prefill graph bank. A cold or
 bulk-prefill request reaching D is an ownership error, not a fallback workload.
 """
-KEYS=(3,6,12,24,40,48)
+from betterscale.models.qwen35.execution_capacity import EXECUTION
+from betterscale.models.qwen35.count_policy import SPEC_CAPACITIES
+KEYS=SPEC_CAPACITIES
 
 
 def capacity(tokens, requests, scheduled, computed, prompts):
-    if (not 1<=requests<=16 or len(scheduled)!=requests
+    if (not 1<=requests<=EXECUTION or len(scheduled)!=requests
             or len(computed)!=requests or len(prompts)!=requests
             or any(not 1<=int(n)<=3 for n in scheduled)
             or sum(map(int,scheduled))!=tokens):
-        raise ValueError("decode-only graph requires1..16 bounded tail/verify rows")
+        raise ValueError(f"decode-only graph requires1..{EXECUTION} bounded tail/verify rows")
     if any(int(c)<int(p)-1 for c,p in zip(computed,prompts)):
         raise ValueError("bulk prefill reached decode-only owner before State restore")
     return next(k for k in KEYS if k>=tokens)
@@ -43,7 +45,7 @@ def qualify(config):
     p=config.parallel_config
     if (p.tensor_parallel_size,p.data_parallel_size,p.enable_expert_parallel)!=(2,4,True):
         raise ValueError("decode-only graph experiment requires DP4TP2EP8")
-    if (config.scheduler_config.max_num_seqs!=16
+    if (config.scheduler_config.max_num_seqs!=EXECUTION
             or set(config.compilation_config.cudagraph_capture_sizes)!=set(KEYS)
             or str(config.compilation_config.cudagraph_mode)!="FULL"):
         raise ValueError("decode-only graph configuration differs from admitted keys")

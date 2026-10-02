@@ -85,7 +85,7 @@ class Coordinator:
                 self.p_admission=[Admission(cs[0]["free_blocks"],min(self.p_limit,cs[0]["max_requests"])) for cs in capacities]
             if kind=="D":
                 capacities=h["actors"][0]["info"]["capacities"]
-                if len(capacities)!=4 or any(c["block_size"]!=2048 or c["max_requests"]!=16 for c in capacities):
+                if len(capacities)!=4 or any(c["block_size"]!=2048 or c["max_requests"] not in (16,32,48,64,80) for c in capacities):
                     raise RuntimeError("Unexpected owner capacity")
                 self.admission=[Admission(c["free_blocks"],c["max_requests"]) for c in capacities]
         if len(wire_versions)!=1 or not wire_versions<={"raw-v2","zstd-resident-v1","mtp-prefix-raw-v2","mtp-prefix-zstd-resident-v1","rank-private-v1","rank-private-mtp-prefix-v1"}:

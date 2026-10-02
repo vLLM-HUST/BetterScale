@@ -1,5 +1,7 @@
 """Qwen35 baseline hooks; model execution remains in the original runner."""
 
+from .execution_capacity import EXECUTION
+
 from types import SimpleNamespace
 from betterscale.patches import qwen_gdn, qwen_fia
 from betterscale.patches.qwen_layout import pack_conv_weights
@@ -150,7 +152,7 @@ def model_loaded(worker):
 
 
 def after_init(worker):
-    qwen_fia.install(heads=8, kvheads=1, requests=17, tokens=4096)
+    qwen_fia.install(heads=8, kvheads=1, requests=EXECUTION + 1, tokens=4096)
     from .draft_fia import install as install_draft_fia
     from .device_metadata import install as install_device_metadata
 

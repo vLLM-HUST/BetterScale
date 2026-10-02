@@ -5,6 +5,8 @@ capacity buffers hold two request lists. Device token maps select and restore
 activations; no recurrent state is gathered, transposed or scattered.
 """
 
+from .execution_capacity import EXECUTION
+
 import os
 from types import SimpleNamespace
 from .count_policy import WIDTH
@@ -41,28 +43,28 @@ class MixedCore:
         self.layout_fusion = os.environ.get("MTP_GDN_LAYOUT_FUSION") == "1"
         self.width = WIDTH
         self.prefill = Metadata(
-            capacity, False, device, requests=16, key_heads=8, value_heads=16
+            capacity, False, device, requests=EXECUTION, key_heads=8, value_heads=16
         )
-        self.cu = torch.zeros(18, dtype=torch.int32, device=device)
-        self.prefill_conv = torch.full((17, 1), -1, dtype=torch.int32, device=device)
+        self.cu = torch.zeros(EXECUTION + 2, dtype=torch.int32, device=device)
+        self.prefill_conv = torch.full((EXECUTION + 1, 1), -1, dtype=torch.int32, device=device)
         self.verify_conv = torch.full_like(self.prefill_conv, -1)
-        self.initial = torch.zeros(17, dtype=torch.bool, device=device)
-        self.accepted = torch.ones(17, dtype=torch.int32, device=device)
+        self.initial = torch.zeros(EXECUTION + 1, dtype=torch.bool, device=device)
+        self.accepted = torch.ones(EXECUTION + 1, dtype=torch.int32, device=device)
         self.verify = SimpleNamespace(
-            cu=torch.zeros(18, dtype=torch.int32, device=device),
-            slots=torch.full((17, WIDTH), -1, dtype=torch.int64, device=device),
-            accepted=torch.ones(17, dtype=torch.int32, device=device),
+            cu=torch.zeros(EXECUTION + 2, dtype=torch.int32, device=device),
+            slots=torch.full((EXECUTION + 1, WIDTH), -1, dtype=torch.int64, device=device),
+            accepted=torch.ones(EXECUTION + 1, dtype=torch.int32, device=device),
         )
         # Each padded output has a separate throwaway destination, so scatter
         # has no duplicate-index races even when its live request count changes.
         self.prefill_map = torch.zeros(capacity, dtype=torch.int64, device=device)
-        self.verify_map = torch.zeros(16 * WIDTH, dtype=torch.int64, device=device)
+        self.verify_map = torch.zeros(EXECUTION * WIDTH, dtype=torch.int64, device=device)
         self.restore = torch.zeros(capacity, dtype=torch.int64, device=device)
 
     def prepare(self, lengths, speculative, slots, accepted, initial):
         from betterscale.patches.qwen_gdn.metadata import chunk_rows
 
-        assert len(lengths) <= 16 and sum(lengths) <= self.capacity
+        assert len(lengths) <= EXECUTION and sum(lengths) <= self.capacity
         assert all(n > 0 for n in lengths)
         assert all(n <= self.width for n, spec in zip(lengths, speculative) if spec)
         ends = [0]
@@ -104,7 +106,7 @@ class MixedCore:
             dest.copy_(
                 torch.tensor(
                     chunk_rows(
-                        [lengths[i] for i in pre_rows], size, self.capacity, requests=16
+                        [lengths[i] for i in pre_rows], size, self.capacity, requests=EXECUTION
                     ),
                     dtype=torch.int64,
                 )

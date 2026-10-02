@@ -5,6 +5,8 @@ replay. Each bank/shape/draft-position owns a distinct metadata frame. Actual KV
 lengths come from device tensors; CPU lengths only describe a tiling envelope.
 """
 
+from .execution_capacity import EXECUTION
+
 import copy
 import ctypes
 from functools import wraps
@@ -20,8 +22,8 @@ def compact_padding(metadata):
     if len(lengths) != len(ends) or not lengths:
         raise ValueError("Invalid draft query/KV metadata")
     live = next((i for i, length in enumerate(lengths) if length == 0), len(lengths))
-    if not 1 <= live <= 16 or any(lengths[live:]):
-        raise ValueError("Draft metadata requires1..16 live rows and trailing padding")
+    if not 1 <= live <= EXECUTION or any(lengths[live:]):
+        raise ValueError(f"Draft metadata requires1..{EXECUTION} live rows and trailing padding")
     if len(lengths) <= live + 1:
         return metadata
     result = copy.copy(metadata)
@@ -228,7 +230,7 @@ def install():
                 entry["cpu"].shape[1],
                 query.device,
                 owner.proposer.runner._owned_ingress,
-                requests=17,
+                requests=EXECUTION + 1,
                 context_parallel=entry["context_parallel"],
             )
             frame.prepare(planner, entry["metadata"], entry["cpu"], entry["num_reqs"])

@@ -25,17 +25,30 @@ def options(kind,instance):
         import torch_npu
         from rank_state_runtime import transfer_engine
         transfer_engine()
+    if kind=="D":
+        os.environ["BETTERSCALE_QWEN35_DECODE_CAPACITY"]=os.environ.get("BETTERSCALE_PD_D_CONCURRENCY","16")
+    else:
+        os.environ.pop("BETTERSCALE_QWEN35_DECODE_CAPACITY",None)
     value=engine_options(kind=="P")
+    from betterscale.models.qwen35.execution_capacity import EXECUTION
+    value["max_num_seqs"]=EXECUTION
+    if EXECUTION>16 and os.environ.get("BETTERSCALE_PD_MTP")!="1":
+        raise ValueError("Wider D qualification requires native MTP2")
     import online_entry
     os.environ.update(ASCEND_RT_VISIBLE_DEVICES=layout["devices"],HCCL_IF_BASE_PORT=str(layout["hccl_port"]))
     value.update(worker_cls="online_entry.Worker",scheduler_cls="online_entry.Scheduler",
-                 max_model_len=context_limit(),kv_cache_memory_bytes=state_budget(),
+                 max_model_len=context_limit(),kv_cache_memory_bytes=state_budget(kind),
                  data_parallel_size=layout["dp"],data_parallel_size_local=layout["dp"],
                  data_parallel_address="127.0.0.1",data_parallel_rpc_port=layout["rpc_port"],
                  disable_log_stats=True)
     value["additional_config"].update(state_cache_host_bytes=128<<30,
         state_cache_incremental=True,state_cache_control_rpc=True,state_cache_policy=False,
-        state_cache_max_pending=20,pd_mtp=os.environ.get("BETTERSCALE_PD_MTP")=="1")
+        state_cache_max_pending=max(20,EXECUTION+4),pd_mtp=os.environ.get("BETTERSCALE_PD_MTP")=="1")
+    if kind=="D":
+        seats=int(os.environ.get("BETTERSCALE_PD_D_RESIDENT_SEATS",str(max(20,EXECUTION+4))))
+        if not max(20,EXECUTION)<=seats<=96:
+            raise ValueError("D resident seats must cover execution and fit20..96")
+        value["additional_config"]["state_resident_seats"]=seats
     private = os.environ.get("BETTERSCALE_PD_RANK_PRIVATE", "0")
     if private not in ("0", "1"):
         raise ValueError("Invalid private rank backend flag")

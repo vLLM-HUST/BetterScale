@@ -4,6 +4,8 @@ Model forward, MTP and the async EngineCore remain the baseline implementation.
 State ownership attaches below those owners, not through another serving loop.
 """
 
+from .execution_capacity import EXECUTION
+
 CAPTURE_SIZES = (
     3,
     6,
@@ -69,8 +71,8 @@ def validate(config):
             p.prefill_context_parallel_size,
         )
         == (2, 1, 1, False, 1, 1),
-        "C16/query4096/context<=262144": (
-            s.max_num_seqs == 16
+        "configured execution/query4096/context<=262144": (
+            s.max_num_seqs == EXECUTION
             and s.max_num_batched_tokens == 4096
             and 0 < m.max_model_len <= 262144
         ),

@@ -1323,3 +1323,35 @@ by D; throughput changes only modestly and queueing remains. Do not call this
 full service-capacity resolution. Memory-before/after receipts in runtime
 online-rank-v12-memory-*.json. Queue semantics are hardware-qualified within
 this bounded envelope; latest-checkpoint LRU and physical pin budgeting remain.
+
+### Wider D execution envelope (source/CPU candidate)
+
+Fletcher prioritized execution concurrency over pinned-pool expansion after the
+valid queue replay. D-only v13 supply control uses unchanged C16/R20/24.25GiB,
+64 simultaneous4K requests with4096 outputs then warm8. All lifecycle checks
+pass71.054s. Worker-dispatch receipts show1250-ish consecutive full16-row waves
+per rank; intervals median32.8ms/P95~43ms including a12s native profile.
+This is HOST dispatch cadence, not an unqualified device-only latency result.
+Raw v13 D profile and timing are retained; no claim of SWE-equivalent throughput.
+
+The candidate exposes D concurrency16/32/48/64/80, default unchanged16,
+separate resident seats(default E+4, minimum20, at most96), and role-local
+D State budget8..48GiB. Planned first hardware point is C32/R40/44GiB.
+Wider admission requires D-only graphs and MTP2. Process-local capacity reaches
+the scheduler, State allocation, fixed metadata/sentinels, target/draft FIA
+frames, GDN State/device address publication row tiles, and disjoint graph keys.
+Do not widen only EngineArgs or the Python guard: two Triton address-publication
+kernels previously processed exactly16 rows. P stays C16 with its old budget.
+
+stage_online_candidate preserves the capsule's DP/EP initializer and changes
+only its execution-row guard; a whole source initializer replacement would
+revert the private D capsule to DP1. Existing v10 plan.py actually has
+MAX_QUERY=16; its old error text says Q1..3. Source/capsule plan diff before this
+change is just that error message, NOT proof of a Q3 native ABI. No new native
+library is introduced for row expansion; wider hardware correctness is pending.
+
+174 targeted Qwen35/cache/State/CP/frontend tests pass after repairing the
+native CPU fixture's missing cache_actions=None (object.__new__ fixture had
+skipped this existing constructor field). Five isolated capacity cases cover
+16..80 graph keys, complete per-row CP partitioning, padding and resident
+defaults; these are not substitutes for full-row device/cold/warm gates.

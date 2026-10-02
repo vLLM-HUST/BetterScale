@@ -5,6 +5,8 @@ A bounded round-robin policy assigns prefill grants after reserving decode.
 This adapter supplies exact hot checkpoints and leaves token pages in its pool.
 """
 
+from .execution_capacity import EXECUTION
+
 from dataclasses import dataclass, field, fields
 
 from vllm.v1.core.sched.async_scheduler import AsyncScheduler
@@ -33,9 +35,10 @@ class LiveStateScheduler(AsyncScheduler):
             raise ValueError(
                 "live State requires a pure attention page pool, no connector"
             )
-        if self.max_num_running_reqs != 16:
-            raise ValueError("live State currently admits E16/R20")
-        resident_seats = 20
+        if self.max_num_running_reqs != EXECUTION:
+            raise ValueError("scheduler differs from configured execution capacity")
+        from .state_backend import resident_seats as configured_resident_seats
+        resident_seats = configured_resident_seats(self.vllm_config)
         # Reuse the native deferred-free fence, including abort/preemption. A
         # resident cannot be advertised hot while a queued wave can advance it.
         if getattr(self, "_balance_enabled", False):

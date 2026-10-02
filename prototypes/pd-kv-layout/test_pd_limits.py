@@ -25,3 +25,13 @@ def test_short_context_and_unknown_configuration(monkeypatch):
     assert context_limit()==8192 and state_budget()==8<<30
     monkeypatch.setenv("BETTERSCALE_PD_CONTEXT","65536")
     with pytest.raises(ValueError):context_limit()
+
+
+def test_decode_budget_is_role_local(monkeypatch):
+    monkeypatch.setenv("BETTERSCALE_PD_CONTEXT","262144")
+    monkeypatch.setenv("BETTERSCALE_PD_D_STATE_GIB","44")
+    assert state_budget("D")==44<<30
+    assert state_budget("P")==state_budget()==26038239232
+    for bad in ("nan","inf","0","49","invalid"):
+        monkeypatch.setenv("BETTERSCALE_PD_D_STATE_GIB",bad)
+        with pytest.raises(ValueError):state_budget("D")
