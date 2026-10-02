@@ -153,10 +153,14 @@ class Coordinator:
         async def generate(peer,instance,**args):
             if on_tokens is None:return await peer.rpc(instance,"generate",**args)
             from online_stream import generate as streamed
-            delays=[]
+            delays=[];stages={name:[] for name in ("actor_to_node","node_queue","node_to_coordinator")}
             def progress(item):
                 if peer is self.d and self.same_host_d:
-                    delays.append((time.perf_counter_ns()-item["arrival_ns"])/1e6)
+                    now=time.perf_counter_ns()
+                    delays.append((now-item["arrival_ns"])/1e6)
+                    if "node_arrival_ns" in item and "node_send_ns" in item:
+                        points=(item["arrival_ns"],item["node_arrival_ns"],item["node_send_ns"],now)
+                        for name,a,b in zip(stages,points,points[1:]):stages[name].append((b-a)/1e6)
                 on_tokens(item)
             result=await streamed(peer,instance,progress,**args)
             if self.trace and delays:
@@ -164,7 +168,11 @@ class Coordinator:
                 self.trace(dict(op="D-stream-return",session=session,owner=owner,
                     request_id=result["request_id"],same_host=True,chunks=len(delays),
                     p50_ms=ordered[len(ordered)//2],p95_ms=ordered[int((len(ordered)-1)*.95)],
-                    max_ms=ordered[-1],scope="actor yield to coordinator token callback; not device cadence"))
+                    max_ms=ordered[-1],stages_ms={name:dict(
+                        p50=sorted(values)[len(values)//2],
+                        p95=sorted(values)[int((len(values)-1)*.95)],max=max(values))
+                        for name,values in stages.items() if values},
+                    scope="actor yield to coordinator token callback; not device cadence"))
             return result
         def output_complete(tokens,cached):
             if self.trace:self.trace(dict(op="output-ready",session=session,owner=owner,

@@ -31,7 +31,9 @@ def test_output_precedes_backup_and_following_turn_waits_for_commit(tmp_path,mon
         async def stream(peer,instance,on_tokens,**args):
             import time
             value=await peer.rpc(instance,"generate",**args)
-            on_tokens(dict(token_ids=value["token_ids"],arrival_ns=time.perf_counter_ns()))
+            now=time.perf_counter_ns()
+            on_tokens(dict(token_ids=value["token_ids"],arrival_ns=now-3000000,
+                node_arrival_ns=now-2000000,node_send_ns=now-1000000))
             return value
         monkeypatch.setattr("online_stream.generate",stream)
         async def save(kind,index,tokens,salt):
@@ -47,6 +49,9 @@ def test_output_precedes_backup_and_following_turn_waits_for_commit(tmp_path,mon
         assert sum(len(x["token_ids"]) for x in delivered)==3
         returns=[x for x in events if x["op"]=="D-stream-return"]
         assert len(returns)==1 and returns[0]["chunks"]==1 and returns[0]["p50_ms"]>=0
+        phases=returns[0]["stages_ms"]
+        assert phases["actor_to_node"]["p50"]==1 and phases["node_queue"]["p50"]==1
+        assert phases["node_to_coordinator"]["p50"]>=1
         assert any(x["op"]=="output-ready" for x in events)
         assert not any(x["op"]=="turn-committed" for x in events)
         assert result["token_ids"]==[7]*3 and not c.inflight["session"].done()

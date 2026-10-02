@@ -2,6 +2,7 @@
 import argparse
 import asyncio
 import json
+import time
 from pathlib import Path
 from aiohttp import web
 from naive_pool_node import pack,unpack,validate_rpc,Node as BaseNode
@@ -68,6 +69,8 @@ class Node(BaseNode):
         try:
             await response.prepare(request)
             while (value:=await progress.read()) is not None:
+                if value["kind"]=="tokens":
+                    value["value"]["node_send_ns"]=time.perf_counter_ns()
                 data=pack(value)
                 await response.write(struct.pack("!I",len(data))+data)
         except (ConnectionError,RuntimeError,asyncio.CancelledError):

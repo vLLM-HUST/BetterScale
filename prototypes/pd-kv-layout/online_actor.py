@@ -7,6 +7,7 @@ import asyncio
 import json
 import os
 import traceback
+import time
 import uuid
 from pathlib import Path
 
@@ -131,18 +132,31 @@ class Actor:
         self.info=info;self.reader=asyncio.create_task(self.receive())
         return info
 
+    def receive_batch(self):
+        # One blocking wait, then drain only already-ready messages. Native DP
+        # returns bursts: do not pay a thread-pool wakeup for every token chunk.
+        # The bound yields back to HTTP/State work even under sustained output.
+        batch=[self.pipe.recv()]
+        while len(batch)<64 and self.pipe.poll():
+            try:batch.append(self.pipe.recv())
+            except EOFError:break  # Deliver preceding replies before quarantine.
+        return batch
+
     async def receive(self):
         try:
             while True:
-                tag,status,value=await asyncio.to_thread(self.pipe.recv)
-                if status=="tokens":
-                    callback=self.progress.get(tag)
-                    if callback is not None:callback(value)
-                    continue
-                self.progress.pop(tag,None)
-                future=self.pending.pop(tag)
-                if status!="ok":raise RuntimeError(value)
-                if not future.done():future.set_result(value)
+                batch=await asyncio.to_thread(self.receive_batch)
+                for tag,status,value in batch:
+                    if status=="tokens":
+                        callback=self.progress.get(tag)
+                        if callback is not None:
+                            value["node_arrival_ns"]=time.perf_counter_ns()
+                            callback(value)
+                        continue
+                    self.progress.pop(tag,None)
+                    future=self.pending.pop(tag)
+                    if status!="ok":raise RuntimeError(value)
+                    if not future.done():future.set_result(value)
         except BaseException as error:
             self.quarantined=True
             # Include the just-removed failing caller, not only remaining tags.
