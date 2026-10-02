@@ -1505,3 +1505,32 @@ After explicit idle retirement of these128 fixture checkpoints and disabling
 audit on all16 ranks, v21 replays SWE2.0/240 with an8s native D capture at170s.
 Treat that replay as profiler-perturbed diagnostic, not an apples-to-apples
 unprofiled performance comparison.
+
+
+v21 profiler-perturbed SWE replay is VALID:2051requests, zero failures/misses,
+333.335s wall,1814.6792 total tokens/s, TTFT P957.88575s. All2051 D device
+releases and final commits complete; native pending/owners drained. This does
+not establish a throughput gain. The8s capture at170s takes~9.53s including
+start/stop RPCs. DP0TP0 msprof DB contains104 target anchors/208 replay calls.
+For89 cycles under100ms: cycle median72.548ms, compute interval-union30.482ms,
+communication10.979ms, uncovered27.364ms.14 slower cycles have median108.135ms
+and uncovered58.250ms. Separate medians are not additive. All-task MEMCPY_ASYNC
+duration sum186.6ms across the capture is small; uncovered is NOT proved host
+overhead or just copy time.
+
+Framework torch.op_range decoded with installed FwkFileParser/ProfilerConfig:
+199194 host ops,104 gloo:all_reduce ranges on each of two background threads
+(total2010.94ms/1070.44ms, potentially overlapping). CANN long event waits on
+output thread296952 total1368.3ms across104 calls; no enclosing Torch op.
+These identify synchronization/host-control candidates, not a removed barrier.
+Current D profile:
+online-rank-v21-D-profile/D0_dp0_pp0_tp0_dcp0_ep0_rank0_294147_20261002185923875_ascend_pt/PROF_000001_20261002185923921_00294147BFEGFJAC/msprof_20261002190231.db.
+Device/framework analyses and profile-window receipt live under online-rank-v21-*.
+
+a9d862e adds opt-in host-only spans around executor collective_rpc, worker
+state_cache_actions and runner DP metadata synchronization. No result awaits,
+device reads or extra model waves. Bind runner observation only after warmup:
+native NPUWorker.__init__ has not yet constructed model_runner.
+31 controller/actor/timing tests pass, including lazy-result identity, exception
+propagation and idempotent instrumentation. Next C48/R56/44GiB probe will use
+these spans and cold-restart BOTH sides to avoid cached TE endpoint reuse.
