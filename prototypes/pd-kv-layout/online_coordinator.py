@@ -36,6 +36,7 @@ class Coordinator:
     def __init__(self,path,p_url,d_url,trace=None,*,p_per_instance=16,same_host_d=False,sticky_owners=True):
         self.directory=Directory(path);self.urls=(p_url,d_url);self.trace=trace
         self.same_host_d=same_host_d
+        self.evictions={}
         self.inflight={};self.generated={};self.tasks=set();self.failure=None;self.client=None;self.lock=None
         self.request_slots=asyncio.Semaphore(128)
         self.sticky_owners=sticky_owners
@@ -228,9 +229,53 @@ class Coordinator:
         for kind,index in (("P",row[1]),("D",row[2])):
             if index is None:continue
             op=await self.prepare(kind,index,dict(kind="drop",key=checkpoint["key"]))
-            await self.cache(kind,index,dict(kind="wait",operation=op))
+            receipt=await self.cache(kind,index,dict(kind="wait",operation=op))
+            if (receipt.get("operation")!=op or receipt.get("kind")!="drop"
+                    or receipt.get("cancelled") or receipt.get("ranks")!=[0,1]):
+                raise RuntimeError("Missing successful TP checkpoint-retirement quorum")
         with self.directory.transaction() as db:
             db.execute("DELETE FROM rank_manifests WHERE id=?",(manifest,))
+
+    async def evict_idle(self,session):
+        """Retire both host copies, never device execution or sticky placement.
+
+        The admission fence covers the asynchronous TP drops and Directory CAS.
+        No bytes count as reusable until both replicas have retired. A partial
+        failure stops this controller incarnation; it is not a cache miss.
+        """
+        if not self.rank_private:raise ValueError("private cache eviction required")
+        if self.failure:raise RuntimeError(self.failure)
+        if session in self.evictions:return await asyncio.shield(self.evictions[session])
+        if session in self.inflight:raise Conflict("active session cannot be evicted")
+        with self.directory.transaction() as db:
+            row=db.execute("SELECT epoch,owner,active,manifest FROM sessions WHERE id=?",(session,)).fetchone()
+        if row is None or row[3] is None:return False
+        if row[1]!="P" or row[2]:raise Conflict("session is not idle at P")
+        fence=asyncio.get_running_loop().create_future()
+        fence.add_done_callback(lambda value:None if value.cancelled() else value.exception())
+        self.evictions[session]=fence
+        start=time.perf_counter()
+        try:
+            await self.retire_manifest(row[3])
+            self.directory.forget_idle(session,row[0],row[3])
+            if self.trace:self.trace(dict(op="host-cache-evicted",session=session,
+                manifest=row[3],start=start,end=time.perf_counter()))
+            fence.set_result(True)
+            return True
+        except BaseException as error:
+            self.fail_closed(error)
+            if not fence.done():fence.set_exception(RuntimeError(self.failure))
+            raise
+        finally:
+            self.evictions.pop(session,None)
+
+    def fail_closed(self,error):
+        if self.failure is None:self.failure=str(error)
+        for f in (*self.inflight.values(),*self.generated.values()):
+            if not f.done():f.set_exception(RuntimeError("Online PD failed closed: "+str(error)))
+        # Other admitted tasks are interrupted; no uncertain lease revoked.
+        for task in self.tasks:
+            if task is not asyncio.current_task():task.cancel()
 
     async def save(self,kind,index,tokens,salt,*,peer_group=None,on_device_released=None):
         key=uuid.uuid4().hex
@@ -277,6 +322,7 @@ class Coordinator:
                 or not isinstance(prompt,list) or not prompt or any(type(t) is not int or not 0<=t<248320 for t in prompt)
                 or type(n) is not int or not 1<=n<=context_limit() or len(prompt)+n>context_limit()):raise ValueError("Invalid request")
         submitted=time.perf_counter()
+        if session in self.evictions:await asyncio.shield(self.evictions[session])
         if session in self.inflight:
             generated=self.generated[session]
             if not generated.done():raise Conflict("Session already generating")
@@ -294,6 +340,8 @@ class Coordinator:
             start=submitted,end=admitted,session_commit_wait=session_ready-submitted,
             permit_wait=admitted-session_ready,inflight=len(self.inflight)))
         try:
+            # An idle eviction may have started while ingress awaited its permit.
+            if session in self.evictions:await asyncio.shield(self.evictions[session])
             if self.failure:raise RuntimeError(self.failure)
             if session in self.inflight:raise Conflict("Session admission raced")
             future=asyncio.get_running_loop().create_future();self.inflight[session]=future
@@ -416,12 +464,7 @@ class Coordinator:
             if not future.done():future.set_result(dict(session=session,owner=owner,
                 token_ids=tokens[len(prompt):],full_tokens=tokens,trace=events,seconds=time.perf_counter()-started))
         except BaseException as error:
-            if self.failure is None:self.failure=str(error)
-            for f in (*self.inflight.values(),*self.generated.values()):
-                if not f.done():f.set_exception(RuntimeError("Online PD failed closed: "+str(error)))
-            # Other admitted tasks are interrupted; no uncertain lease revoked.
-            for task in self.tasks:
-                if task is not asyncio.current_task():task.cancel()
+            self.fail_closed(error)
         finally:
             if p_instance is not None and not self.failure:await self.release_p(p_instance,p_reserved)
             if reserved is not None and not self.failure:await self.release_d(owner,reserved)

@@ -153,3 +153,15 @@ Startup reservation discriminator and opt-in arena:
 - Arena + pool + runtime + online wiring CPU tests:30 passed. Pressure eviction
   and admission are still outstanding: a bounded arena miss is not permission
   to evict an active generation or silently recompute during an uncertain DMA.
+
+- rank-arena-transfer-v1-{D,P}/result.json: two-host512MiB arenas, three
+  116,572,172-byte payloads pass registered Mooncake TCP write, checksum,
+  receiver commit and exact83-lane H2D/untouched-row audit. Both pools finish
+  used/live0 and explicitly close. Single-stream network0.97–1.05GB/s is a
+  correctness-gate observation, NOT aggregate network or model performance.
+- evict_idle now provides a fenced two-replica retirement primitive. New turns
+  wait through eviction both before and after ingress-permit waiting; active
+  sessions cannot be victims. Both TP drop quorums must match before metadata
+  and Directory generation are forgotten; partial failure fails closed.
+  Sticky P/D placement survives.43 coordinator/wiring/eviction CPU tests pass.
+  This is not yet an automatic LRU/capacity admission policy.

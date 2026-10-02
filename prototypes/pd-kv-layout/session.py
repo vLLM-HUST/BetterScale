@@ -82,6 +82,18 @@ class Directory:
             if changed != 1:
                 raise Conflict("stale revoke")
 
+    def forget_idle(self, session, epoch, manifest):
+        """Forget only a fenced, idle published version after replica retirement."""
+        if not manifest:
+            raise ValueError("published manifest required")
+        with self.transaction() as db:
+            changed = db.execute(
+                "UPDATE sessions SET epoch=epoch+1,manifest=NULL "
+                "WHERE id=? AND epoch=? AND owner='P' AND active=0 AND manifest=?",
+                (session, epoch, manifest)).rowcount
+            if changed != 1:
+                raise Conflict("session changed during idle cache retirement")
+
     def current(self, session):
         with self.transaction() as db:
             row = db.execute("SELECT manifest FROM sessions WHERE id=?", (session,)).fetchone()

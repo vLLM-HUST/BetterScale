@@ -26,8 +26,16 @@ async def run(args):
             (args.output/"first.json").write_text(json.dumps(first,indent=2))
             assert all(len(v["token_ids"])==args.tokens for v in first)
             assert all(v["trace"][-1]["cached"]==args.prompt for v in first)
+            placements={name:(c.p_affinity[name],c.d_affinity[name]) for name in names}
+            if args.evict_before_continuation:
+                # A correctness gate, not the pressure policy: all turns are
+                # committed here, so these are demonstrably idle generations.
+                for name in names:assert await c.evict_idle(name)
+                assert all(c.directory.current(name) is None for name in names)
             second=await asyncio.gather(*(c.submit(v["session"],v["full_tokens"]+[17]*16,8) for v in first))
-            assert all(len(v["token_ids"])==8 and v["trace"][0]["stage"]=="P-load" for v in second)
+            assert all(len(v["token_ids"])==8 for v in second)
+            assert all((v["trace"][0]["stage"]=="P-load") is (not args.evict_before_continuation) for v in second)
+            assert placements=={name:(c.p_affinity[name],c.d_affinity[name]) for name in names}
             if args.exact_context:
                 v=second[0]
                 assert len(v["full_tokens"])<262142
@@ -42,7 +50,7 @@ async def run(args):
                 assert all(s["peak_pending"]>1 for s in snapshots+p_snapshots), "State concurrency not exercised"
             with c.directory.transaction() as db:
                 assert db.execute("SELECT COUNT(*) FROM sessions WHERE owner!=? OR active!=0",("P",)).fetchone()[0]==0
-            summary=dict(ok=True,seconds=time.perf_counter()-started,first=first,second=second,snapshots=snapshots,p_snapshots=p_snapshots)
+            summary=dict(ok=True,evicted_before_continuation=args.evict_before_continuation,seconds=time.perf_counter()-started,first=first,second=second,snapshots=snapshots,p_snapshots=p_snapshots)
             (args.output/"summary.json").write_text(json.dumps(summary,indent=2))
             print(json.dumps({k:summary[k] for k in ("ok","seconds")}),flush=True)
         finally:await c.close()
@@ -54,6 +62,7 @@ if __name__=="__main__":
     p.add_argument("--output",type=Path,required=True)
     p.add_argument("--exact-context",action="store_true")
     p.add_argument("--require-concurrent",action="store_true")
+    p.add_argument("--evict-before-continuation",action="store_true")
     p.add_argument("--label",default="online-"+uuid.uuid4().hex[:12])
     p.add_argument("--sessions",type=int,choices=(4,8,16,32,64,128,192,256,320),default=4)
     p.add_argument("--prompt",type=int,default=1024)
