@@ -48,7 +48,7 @@ class FramePlan:
         return cls(lanes, struct.pack("<I",len(raw))+raw, offset)
 
     def views(self, lease, *, initialize):
-        if lease.size != self.byte_length or lease.state != "writing":
+        if lease.size < self.byte_length or lease.state != "writing":
             raise ValueError("frame needs an exclusive correctly sized staging writer")
         base = lease.pointer
         if initialize:

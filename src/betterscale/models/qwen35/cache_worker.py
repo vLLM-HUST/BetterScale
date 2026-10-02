@@ -57,6 +57,12 @@ class CacheWorker:
             self.verify.pop(key, None)
             self._send(command)
             return
+        if command.get("two_phase_store") and (
+            kind != "store" or not incremental
+            or not getattr(self.page_backend, "supports_staged_receipts", False)
+        ):
+            raise RuntimeError("two-phase store requires an owned DRAM staging backend")
+        command["_device_staged"] = False
         if seat in self.inflight:
             raise RuntimeError("rank already has I/O on this seat")
         self.inflight.add(seat)
@@ -106,42 +112,66 @@ class CacheWorker:
                         ),
                     )
                 )
+            stage_options = {}
+            if command.get("two_phase_store"):
+                stage_options["on_staged"] = lambda moved: self._staged(
+                    command, key, was_verify, moved)
             transfer = self.page_backend.transfer(
                 key,
                 self.states,
                 objects,
                 store=kind == "store",
                 stream=stream,
+                **stage_options,
             )
         else:
             method = self.backend.offload if kind == "store" else self.backend.restore
             transfer = method(self.states, key, selection, stream=stream)
 
         def finish(producer=producer):
-            try:
-                torch.npu.set_device(self.runner.device)
-                transfer.result()
-                command["_transfer_bytes"] = transfer.byte_length
-                if hasattr(transfer,"phase_seconds"):
-                    command["_transfer_phases"] = dict(transfer.phase_seconds)
-                if kind == "store":
-                    self.verify[key] = was_verify
-                else:
-                    self.runner._live_resident_epochs[seat] = epoch
-                    if was_verify:
-                        self.runner._live_previous_verify.add(seat)
-                    else:
-                        self.runner._live_previous_verify.discard(seat)
-                self.inflight.remove(seat)
-                self._send(command)
-            except BaseException as error:
-                self._send(command, repr(error))
+            self._finish(command, transfer, key, was_verify)
 
         self.waiters.submit(finish)
 
-    def _send(self, command, error=None):
+    def _staged(self, command, key, was_verify, moved):
+        seat = command["seat"]
+        if command["_device_staged"]:
+            raise RuntimeError("duplicate local State completion")
+        self.verify[key] = was_verify
+        self.inflight.remove(seat)
+        command["_device_staged"] = True
+        command["_transfer_bytes"] = moved
+        self._send(command, phase="staged")
+
+    def _finish(self, command, transfer, key, was_verify):
+        kind, seat, epoch = (command[k] for k in ("kind", "seat", "epoch"))
+        try:
+            torch.npu.set_device(self.runner.device)
+            transfer.result()
+            if command.get("two_phase_store") and not command["_device_staged"]:
+                raise RuntimeError("missing local State staging receipt")
+            command["_transfer_bytes"] = transfer.byte_length
+            if hasattr(transfer, "phase_seconds"):
+                command["_transfer_phases"] = dict(transfer.phase_seconds)
+            if kind == "store":
+                self.verify[key] = was_verify
+            else:
+                self.runner._live_resident_epochs[seat] = epoch
+                if was_verify:
+                    self.runner._live_previous_verify.add(seat)
+                else:
+                    self.runner._live_previous_verify.discard(seat)
+            if not command["_device_staged"]:
+                self.inflight.remove(seat)
+            self._send(command)
+        except BaseException as error:
+            self._send(command, repr(error))
+
+    def _send(self, command, error=None, *, phase=None):
         receipt = {key: command[key] for key in ("operation", "seat", "epoch")}
         receipt.update(rank=self.rank, error=error)
+        if phase is not None:
+            receipt["phase"] = phase
         if "_transfer_bytes" in command:
             receipt["transfer_bytes"] = command["_transfer_bytes"]
         if "_transfer_phases" in command:

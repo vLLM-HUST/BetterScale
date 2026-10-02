@@ -38,6 +38,7 @@ class Stage:
         except BaseException:
             with self.arena.condition:
                 self.state = "quarantined"
+                self.arena.failure = "State DMA completion failed"
                 self.arena.condition.notify_all()
             raise
         with self.arena.condition:
@@ -81,6 +82,7 @@ class NativeDramStaging:
         self.generation = 0
         self.closed = False
         self.closing = False
+        self.failure = None
         self.unregister_device = unregister_device
         store_registered = False
         try:
@@ -110,7 +112,9 @@ class NativeDramStaging:
         if timeout is not None and timeout < 0:
             raise ValueError("nonnegative timeout required")
         with self.condition:
-            ready = self.condition.wait_for(lambda: self.available or self.closed or self.closing, timeout)
+            ready = self.condition.wait_for(lambda: self.available or self.closed or self.closing or self.failure, timeout)
+            if self.failure:
+                raise RuntimeError("staging arena quarantined: "+self.failure)
             if self.closed or self.closing:
                 raise RuntimeError("staging arena closed or quarantined during teardown")
             if not ready:
@@ -141,6 +145,7 @@ class NativeDramStaging:
         except BaseException:
             with self.condition:
                 lease.state = "quarantined"
+                self.failure = "background State replication failed"
                 self.condition.notify_all()
             raise
         with self.condition:

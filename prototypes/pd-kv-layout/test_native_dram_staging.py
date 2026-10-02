@@ -73,7 +73,7 @@ def test_failure_quarantines_not_reuses_or_unmaps(failure):
         store.fail=True;store.release.set()
         with pytest.raises(RuntimeError): lease.replicate("A").result(3)
     assert lease.state == "quarantined"
-    with pytest.raises(TimeoutError): arena.acquire(8)
+    with pytest.raises(RuntimeError,match="quarantined"): arena.acquire(8)
     with pytest.raises(RuntimeError): arena.close()
     assert allocator.buffer is not None
     # Test fake owns no actual asynchronous DMA. Shut down threads without

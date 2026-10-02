@@ -854,3 +854,60 @@ card0/Store roundtrips of the mixed-dtype498-byte frame, including unaligned
 lane offsets; all selected State bytes match. This tiny test proves addressing,
 NOT realistic State capacity, bandwidth, untargeted-row guards or live wiring.
 Source is a prototype; borrowed frame views must not outlive their arena lease.
+
+
+Native shared-cluster gate (native_store_node_probe.py / replica_probe.py):
+one bounded master on hw86:55301 and one512MiB native DRAM segment per node,
+TCP endpoints10.244.2.32:55307 and10.244.1.16:55307. No disk/hot-cache duplicate.
+A D-side pointer PUT with replica_num=2/preferred_segments completes in24.36ms
+for16MiB; descriptor inspection confirms COMPLETE memory replicas on both
+specific nodes, and D/P readbacks are byte-exact (7.49/9.35ms). These small cold
+calls are not saturated bandwidth. Both owned services were cleanly stopped.
+Installed DummyClient get_replica_desc RPC fails “rpc function not registered”;
+a separate ordinary native client queries metadata successfully. Do not confuse
+the unavailable inspection RPC with failed data replication or assume the
+reference fork's registered RPC list matches this wheel.
+
+The prototype native_state_transport.py now composes frame DMA, bounded DRAM
+slots and background pointer replication, with a SHA256 trailer written in the
+background before PUT. Load verifies that trailer before any device write;
+optional post-H2D audit catches DMA errors. Its namespace is native-frame-v1,
+not the older HTTP object format. Eight staging/frame/transport CPU tests cover
+local-ready before ACK, safe source overwrite, sparse identity hit, corruption
+before H2D, sticky errors, capacity and quarantine. CacheWorker can emit separate
+staged/committed rank receipts and does not remove a newly reused slot when an
+old remote ACK arrives;46 worker/actions/incremental tests pass.
+
+IMPORTANT next correctness hinge: the prototype transport deliberately declares
+supports_staged_receipts=False, so the live worker rejects two-phase activation.
+Existing-object presence and an earlier PUT ACK do not by themselves pin Store
+objects until the whole multi-object transaction is staged/committed. A finite
+staging ring may recycle earlier frames after ACK; cache eviction could then
+invalidate the claimed full DRAM snapshot. Do not enable by flipping the flag.
+Resolve native Store lease acquisition/renewal/expiry and deadline handling (or
+retain a bounded whole-snapshot staging reservation) first. Reference
+RealClient get_replica_desc calls Client::Query, but its Python result discards
+the returned lease TTL; map that protocol carefully to the installed wheel.
+No raw replica-address dereference, permanent hard-pinning of the full LRU, or
+unbounded per-worker mirror is an acceptable shortcut.
+
+
+The installed-wheel lease behavior is now independently checked by
+native_store_lease_probe.py (native-store-lease1): with explicit2000ms master
+TTL, both ordinary get_replica_desc and batch_get_replica_desc prevent
+non-force removal (-706). A second query renews protection beyond the first
+lease's expiry; after the renewed TTL elapses, remove returns0. Queries take
+.24-.43ms locally. Reference Client::Query/BatchQuery are uncached master RPCs
+and conservatively set expiry to query-start + returned TTL. Do not substitute
+batch_is_exist for these lease-granting queries.
+
+Next route to evaluate: reuse these bounded native read leases, scoped to the
+existing Core checkpoint/page references (release on existing CacheActions
+drop), rather than inventing another full cache or permanently hard-pinning
+objects. On a successful background PUT, acquire a read lease before recycling
+the staging slot; batch-query existing pages before skipping D2H. Renew active
+references before expiry, enforce conservative deadlines, and fail closed on
+a lost/expired lease. The configured master TTL must be explicit and verified;
+Python descriptor results omit TTL, so guessing it is not acceptable. A paused
+or failed renewal must not be silently “recovered” while claiming uninterrupted
+ownership. This is a proposed integration, not yet implemented or qualified.
