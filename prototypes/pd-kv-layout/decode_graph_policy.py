@@ -18,6 +18,27 @@ def capacity(tokens, requests, scheduled, computed, prompts):
     return next(k for k in KEYS if k>=tokens)
 
 
+
+def verification_drafts(lengths, computed, prompts, drafts):
+    """Classify restored one-token tails, including native Q3 dummy padding.
+
+    Native WAITING admission may append two -1 draft placeholders when joining
+    running decode. Its GDN prefill marker is not a bulk-prefill ownership claim.
+    Only the role metadata changes; proposal IDs, sampler validity and accepted
+    counts remain device/native-authoritative.
+    """
+    capacity(sum(lengths),len(lengths),lengths,computed,prompts)
+    if len(drafts)!=len(lengths):
+        raise ValueError("D draft-role count differs from live rows")
+    result=list(drafts)
+    for i,value in enumerate(result):
+        if value<0:
+            if int(computed[i])!=int(prompts[i])-1:
+                raise ValueError("Unknown prefill role on decode-only owner")
+            result[i]=0
+    return result
+
+
 def qualify(config):
     p=config.parallel_config
     if (p.tensor_parallel_size,p.data_parallel_size,p.enable_expert_parallel)!=(2,4,True):
@@ -43,3 +64,19 @@ def install():
             batch.num_computed_tokens_cpu_tensor[:requests],
             batch.num_prompt_tokens_cpu_tensor[:requests])
     graphs.capacity=choose
+    from betterscale.models.qwen35.service_metadata import MTPFrame
+    original_fill=MTPFrame.fill_mtp
+    def fill(frame,key,m,lengths,table,builder,accepted,drafts):
+        if drafts is not None and not getattr(builder,"_mtp_dummy",False):
+            runner=builder._live_state_runner
+            n=len(lengths);batch=runner.input_batch
+            values=verification_drafts(lengths,
+                batch.num_computed_tokens_cpu_tensor[:n],
+                batch.num_prompt_tokens_cpu_tensor[:n],drafts[:n].tolist())
+            if values!=drafts[:n].tolist():
+                # Clone the tiny CPU role plane, never the native proposals or
+                # device-authoritative acceptance/length tensors.
+                drafts=drafts.clone()
+                drafts[:n].copy_(drafts.new_tensor(values))
+        return original_fill(frame,key,m,lengths,table,builder,accepted,drafts)
+    MTPFrame.fill_mtp=fill

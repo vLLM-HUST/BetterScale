@@ -1212,3 +1212,22 @@ numerics. Do not relax the Q1..3 assertion or swap the capsule's native kernel.
 stage_online_candidate --mtp now overlays draft_banks alongside state_address
 and draft_fia.17 focused CPU tests pass; the next hardware run must qualify warm
 continuation before any MTP throughput claim.
+
+The target-capacity fix3e93c77 passes online-rank-v8-gate1: four1K cold/warm
+sessions,16+8outputs,85-lane audit,4.692s. The16-session gate then fails on D
+before its first-turn quorum, not on P: 'prefill reached a verification-only
+graph'. The saved scheduler dump identifies a new restored request with
+prompt4097/computed4096 joining one running decode: both are scheduled Q3,
+and the new row receives native [-1,-1] speculative placeholders. Native GDN
+role metadata still labels that one-token-tail row prefill, despite graph-policy
+proof that D owns no bulk prefill. Single-session gates missed this join case.
+
+The next opt-in D-only adapter normalizes ONLY a negative GDN role whose
+computed frontier is exactly prompt-1, after validating Q1..3 and D capacity.
+It clones the tiny CPU role plane; native proposal IDs, scheduling, sampler
+validity, device acceptance and recurrent candidate selection are untouched.
+Unknown/bulk-prefill roles still fail. This lets the qualified verification
+kernel process the actual tail plus native dummy proposal slots, retaining
+candidate selection instead of executing an inappropriate bulk recurrence.
+Ten focused CPU tests pass; simultaneous-arrival hardware qualification is
+pending. Do not call v8 a successful concurrent or256K MTP qualification.

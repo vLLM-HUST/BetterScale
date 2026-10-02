@@ -17,3 +17,15 @@ def test_restored_tail_and_native_verify_share_small_graph_bank():
 ])
 def test_bulk_or_unrestored_state_never_falls_back_to_mixed(args):
     with pytest.raises(ValueError):capacity(*args)
+
+
+def test_restored_tail_role_with_native_dummy_spec_padding():
+    from decode_graph_policy import verification_drafts
+    original=[2,-1]
+    assert verification_drafts([3,3],[4100,4096],[4097,4097],original)==[2,0]
+    assert original==[2,-1]
+    assert verification_drafts([1],[4096],[4097],[-1])==[0]
+    with pytest.raises(ValueError,match="bulk prefill"):
+        verification_drafts([3],[4095],[4097],[-1])
+    with pytest.raises(ValueError,match="Unknown prefill"):
+        verification_drafts([1],[4100],[4097],[-1])
