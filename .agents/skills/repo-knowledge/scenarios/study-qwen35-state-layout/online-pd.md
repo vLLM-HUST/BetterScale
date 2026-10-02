@@ -1534,3 +1534,46 @@ native NPUWorker.__init__ has not yet constructed model_runner.
 31 controller/actor/timing tests pass, including lazy-result identity, exception
 propagation and idempotent instrumentation. Next C48/R56/44GiB probe will use
 these spans and cold-restart BOTH sides to avoid cached TE endpoint reuse.
+
+
+Further host-profile context: during the v21 profile-RPC window,
+accepted/chunk=2.8021 (18785 accepted/6704 chunks). Worker mean live rows
+13.7–19.4, maximum16–21. Thus this gap is not poor MTP acceptance or full C32.
+online-rank-v21-profile-supply.json records the bounded window.
+
+ad77943 removes another concrete owner head-of-line boundary: maintenance held
+an owner mutex over prepare()'s repeated busy responses, blocking independent
+sessions from even attempting admission. Two CPU reproductions (load and store)
+time out before the fix. The new per-owner lock covers just ONE atomic native
+admission RPC; busy waiting occurs outside it. Native Core still atomically
+owns offers/leases, shared-page fences and max_pending20; per-session writer
+ownership and global request permits are unchanged. Control attempts remain
+bounded one per owner, rather than spawning an unbounded polling storm.
+33 controller/actor/timing tests pass. Live v22 source predates this fix.
+
+v22 C48/R56/44GiB fails during graph capture, before gate/model service:
+GDN host workspace_size requires requests<=33. MixedCore was constructing
+an UNUSED prefill Metadata engine even for verification-only frames, hence
+requests49 tripped a legitimate H/O prefill contract. Do not widen that native
+kernel guard to fix an unused allocation.9b753e2 lets Metadata skip engine
+initialization (default unchanged), and Core disables it only for SPEC keys.
+Full metadata shapes remain compatible; actual prefill branch fails before
+writes if invoked without its engine. Mixed/P frames retain existing H/O setup.
+20 capacity/draft/graph tests pass, including CPU metadata constructors at
+16/32/48/64/80 and actual Core-constructor branch selection.
+The staging helper now overlays qwen_gdn/metadata.py as well.
+
+Failed v22 D descendants were saved in online-rank-v22-failed-processes.json,
+then the exact actor group was terminated; six remaining owned processes needed
+SIGKILL after10s. All eight NPUs were verified free. No code/artifacts removed.
+The readiness-only gate controller was stopped; no v22 gate ran.
+P v22 never opened a TE remote segment and has no served sessions, so it can
+remain live while D v23 starts9b753e2 with a freshly staged D capsule.
+v23 planned gate:192x4K/2048 outputs + warm8, all16 audit on, C48/R56/44GiB.
+Local-stage admission and retry-lock fix are both in this controller candidate.
+
+Evidence backup: local BetterScale-migration-20261001 now contains
+pd-v13-v21-D-evidence.tgz (327267184 bytes) and pd-v12-v21-P-evidence.tgz.
+D archive includes the two DP0 native DBs, framework ranges, timing/control
+receipts and SWE results, excluding other ranks' large raw profiles and capsules.
+Full raw profiles remain remote; source is independently committed/pushed.
