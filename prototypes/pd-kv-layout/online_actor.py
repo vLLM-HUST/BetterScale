@@ -12,6 +12,19 @@ import uuid
 from pathlib import Path
 
 
+def rpc_capacity(capacities):
+    """Transport envelope, not another execution/State admission policy.
+
+    Two in-flight turns per execution row plus control headroom matches the
+    coordinator's bounded pipeline. Both pipe ends derive this from the same
+    native receipt; widening execution must not retain a hidden160-RPC ceiling.
+    """
+    rows = [c["max_requests"] for c in capacities]
+    if len(rows) not in (1,4) or any(type(n) is not int or n not in (16,32,48,64,80) for n in rows):
+        raise ValueError("Invalid native actor capacity")
+    return max(160, 2 * sum(rows) + 32)
+
+
 def options(kind,instance):
     from pool_topology import placement
     from pd_model_probe import prepare_worker,engine_options
@@ -140,6 +153,7 @@ async def run(kind,instance,pipe):
     try:
         capacities=[await model.engine_core._call_utility_async("pd_online_cache",{"kind":"capacity"},
             engine=model.engine_core.core_engines[i]) for i in range(layout["dp"])]
+        max_calls=rpc_capacity(capacities)
         pipe.send(("ready","ready",dict(capacities=capacities,kind=kind,instance=instance,layout=layout,
             context_limit=value["max_model_len"],state_bytes=value["kv_cache_memory_bytes"],target_only=not value["additional_config"]["pd_mtp"],
             object_audit=os.environ.get("BETTERSCALE_PD_VERIFY_OBJECTS")=="1",
@@ -152,7 +166,7 @@ async def run(kind,instance,pipe):
             if op=="stop":
                 await asyncio.gather(*tasks)
                 pipe.send((tag,"ok",None));break
-            if failed or len(tasks)>=160:
+            if failed or len(tasks)>=max_calls:
                 pipe.send((tag,"error","Actor failed closed or capacity exceeded"));continue
             task=asyncio.create_task(call(tag,op,args));tasks.add(task)
             task.add_done_callback(tasks.discard)
@@ -177,6 +191,7 @@ class Actor:
     async def ready(self):
         tag,status,info=await asyncio.wait_for(asyncio.to_thread(self.pipe.recv),1200)
         if (tag,status)!=("ready","ready"):raise RuntimeError(str(info))
+        self.max_calls=rpc_capacity(info["capacities"])
         self.info=info;self.reader=asyncio.create_task(self.receive())
         return info
 
@@ -215,7 +230,7 @@ class Actor:
 
     async def call(self,op,args,on_tokens=None):
         if self.quarantined or not self.process.is_alive():raise RuntimeError("Actor unavailable")
-        if len(self.pending)>=160:raise RuntimeError("Actor request bound exceeded")
+        if len(self.pending)>=self.max_calls:raise RuntimeError("Actor request bound exceeded")
         tag=uuid.uuid4().hex;future=asyncio.get_running_loop().create_future();self.pending[tag]=future
         if on_tokens is not None:
             if op!="generate":raise ValueError("Only generation streams tokens")

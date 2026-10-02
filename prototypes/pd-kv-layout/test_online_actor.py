@@ -51,3 +51,39 @@ def test_error_in_batch_quarantines_remaining_callers():
         assert all(isinstance(f.exception(),RuntimeError) for f in futures)
         actor.pipe.close()
     asyncio.run(run())
+
+
+def test_actor_rpc_envelope_scales_from_native_capacity():
+    from online_actor import rpc_capacity
+    import pytest
+    assert rpc_capacity([{"max_requests":16}]) == 160
+    for width in (16,32,48,64,80):
+        count=rpc_capacity([{"max_requests":width}]*4)
+        assert count == max(160, 8*width+32)
+        assert count >= 4*width+32
+    for bad in ([],[{"max_requests":True}],[{"max_requests":81}],
+                [{"max_requests":16}]*3):
+        with pytest.raises(ValueError):rpc_capacity(bad)
+
+
+def test_wide_actor_accepts_control_above_old_ceiling_but_is_bounded():
+    from types import SimpleNamespace
+    from online_actor import rpc_capacity
+    import pytest
+    async def run():
+        actor=Actor.__new__(Actor)
+        actor.quarantined=False
+        actor.process=SimpleNamespace(is_alive=lambda:True)
+        actor.max_calls=rpc_capacity([{"max_requests":80}]*4)
+        actor.pending={str(i):None for i in range(320)}
+        actor.progress={}
+        def reply(message):
+            tag,op,args=message
+            assert op=="cache"
+            actor.pending.pop(tag).set_result("control completed")
+        actor.pipe=SimpleNamespace(send=reply)
+        assert await actor.call("cache",{})=="control completed"
+        actor.pending={str(i):None for i in range(actor.max_calls)}
+        with pytest.raises(RuntimeError,match="bound exceeded"):
+            await actor.call("cache",{})
+    asyncio.run(run())
