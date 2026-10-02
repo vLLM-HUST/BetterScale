@@ -97,14 +97,12 @@ class RankRuntime:
             self.host_arena.close()
 
 
-def build(runner, worker, config):
-    import torch
-    from state_numa import bind_thread
+def arena_configuration(runner, tp_rank, config):
     raw = os.environ.get("BETTERSCALE_PD_STATE_NUMA")
     if raw is None:
         raise ValueError("private State requires explicit physical-device NUMA mapping")
     owner, physical, node = owner_for(
-        config, worker.rank, runner.device.index, json.loads(raw),
+        config, tp_rank, runner.device.index, json.loads(raw),
         os.environ.get("ASCEND_RT_VISIBLE_DEVICES"))
     if os.environ.get("BETTERSCALE_PD_COMPRESS_RESIDENT", "0") != "0":
         raise ValueError("private State qualification requires uncompressed frames")
@@ -114,6 +112,32 @@ def build(runner, worker, config):
     arena_mode = os.environ.get("BETTERSCALE_PD_PINNED_ARENA", "0")
     if arena_mode not in ("0", "1"):
         raise ValueError("invalid private pinned arena flag")
+    return owner,physical,node,budget,arena_mode
+
+
+def prepare_host_arena(runner,tp_rank,config):
+    """Reserve on an isolated NUMA-bound thread before loading model weights."""
+    owner,physical,node,budget,mode=arena_configuration(runner,tp_rank,config)
+    if mode=="0":return
+    if hasattr(runner,"_pd_reserved_arena"):
+        raise RuntimeError("rank host arena already prepared")
+    def reserve():
+        import torch
+        from state_numa import bind_thread
+        from rank_pinned_arena import RankPinnedArena
+        bind_thread(physical,node);torch.npu.set_device(runner.device)
+        arena=RankPinnedArena(budget,node)
+        print(json.dumps(dict(stage="rank-pinned-arena-reserved",owner=owner,
+                              **arena.stats())),flush=True)
+        return arena
+    with ThreadPoolExecutor(1,thread_name_prefix="rank-host-reserve") as builder:
+        runner._pd_reserved_arena=builder.submit(reserve).result()
+
+
+def build(runner, worker, config):
+    import torch
+    from state_numa import bind_thread
+    owner,physical,node,budget,arena_mode=arena_configuration(runner,worker.rank,config)
     def construct():
         bind_thread(physical, node)
         torch.npu.set_device(runner.device)
@@ -126,9 +150,9 @@ def build(runner, worker, config):
         TransferEngine = transfer_engine()
         arena = None
         if arena_mode == "1":
-            from rank_pinned_arena import RankPinnedArena
-            # Reserve before publishing the rank listener/ready receipt.
-            arena = RankPinnedArena(budget, node)
+            arena = runner._pd_reserved_arena
+            if arena.budget!=budget or arena.node!=node or arena.closed or arena.closing:
+                raise RuntimeError("preloaded rank arena differs from runtime placement")
             print(json.dumps(dict(stage="rank-pinned-arena-ready", owner=owner,
                                   **arena.stats())), flush=True)
         def allocate(size):

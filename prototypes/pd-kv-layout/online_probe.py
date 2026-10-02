@@ -30,11 +30,14 @@ async def run(args):
             if args.evict_before_continuation:
                 # A correctness gate, not the pressure policy: all turns are
                 # committed here, so these are demonstrably idle generations.
-                for name in names:assert await c.evict_idle(name)
+                for name in names:
+                    existed=c.directory.current(name) is not None
+                    assert await c.evict_idle(name) is existed
                 assert all(c.directory.current(name) is None for name in names)
             second=await asyncio.gather(*(c.submit(v["session"],v["full_tokens"]+[17]*16,8) for v in first))
             assert all(len(v["token_ids"])==8 for v in second)
-            assert all((v["trace"][0]["stage"]=="P-load") is (not args.evict_before_continuation) for v in second)
+            if c.host_cache is None:
+                assert all((v["trace"][0]["stage"]=="P-load") is (not args.evict_before_continuation) for v in second)
             assert placements=={name:(c.p_affinity[name],c.d_affinity[name]) for name in names}
             if args.exact_context:
                 v=second[0]
@@ -50,7 +53,23 @@ async def run(args):
                 assert all(s["peak_pending"]>1 for s in snapshots+p_snapshots), "State concurrency not exercised"
             with c.directory.transaction() as db:
                 assert db.execute("SELECT COUNT(*) FROM sessions WHERE owner!=? OR active!=0",("P",)).fetchone()[0]==0
-            summary=dict(ok=True,evicted_before_continuation=args.evict_before_continuation,seconds=time.perf_counter()-started,first=first,second=second,snapshots=snapshots,p_snapshots=p_snapshots)
+            host_cache=c.host_cache.snapshot() if c.host_cache else None
+            if args.require_host_evictions:
+                assert host_cache is not None and host_cache["evictions"]>0
+            if args.retire_all:
+                for name in names:
+                    existed=c.directory.current(name) is not None
+                    assert await c.evict_idle(name) is existed
+                memory=[]
+                for peer,count in ((c.p,4),(c.d,1)):
+                    for instance in range(count):memory.extend(await peer.rpc(instance,"memory",owner=0))
+                assert len(memory)==16
+                assert all(r["pool"]["bytes"]==0 and r["pool"]["checkpoints"]==0
+                           and r["host_arena"]["used_bytes"]==0 for r in memory)
+                (args.output/"retired-memory.json").write_text(json.dumps(memory,indent=2))
+            summary=dict(ok=True,host_cache=host_cache,retired_all=args.retire_all,
+                continuation_host_hits=sum(v["trace"][0]["stage"]=="P-load" for v in second),
+                evicted_before_continuation=args.evict_before_continuation,seconds=time.perf_counter()-started,first=first,second=second,snapshots=snapshots,p_snapshots=p_snapshots)
             (args.output/"summary.json").write_text(json.dumps(summary,indent=2))
             print(json.dumps({k:summary[k] for k in ("ok","seconds")}),flush=True)
         finally:await c.close()
@@ -63,6 +82,8 @@ if __name__=="__main__":
     p.add_argument("--exact-context",action="store_true")
     p.add_argument("--require-concurrent",action="store_true")
     p.add_argument("--evict-before-continuation",action="store_true")
+    p.add_argument("--require-host-evictions",action="store_true")
+    p.add_argument("--retire-all",action="store_true")
     p.add_argument("--label",default="online-"+uuid.uuid4().hex[:12])
     p.add_argument("--sessions",type=int,choices=(4,8,16,32,64,128,192,256,320),default=4)
     p.add_argument("--prompt",type=int,default=1024)

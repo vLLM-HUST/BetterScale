@@ -187,3 +187,19 @@ Startup reservation discriminator and opt-in arena:
  95 CPU ledger/coordinator/wiring/eviction tests pass; model/LRU pressure
   qualification is pending. A startup-reserved arena and this ledger are not
   yet permission to present a high-pressure benchmark as valid.
+
+- hw81 pinned-thp-preflight-node2:80GiB strict-node2 anonymous THP first-touch
+  took365.39s, yielded only7.33GiB AnonHugePages; after unmap MemFree~80.7GiB
+  but order9+ supply only7.35GiB. A48GiB local VMM reservation still failed
+  207001. Unlike hw86 NUMA4, this bounded preparation does NOT repair the node.
+  Stop repeating allocations/preparation without a new hypothesis. Host-level
+  controlled compaction assistance was requested; no sysctl or global cache
+  drop performed. Native model qualification may use explicitly smaller pools,
+  but must not report those as production-memory or peak-throughput results.
+- Arena reservation now occurs on its NUMA-bound helper thread before model
+  weight loading; the later State runtime adopts that same reservation rather
+  than competing with newly faulted model/file cache after graph capture.
+  Startup/ownership CPU test and64 targeted tests pass; model gate pending.
+  online_probe --require-host-evictions checks automatic LRU activity, while
+  --retire-all retires only its known fixture sessions and verifies all16 rank
+  pool/arena usage returns to0. Neither option qualifies peak performance.

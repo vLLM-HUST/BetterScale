@@ -35,6 +35,7 @@ class HostCache:
         self.used={owner:0 for owner in limits}
         self.entries=OrderedDict()
         self.evicting=set()
+        self.evictions=0
         self.changed=asyncio.Event()
 
     @classmethod
@@ -137,6 +138,7 @@ class HostCache:
         entry=self.entries[session]
         if entry.active:raise RuntimeError("active host reservation cannot be evicted")
         self.entries.pop(session)
+        self.evictions+=1
         for o in entry.owners:self.used[o]-=entry.charge
         self.changed.set()
 
@@ -155,4 +157,4 @@ class HostCache:
                     limits={f"{k}{i}":n for (k,i),n in self.limits.items()},
                     active=sum(e.active for e in self.entries.values()),
                     cached=sum(not e.active for e in self.entries.values()),
-                    evicting=len(self.evicting))
+                    evicting=len(self.evicting),evictions=self.evictions)

@@ -98,6 +98,15 @@ class Worker(BaseWorker):
             from decode_graph_policy import install
             install()
 
+    def load_model(self,*args,**kwargs):
+        if self.vllm_config.additional_config.get("pd_rank_private",False):
+            from vllm.distributed import get_tensor_model_parallel_rank
+            from rank_state_runtime import prepare_host_arena
+            config=dict(self.vllm_config.additional_config)
+            config["pd_rank_dp"]=self.vllm_config.parallel_config.data_parallel_rank
+            prepare_host_arena(self.model_runner,get_tensor_model_parallel_rank(),config)
+        return super().load_model(*args,**kwargs)
+
     def state_cache_actions(self, commands):
         for command in commands:
             if "peer_group" in command:

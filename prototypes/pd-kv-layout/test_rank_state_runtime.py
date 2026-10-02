@@ -84,3 +84,33 @@ def test_close_releases_arena_only_after_all_pool_objects_retire():
         SimpleNamespace(close=lambda: events.append("arena")))
     runtime.close()
     assert events == ["control", "pool", "arena"]
+
+
+def test_startup_reservation_is_owned_before_model_load_and_not_repeated(monkeypatch):
+    import json,sys,threading
+    import state_numa,rank_pinned_arena
+    from rank_state_runtime import prepare_host_arena
+    events=[];main=threading.get_ident()
+    monkeypatch.setenv("BETTERSCALE_PD_STATE_NUMA",json.dumps(MAPPING))
+    monkeypatch.setenv("ASCEND_RT_VISIBLE_DEVICES","4,5")
+    monkeypatch.setenv("BETTERSCALE_PD_PINNED_ARENA","1")
+    monkeypatch.setenv("BETTERSCALE_PD_COMPRESS_RESIDENT","0")
+    monkeypatch.setitem(sys.modules,"torch",SimpleNamespace(
+        npu=SimpleNamespace(set_device=lambda device:events.append("device"))))
+    def bind(physical,node):
+        assert threading.get_ident()!=main
+        assert (physical,node)==(5,2)
+        events.append("numa")
+    monkeypatch.setattr(state_numa,"bind_thread",bind)
+    def reserve(budget,node):
+        assert (budget,node)==(4<<30,2)
+        events.append("reserved")
+        return SimpleNamespace(stats=lambda:dict(reserved_bytes=budget))
+    monkeypatch.setattr(rank_pinned_arena,"RankPinnedArena",reserve)
+    runner=SimpleNamespace(device=SimpleNamespace(index=1))
+    config=dict(pd_rank_role="P",pd_rank_instance=2,pd_rank_dp=0,state_cache_host_bytes=4<<30)
+    prepare_host_arena(runner,1,config)
+    assert events==["numa","device","reserved"]
+    assert runner._pd_reserved_arena.stats()["reserved_bytes"]==4<<30
+    with pytest.raises(RuntimeError,match="already"):
+        prepare_host_arena(runner,1,config)
