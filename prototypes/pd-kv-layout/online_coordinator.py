@@ -250,13 +250,18 @@ class Coordinator:
             row=db.execute("SELECT payload,p_owner,d_owner FROM rank_manifests WHERE id=?",(manifest,)).fetchone()
         if row is None:raise KeyError("private checkpoint retirement metadata missing")
         checkpoint=json.loads(row[0])
-        for kind,index in (("P",row[1]),("D",row[2])):
-            if index is None:continue
+        async def retire(kind,index):
             op=await self.prepare(kind,index,dict(kind="drop",key=checkpoint["key"]))
             receipt=await self.cache(kind,index,dict(kind="wait",operation=op))
             if (receipt.get("operation")!=op or receipt.get("kind")!="drop"
                     or receipt.get("cancelled") is not False or receipt.get("ranks")!=[0,1]):
                 raise RuntimeError("Missing successful TP checkpoint-retirement quorum")
+        # Independent replicas retire concurrently. Join BOTH outcomes before
+        # surfacing an error or forgetting metadata; no orphan background drop.
+        outcomes=await asyncio.gather(*(retire(kind,index) for kind,index in
+            (("P",row[1]),("D",row[2])) if index is not None),return_exceptions=True)
+        for outcome in outcomes:
+            if isinstance(outcome,BaseException):raise outcome
         with self.directory.transaction() as db:
             db.execute("DELETE FROM rank_manifests WHERE id=?",(manifest,))
 
@@ -296,7 +301,7 @@ class Coordinator:
             self.evictions.pop(session,None)
 
     def fail_closed(self,error):
-        if self.failure is None:self.failure=str(error)
+        if self.failure is None:self.failure=str(error) or type(error).__name__
         for f in (*self.inflight.values(),*self.generated.values()):
             if not f.done():f.set_exception(RuntimeError("Online PD failed closed: "+str(error)))
         # Other admitted tasks are interrupted; no uncertain lease revoked.

@@ -259,3 +259,10 @@ still needs physical-capacity repair/qualification rather than logical promises.
   the failed24/48GiB demand. It remains far below80% system DRAM. Both v28
   process trees were stopped before starting new TE incarnations. Launch
   receipts now record the explicit nonsecret settings; do not guess flags.
+
+- Independent P/D replica drops now run concurrently, but the controller joins
+  both outcomes and validates both TP quorums before metadata removal. This
+  removes an unnecessary serial control roundtrip, not a device synchronization
+  fence. Cancellation now preserves a nonempty failed-closed reason
+  (CancelledError has an empty str), so it cannot accidentally reopen admission.
+ 98 targeted CPU tests pass; the following native gate must cover this change.

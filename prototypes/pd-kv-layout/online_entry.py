@@ -1,4 +1,4 @@
-"""Opt-in target-only online State entry; model waves remain native DP/EP."""
+"""Opt-in online State entry; model waves remain native DP/EP."""
 from dataclasses import asdict
 from collections import defaultdict
 from pool_state_entry import Scheduler as BaseScheduler, Worker as BaseWorker

@@ -1,4 +1,4 @@
-"""Direct State-lane views over an already registered shared staging lease.
+"""Direct State-lane views over an owned pinned host lease.
 
 Only metadata is serialized. Payload bytes are DMA destinations/sources in the
 arena; no torch.empty pinned allocation or full-object Python bytes assembly.

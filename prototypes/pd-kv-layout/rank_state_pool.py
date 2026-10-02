@@ -1,7 +1,8 @@
 """Rank-owned immutable State objects; no shared mapping or object service.
 
 The allocator returns an owned buffer with data_ptr() and numel(). Production
-uses NUMA-local torch pinned tensors; CPU tests inject ordinary CPU tensors.
+uses NUMA-local pinned buffers (Torch or a reserved arena); CPU tests inject
+ordinary CPU tensors.
 Checkpoint refs and active readers independently prevent reclamation. A source
 DMA completion seals its final DRAM home, rather than copying into another cache.
 """

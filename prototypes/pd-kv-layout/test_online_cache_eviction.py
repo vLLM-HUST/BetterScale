@@ -88,7 +88,7 @@ def test_incomplete_retirement_fails_closed_not_a_cold_miss(tmp_path,bad):
         with pytest.raises(RuntimeError,match="quorum"):
             await c.evict_idle("s")
         assert c.failure and c.directory.current("s")==manifest
-        assert drops==[("P",2)] and not c.evictions
+        assert drops==[("P",2),("D",3)] and not c.evictions
         with c.directory.transaction() as db:
             assert db.execute("SELECT count(*) FROM rank_manifests").fetchone()[0]==1
         with pytest.raises(RuntimeError):
@@ -148,4 +148,39 @@ def test_oversized_host_admission_rejects_only_that_request(tmp_path):
         assert c.failure is None and not c.inflight and not c.host_waiters
         assert c.request_slots._value==128
         await c.close()
+    asyncio.run(run())
+
+
+def test_two_replica_retirement_overlaps_but_joins_both_results(tmp_path):
+    async def run():
+        c,_,drops=fixture(tmp_path)
+        both=asyncio.Event();release=asyncio.Event();original=c.cache
+        entered=set()
+        async def cache(kind,index,command):
+            entered.add(kind)
+            if len(entered)==2:both.set()
+            await release.wait()
+            return await original(kind,index,command)
+        c.cache=cache
+        task=asyncio.create_task(c.evict_idle("s"))
+        await asyncio.wait_for(both.wait(),1)
+        assert not task.done() and len(drops)==2
+        release.set();assert await task
+    asyncio.run(run())
+
+
+def test_cancelled_eviction_remains_failed_closed_with_nonempty_reason(tmp_path):
+    async def run():
+        c,manifest,_=fixture(tmp_path)
+        entered=asyncio.Event()
+        async def cache(*args):
+            entered.set();await asyncio.Event().wait()
+        c.cache=cache
+        task=asyncio.create_task(c.evict_idle("s"))
+        await entered.wait();task.cancel()
+        with pytest.raises(asyncio.CancelledError):await task
+        assert c.failure=="CancelledError"
+        assert c.directory.current("s")==manifest
+        with pytest.raises(RuntimeError,match="CancelledError"):
+            await c.submit("s",[1,2],1)
     asyncio.run(run())
