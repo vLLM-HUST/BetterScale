@@ -1,5 +1,7 @@
 """Substitute declared State at the native cache-allocation seam only."""
 
+from .execution_capacity import EXECUTION
+
 from copy import deepcopy
 from dataclasses import replace
 
@@ -21,9 +23,17 @@ def geometry(config):
     )
 
 
+def resident_seats(config):
+    """One shared scheduler/allocation contract."""
+    value = config.additional_config.get("state_resident_seats", max(20, EXECUTION + 4))
+    if type(value) is not int or not max(20, EXECUTION) <= value <= 96:
+        raise ValueError("resident State seats must cover execution and fit20..96")
+    return value
+
+
 def fixed_state_bytes(config):
     g = geometry(config)
-    c = Capacity(16, 20, token_pages=1, prefill_tokens=4096)
+    c = Capacity(EXECUTION, resident_seats(config), token_pages=1, prefill_tokens=4096)
     attention_layers = g.layer_types.count("full_attention") + g.draft_layers
     page_bytes = (
         attention_layers * c.page_tokens * g.kv_heads * g.attention_head_dim * 4
@@ -97,8 +107,8 @@ def install():
                 "FA scheduler page must consist of whole128-token kernel pages"
             )
         capacity = Capacity(
-            16,
-            20,
+            EXECUTION,
+            resident_seats(runner.vllm_config),
             token_pages=config.num_blocks * (logical_block // 128),
             prefill_tokens=4096,
         )

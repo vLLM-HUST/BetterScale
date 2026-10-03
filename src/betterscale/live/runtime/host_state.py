@@ -1,5 +1,5 @@
 # Relocated from LiveInference 05ac15419c0e73650e687ceb9daffeb7874865f0.
-# BetterScale change: imports use the owned betterscale.live namespace.
+# BetterScale: owned namespace, NPU streams and reserved host capacity.
 # SPDX-License-Identifier: Apache-2.0
 """Sequence-scoped host residency for address-stable LiveModule State."""
 
@@ -116,7 +116,7 @@ class HostStateTransferHandle:
         key: HostStateKey,
         payloads: dict[str, _LanePayload],
         byte_length: int,
-        event: torch.cuda.Event | None,
+        event: object | None,
         restore: bool,
     ) -> None:
         self._backend = backend
@@ -135,16 +135,14 @@ class HostStateTransferHandle:
     def byte_length(self) -> int:
         return self._byte_length
 
-    def wait_on(self, stream: torch.cuda.Stream) -> None:
-        """Make one caller-owned CUDA stream wait for this transfer.
+    def wait_on(self, stream: object) -> None:
+        """Make one caller-owned copy-compatible stream wait for this transfer.
 
         Waiting publishes only a device ordering edge.  The caller must still
         observe ``done()`` or ``result()`` before releasing either side of the
         transaction.
         """
 
-        if not isinstance(stream, torch.cuda.Stream):
-            raise TypeError("host State transfer wait requires a CUDA stream")
         if self._event is not None:
             stream.wait_event(self._event)
 
@@ -184,11 +182,17 @@ class TorchHostStateBackend:
     stream has waited on the caller-selected copy stream.
     """
 
-    def __init__(self, *, memory_budget_bytes: int) -> None:
+    def __init__(self, *, memory_budget_bytes: int, enqueue_copies=None) -> None:
         if type(memory_budget_bytes) is not int or memory_budget_bytes <= 0:
             raise ValueError("host State memory budget must be positive")
+        # The injected submitter only enqueues on the caller's current stream.
+        # Completion, storage ownership and failure quarantine remain here.
+        if enqueue_copies is not None:
+            self._enqueue_copies = enqueue_copies
         self._memory_budget_bytes = memory_budget_bytes
         self._committed_bytes = 0
+        self._reserved_bytes = 0
+        self.quarantined = []
         self._snapshots: dict[HostStateKey, _HostSnapshot] = {}
         self._inflight: set[HostStateKey] = set()
         self._lock = Lock()
@@ -214,31 +218,10 @@ class TorchHostStateBackend:
         stream: object | None,
     ) -> HostStateTransferHandle:
         lanes = self._select_lanes(states, selection)
-        payloads: dict[str, _LanePayload] = {}
-        byte_length = 0
-        for lane_id, state, block_ids in lanes:
-            shape = (
-                len(block_ids) * state.physical_blocks_per_logical_block,
-                *state.block_shape,
-            )
-            host = torch.empty(
-                shape,
-                dtype=state.storage_dtype,
-                device="cpu",
-                pin_memory=state.tensor.device.type == "cuda",
-            )
-            payload = _LanePayload(
-                lane_id=lane_id,
-                dtype=state.storage_dtype,
-                block_shape=state.block_shape,
-                physical_blocks_per_logical_block=(
-                    state.physical_blocks_per_logical_block
-                ),
-                logical_block_count=len(block_ids),
-                tensor=host,
-            )
-            payloads[lane_id] = payload
-            byte_length += payload.byte_length
+        byte_length = sum(
+            state.logical_block_bytes * len(blocks) for _, state, blocks in lanes
+        )
+        # Reserve before allocating pinned memory, including concurrent stores.
         with self._lock:
             if key in self._snapshots or key in self._inflight:
                 raise HostStateError(
@@ -247,25 +230,47 @@ class TorchHostStateBackend:
                     request_id=key.request_id,
                     generation=key.generation,
                 )
-            if self._committed_bytes + byte_length > self._memory_budget_bytes:
+            if (
+                self._committed_bytes + self._reserved_bytes + byte_length
+                > self._memory_budget_bytes
+            ):
                 raise HostStateError(
                     "insufficient-host-state-memory",
-                    "host State payload exceeds the admitted CPU budget",
+                    "host budget exhausted",
                     requested_bytes=byte_length,
                     committed_bytes=self._committed_bytes,
+                    reserved_bytes=self._reserved_bytes,
                     memory_budget_bytes=self._memory_budget_bytes,
                 )
             self._inflight.add(key)
+            self._reserved_bytes += byte_length
+        payloads: dict[str, _LanePayload] = {}
         try:
-            event = self._copy_lanes(
-                lanes,
-                payloads,
-                to_host=True,
-                stream=stream,
-            )
+            for lane_id, state, block_ids in lanes:
+                shape = (
+                    len(block_ids) * state.physical_blocks_per_logical_block,
+                    *state.block_shape,
+                )
+                host = torch.empty(
+                    shape,
+                    dtype=state.storage_dtype,
+                    device="cpu",
+                    pin_memory=state.tensor.device.type != "cpu",
+                )
+                payloads[lane_id] = _LanePayload(
+                    lane_id,
+                    state.storage_dtype,
+                    state.block_shape,
+                    state.physical_blocks_per_logical_block,
+                    len(block_ids),
+                    host,
+                )
+            event = self._copy_lanes(lanes, payloads, to_host=True, stream=stream)
         except BaseException:
             with self._lock:
-                self._inflight.remove(key)
+                if not self.quarantined:
+                    self._inflight.remove(key)
+                    self._reserved_bytes -= byte_length
             raise
         return HostStateTransferHandle(
             self,
@@ -313,8 +318,9 @@ class TorchHostStateBackend:
             )
         except BaseException:
             with self._lock:
-                snapshot.pins -= 1
-                self._inflight.remove(key)
+                if not self.quarantined:
+                    snapshot.pins -= 1
+                    self._inflight.remove(key)
             raise
         return HostStateTransferHandle(
             self,
@@ -371,6 +377,7 @@ class TorchHostStateBackend:
                     raise AssertionError("restore lost its pinned host snapshot")
                 snapshot.pins -= 1
             else:
+                self._reserved_bytes -= byte_length
                 self._snapshots[key] = _HostSnapshot(key, payloads, byte_length)
                 self._committed_bytes += byte_length
 
@@ -432,15 +439,14 @@ class TorchHostStateBackend:
                     lane_id=lane_id,
                 )
 
-    @classmethod
     def _copy_lanes(
-        cls,
+        self,
         lanes: Sequence[tuple[str, StateTensor, tuple[int, ...]]],
         payloads: Mapping[str, _LanePayload],
         *,
         to_host: bool,
         stream: object | None,
-    ) -> torch.cuda.Event | None:
+    ) -> object | None:
         devices = {state.tensor.device.type for _, state, _ in lanes}
         if len(devices) != 1:
             raise HostStateError(
@@ -448,23 +454,37 @@ class TorchHostStateBackend:
                 "one host State transaction requires one device kind",
             )
         device_type = next(iter(devices))
-        if device_type == "cuda":
-            if not isinstance(stream, torch.cuda.Stream):
+        if device_type in ("cuda", "npu"):
+            device = getattr(torch, device_type)
+            if not isinstance(stream, device.Stream):
                 raise HostStateError(
-                    "missing-host-state-stream",
-                    "CUDA host State transfer requires a caller-owned CUDA stream",
+                    "missing-host-state-stream", "copy stream required"
                 )
-            with torch.cuda.stream(stream):
-                cls._enqueue_copies(lanes, payloads, to_host=to_host)
-                event = torch.cuda.Event()
-                event.record(stream)
+            with device.stream(stream):
+                try:
+                    self._enqueue_copies(lanes, payloads, to_host=to_host)
+                    event = device.Event()
+                    event.record(stream)
+                except BaseException:
+                    # A partially enqueued copy still owns its payload and views.
+                    # Drain THIS stream before unwinding; never device-wide sync.
+                    try:
+                        stream.synchronize()
+                    except BaseException:
+                        # Unknown DMA lifetime: retain both sides until the
+                        # caller tears down the failed device/root generation.
+                        self.quarantined.append((lanes, payloads, stream))
+                        raise
+                    raise
             return event
+        if device_type != "cpu":
+            raise HostStateError("unsupported-host-state-device", device_type)
         if stream is not None:
             raise HostStateError(
                 "unexpected-host-state-stream",
                 "CPU State transfer does not consume a device stream",
             )
-        cls._enqueue_copies(lanes, payloads, to_host=to_host)
+        self._enqueue_copies(lanes, payloads, to_host=to_host)
         return None
 
     @staticmethod
@@ -495,9 +515,9 @@ class TorchHostStateBackend:
                 device = state.tensor[first : first + physical_count]
                 host = payload.tensor[offset : offset + physical_count]
                 if to_host:
-                    host.copy_(device, non_blocking=device.device.type == "cuda")
+                    host.copy_(device, non_blocking=device.device.type != "cpu")
                 else:
-                    device.copy_(host, non_blocking=device.device.type == "cuda")
+                    device.copy_(host, non_blocking=device.device.type != "cpu")
                 offset += physical_count
 
 

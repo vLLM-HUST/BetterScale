@@ -1,5 +1,7 @@
 """State-only ingress and commit around the unchanged baseline model/proposer."""
 
+from .execution_capacity import EXECUTION
+
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -55,10 +57,10 @@ def wait_for_previous(runner, schedule):
 def initialize(runner):
     state = runner._live_ingress = SimpleNamespace()
     for name in ("seats", "drafts", "sampling"):
-        host = torch.zeros(16, dtype=torch.int64, pin_memory=True)
+        host = torch.zeros(EXECUTION, dtype=torch.int64, pin_memory=True)
         setattr(state, "h_" + name, host)
-        setattr(state, name, torch.zeros(16, dtype=torch.int64, device=runner.device))
-    state.h_seats.copy_(torch.arange(16))
+        setattr(state, name, torch.zeros(EXECUTION, dtype=torch.int64, device=runner.device))
+    state.h_seats.copy_(torch.arange(EXECUTION))
     state.seats.copy_(state.h_seats)
     state.history = torch.arange(3, device=runner.device)
     runner._live_previous_verify = set()
@@ -130,6 +132,7 @@ def publish_slots(meta):
         len(pre),
         meta.live if meta.decode else len(ver),
         DECODE=meta.decode,
+        ROWS=1 << (EXECUTION - 1).bit_length(),
         num_warps=4,
     )
     runner._live_verify_roles = meta.verify_roles
@@ -177,7 +180,7 @@ def install():
 
     def core_init(core, tokens, device):
         original_core(core, tokens, device)
-        core.verify_roles = torch.zeros(17, dtype=torch.bool, device=device)
+        core.verify_roles = torch.zeros(EXECUTION + 1, dtype=torch.bool, device=device)
 
     def fill(frame, key, m, lengths, table, builder, accepted, drafts):
         meta, roles = original_fill(

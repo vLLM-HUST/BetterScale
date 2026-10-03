@@ -1,0 +1,49 @@
+"""Explicit local TP2 pools for the two-host naive PD experiment.
+
+P instances have DP1; the D instance has native DP4/TP2/EP8. No cross-host EP.
+Target-only behavior and native dummy-rank protocol match the D6 experiment.
+"""
+from betterscale.models import qwen35
+from checkpoint_entry import Scheduler as BaseScheduler, Worker as BaseWorker
+from ep6_state_entry import idle_target_only
+
+qwen35.STATE_SCHEDULER = "pool_state_entry.Scheduler"
+
+class Scheduler(BaseScheduler):
+    def __init__(self,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        # Clearing next-step proposals alone misses native WAITING hot-hit
+        # admission: alongside running decode it pads 1+num_spec_tokens before
+        # _update_after_schedule. Declare zero proposals at the scheduling
+        # source; keep native lookahead allocation and runner startup unchanged.
+        if self.kv_cache_manager.block_pool.null_block.block_id!=0:
+            raise RuntimeError("Idle graph requires the reserved null FA block0")
+        if not self.vllm_config.additional_config.get("pd_mtp",False) or self.vllm_config.parallel_config.data_parallel_size==1:
+            self.num_spec_tokens=0
+            self._spec_token_placeholders=[]
+
+class Worker(BaseWorker):
+    def __init__(self, vllm_config, *args, **kwargs):
+        p=vllm_config.parallel_config
+        assert (p.tensor_parallel_size,p.data_parallel_size,p.enable_expert_parallel) in (
+            (2,1,False),(2,4,True))
+        assert not p.use_sequence_parallel_moe
+        super().__init__(vllm_config,*args,**kwargs)
+        self._pd_distributed = p.data_parallel_size > 1
+        if self._pd_distributed:
+            from vllm_ascend.worker.model_runner_v1 import NPUModelRunner
+            from idle_graph import install,target_only
+            install()
+            original=NPUModelRunner._dummy_run
+            def dummy(runner,*args,**kwargs):
+                return target_only(runner,original,*args,**kwargs)
+            NPUModelRunner._dummy_run=dummy
+
+    def compile_or_warm_up_model(self):
+        result=super().compile_or_warm_up_model()
+        self.model_runner._pd_mtp_enabled=bool(self.vllm_config.additional_config.get("pd_mtp",False))
+        if self._pd_distributed:
+            from idle_graph import initialize_null_page
+            initialize_null_page(self.model_runner)
+            self.model_runner._pd_target_only_ready=True
+        return result

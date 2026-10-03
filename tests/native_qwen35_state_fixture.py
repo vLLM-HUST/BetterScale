@@ -26,6 +26,7 @@ manager = KVCacheManager(
 # hooks only. NPU serving separately exercises actual AsyncScheduler construction.
 s = object.__new__(LiveStateScheduler)
 s.kv_cache_manager = manager
+s.cache_actions = None
 s.block_size = 128
 s.defer_block_free = True
 s.deferred_frees = deque()

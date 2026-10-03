@@ -3,6 +3,9 @@
 Worker admission and capture-key selection remain outside this adapter. Banked
 metadata publication remains owned by wave.Frame, including device feedback.
 """
+
+from betterscale.models.qwen35.execution_capacity import EXECUTION
+from betterscale.models.qwen35.count_policy import SPEC_CAPACITIES
 import ctypes
 import copy
 from itertools import accumulate
@@ -12,7 +15,7 @@ import struct
 
 from .plan import encode, schedule
 
-CAPACITIES = (6, 12, 24, 40, 48)  # capacity3 / single-request graph stays native
+CAPACITIES = tuple(sorted(set(SPEC_CAPACITIES) | {16}))
 _LIBRARY = None
 
 
@@ -31,7 +34,7 @@ def capture_metadata(metadata, tokens):
     queries = [hi-lo for lo,hi in zip([0]+ends,ends)]
     live = len(lengths) - int(lengths[-1] == 0)
     queries = [min(q,3) for q in queries[:live]]
-    if not 1 <= live <= 16 or any(q <= 0 for q in queries):
+    if not 1 <= live <= EXECUTION or any(q <= 0 for q in queries):
         raise ValueError('Unqualified disposable capture metadata')
     result = copy.copy(metadata)
     result.actual_seq_lengths_q = list(accumulate(queries))
@@ -41,6 +44,34 @@ def capture_metadata(metadata, tokens):
         result.seq_lens_list.append(0)
     if result.actual_seq_lengths_q[-1] != tokens:
         raise ValueError('Capture queries exceed their fixed token capacity')
+    return result
+
+
+def target_metadata(metadata, live_requests, tokens):
+    """Translate native target padding into the owned zero-KV padding ABI.
+
+    At full native request capacity, Ascend appends a positive-KV dummy row.
+    KV positivity therefore cannot identify real requests. The runner's live
+    count and unpadded token frontier identify the boundary; never mutate the
+    shared metadata or its device-authoritative length tensor.
+    """
+    ends = list(metadata.actual_seq_lengths_q)
+    lengths = list(metadata.seq_lens_list)
+    if (type(live_requests) is not int or not 0 < live_requests <= len(ends)
+            or len(ends) != len(lengths)
+            or ends[-1] != tokens
+            or ends[live_requests - 1] != metadata.num_actual_tokens
+            or any(b <= a for a, b in zip([0] + ends, ends))
+            or any(n <= 0 for n in lengths[:live_requests])):
+        raise ValueError("Target FIA live rows/frontier do not match runner metadata")
+    if len(ends) == live_requests:
+        return metadata
+    # Native padding may be KV0 or KV1; it is not another execution seat.
+    if any(n not in (0, 1) for n in lengths[live_requests:]):
+        raise ValueError("Target FIA padding contains a non-padding KV length")
+    result = copy.copy(metadata)
+    result.actual_seq_lengths_q = ends[:live_requests] + [ends[-1]]
+    result.seq_lens_list = lengths[:live_requests] + [0]
     return result
 
 
@@ -79,7 +110,13 @@ def launch(frame, query, key, value, mask, output):
         _LIBRARY.lane_launch.argtypes = [ctypes.c_void_p,ctypes.POINTER(ctypes.c_uint64)]
         _LIBRARY.lane_launch.restype = None
     # Fixed capacity: length-dependent partial count never changes graph storage.
-    scratch = torch.empty(frame.cp_workspace, dtype=torch.uint8, device=query.device)
+    # Native geometry planning may change scratch offsets across FD variants.
+    # encode admits at most128MiB; keep graph allocation fixed at that bound.
+    scratch = torch.empty(128 << 20, dtype=torch.uint8, device=query.device)
+    if frame.tokens > 48:
+        # MTP's large graph capacities may have thousands of zero-KV padding
+        # rows; the Q1..3 kernel initializes only its small query tile.
+        output.zero_()
     ptrs = (ctypes.c_uint64*10)(*[t.data_ptr() for t in
         (query,key,value,mask,frame.table,output,frame.q,frame.kv,scratch,frame.tiling)])
     _LIBRARY.lane_launch(torch.npu.current_stream().npu_stream,ptrs)

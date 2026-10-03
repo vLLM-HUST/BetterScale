@@ -34,6 +34,7 @@ and inquiry, not individual assets, lifecycle state, or chronology.
   [adapt-qwen35-moe](scenarios/adapt-qwen35-moe/GUIDE.md) for the experimental
   versus released source boundary, changed geometry and current qualification.
 
-- **Declare and qualify independent Qwen35 resident State lanes:** read
+- **Declare Qwen35 resident State lanes or resume P2/D6 PD handoffs:** read
   [study-qwen35-state-layout](scenarios/study-qwen35-state-layout/GUIDE.md)
-  for the native boundary, accepted resident-seat policy and implementation entry.
+  for the native boundary, accepted resident-seat policy, PD storage/transfer
+  implementation and accepted GDN/HCCL numerical boundaries.

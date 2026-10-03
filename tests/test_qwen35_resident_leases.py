@@ -108,3 +108,21 @@ def test_selected_victim_releases_capacity_before_new_allocation():
         pool.claim("B", offer, 0)
     pool.claim("B", refreshed, 0)
     assert releases == ["pages"]
+
+
+def test_restored_tail_with_native_dummy_drafts_keeps_selected_frontier():
+    from betterscale.models.qwen35.resident_leases import Frontier
+    f=Frontier([1,2,3,4],cursor=3,remaining=3)
+    f.advance(3,2,[5])
+    assert f.known and f.cursor==4 and f.remaining==2
+    assert f.checkpoint()==(1,2,3,4,5)
+    f.advance(3,2,[6,7,8])
+    assert f.checkpoint()==(1,2,3,4,5,6,7) and f.remaining==0
+
+
+def test_dummy_tail_exception_does_not_accept_bulk_or_unknown_draft_outputs():
+    from betterscale.models.qwen35.resident_leases import Frontier
+    for cursor,query,drafts,sampled in [(2,4,2,[5]),(3,3,2,[5,6]),(3,4,2,[5])]:
+        f=Frontier([1,2,3,4],cursor=cursor,remaining=4)
+        f.advance(query,drafts,sampled)
+        assert not f.known and f.checkpoint()==()

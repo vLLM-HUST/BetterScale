@@ -4,6 +4,8 @@ Kept outside product admission until the real-model continuation and APC checks
 pass. No new Worker: these replace the same builder/publication leaf interfaces.
 """
 
+from .execution_capacity import EXECUTION
+
 import copy
 from math import prod
 from types import SimpleNamespace
@@ -23,11 +25,14 @@ class Core(MixedCore):
         # The first service experiment deliberately uses the mixed core for all
         # capacities. Pure verification takes the small branch below; no chunk
         # work is recorded into its graph.
-        super().__init__(tokens, device)
+        decode = tokens in SPEC_CAPACITIES
+        # Verification keeps the shared metadata shape, but never executes H/O
+        # chunk kernels. Do not allocate an unused, narrower prefill workspace.
+        super().__init__(tokens, device, prefill=not decode)
         self.tokens = tokens
-        self.decode = tokens in SPEC_CAPACITIES
+        self.decode = decode
         self.mtp = True
-        self.verify_ids = torch.zeros(17, dtype=torch.int64, device=device)
+        self.verify_ids = torch.zeros(EXECUTION + 1, dtype=torch.int64, device=device)
         self.accepted_source = None
         self.live = 0
         self.verify_count = 0
@@ -126,7 +131,7 @@ class MTPFrame(Frame):
     def fill_mtp(self, key, m, lengths, table, builder, accepted, drafts):
         meta = self.metas[key]
         n = len(lengths)
-        assert 0 < n <= 16 and sum(lengths) <= meta.tokens
+        assert 0 < n <= EXECUTION and sum(lengths) <= meta.tokens
         seq = m.seq_lens_cpu if m.seq_lens_cpu is not None else m._seq_lens_cpu
         if seq is None:
             raise ValueError("MTP requires the pinned runner corrected CPU lengths")

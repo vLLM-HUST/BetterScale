@@ -1,0 +1,2 @@
+# Optional prototype codec; install in the isolated Store CPU environment.
+zstandard==0.25.0

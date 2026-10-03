@@ -1,5 +1,23 @@
 # Study native Qwen3.5 state layout
 
+**PD paused / containers closed (2026-10-03):** start with
+[pd-checkpoint.md](pd-checkpoint.md) for the saved implementation, evidence,
+limits and restart gates. Historical host/process addresses are not live.
+
+For **rank-private pinned allocation failures, physical DRAM capacity or DMA
+registration alternatives**, read [rank-pinned-capacity.md](rank-pinned-capacity.md)
+before another pressure run or allocator experiment.
+
+For **incremental cache integration and cadence-independent online PD**, read
+[online-pd.md](online-pd.md) before reusing the older idle-gated path.
+
+For **dual-host P4 / DP4TP2EP8 PD and the 256K follow-on**, read
+[dual-host-pd.md](dual-host-pd.md) first.
+
+For current **P2/D6 PD development**, first follow the **Resume here** section in
+[pd-storage.md](pd-storage.md). It records accepted numerical boundaries and the
+active transfer/lifetime frontier; older failure gates below are historical.
+
 Enter when reasoning about Qwen35 hybrid physical state, group ownership,
 logical versus kernel blocks, or CPU connector registration and restoration.
 The original native-layout observations remain source/CPU research, not a
@@ -22,6 +40,9 @@ frontier, read [seat-scheduler.md](seat-scheduler.md).
 
 For restoring long context, physical-memory-sized shared pages, chunked
 prefill and SWE exact-token streaming, read [long-context.md](long-context.md).
+
+For D6 step timing, native msprof timelines, and the unqualified B16 boundary,
+read [d-cluster-efficiency.md](d-cluster-efficiency.md).
 
 ## Latest policy correction: hot resident seats
 
@@ -231,3 +252,8 @@ capacities, per-rank payload estimates and token-pressure admission limits.
 For why heterogeneous pooling still wastes GDN space, read
 [padding-versus-pooling.md](padding-versus-pooling.md): padding arithmetic versus
 free-capacity fungibility, and the separate-domain condition for lane savings.
+
+For PD ownership, head-major Mooncake storage, current P2/D6 integration and
+accepted numerical boundaries, read [pd-storage.md](pd-storage.md), starting at
+its **Resume here** section. Historical numerical blockers are superseded by
+Fletcher's bounded GDN acceptance; do not repeat that investigation by default.

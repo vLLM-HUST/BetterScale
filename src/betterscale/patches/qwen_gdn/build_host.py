@@ -1,6 +1,7 @@
 """Build only the framework host adapter against the unchanged pinned runtime."""
 
 import argparse
+import os
 from pathlib import Path
 import subprocess
 import sysconfig
@@ -10,6 +11,7 @@ import torch_npu
 p = argparse.ArgumentParser()
 p.add_argument("source", type=Path)
 p.add_argument("output", type=Path)
+p.add_argument("--cann", type=Path, default=Path(os.environ.get("ASCEND_HOME_PATH", "/usr/local/Ascend/ascend-toolkit/latest")))
 a = p.parse_args()
 a.output.parent.mkdir(parents=True, exist_ok=True)
 t = Path(torch.__file__).parent
@@ -24,6 +26,7 @@ command = [
     f"-I{t / 'include'}",
     f"-I{t / 'include/torch/csrc/api/include'}",
     f"-I{n / 'include'}",
+    f"-I{a.cann / 'include'}",
     f"-I{sysconfig.get_path('include')}",
     str(a.source.resolve()),
     f"-L{t / 'lib'}",

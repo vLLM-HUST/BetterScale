@@ -13,6 +13,7 @@ class Seat:
     blocks: object | None = None
     fence: int = 0
     touched: int = 0
+    io_owner: int | None = None
 
     @property
     def cursor(self):
@@ -37,7 +38,9 @@ class ResidentLeases:
 
     def offer(self, tokens, cache_salt, completed_step, *, allow_hit=True):
         available = [
-            s for s in self.seats if s.owner is None and s.fence <= completed_step
+            s
+            for s in self.seats
+            if s.owner is None and s.io_owner is None and s.fence <= completed_step
         ]
         hits = [
             s
@@ -64,6 +67,7 @@ class ResidentLeases:
         if (
             offer.warm
             or seat.owner is not None
+            or seat.io_owner is not None
             or seat.epoch != offer.epoch
             or seat.fence > completed_step
         ):
@@ -80,6 +84,7 @@ class ResidentLeases:
         seat = self.seats[offer.seat]
         if (
             seat.owner is not None
+            or seat.io_owner is not None
             or seat.epoch != offer.epoch
             or seat.fence > completed_step
         ):
@@ -125,7 +130,7 @@ class ResidentLeases:
 
     def invalidate_hot(self):
         for seat in self.seats:
-            if seat.owner is None:
+            if seat.owner is None and seat.io_owner is None:
                 if seat.blocks is not None:
                     self.release_blocks(seat.blocks)
                 seat.tokens, seat.cache_salt, seat.blocks = (), None, None
@@ -135,6 +140,7 @@ class ResidentLeases:
             s
             for s in self.seats
             if s.owner is None
+            and s.io_owner is None
             and s.blocks is not None
             and s.fence <= completed_step
             and s.index != exclude
@@ -171,8 +177,17 @@ class Frontier:
         if self.cursor < self.prompt_length:
             # Intermediate prefill sampling is discarded; actual next prompt
             # tokens supply the draft lookahead through the baseline boundary hook.
-            self.cursor += query_tokens
-            if self.cursor > self.prompt_length or draft_tokens:
+            # Native async admission may pad the sole restored prompt tail
+            # with dummy draft slots when joining an existing decode wave.
+            # Only its one accepted target token advances selected State.
+            tail_bootstrap = (
+                self.cursor == self.prompt_length - 1
+                and draft_tokens > 0
+                and query_tokens - draft_tokens == 1
+                and len(sampled) == 1
+            )
+            self.cursor += query_tokens - (draft_tokens if tail_bootstrap else 0)
+            if self.cursor > self.prompt_length or (draft_tokens and not tail_bootstrap):
                 self.known = False
                 return
             if self.cursor == self.prompt_length:

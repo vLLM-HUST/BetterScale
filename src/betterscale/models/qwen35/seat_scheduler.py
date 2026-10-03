@@ -5,6 +5,8 @@ A bounded round-robin policy assigns prefill grants after reserving decode.
 This adapter supplies exact hot checkpoints and leaves token pages in its pool.
 """
 
+from .execution_capacity import EXECUTION
+
 from dataclasses import dataclass, field, fields
 
 from vllm.v1.core.sched.async_scheduler import AsyncScheduler
@@ -21,6 +23,7 @@ class StateSchedule(SchedulerOutput):
     resident_leases: dict[str, tuple[int, int]] = field(default_factory=dict)
     generation_limits: dict[str, int] = field(default_factory=dict)
     sampling_requests: set[str] = field(default_factory=set)
+    cache_commands: list[dict] = field(default_factory=list)
 
 
 class LiveStateScheduler(AsyncScheduler):
@@ -32,8 +35,10 @@ class LiveStateScheduler(AsyncScheduler):
             raise ValueError(
                 "live State requires a pure attention page pool, no connector"
             )
-        if self.max_num_running_reqs != 16:
-            raise ValueError("live State currently admits E16/R20")
+        if self.max_num_running_reqs != EXECUTION:
+            raise ValueError("scheduler differs from configured execution capacity")
+        from .state_backend import resident_seats as configured_resident_seats
+        resident_seats = configured_resident_seats(self.vllm_config)
         # Reuse the native deferred-free fence, including abort/preemption. A
         # resident cannot be advertised hot while a queued wave can advance it.
         if getattr(self, "_balance_enabled", False):
@@ -48,12 +53,55 @@ class LiveStateScheduler(AsyncScheduler):
             )
         self.defer_block_free = True
         self.residents = ResidentLeases(
-            20, release_blocks=self._release_resident_blocks
+            resident_seats, release_blocks=self._release_resident_blocks
         )
         self._frontiers = {}
         self._pending_hot = {}
         self._offers = {}
         self._generation_limits = {}
+        self.cache_control_rpc = bool(self.vllm_config.additional_config.get(
+            "state_cache_control_rpc", False
+        ))
+        self.cache_actions = None
+        budget = self.vllm_config.additional_config.get("state_cache_host_bytes", 0)
+        if budget:
+            from .cache_actions import CacheActions
+            from .cache_engine import install
+
+            if (self.vllm_config.parallel_config.data_parallel_size != 1
+                    and not self.cache_control_rpc):
+                raise ValueError("DP cache requires control-only maintenance RPC")
+            from .state_backend import fixed_state_bytes
+
+            group = self.kv_cache_config.kv_cache_groups[0]
+            self.cache_actions = CacheActions(
+                self,
+                self.vllm_config.parallel_config.tensor_parallel_size,
+                budget,
+                resident_bytes=fixed_state_bytes(self.vllm_config) // resident_seats - 8,
+                block_bytes=group.kv_cache_spec.page_size_bytes
+                * len(group.layer_names),
+                incremental=self.vllm_config.additional_config.get(
+                    "state_cache_incremental", False
+                ),
+                max_pending=self.vllm_config.additional_config.get(
+                    "state_cache_max_pending"
+                ),
+                two_phase_store=self.vllm_config.additional_config.get(
+                    "state_cache_two_phase_store", False
+                ),
+            )
+            install()
+        self.cache_policy = None
+        if self.vllm_config.additional_config.get("state_cache_policy", False):
+            from .cache_policy import CachePolicy
+
+            if self.cache_actions is None:
+                raise ValueError("automatic State policy requires a host byte budget")
+            self.cache_policy = CachePolicy(
+                self,
+                self.vllm_config.additional_config.get("state_cache_watermark", 0.7),
+            )
         manager = self.kv_cache_manager
         self._native_allocate = manager.allocate_slots
         manager.allocate_slots = self._allocate
@@ -91,7 +139,20 @@ class LiveStateScheduler(AsyncScheduler):
             return seat.blocks, seat.cursor
         return self.kv_cache_manager.empty_kv_cache_blocks, 0
 
+    def has_requests(self):
+        cache = getattr(self, "cache_actions", None)
+        policy = getattr(self, "cache_policy", None)
+        return (
+            super().has_requests()
+            or bool(cache is not None and cache.outbox
+                    and not getattr(self, "cache_control_rpc", False))
+            or bool(policy is not None and policy.needs_turn())
+        )
+
     def _waiting_for_resident(self, request):
+        cache = getattr(self, "cache_actions", None)
+        if cache is not None and cache.blocks_prompt(request):
+            return True
         # A known length frontier is already frozen, but the queued frame can
         # still own its FA pages. Wait for that resident's native writer fence
         # instead of needlessly sending its continuation to a cold empty seat.
@@ -137,6 +198,17 @@ class LiveStateScheduler(AsyncScheduler):
             result = self._native_allocate(request, *args, **kwargs)
         if result is None:
             return None
+        cache = self.cache_actions
+        if cache is not None and cache.pages is not None:
+            computed = request.num_computed_tokens
+            if new and offer.warm:
+                computed = max(computed, self.residents.seats[offer.seat].cursor)
+            # Draft/target writes can touch the boundary block; older sealed
+            # blocks remain valid. Invalidate before any native frame is queued.
+            first = max(0, computed - 1) // self.block_size
+            cache.pages.invalidate(
+                self.kv_cache_manager.get_blocks(rid).blocks[0][first:]
+            )
         if new:
             seat = self.residents.claim(rid, offer, self.processed_step_seq)
             cursor = seat.cursor if offer.warm else 0
@@ -150,8 +222,15 @@ class LiveStateScheduler(AsyncScheduler):
         return result
 
     def schedule(self, *args, **kwargs):
-        prepare(self)
-        output = self._fair_native_schedule(*args, **kwargs)
+        policy = getattr(self, "cache_policy", None)
+        if policy is None:
+            prepare(self)
+            output = self._fair_native_schedule(*args, **kwargs)
+        else:
+            with policy.runnable():
+                prepare(self)
+                output = self._fair_native_schedule(*args, **kwargs)
+            policy.after_schedule(output.num_scheduled_tokens)
         leases = {}
         for rid in output.num_scheduled_tokens:
             seat = self.residents.seats[self.residents.requests[rid]]
@@ -159,6 +238,10 @@ class LiveStateScheduler(AsyncScheduler):
         return StateSchedule(
             **{f.name: getattr(output, f.name) for f in fields(SchedulerOutput)},
             resident_leases=leases,
+            cache_commands=(
+                self.cache_actions.take_commands()
+                if self.cache_actions and not self.cache_control_rpc else []
+            ),
             generation_limits={
                 rid: self._generation_limits.pop(rid)
                 for rid in leases
@@ -246,7 +329,12 @@ class LiveStateScheduler(AsyncScheduler):
             del self._pending_hot[key]
 
     def reset_prefix_cache(self, *args, **kwargs):
+        cache = getattr(self, "cache_actions", None)
+        if cache is not None and (cache.pending or cache.host):
+            raise RuntimeError("drop/drain host State before resetting prefix cache")
         self.residents.invalidate_hot()
+        if cache is not None and cache.pages is not None:
+            cache.pages.clear()
         for key in self._pending_hot:
             frontier = self._frontiers.get(key)
             if frontier is not None:

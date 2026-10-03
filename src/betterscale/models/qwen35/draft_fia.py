@@ -5,6 +5,8 @@ replay. Each bank/shape/draft-position owns a distinct metadata frame. Actual KV
 lengths come from device tensors; CPU lengths only describe a tiling envelope.
 """
 
+from .execution_capacity import EXECUTION
+
 import copy
 import ctypes
 from functools import wraps
@@ -12,22 +14,35 @@ import torch
 
 
 def compact_padding(metadata):
-    # Native merged draft pads its one-token phase to the *token* capacity,
-    # potentially2048 rows although this service admits only16 real requests.
-    # Zero-KV padding rows can share one ignored tail query; never fold live rows.
-    if len(metadata.actual_seq_lengths_q) <= 17:
+    # Preserve every live request, then fold the entire zero-KV suffix into
+    # one ignored query interval. MTP can pad to a large token capacity; even
+    # the first16 rows may contain padding when fewer requests are active.
+    lengths = list(metadata.seq_lens_list)
+    ends = list(metadata.actual_seq_lengths_q)
+    if len(lengths) != len(ends) or not lengths:
+        raise ValueError("Invalid draft query/KV metadata")
+    live = next((i for i, length in enumerate(lengths) if length == 0), len(lengths))
+    if not 1 <= live <= EXECUTION or any(lengths[live:]):
+        raise ValueError(f"Draft metadata requires1..{EXECUTION} live rows and trailing padding")
+    if len(lengths) <= live + 1:
         return metadata
-    if any(metadata.seq_lens_list[16:]):
-        raise ValueError(
-            "Draft padding compaction encountered a live seventeenth request"
-        )
     result = copy.copy(metadata)
-    result.actual_seq_lengths_q = metadata.actual_seq_lengths_q[:16] + [
-        metadata.actual_seq_lengths_q[-1]
-    ]
-    result.seq_lens_list = metadata.seq_lens_list[:16] + [0]
-    result.seq_lens = metadata.seq_lens[:16]
-    result._mtp_device_seq_lens = metadata._mtp_device_seq_lens[:16]
+    result.actual_seq_lengths_q = ends[:live] + [ends[-1]]
+    result.seq_lens_list = lengths[:live] + [0]
+    result.seq_lens = metadata.seq_lens[:live]
+    result._mtp_device_seq_lens = metadata._mtp_device_seq_lens[:live]
+    return result
+
+
+def idle_metadata(metadata, tokens):
+    """Runtime idle EP member: read the reserved null page, never write KV."""
+    result = copy.copy(metadata)
+    result.slot_mapping.fill_(-1)
+    result.actual_seq_lengths_q = [1, tokens] if tokens > 1 else [1]
+    result.seq_lens_list = [1, 0] if tokens > 1 else [1]
+    result.num_actual_tokens = 1
+    result._mtp_device_seq_lens = torch.zeros_like(metadata._mtp_device_seq_lens)
+    result._mtp_device_seq_lens[0] = 1
     return result
 
 
@@ -51,6 +66,7 @@ def install():
     from vllm_ascend.spec_decode.llm_base_proposer import (
         AscendSpecDecodeBaseProposer as Proposer,
     )
+    from betterscale.patches.qwen_fia.context_parallel import adapter as cp
     from betterscale.patches.qwen_fia import check_library
     from betterscale.patches.qwen_fia.wave import (
         Planner,
@@ -117,8 +133,18 @@ def install():
                 )
                 cpu = runner.input_batch.block_table[gid].get_cpu_tensor()
                 key = kw["num_input_tokens"], runner._owned_bank, step
+                if getattr(runner, "_pd_idle_graph", False):
+                    m = idle_metadata(m, kw["num_input_tokens"])
+                    metadata[layer] = m
+                    cpu = cpu.clone().zero_()
                 plan_metadata = compact_padding(m)
+                owned_attention = cp.enabled(key[0]) or (step > 0 and cp.enabled(3))
+                if owned_attention and getattr(runner, "_owned_capture_bank", None) is not None:
+                    if runner.input_batch.num_reqs:
+                        raise RuntimeError("Draft CP capture requires an empty startup pool")
+                    plan_metadata = cp.capture_metadata(plan_metadata, key[0])
                 entry = dict(
+                    context_parallel=owned_attention,
                     key=key,
                     metadata=plan_metadata,
                     cpu=cpu,
@@ -204,13 +230,16 @@ def install():
                 entry["cpu"].shape[1],
                 query.device,
                 owner.proposer.runner._owned_ingress,
-                requests=17,
+                requests=EXECUTION + 1,
+                context_parallel=entry["context_parallel"],
             )
             frame.prepare(planner, entry["metadata"], entry["cpu"], entry["num_reqs"])
             owner.frames[entry["key"]] = frame
         frame = owner.frames[entry["key"]]
         if query.shape[0] != frame.tokens or key.shape != planner.fixtures[1].shape:
             raise ValueError("Draft graph changed its captured FIA capacity")
+        if frame.context_parallel:
+            return cp.launch(frame, query, key, value, m.attn_mask, output)
         plan = planner.check(library.plan_clone(frame.plan))
         try:
             scratch = torch.empty(

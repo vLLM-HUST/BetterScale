@@ -4,13 +4,15 @@ Host lengths select the static ownership plan. Endpoints carry denominators so
 the kernel scales coverage using device-authoritative KV lengths; scaled_groups
 is the corresponding CPU oracle. Host lengths never determine consumed KV.
 """
+
+from betterscale.models.qwen35.execution_capacity import EXECUTION
 from collections import Counter
 import struct
 
 CORES = 24
 HEADS = 8
 DIM = 256
-MAX_QUERY = 3
+MAX_QUERY = 16
 MAX_PARTIALS = 48
 LSE_BYTES = ((MAX_PARTIALS * HEADS * MAX_QUERY * 4 + 4095) // 4096) * 4096
 PARTIAL_O_BYTES = MAX_PARTIALS * HEADS * MAX_QUERY * DIM * 4
@@ -18,10 +20,10 @@ SYSTEM_BYTES = 16 << 20
 
 
 def schedule(lengths, queries, divisor=18, startup=4):
-    if not 1 <= len(lengths) == len(queries) <= 16:
-        raise ValueError('Expected1..16 real requests; padding is not live work')
+    if not 1 <= len(lengths) == len(queries) <= EXECUTION:
+        raise ValueError(f'Expected1..{EXECUTION} real requests; padding is not live work')
     if any(type(q) is not int or not 1 <= q <= MAX_QUERY for q in queries):
-        raise ValueError('Only Q1..3 decode/verification is admitted')
+        raise ValueError(f'Only Q1..{MAX_QUERY} owned attention is admitted; queries={queries}')
     if any(type(n) is not int or not q <= n <= 262144 for n, q in zip(lengths, queries)):
         raise ValueError('Actual KV must include all query tokens and fit native256K')
     if type(divisor) is not int or not 1 <= divisor <= CORES or type(startup) is not int or startup < 0:
