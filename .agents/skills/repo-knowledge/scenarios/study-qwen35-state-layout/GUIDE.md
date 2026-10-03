@@ -1,5 +1,9 @@
 # Study native Qwen3.5 state layout
 
+**PD paused / containers closed (2026-10-03):** start with
+[pd-checkpoint.md](pd-checkpoint.md) for the saved implementation, evidence,
+limits and restart gates. Historical host/process addresses are not live.
+
 For **rank-private pinned allocation failures, physical DRAM capacity or DMA
 registration alternatives**, read [rank-pinned-capacity.md](rank-pinned-capacity.md)
 before another pressure run or allocator experiment.

@@ -5,20 +5,25 @@ records the CPU-only layout experiment; later sections add real DRAM Store,
 NPU/model State restoration and isolated P2/D6 integration gates. Release pins
 and shared installed runtimes remain unchanged.
 
-## Current-version boundary (2026-10-02)
+## Saved checkpoint (2026-10-03; work paused)
 
-The newer online path integrates incremental State and cadence-independent
-maintenance RPCs; it does **not** require global DP idle or artificial compute
-waves. Older idle(core) probes below remain historical qualification evidence.
-Enter [online-pd](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/online-pd.md)
-for current pins, gates, throughput limits and the DRAM-first transfer frontier.
+Both hardware containers have been closed. Start with the
+[PD checkpoint](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/pd-checkpoint.md)
+for the current code map, validated results, physical pinned-memory blocker,
+100ms follow-on cycle budget and restart gates.
 
-native_dram_staging.py is a bounded reusable staging-ring prototype over
-MooncakeHostMemAllocator, not another full session cache. Local DMA drain and
-background Store commit have different lifetimes. store_shared_hot_probe.py
-qualifies its optional native NPU roundtrip; this is not yet the live PD backend.
-Two-phase CacheActions is likewise opt-in and not enabled in the online launcher.
-MTP work is parked; target-only remains the qualified execution boundary.
+The latest selected path is rank-private NUMA-local pinned DRAM with incremental
+State transfer, concurrent transactions, two-phase device release/peer commit,
+sticky P/D owners and MTP2. Normal DP4TP2EP8 decode cadence is independent of
+State maintenance; no global idle or artificial compute wave is required.
+Startup arenas and bounded LRU are qualified in limited-budget gates, not at
+production80%-DRAM capacity. The longer
+[online record](../../.agents/skills/repo-knowledge/scenarios/study-qwen35-state-layout/online-pd.md)
+retains the evidence and failures.
+
+Everything below is historical research: CPU layout comparisons, Store/shared
+staging and target-only/idle(core) gates must not be mistaken for the final
+backend or current MTP boundary. These prototypes are not a production release.
 
 ## Question and scope
 

@@ -1,5 +1,9 @@
 # Integrate incremental State with two-host online PD
 
+**October3 checkpoint:** Fletcher closed both containers and paused PD work.
+Read [pd-checkpoint.md](pd-checkpoint.md) first. The campaign and launch state
+below is retained history, not a live-service or current hardware assignment.
+
 Enter for the follow-on to `dual-host-pd.md`. Fletcher clarified on2026-10-02:
 `codex/qwen35-incremental-cache` is the ready local cache implementation to
 integrate, not an already completed cross-host connector. Do not wait for a
@@ -7,7 +11,7 @@ nonexistent newer branch or repeat naive whole-checkpoint profiling.
 
 ## Resume after the October2 online campaign
 
-Current branch codex/pd-incremental-online is active on hw86, with hw81 as P.
+The saved campaign used codex/pd-incremental-online on hw86 D and hw81 P.
 Read [the pinned-capacity/pressure frontier](rank-pinned-capacity.md) for the
 current v29–v34 campaign before reusing historical gates below. MTP2 is enabled;
 D is C48/R56/44GiB with decode-only graphs, P is four TP2 C16/R20 instances.
