@@ -14,7 +14,11 @@ D is C48/R56/44GiB with decode-only graphs, P is four TP2 C16/R20 instances.
 Startup-reserved rank-private NUMA arenas are now P32/32/12/48GiB and D32GiB,
 well below the desired80% system DRAM. v33 real SWE2/s240s is VALID at2450.8
 aggregate tokens/s, TTFT P95 5.928s, last60s D-yield4044.35/s; this is not peak
-capacity or a proved<50ms native cadence. v34 is a profiled4/s pressure run.
+capacity or a proved<50ms native cadence. v34 profiled4/s also passed, but host admission P95 reached100s.
+Both nodes are now STOPPED after v35 startup failed to re-reserve even12GiB
+on hw81 NUMA2. Only3.17GiB high-order supply remained after teardown; further
+full P4/256K hardware work needs admin recovery or replacement P hardware.
+Do not resume allocation retries from stale pool-size receipts.
 
 Controller84d233f fixes a real settled-Future callback race found in invalidv32:
 cleanup is request-identity-guarded and idempotent before successor admission.

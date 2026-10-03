@@ -15,6 +15,12 @@ overrule a duplex-bandwidth regression.
 Before resuming serving, qualify allocation/placement, exact native DMA in both
 directions, lifetime cleanup, private TP replication, then the numerical gate.
 
+**Current hardware boundary after v35:** both nodes are stopped. hw81 physical5 /
+NUMA2 could no longer reserve even the previously qualified12GiB. After teardown
+only3.17GiB free order9+ remained. Do NOT retry full P4 startup or shrink away the
+256K contract; host-controlled memory recovery/alternate P hardware is required.
+Read the v35 section below. Earlier valid v33/v34 results remain scoped evidence.
+
 The repository's earlier shared-cache research already ruled out using mapped
 device aliases as D2D copy endpoints. Do not repeat that experiment. A regular
 registered mapping passing single-direction DMA does not prove duplex speed.
@@ -457,3 +463,43 @@ online-rank-v35-buddy-before-stop.json on each host; D minimum13.20GiB plus
 owned32 permits40, P1 has24.69+32 permitting48, P3 37.48+48 permitting64.
 P0/P2 remain unchanged (P2 only~0.11GiB free beyond its owned12). Stop on
 reservation failure; do not silently fall back to remote NUMA/pageable memory.
+
+
+## v35 startup fails; stop capacity retries and recover the host
+
+Candidate93b2a69, P32/48/12/64,D40GiB. D8 ranks reserved40GiB and became ready;
+P7 ranks reserved their requested budgets, but physical5/NUMA2 failed
+aclrtMallocPhysical207001 at the unchanged12GiB before model readiness. No
+workload was launched; this is NOT a larger-pool performance/capacity gate.
+Both exact owned node process trees were stopped. hw81 npu-smi then reported
+no running process on all8 devices. After stop, node2 free order9+ was3.17GiB,
+MemFree~10.39GiB, file active+inactive~221.69GiB, Shmem~11.67GiB. /dev/shm itself
+used only13MiB. These counters do not prove a driver leak or identify ownership
+of host file/shared pages. Do not delete unrelated IPC objects or reset devices.
+The earlier owned12GiB plus0.11GiB margin did not survive restart as allocatable
+local capacity: a current high-order census is evidence, not an allocation promise.
+
+Stop repeated allocation/down-sizing. Full P4/256K continuation needs external
+host-level recovery of local pinned capacity (or replacement P hardware).
+Fletcher was asked for controlled admin assistance; compact_memory remains
+read-only in the container. No global cache drop/sysctl/device reset, remote-NUMA
+fallback or pageable tier was used. Independent D-only cold-prefill bypass is
+also forbidden by decode_graph_policy; do not use that to fake a PD qualification.
+
+The failure exposed a startup cleanup gap: a child constructor could exit before
+sending a ready reply, while inherited pipe handles hid EOF; aiohttp startup
+failure did not reliably run normal cleanup for other actors. The software fix
+sends an early private-group identity handshake and an explicit fatal reply,
+quarantines/closes every created actor on partial
+startup failure, cancels readiness readers, and bounds teardown of established
+private process groups even when the actor root has exited. Before setsid is
+established, only the exact owned root may be signaled, never the parent's group.
+Repeated close is a no-op.53 distinct focused actor/node/controller/wiring tests
+pass, including a real CPU subprocess+descendant group cleanup and an explicit
+worker-constructor error reply. Native failure-path requalification is pending;
+do not burn another all-card failed allocation merely to exercise this path.
+
+Evidence: online-rank-v35-{P,D}-launch/stop JSON and logs, P-failed-processes,
+v35-buddy-before-stop on both hosts and v35-P-buddy-after-stop on hw81.
+The complete v34 eight-rank native profile and benchmark evidence is backed up
+locally as pd-v34-profile-evidence.tgz. No profiler/workload remains running.

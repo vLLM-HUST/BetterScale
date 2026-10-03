@@ -107,3 +107,97 @@ def test_private_host_budget_is_per_p_group_and_d_stays_scalar(monkeypatch):
         assert host_budget_gib("D", 0) == 24
     for role, index in (("D", 1), ("P", 4), ("P", -1), ("P", True), ("X", 0)):
         with pytest.raises(ValueError):host_budget_gib(role, index)
+
+
+def test_fatal_startup_reply_preserves_error_and_owned_group():
+    from types import SimpleNamespace
+    import pytest
+    async def run():
+        actor=Actor.__new__(Actor);actor.group_ready=False
+        actor.pipe=SimpleNamespace(recv=lambda:("fatal","error","allocation207001"))
+        with pytest.raises(RuntimeError,match="allocation207001"):await actor.ready()
+        assert actor.group_ready
+    asyncio.run(run())
+
+
+def test_abort_signals_only_owned_process_until_private_group_exists(monkeypatch):
+    import online_actor,signal
+    from types import SimpleNamespace
+    calls=[];actor=Actor.__new__(Actor);actor.group_ready=False
+    actor.process=SimpleNamespace(pid=101,is_alive=lambda:True,
+        terminate=lambda:calls.append("terminate"),kill=lambda:calls.append("kill"))
+    monkeypatch.setattr(online_actor.os,"getpgid",lambda pid:999)
+    monkeypatch.setattr(online_actor.os,"killpg",lambda pid,sig:calls.append((pid,sig)))
+    actor.signal_owned(signal.SIGTERM)
+    assert calls==["terminate"] and not actor.group_ready
+    monkeypatch.setattr(online_actor.os,"getpgid",lambda pid:101)
+    actor.signal_owned(signal.SIGTERM)
+    assert calls[-1]==(101,signal.SIGTERM) and actor.group_ready
+    actor.process.is_alive=lambda:False
+    actor.signal_owned(signal.SIGKILL)
+    assert calls[-1]==(101,signal.SIGKILL)  # descendants after actor exit
+
+
+def _owned_group_fixture(pipe):
+    import os,subprocess,sys,time
+    os.setsid()
+    child=subprocess.Popen([sys.executable,"-c","import time; time.sleep(60)"])
+    pipe.send((os.getpid(),child.pid))
+    time.sleep(60)
+
+
+def test_unready_actor_close_reaps_its_real_owned_process_group():
+    import os,time,psutil
+    context=mp.get_context("spawn");parent,child=context.Pipe()
+    process=context.Process(target=_owned_group_fixture,args=(child,))
+    process.start();child.close()
+    assert parent.poll(15)
+    root,descendant=parent.recv();assert root==process.pid and os.getpgid(root)==root
+    actor=Actor.__new__(Actor);actor.process=process;actor.pipe=parent
+    actor.info=None;actor.reader=None;actor.quarantined=True;actor.group_ready=True
+    try:
+        asyncio.run(asyncio.wait_for(actor.close(),25))
+        assert not process.is_alive()
+        asyncio.run(actor.close())  # repeated app cleanup is a no-op
+        deadline=time.monotonic()+5
+        while psutil.pid_exists(descendant) and time.monotonic()<deadline:
+            if psutil.Process(descendant).status()==psutil.STATUS_ZOMBIE:break
+            time.sleep(.01)
+        assert not psutil.pid_exists(descendant) or psutil.Process(descendant).status()==psutil.STATUS_ZOMBIE
+    finally:
+        import signal
+        try:os.killpg(root,signal.SIGKILL)
+        except ProcessLookupError:pass
+        process.join(5);parent.close()
+
+
+def test_worker_constructor_failure_sends_fatal_before_pipe_close(monkeypatch):
+    import online_actor
+    from types import SimpleNamespace
+    import pytest
+    events=[]
+    monkeypatch.setattr(online_actor.os,"setsid",lambda:events.append("setsid"))
+    async def fail(*args):raise RuntimeError("allocation207001")
+    monkeypatch.setattr(online_actor,"run",fail)
+    pipe=SimpleNamespace(send=lambda value:events.append(value),close=lambda:events.append("close"))
+    with pytest.raises(RuntimeError,match="allocation207001"):
+        online_actor.worker("P",2,pipe)
+    assert events[0]=="setsid" and events[-1]=="close"
+    assert events[1][:2]==("starting","starting")
+    assert events[2][:2]==("fatal","error") and "allocation207001" in events[2][2]
+
+
+def test_native_crash_after_start_handshake_retains_group_cleanup_identity():
+    from types import SimpleNamespace
+    import pytest
+    async def run():
+        actor=Actor.__new__(Actor);actor.group_ready=False
+        actor.process=SimpleNamespace(pid=123)
+        replies=iter([("starting","starting",123)])
+        def recv():
+            try:return next(replies)
+            except StopIteration:raise EOFError("native crash")
+        actor.pipe=SimpleNamespace(recv=recv)
+        with pytest.raises(EOFError,match="native crash"):await actor.ready()
+        assert actor.group_ready
+    asyncio.run(run())

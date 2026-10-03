@@ -194,7 +194,15 @@ async def run(kind,instance,pipe):
 
 def worker(kind,instance,pipe):
     os.setsid()
-    asyncio.run(run(kind,instance,pipe))
+    pipe.send(("starting","starting",os.getpid()))
+    try:asyncio.run(run(kind,instance,pipe))
+    except BaseException:
+        # Constructor failures precede run()'s native cleanup/ready handshake.
+        # Report them explicitly: inherited pipe handles may otherwise hide EOF.
+        try:pipe.send(("fatal","error",traceback.format_exc()))
+        except (OSError,EOFError):pass
+        raise
+    finally:pipe.close()
 
 
 class Actor:
@@ -205,9 +213,17 @@ class Actor:
         self.process=context.Process(target=worker,args=(kind,instance,child),name=f"online-{kind}{instance}")
         self.process.start();child.close()
         self.pending={};self.progress={};self.quarantined=False;self.info=None;self.reader=None
+        self.group_ready=False
 
     async def ready(self):
         tag,status,info=await asyncio.wait_for(asyncio.to_thread(self.pipe.recv),1200)
+        if (tag,status)==("starting","starting"):
+            if info!=self.process.pid:raise RuntimeError("wrong actor process identity")
+            self.group_ready=True
+            # Keep group ownership even if a native crash prevents fatal/ready.
+            tag,status,info=await asyncio.wait_for(asyncio.to_thread(self.pipe.recv),1200)
+        # Every child reply is after worker() established its private session.
+        self.group_ready=True
         if (tag,status)!=("ready","ready"):raise RuntimeError(str(info))
         self.max_calls=rpc_capacity(info["capacities"])
         self.info=info;self.reader=asyncio.create_task(self.receive())
@@ -228,6 +244,7 @@ class Actor:
             while True:
                 batch=await asyncio.to_thread(self.receive_batch)
                 for tag,status,value in batch:
+                    if tag=="fatal":raise RuntimeError(value)
                     if status=="tokens":
                         callback=self.progress.get(tag)
                         if callback is not None:
@@ -259,19 +276,34 @@ class Actor:
             self.quarantined=True
             raise
 
-    async def close(self):
+    def signal_owned(self,signum):
         import signal
-        if self.process.is_alive() and not self.quarantined:
+        if not self.group_ready and self.process.is_alive():
+            try:self.group_ready=os.getpgid(self.process.pid)==self.process.pid
+            except ProcessLookupError:return
+        if self.group_ready:
+            try:os.killpg(self.process.pid,signum)
+            except ProcessLookupError:pass
+        elif self.process.is_alive():
+            # Spawn may not have reached setsid yet. Never signal the parent's
+            # group; only this exact owned process may be stopped in that case.
+            if signum==signal.SIGKILL:self.process.kill()
+            else:self.process.terminate()
+
+    async def close(self):
+        if getattr(self,"closed",False):return
+        import signal
+        abort=self.quarantined or self.info is None
+        if self.process.is_alive() and not abort:
             try:await asyncio.wait_for(self.call("stop",{}),60)
-            except Exception:pass
-        await asyncio.to_thread(self.process.join,60)
-        if self.process.is_alive():
-            if os.getpgid(self.process.pid)!=self.process.pid:raise RuntimeError("Foreign actor process group")
-            os.killpg(self.process.pid,signal.SIGTERM)
-            await asyncio.to_thread(self.process.join,20)
-        if self.process.is_alive():
-            os.killpg(self.process.pid,signal.SIGKILL)
-            await asyncio.to_thread(self.process.join,10)
+            except Exception:abort=True
+        if abort:self.signal_owned(signal.SIGTERM)
+        await asyncio.to_thread(self.process.join,20 if abort else 60)
+        # The actor may have exited while native descendants still hold pipes
+        # or devices. Its established private group remains the cleanup target.
+        self.signal_owned(signal.SIGKILL)
+        await asyncio.to_thread(self.process.join,10)
         self.pipe.close()
         if self.reader:
             self.reader.cancel();await asyncio.gather(self.reader,return_exceptions=True)
+        self.closed=True

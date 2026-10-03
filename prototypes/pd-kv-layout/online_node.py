@@ -58,10 +58,24 @@ def validate(kind,body):
 
 class Node(BaseNode):
     async def start(self,app):
-        self.actors=[Actor(self.args.kind,i) for i in range(4 if self.args.kind=="P" else 1)]
-        receipts=await asyncio.gather(*(a.ready() for a in self.actors))
-        self.ready=True
-        (self.args.output/"ready.json").write_text(json.dumps(receipts,indent=2))
+        if self.actors:raise RuntimeError("node startup requires a fresh incarnation")
+        readers=[]
+        try:
+            for i in range(4 if self.args.kind=="P" else 1):
+                self.actors.append(Actor(self.args.kind,i))
+            readers=[asyncio.create_task(a.ready()) for a in self.actors]
+            receipts=await asyncio.gather(*readers)
+            (self.args.output/"ready.json").write_text(json.dumps(receipts,indent=2))
+            self.ready=True
+        except BaseException as error:
+            self.ready=False
+            for task in readers:task.cancel()
+            for actor in self.actors:actor.quarantined=True
+            cleanup=await asyncio.gather(*(a.close() for a in self.actors),return_exceptions=True)
+            await asyncio.gather(*readers,return_exceptions=True)
+            for failure in cleanup:
+                if isinstance(failure,BaseException):error.add_note(f"startup cleanup: {failure!r}")
+            raise
 
     async def generate(self,request):
         from online_stream import Progress
