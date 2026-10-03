@@ -2,6 +2,8 @@
 
 For the latest authorized100K/80%-State dummy observation (DP4TP2EP8, MTP2),
 read [resident long-KV sizing](#resident-long-kv-dummy-sizing--october3-no-pd-pressure-run).
+For its eight-card timeline and revised100ms budget, see
+[long-KV timeline](#long-kv-eight-card-timeline--october3).
 The D6 sections below remain historical target-only evidence.
 
 Enter before optimizing D-cluster step time or extrapolating the PD prototype's
@@ -293,3 +295,74 @@ later vN source directories vary only the disposable probe helpers.
 All eight devices report no running process after normal model teardown.
 Executors still needed SIGTERM after grace and Python reported4 shared-memory
 cleanup warnings; no persistent NPU allocation observed.
+
+
+## Long-KV eight-card timeline — October3
+
+Same v5 fixture, v6 adds optional --profile after8 warmup cycles: native
+CPU+NPU Level1,32 target+merged-draft cycles, no shapes/stacks/memory capture.
+The model exits before native msprof exports. All8 SQLite exports pass
+quick_check and device identity validation; NPU0..7 have no remaining process.
+No production serving code or installed donor changed for this observation.
+
+Unlike the older D6 serving trace, this native dummy has no slot-mapping
+kernel anchor. There are64 aclmdlRIExecuteAsync replays, **not64 MTP cycles**.
+CANN connectionId-to-TASK envelopes alternate target/draft; an independent
+census finds30 GDN recurrence kernels in each target and0 in each draft.
+Analyze28 interior target-to-next-target cycles, dropping capture edges.
+Compute/HCCL/DMA interval unions avoid summing overlapping streams or adding
+EVENT_WAIT/NOTIFY_WAIT durations again as fictitious overhead.
+
+Across8 ranks, mean interior cycle70.6001–70.6006ms:
+- Own long-context attention36.01–36.22ms (~51% of cycle), including
+  target30.15–30.33ms and draft5.86–5.89ms.
+- Matmul9.04–9.31ms; GDN recurrence+conv5.61–5.72ms;
+  MoE routing2.99–3.11ms; other compute8.12–8.44ms.
+- HCCL7.07–7.53ms (includes collective waiting, not pure wire time).
+  No compute/HCCL interval overlap in this fixture's recorded tasks.
+- Explicit MEMCPY_ASYNC0.197–0.231ms; uncovered0.816–0.922ms.
+  Uncovered is not proven host overhead. Kernel-internal memory traffic is
+  not accounted as explicit MEMCPY, and this run intentionally excludes PD I/O.
+Target graph envelope61.52–61.63ms, merged draft8.862–8.868ms.
+All32 profiled NPU-event means71.24–71.63ms include capture edges; use v5's
+unprofiled~70.0ms for throughput arithmetic, not either profiled window.
+
+### Memory-pipeline evidence and limits
+
+TASK_PMU_INFO contains pipeline counters but no main-memory byte/bandwidth
+counters. Whole-capture unweighted attention samples (384/rank) show
+AIC MTE2 ratio91.63–91.76%, MAC22.11–22.24%. Rank0 GroupedMatmul shows
+MTE2~86.6%, MAC~15.3%; GDN recurrence AIV vector~76.0%, MTE3~38.7%.
+These are pipeline cycle ratios, **not HBM bandwidth utilization**, and
+pipeline ratios overlap rather than sum to100%. Definitions:
+https://github.com/Ascend/msopprof/blob/master/docs/en/user_guide/msopprof_performance_data.md
+
+Inference: the dominant attention kernel has substantial memory-movement
+pressure; this trace does not look like a large front-end starvation bubble.
+It does not establish that HBM is saturated, that the traffic is avoidable,
+or that a particular transpose/copy is a bug. If further kernel tuning is
+entrusted, prioritize long-context attention's actual traffic/reuse/tiling,
+then matmul, rather than chasing sub-ms host gaps or forcing50ms.
+Beware PMU SQL: globalTaskId repeats across graph executions in TASK and
+TASK_PMU_INFO, whereas COMPUTE_TASK_INFO is unique. Join PMU to unique
+operator metadata only; joining TASK multiplies PMU samples by replay count.
+Without occurrence timestamps, do not label those ratios interior-window data.
+
+Fletcher explicitly relaxed the cycle budget to **100ms** after reviewing
+this result. At the assumed2.826 accepted tokens/request/cycle,70ms gives
+~40.4 tokens/s per request and100ms~28.3. This is an accepted planning budget,
+not a measured100ms workload, latency SLO qualification, or permission to
+resume blocked joint PD pressure before the host-memory dependency is solved.
+
+Evidence on hw86:
+/workspace/betterscale-pd-runtime/dummy-kv80-v6-profile/
+- d8-mtp-dummy-timeline.json.gz: eight-rank combined Chrome/Perfetto trace;
+  compute/HCCL/DMA, CANN APIs and cycle markers with one shared clock origin.
+- timeline-summary.json: interval census, per-phase attention and PMU samples.
+- exports.json: exact native DB paths; profile/: original profiler capture.
+- matching -source, -launch.json and.log outside the directory preserve launch.
+Run prototypes/pd-kv-layout/analyze_dummy_timeline.py <evidence directory>
+to reproduce. This bounded analyzer deliberately requires32 captured cycles.
+Local backup root:
+/Users/fletcher-tian/Developer/BetterScale-migration-20261001/
+The downloadable merged trace lives in dummy-kv80-v6-profile/ there.

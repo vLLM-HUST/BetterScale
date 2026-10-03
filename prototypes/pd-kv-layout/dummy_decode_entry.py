@@ -40,7 +40,7 @@ class Worker(BaseWorker):
         from decode_graph_policy import install
         install()
 
-    def theory_decode(self,context,fraction,steps,warmup):
+    def theory_decode(self,context,fraction,steps,warmup,profile_dir=None):
         import torch
         from vllm.config import CUDAGraphMode
         from vllm.distributed import get_ep_group
@@ -99,14 +99,27 @@ class Worker(BaseWorker):
             # both target and draft consume this device length plane.
             lengths=runner.seq_lens[:batch].cpu().tolist()
             if lengths!=[context]*batch:raise RuntimeError("Dummy did not publish long device lengths")
+            profiler=None
+            if profile_dir is not None:
+                import torch_npu
+                profiler=torch_npu.profiler.profile(
+                    activities=[torch_npu.profiler.ProfilerActivity.CPU,torch_npu.profiler.ProfilerActivity.NPU],
+                    record_shapes=False,profile_memory=False,with_stack=False,
+                    experimental_config=torch_npu.profiler._ExperimentalConfig(
+                        profiler_level=torch_npu.profiler.ProfilerLevel.Level1,
+                        export_type=torch_npu.profiler.ExportType.Db),
+                    on_trace_ready=torch_npu.profiler.tensorboard_trace_handler(
+                        profile_dir,worker_name=f"rank{get_ep_group().rank_in_group}",analyse_flag=False))
+                profiler.start()
             events=[torch.npu.Event(enable_timing=True) for _ in range(steps+1)]
             host=[]
             for i in range(steps):
                 host.append(time.perf_counter_ns());events[i].record();step(i)
             events[-1].record();torch.npu.synchronize()
             gaps=[events[i].elapsed_time(events[i+1]) for i in range(steps)]
+            if profiler is not None:profiler.stop()
         return dict(rank=get_ep_group().rank_in_group,batch=batch,context=context,
-            steps=steps,warmup=warmup,step_ms=gaps,host_begin_ns=host,
+            steps=steps,warmup=warmup,profiled=profile_dir is not None,step_ms=gaps,host_begin_ns=host,
             allocated_state_bytes=allocated,fixed_state_bytes=fixed,
             dense_pool_bytes=dense,logical_blocks=runner.kv_cache_config.num_blocks,
             active_dense_bytes=batch*per_request*block*per_token,

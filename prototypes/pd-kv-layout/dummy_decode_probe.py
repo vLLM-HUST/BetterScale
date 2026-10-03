@@ -20,7 +20,7 @@ async def run(args):
     try:
         groups=await asyncio.gather(*(model.engine_core._call_utility_async(
             "collective_rpc","theory_decode",None,
-            (args.context,args.fraction,args.steps,args.warmup),None,engine=e)
+            (args.context,args.fraction,args.steps,args.warmup,str(args.output/"profile") if args.profile else None),None,engine=e)
             for e in model.engine_core.core_engines))
         rows=[row for group in groups for row in group]
         if sorted(r["rank"] for r in rows)!=list(range(8)):raise RuntimeError("Missing ranks")
@@ -32,6 +32,7 @@ async def run(args):
 if __name__=="__main__":
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("--output",type=Path,required=True)
+    p.add_argument("--profile",action="store_true")
     p.add_argument("--context",type=int,default=100000)
     p.add_argument("--fraction",type=float,default=.8)
     p.add_argument("--steps",type=int,default=32)
