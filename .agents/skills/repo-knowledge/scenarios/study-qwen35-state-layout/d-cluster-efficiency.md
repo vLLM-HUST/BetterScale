@@ -1,4 +1,8 @@
-# D6 efficiency: balanced target-only decode, 2026-10-02
+# Decode-cluster efficiency: real requests and synthetic sizing
+
+For the latest authorized100K/80%-State dummy observation (DP4TP2EP8, MTP2),
+read [resident long-KV sizing](#resident-long-kv-dummy-sizing--october3-no-pd-pressure-run).
+The D6 sections below remain historical target-only evidence.
 
 Enter before optimizing D-cluster step time or extrapolating the PD prototype's
 handoff measurements into decode throughput. Source-only capacity arithmetic is
@@ -183,3 +187,109 @@ the existing B8 msprof timeline is not silently relabeled as a B16 profile.
 
 The D-only probe accepts --batches and --profile-batch (0 disables profiling);
 default timing now includes1/8/16 per owner, default capture remainsB8.
+
+
+## Resident long-KV dummy sizing — October3, no PD pressure run
+
+Fletcher explicitly redirected the blocked host-memory campaign to **synthetic
+shape/cadence sizing**, not a real-request warm-start benchmark. Do not restart
+P4, allocate large host pools, or build a seed-service pipeline merely to repeat
+this observation. Track the separate deployment dependency in
+https://github.com/vLLM-HUST/BetterScale/issues/10.
+
+hw86, eight910B2, DP4TP2EP8, native MTP2, D-only FULL graphs,
+E48/R56, requested44GiB State/rank, context envelope262144. Same pinned
+CANN9.1/torch_npu post4/donor runtime and native libraries as online PD.
+No P process, rank-private host arena, State transport or live request scheduler
+participates in the timed loop.
+
+The fixture charges the actual declared State tensors:47,223,508,256B/rank,
+including5,353,868,576B fixed resident/MTP State and1,815 logical FA blocks.
+At100,000 tokens/request and11,264 dense bytes/token/rank, each request needs
+49 logical2048-token blocks. floor((0.8*total-fixed)/request_dense) gives
+**28 requests/TP2 group,112 total**. Unique non-null FA block rows occupy
+31,650,217,984B/rank; fixed+active dense is78.3595% of total after rounding.
+This includes all56 reserved seats; it is not80% of64GiB physical HBM, nor80%
+live occupancy of the dense-only pool (that is75.59%).
+
+The probe initializes synthetic zero KV and separate recurrent rows, uses
+synthetic token IDs, publishes actual100K device lengths and runs the native
+target+merged-MTP dummy path. It does **not** validate numerics or sample actual
+accepted outputs. Native dummy execution is not the full serving step: no live
+admission, request postprocessing, State transfer, or end-to-end return path.
+Acceptance below is an external assumption, not measured by this fixture.
+Synthetic MoE routing need not match real prompts. Do not relabel the result a
+qualified maximum throughput or a production<50ms result.
+
+8 warmup cycles then32 measured cycles, NPU events on the execution stream,
+one synchronization before and after the window, no per-step synchronization:
+- Eight rank means70.0044–70.0088ms; medians69.8209–69.8320ms.
+- P95 nearest-rank70.0604–70.0753ms; first measured cycle75.59–75.74ms.
+- Host dispatch medians69.77–69.82ms corroborate the event spacing.
+- Historical v33/v34 positive output chunks averaged~2.826 accepted tokens.
+  Assuming2.826 per request/cycle,112*2.826/0.07000885 = **4521.0 tokens/s**
+  aggregate, **565.1 per D chip**. This is analytical, not measured goodput.
+
+### Ingress/P capacity arithmetic and assumptions
+
+A100K full checkpoint per TP rank is approximately95,608,332B resident frame
+plus49*23,071,424B FA frames =1,226,108,108B. Pair total2.452GB.
+D device restore and P-to-D network transfer are different byte counts:
+an immutable peer DRAM hit can transfer only increments across the network
+while still restoring the whole history into a newly assigned D device seat.
+
+For one explicit warm-turn scenario, reuse the v33 SWE **continuation-only**
+means (1865 turns):386.536 output tokens/turn and1338.880 new input tokens/turn.
+Project that ratio onto100K resident histories; this is not a claim that the
+original v33 workload itself averaged100K.
+At4521 tokens/s:
+-11.696 turns/s; P requires15,659.9 new-prefill tokens/s aggregate
+  (~3915 per TP2 P instance if spread across four equally).
+- Full D device restore each turn:28.682GB/s aggregate,3.585GB/s/rank.
+- With hot peer immutable pages, P->D incremental payload~2.59GB/s,
+  ~3.13GB/s allowing one extra full tail page/turn;
+  D->P~2.34–2.88GB/s under the same accounting.
+- Cold100K every turn instead requires~1.170M prefill tokens/s and full
+  checkpoint network ingress, not the warm15.7K/3.1GB/s figures.
+These are byte-volume models, not measured transfers, and exclude transport
+headers, allocator headroom and burst margin. Output length, new input length,
+device residency and peer-cache hit rates must accompany any sizing quote.
+
+General formula: output Q =4*B*accepted_per_cycle/step_seconds;
+turn rate=Q/mean_output; P work=turn_rate*mean_new_prefill.
+Per-direction network increments add one resident frame per rank per turn,
+not one per decode step. Full device restore scales with whole context.
+
+### Fixture and artifacts
+
+prototypes/pd-kv-layout/dummy_decode_probe.py and dummy_decode_entry.py are
+disposable observation entries, not new serving worker admission.
+Use a frozen stage_online_candidate.py --mtp D capsule with the existing
+run_pool_node.sh environment and:
+BETTERSCALE_PD_NODE_ENTRY=dummy_decode_probe.py,
+BETTERSCALE_PD_RANK_PRIVATE=0, BETTERSCALE_PD_CONTEXT=262144,
+BETTERSCALE_PD_MTP=1, BETTERSCALE_PD_DECODE_ONLY=1,
+BETTERSCALE_PD_D_CONCURRENCY=48, BETTERSCALE_PD_D_RESIDENT_SEATS=56,
+BETTERSCALE_PD_D_STATE_GIB=44, BETTERSCALE_PD_D_PACKAGE=<frozen capsule>;
+arguments --output <fresh directory> --context100000 --fraction0.8
+--warmup8 --steps32 (with normal spaces between flags and values).
+
+Keep startup/capture untouched. The measurement-only AST clone of the pinned
+native _dummy_run corrects two live-query/padded-request assumptions:
+do not numpy.repeat the live partition, and use actual request count until
+native FIA adds its padding row. Exact-source guards reject drift. GDN starts
+at0 with an endpoint-filled padding suffix; req_ids AND req_id_to_index define
+live rows. Existing FIA/GDN guards remain enabled. Two CPU regression tests
+cover live partition preservation and unknown donor rejection.
+The preceding v1–v4 setup failures are retained, not measurements: unused
+cache-control configuration, padded request broadcast, missing GDN leading0,
+then missing native request-index map. No installed donor or production
+serving source was changed to get the dummy through those guards.
+
+Successful raw evidence: /workspace/betterscale-pd-runtime/dummy-kv80-v5/
+(result.json, sizing.json), matching -source, -launch.json and.log.
+Frozen native capsule: dummy-kv80-v1-package (48df72e staged source);
+later vN source directories vary only the disposable probe helpers.
+All eight devices report no running process after normal model teardown.
+Executors still needed SIGTERM after grace and Python reported4 shared-memory
+cleanup warnings; no persistent NPU allocation observed.

@@ -15,6 +15,11 @@ overrule a duplex-bandwidth regression.
 Before resuming serving, qualify allocation/placement, exact native DMA in both
 directions, lifetime cleanup, private TP replication, then the numerical gate.
 
+**Follow-on decision:** Fletcher deferred joint PD pressure until host-level memory
+planning is resolved. Deployment requirement: https://github.com/vLLM-HUST/BetterScale/issues/10.
+Independent synthetic D sizing is explicitly authorized; see the latest section
+of [d-cluster-efficiency.md](d-cluster-efficiency.md). It needs no P/host cache.
+
 **Current hardware boundary after v35:** both nodes are stopped. hw81 physical5 /
 NUMA2 could no longer reserve even the previously qualified12GiB. After teardown
 only3.17GiB free order9+ remained. Do NOT retry full P4 startup or shrink away the
