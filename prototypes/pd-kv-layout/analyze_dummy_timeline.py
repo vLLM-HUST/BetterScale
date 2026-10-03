@@ -9,6 +9,17 @@ from collections import defaultdict
 from pathlib import Path
 from analyze_d_timeline import union_ns,category
 
+def normalize_threads(events):
+    """Chrome trace IDs are integers; retain descriptive stream names as metadata."""
+    tracks={}
+    for event in events:
+        if event.get("ph")=="M":continue
+        key=(event["pid"],event["tid"])
+        event["tid"]=tracks.setdefault(key,len(tracks)+1)
+    events.extend(dict(ph="M",name="thread_name",pid=rank,tid=tid,args=dict(name=name))
+                  for (rank,name),tid in tracks.items())
+
+
 def analyze(root):
     exports=json.loads((root/"exports.json").read_text())
     summaries=[];events=[]
@@ -98,6 +109,7 @@ def analyze(root):
     for e in events:e["ts"]-=origin
     for rank in range(8):
         events.append(dict(ph="M",name="process_name",pid=rank,args=dict(name=f"DP{rank//2} TP{rank%2} / NPU{rank}")))
+    normalize_threads(events)
     with gzip.open(root/"d8-mtp-dummy-timeline.json.gz","wt") as f:
         json.dump(dict(traceEvents=events,displayTimeUnit="ms"),f,separators=(",",":"))
     print(json.dumps([dict(rank=r["rank"],cycle=r["mean_cycle_ms"],compute=r["compute_union_ms"],
